@@ -5,7 +5,11 @@
   "type": "module",
   "scripts": {
     "ready": "vp check && vp run -r test && vp run -r build",
-    "dev": "vp run website#dev",
+    "dev": "vp run pc#dev",
+    "dev:pc": "vp run pc#dev",
+    "dev:mobile": "vp run mobile#dev",
+    "build:pc": "vp run pc#build",
+    "build:mobile": "vp run mobile#build",
     "prepare": "vp config"
   },
   "devDependencies": {
