@@ -1,6 +1,6 @@
-# Vite+ Monorepo Starter
+# Archive Management
 
-A starter for creating a Vite+ monorepo.
+档案管理系统，前端使用 Vue 3 + Vite+，后端使用单 Spring Boot 应用。
 
 ## 项目约定
 
@@ -12,23 +12,17 @@ A starter for creating a Vite+ monorepo.
 - Check everything is ready:
 
 ```bash
-vp run ready
+vp ready
 ```
 
-- Run the tests:
+- Build the frontend:
 
 ```bash
-vp run -r test
+vp build
 ```
 
-- Build the monorepo:
+- Run the frontend development server:
 
 ```bash
-vp run -r build
-```
-
-- Run the development server:
-
-```bash
-vp run dev
+vp dev
 ```

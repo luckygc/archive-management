@@ -1,14 +1,20 @@
 <script setup lang="ts">
+import { ref } from "vue";
 import { usePageTabsStore } from "../app/stores/pageTabs";
 import AppHeader from "./components/AppHeader.vue";
 import AppSidebar from "./components/AppSidebar.vue";
 
 const pageTabsStore = usePageTabsStore();
+const sidebarCollapsed = ref(false);
 </script>
 
 <template>
-  <div class="app-layout">
-    <AppSidebar class="app-layout__sidebar" />
+  <div class="app-layout" :class="{ 'is-sidebar-collapsed': sidebarCollapsed }">
+    <AppSidebar
+      class="app-layout__sidebar"
+      :collapsed="sidebarCollapsed"
+      @toggle-collapse="sidebarCollapsed = !sidebarCollapsed"
+    />
     <div class="app-layout__main">
       <AppHeader class="app-layout__header" />
       <main class="app-layout__content">
@@ -41,6 +47,11 @@ const pageTabsStore = usePageTabsStore();
   overflow: hidden;
   grid-template-columns: 236px minmax(0, 1fr);
   background: var(--am-bg-page);
+  transition: grid-template-columns 180ms ease-out;
+}
+
+.app-layout.is-sidebar-collapsed {
+  grid-template-columns: 72px minmax(0, 1fr);
 }
 
 .app-layout__sidebar,

@@ -1,29 +1,9 @@
-packages:
-  - apps/*
-  - packages/*
-  - tools/*
-
 catalogMode: prefer
 
-catalog:
-  "@types/node": ^24
-  typescript: ^5
-  vite: npm:@voidzero-dev/vite-plus-core@latest
-  vitest: npm:@voidzero-dev/vite-plus-test@latest
-  vite-plus: latest
-  vue: ^3.5.35
-  vue-router: ^5.1.0
-  pinia: ^3.0.4
-  element-plus: ^2.14.1
-  "@element-plus/icons-vue": ^2.3.2
-  "@vitejs/plugin-vue": ^6.0.7
-  sass-embedded: ^1.100.0
-  altcha: ^3.0.11
-  '@cap.js/widget': ^0.1.54
-  '@cap.js/wasm': ^0.0.7
 overrides:
-  vite: "catalog:"
-  vitest: "catalog:"
+  vite: "npm:@voidzero-dev/vite-plus-core@latest"
+  vitest: "npm:@voidzero-dev/vite-plus-test@latest"
+
 peerDependencyRules:
   allowAny:
     - vite
@@ -31,5 +11,6 @@ peerDependencyRules:
   allowedVersions:
     vite: "*"
     vitest: "*"
+
 allowBuilds:
   "@parcel/watcher": true

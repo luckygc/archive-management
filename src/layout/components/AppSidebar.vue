@@ -1,8 +1,17 @@
 <script setup lang="ts">
 import * as ElementPlusIcons from "@element-plus/icons-vue";
+import { Expand, Fold } from "@element-plus/icons-vue";
 import { computed } from "vue";
 import { routes } from "../../app/router/routes";
 import type { MenuNode } from "../../shared/types/menu";
+
+defineProps<{
+  collapsed: boolean;
+}>();
+
+defineEmits<{
+  toggleCollapse: [];
+}>();
 
 function joinPath(parentPath: string, path: string) {
   if (path.startsWith("/")) {
@@ -58,16 +67,20 @@ const menus = computed(() =>
 </script>
 
 <template>
-  <aside class="app-sidebar">
+  <aside class="app-sidebar" :class="{ 'is-collapsed': collapsed }">
     <div class="app-sidebar__brand">
       <span>AM</span>
-      <div>
+      <div v-show="!collapsed">
         <strong>档案管理</strong>
-        <small>Archive Management</small>
       </div>
     </div>
-    <div class="app-sidebar__section">业务导航</div>
-    <el-menu class="app-sidebar__menu" router :default-active="$route.path">
+    <el-menu
+      class="app-sidebar__menu"
+      router
+      :collapse="collapsed"
+      :default-active="$route.path"
+      :collapse-transition="false"
+    >
       <el-menu-item v-for="item in menus" :key="item.id" :index="item.path ?? item.id">
         <el-icon v-if="item.icon">
           <component :is="resolveIcon(item.icon)" />
@@ -75,20 +88,25 @@ const menus = computed(() =>
         <span>{{ item.title }}</span>
       </el-menu-item>
     </el-menu>
-    <div class="app-sidebar__meta">
-      <span>运行环境</span>
-      <strong>本地开发</strong>
+    <div class="app-sidebar__footer">
+      <el-button
+        class="app-sidebar__collapse"
+        :icon="collapsed ? Expand : Fold"
+        circle
+        :aria-label="collapsed ? '展开侧边栏' : '折叠侧边栏'"
+        @click="$emit('toggleCollapse')"
+      />
     </div>
   </aside>
 </template>
 
 <style scoped lang="scss">
 .app-sidebar {
+  position: relative;
   display: flex;
   flex-direction: column;
   min-height: 0;
-  border-right: 1px solid var(--am-sidebar-border);
-  background: var(--am-sidebar-bg);
+  overflow: hidden;
 }
 
 .app-sidebar__brand {
@@ -97,86 +115,32 @@ const menus = computed(() =>
   gap: 12px;
   height: 64px;
   padding: 0 18px;
-  color: #fff;
-
-  span {
-    display: grid;
-    width: 32px;
-    height: 32px;
-    place-items: center;
-    border-radius: 6px;
-    color: var(--am-primary);
-    background: #fff;
-    font-size: 12px;
-    font-weight: 700;
-  }
-
-  div {
-    display: grid;
-    gap: 2px;
-    min-width: 0;
-  }
-
-  strong {
-    font-size: 16px;
-    line-height: 1.2;
-  }
-
-  small {
-    color: var(--am-sidebar-text-muted);
-    font-size: 12px;
-    line-height: 1.2;
-  }
 }
 
-.app-sidebar__section {
-  padding: 12px 18px 8px;
-  color: var(--am-sidebar-text-muted);
-  font-size: 12px;
+.app-sidebar.is-collapsed .app-sidebar__brand {
+  justify-content: center;
+  padding: 0 10px;
 }
 
 .app-sidebar__menu {
-  --el-menu-bg-color: transparent;
-  --el-menu-hover-bg-color: #1f2937;
-  --el-menu-active-color: #fff;
-  --el-menu-text-color: var(--am-sidebar-text);
   --el-menu-item-height: 42px;
   --el-menu-sub-item-height: 42px;
 
   flex: 1;
   min-height: 0;
   border-right: none;
-  padding: 0 10px 12px;
   overflow: auto;
 }
 
-.app-sidebar__menu :deep(.el-menu-item) {
-  height: 42px;
-  margin: 3px 0;
-  border-radius: 6px;
-  padding-inline: 12px;
-}
-
-.app-sidebar__menu :deep(.el-menu-item.is-active) {
-  background: var(--am-sidebar-bg-active);
-}
-
-.app-sidebar__meta {
+.app-sidebar__footer {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  min-height: 44px;
-  margin: 0 12px 12px;
-  border-top: 1px solid var(--am-sidebar-border);
-  padding: 12px 6px 0;
-  color: var(--am-sidebar-text-muted);
-  font-size: 12px;
+  flex: none;
+  justify-content: flex-end;
+  padding: 10px 14px 14px;
+}
 
-  strong {
-    color: var(--am-sidebar-text);
-    font-size: 12px;
-    font-weight: 500;
-  }
+.app-sidebar.is-collapsed .app-sidebar__footer {
+  justify-content: center;
+  padding-inline: 0;
 }
 </style>

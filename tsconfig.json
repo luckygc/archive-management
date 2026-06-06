@@ -1,9 +1,21 @@
 {
   "compilerOptions": {
+    "target": "es2023",
+    "module": "esnext",
+    "lib": ["ES2023", "DOM"],
+    "types": ["vite-plus/client"],
+    "skipLibCheck": true,
+
+    "moduleResolution": "bundler",
     "noEmit": true,
-    "module": "nodenext",
-    "moduleResolution": "nodenext",
     "allowImportingTsExtensions": true,
-    "esModuleInterop": true
-  }
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "erasableSyntaxOnly": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["src"]
 }

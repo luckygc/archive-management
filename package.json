@@ -4,16 +4,26 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "ready": "vp check && vp run -r test && vp run -r build",
-    "dev": "vp run pc#dev",
-    "dev:pc": "vp run pc#dev",
-    "dev:mobile": "vp run mobile#dev",
-    "build:pc": "vp run pc#build",
-    "build:mobile": "vp run mobile#build",
+    "ready": "vp check && vp build",
+    "dev": "vp dev",
+    "build": "tsc && vp build",
+    "preview": "vp preview",
     "prepare": "vp config"
   },
+  "dependencies": {
+    "@cap.js/wasm": "^0.0.7",
+    "@cap.js/widget": "^0.1.54",
+    "@element-plus/icons-vue": "^2.3.2",
+    "element-plus": "^2.14.1",
+    "pinia": "^3.0.4",
+    "vue": "^3.5.35",
+    "vue-router": "^5.1.0"
+  },
   "devDependencies": {
-    "vite-plus": "catalog:"
+    "@vitejs/plugin-vue": "^6.0.7",
+    "sass-embedded": "^1.100.0",
+    "typescript": "~6.0.2",
+    "vite-plus": "latest"
   },
   "engines": {
     "node": ">=22.12.0"

@@ -101,6 +101,9 @@ server:
     servlet:
         # 应用上下文路径。
         context-path: /
+        session:
+            cookie:
+                name: am_session
     compression:
         # 是否启用 HTTP 响应压缩。
         enabled: true
