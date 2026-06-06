@@ -1,0 +1,35 @@
+:root {
+  --am-bg-page: #f4f6fa;
+  --am-bg-surface: #ffffff;
+  --am-border: #dce3ee;
+  --am-text: #1f2937;
+  --am-text-muted: #6b7280;
+
+  color: var(--am-text);
+  background: var(--am-bg-page);
+  font-family: Inter, "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  width: 100%;
+  height: 100%;
+}
+
+body {
+  margin: 0;
+}
+
+button,
+input {
+  font: inherit;
+}
