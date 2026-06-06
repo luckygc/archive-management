@@ -92,7 +92,7 @@
 #### Scenario: 加载用户角色
 
 - **WHEN** 系统构造登录用户权限
-- **THEN** 系统 SHALL 从 `am_user_role` 读取用户角色编码
+- **THEN** 系统 SHALL 从 `am_user_role` 读取用户角色名称
 - **AND** 写入 Spring Security 权限时 SHALL 自动添加 `ROLE_` 前缀
 - **AND** 对外返回当前用户时 SHALL 去除 `ROLE_` 前缀
 
@@ -101,7 +101,7 @@
 - **WHEN** 数据库迁移初始化认证数据
 - **THEN** 系统 SHALL 创建默认用户 `admin`
 - **AND** 默认用户显示名称 SHALL 为 `系统管理员`
-- **AND** 默认用户 SHALL 具有 `ADMIN` 角色
+- **AND** 默认用户 SHALL 具有 `系统管理员` 和 `系统监控` 角色
 
 ### Requirement: 当前用户查询
 

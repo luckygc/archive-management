@@ -82,7 +82,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
                 .requestMatchers("/api/auth/cap/**").permitAll()
-                .requestMatchers("/actuator/**").hasRole("ACTUATOR")
+                .requestMatchers("/actuator/**").hasRole("系统监控")
                 .anyRequest().authenticated();
     }
 

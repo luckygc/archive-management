@@ -39,7 +39,7 @@ create index idx_am_user_role_user_id on am_user_role (user_id);
 comment on table am_user_role is '系统用户角色关系表';
 comment on column am_user_role.id is '主键';
 comment on column am_user_role.user_id is '用户 ID';
-comment on column am_user_role.role_code is '角色编码；写入 Spring Security 时自动添加 ROLE_ 前缀';
+comment on column am_user_role.role_code is '角色名称；写入 Spring Security 时自动添加 ROLE_ 前缀';
 comment on column am_user_role.created_at is '创建时间';
 
 create table am_cap_challenge
@@ -80,6 +80,9 @@ insert into am_user (username, password, display_name)
 values ('admin', '{noop}admin', '系统管理员');
 
 insert into am_user_role (user_id, role_code)
-select id, 'ADMIN'
+select id, role_code
 from am_user
+cross join (
+    values ('系统管理员'), ('系统监控')
+) as default_role(role_code)
 where username = 'admin';
