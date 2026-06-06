@@ -1,4 +1,4 @@
-package github.luckygc.am.common.security;
+package github.luckygc.am.auth;
 
 public class PowChallengeException extends RuntimeException {
 

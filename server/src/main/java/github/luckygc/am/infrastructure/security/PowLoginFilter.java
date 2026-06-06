@@ -1,4 +1,4 @@
-package github.luckygc.am.common.security;
+package github.luckygc.am.infrastructure.security;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -12,6 +12,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+
+import github.luckygc.am.auth.PowChallengeException;
+import github.luckygc.am.auth.PowChallengeService;
 
 @Component
 public class PowLoginFilter extends OncePerRequestFilter {

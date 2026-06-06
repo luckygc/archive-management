@@ -18,7 +18,6 @@ create table am_storage_object
 );
 
 create index idx_am_storage_object_created_at on am_storage_object (created_at);
-create index idx_am_storage_object_checksum_sha256 on am_storage_object (checksum_sha256);
 create unique index uk_am_storage_object_location_active
     on am_storage_object (storage_type, bucket_name, object_key)
     where deleted_at is null;

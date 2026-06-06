@@ -1,4 +1,4 @@
-package github.luckygc.am.common.security;
+package github.luckygc.am.infrastructure.security;
 
 import java.io.IOException;
 
@@ -11,6 +11,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.stereotype.Component;
+
+import github.luckygc.am.auth.AuthController;
 
 @Component
 public class FormLoginAuthenticationSuccessHandler implements AuthenticationSuccessHandler {

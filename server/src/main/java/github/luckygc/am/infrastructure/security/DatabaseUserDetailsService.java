@@ -1,4 +1,4 @@
-package github.luckygc.am.common.security;
+package github.luckygc.am.infrastructure.security;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;

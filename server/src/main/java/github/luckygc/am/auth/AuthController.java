@@ -1,4 +1,4 @@
-package github.luckygc.am.common.security;
+package github.luckygc.am.auth;
 
 import java.util.List;
 
@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+
+import github.luckygc.am.infrastructure.security.ArchiveUserDetails;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -38,7 +40,7 @@ public class AuthController {
 
     public record CurrentUserDto(String username, String displayName, List<String> roles) {
 
-        static CurrentUserDto from(Authentication authentication) {
+        public static CurrentUserDto from(Authentication authentication) {
             List<String> roles = authentication.getAuthorities().stream()
                     .map(GrantedAuthority::getAuthority)
                     .map(authority -> Strings.CS.removeStart(authority, "ROLE_"))
