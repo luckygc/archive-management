@@ -3,16 +3,16 @@ spring:
     name: archive-management
   security:
     user:
-      name: ${SECURITY_USER_NAME:admin}
-      password: ${SECURITY_USER_PASSWORD:admin}
+      name: admin
+      password: admin
       roles:
         - USER
         - ACTUATOR
   datasource:
     driver-class-name: org.postgresql.Driver
-    url: ${DB_URL:jdbc:postgresql://localhost:5433/archive_management}
-    username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:}
+    url: jdbc:postgresql://localhost:5433/archive_management
+    username: postgres
+    password:
     hikari:
       pool-name: archive-management-hikari
       minimum-idle: 5
@@ -95,13 +95,13 @@ management:
       enabled: true
 
 log:
-  dir: ${LOG_DIR:logs}
-  max-file-size: ${LOG_MAX_FILE_SIZE:20MB}
-  max-history: ${LOG_MAX_HISTORY:30}
-  total-size-cap: ${LOG_TOTAL_SIZE_CAP:5GB}
-  immediate-flush: ${LOG_IMMEDIATE_FLUSH:true}
-  root-level: ${LOG_ROOT_LEVEL:INFO}
-  app-level: ${LOG_APP_LEVEL:DEBUG}
+  dir: logs
+  max-file-size: 20MB
+  max-history: 30
+  total-size-cap: 5GB
+  immediate-flush: true
+  root-level: INFO
+  app-level: DEBUG
 
 archive:
   storage:
@@ -109,14 +109,14 @@ archive:
     active-local-bucket: local
     local:
       - bucket: local
-        root: ${ARCHIVE_STORAGE_LOCAL_ROOT:data/files}
+        root: data/files
       - bucket: nas
-        root: ${ARCHIVE_STORAGE_NAS_ROOT:/home/gc/archive-files}
+        root: /home/gc/archive-files
     object:
       # 支持 AWS S3、MinIO、腾讯 COS、阿里云 OSS、华为云 OBS 等 S3 兼容对象存储。
-      endpoint: ${ARCHIVE_STORAGE_OBJECT_ENDPOINT:}
-      region: ${ARCHIVE_STORAGE_OBJECT_REGION:us-east-1}
-      bucket: ${ARCHIVE_STORAGE_OBJECT_BUCKET:}
-      access-key: ${ARCHIVE_STORAGE_OBJECT_ACCESS_KEY:}
-      secret-key: ${ARCHIVE_STORAGE_OBJECT_SECRET_KEY:}
-      path-style-access: ${ARCHIVE_STORAGE_OBJECT_PATH_STYLE_ACCESS:true}
+      endpoint:
+      region: us-east-1
+      bucket:
+      access-key:
+      secret-key:
+      path-style-access: true
