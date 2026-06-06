@@ -3,13 +3,11 @@
     <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
 
     <springProperty scope="context" name="APP_NAME" source="spring.application.name" defaultValue="archive-management"/>
-    <springProperty scope="context" name="LOG_DIR" source="log.dir" defaultValue="logs"/>
-    <springProperty scope="context" name="LOG_MAX_FILE_SIZE" source="log.max-file-size" defaultValue="20MB"/>
-    <springProperty scope="context" name="LOG_MAX_HISTORY" source="log.max-history" defaultValue="30"/>
-    <springProperty scope="context" name="LOG_TOTAL_SIZE_CAP" source="log.total-size-cap" defaultValue="5GB"/>
-    <springProperty scope="context" name="LOG_IMMEDIATE_FLUSH" source="log.immediate-flush" defaultValue="true"/>
-    <springProperty scope="context" name="APP_LOG_LEVEL" source="log.app-level" defaultValue="DEBUG"/>
-    <springProperty scope="context" name="ROOT_LOG_LEVEL" source="log.root-level" defaultValue="INFO"/>
+    <springProperty scope="context" name="LOG_DIR" source="logging.file.path" defaultValue="logs"/>
+    <springProperty scope="context" name="ROOT_LOG_LEVEL" source="logging.level.root" defaultValue="INFO"/>
+    <property name="LOG_MAX_FILE_SIZE" value="20MB"/>
+    <property name="LOG_MAX_HISTORY" value="30"/>
+    <property name="LOG_TOTAL_SIZE_CAP" value="5GB"/>
 
     <property name="TRACE_PATTERN" value="[traceId=%X{traceId:-}]"/>
     <property name="CONSOLE_PATTERN"
@@ -27,7 +25,7 @@
     <appender name="APP_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${LOG_DIR}/${APP_NAME}.log</file>
         <append>true</append>
-        <immediateFlush>${LOG_IMMEDIATE_FLUSH}</immediateFlush>
+        <immediateFlush>true</immediateFlush>
         <encoder>
             <charset>UTF-8</charset>
             <pattern>${FILE_PATTERN}</pattern>
@@ -62,11 +60,6 @@
             <cleanHistoryOnStart>false</cleanHistoryOnStart>
         </rollingPolicy>
     </appender>
-
-    <logger name="github.luckygc.am" level="${APP_LOG_LEVEL}"/>
-    <logger name="org.springframework.security" level="INFO"/>
-    <logger name="org.mybatis" level="INFO"/>
-    <logger name="software.amazon.awssdk" level="WARN"/>
 
     <root level="${ROOT_LOG_LEVEL}">
         <appender-ref ref="CONSOLE"/>
