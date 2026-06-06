@@ -4,24 +4,32 @@
 
     <springProperty scope="context" name="APP_NAME" source="spring.application.name" defaultValue="archive-management"/>
     <springProperty scope="context" name="LOG_DIR" source="log.dir" defaultValue="logs"/>
-    <springProperty scope="context" name="LOG_MAX_FILE_SIZE" source="log.max-file-size" defaultValue="100MB"/>
+    <springProperty scope="context" name="LOG_MAX_FILE_SIZE" source="log.max-file-size" defaultValue="20MB"/>
     <springProperty scope="context" name="LOG_MAX_HISTORY" source="log.max-history" defaultValue="30"/>
     <springProperty scope="context" name="LOG_TOTAL_SIZE_CAP" source="log.total-size-cap" defaultValue="5GB"/>
+    <springProperty scope="context" name="LOG_IMMEDIATE_FLUSH" source="log.immediate-flush" defaultValue="true"/>
+    <springProperty scope="context" name="APP_LOG_LEVEL" source="log.app-level" defaultValue="DEBUG"/>
+    <springProperty scope="context" name="ROOT_LOG_LEVEL" source="log.root-level" defaultValue="INFO"/>
 
+    <property name="TRACE_PATTERN" value="[traceId=%X{traceId:-}]"/>
     <property name="CONSOLE_PATTERN"
-              value="%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr(%5p) %clr(${PID:- }){magenta} %clr(---){faint} %clr([%15.15t]){faint} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n%wEx"/>
+              value="%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr(%5p) %clr(${PID:- }){magenta} %clr(---){faint} %clr([%15.15t]){faint} %clr(${TRACE_PATTERN}){yellow} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n%wEx"/>
     <property name="FILE_PATTERN"
-              value="%d{yyyy-MM-dd HH:mm:ss.SSS} %5p ${PID:- } --- [%t] %-40.40logger{39} : %m%n%wEx"/>
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} %5p ${PID:- } --- [%t] ${TRACE_PATTERN} %-40.40logger{39} : %m%n%wEx"/>
 
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
+            <charset>UTF-8</charset>
             <pattern>${CONSOLE_PATTERN}</pattern>
         </encoder>
     </appender>
 
     <appender name="APP_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${LOG_DIR}/${APP_NAME}.log</file>
+        <append>true</append>
+        <immediateFlush>${LOG_IMMEDIATE_FLUSH}</immediateFlush>
         <encoder>
+            <charset>UTF-8</charset>
             <pattern>${FILE_PATTERN}</pattern>
         </encoder>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
@@ -29,16 +37,21 @@
             <maxFileSize>${LOG_MAX_FILE_SIZE}</maxFileSize>
             <maxHistory>${LOG_MAX_HISTORY}</maxHistory>
             <totalSizeCap>${LOG_TOTAL_SIZE_CAP}</totalSizeCap>
-            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+            <cleanHistoryOnStart>false</cleanHistoryOnStart>
         </rollingPolicy>
     </appender>
 
     <appender name="ERROR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${LOG_DIR}/${APP_NAME}-error.log</file>
-        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+        <append>true</append>
+        <immediateFlush>true</immediateFlush>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
             <level>ERROR</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
         </filter>
         <encoder>
+            <charset>UTF-8</charset>
             <pattern>${FILE_PATTERN}</pattern>
         </encoder>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
@@ -46,26 +59,18 @@
             <maxFileSize>${LOG_MAX_FILE_SIZE}</maxFileSize>
             <maxHistory>${LOG_MAX_HISTORY}</maxHistory>
             <totalSizeCap>${LOG_TOTAL_SIZE_CAP}</totalSizeCap>
-            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+            <cleanHistoryOnStart>false</cleanHistoryOnStart>
         </rollingPolicy>
     </appender>
 
-    <logger name="github.luckygc.am" level="DEBUG"/>
+    <logger name="github.luckygc.am" level="${APP_LOG_LEVEL}"/>
     <logger name="org.springframework.security" level="INFO"/>
     <logger name="org.mybatis" level="INFO"/>
+    <logger name="software.amazon.awssdk" level="WARN"/>
 
-    <springProfile name="local">
-        <root level="INFO">
-            <appender-ref ref="CONSOLE"/>
-            <appender-ref ref="APP_FILE"/>
-            <appender-ref ref="ERROR_FILE"/>
-        </root>
-    </springProfile>
-
-    <springProfile name="!local">
-        <root level="INFO">
-            <appender-ref ref="APP_FILE"/>
-            <appender-ref ref="ERROR_FILE"/>
-        </root>
-    </springProfile>
+    <root level="${ROOT_LOG_LEVEL}">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="APP_FILE"/>
+        <appender-ref ref="ERROR_FILE"/>
+    </root>
 </configuration>

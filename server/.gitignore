@@ -2,6 +2,7 @@ HELP.md
 target/
 data/
 logs/
+src/main/resources/application.yaml
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
