@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 import { ref } from "vue";
 import { getCurrentUser, login, logout } from "../../shared/api/auth";
 import type { CurrentUserDto, LoginCommand } from "../../shared/types/auth";
+import { usePageTabsStore } from "./pageTabs";
 
 export const useSessionStore = defineStore("session", () => {
   const initialized = ref(false);
@@ -24,6 +25,8 @@ export const useSessionStore = defineStore("session", () => {
 
   async function logoutCurrentUser() {
     await logout();
+    const pageTabsStore = usePageTabsStore();
+    pageTabsStore.reset();
     currentUser.value = null;
     initialized.value = true;
   }

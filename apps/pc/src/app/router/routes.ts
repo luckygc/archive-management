@@ -23,6 +23,8 @@ export const routes: RouteRecordRaw[] = [
           icon: "DataBoard",
           isMenu: true,
           keepAlive: true,
+          cacheName: "DashboardPage",
+          affixTab: true,
         },
       },
       {
@@ -34,6 +36,7 @@ export const routes: RouteRecordRaw[] = [
           icon: "FolderOpened",
           isMenu: true,
           keepAlive: true,
+          cacheName: "ArchiveLibraryPage",
         },
       },
       {

@@ -1,9 +1,12 @@
 <script setup lang="ts">
-import { ArrowDown, SwitchButton } from "@element-plus/icons-vue";
+import { ArrowDown, RefreshRight, SwitchButton } from "@element-plus/icons-vue";
 import { useRouter } from "vue-router";
+import { usePageTabsStore } from "../../app/stores/pageTabs";
 import { useSessionStore } from "../../app/stores/session";
+import AppPageTabs from "./AppPageTabs.vue";
 
 const router = useRouter();
+const pageTabsStore = usePageTabsStore();
 const sessionStore = useSessionStore();
 
 async function handleLogout() {
@@ -14,11 +17,17 @@ async function handleLogout() {
 
 <template>
   <header class="app-header">
-    <div class="app-header__title">
-      <strong>档案管理</strong>
-      <span>PC 管理端</span>
+    <div class="app-header__tabs-wrap">
+      <AppPageTabs class="app-header__tabs" />
     </div>
     <div class="app-header__right">
+      <el-button
+        :icon="RefreshRight"
+        circle
+        aria-label="刷新当前页"
+        text
+        @click="pageTabsStore.refreshCurrent()"
+      />
       <el-dropdown trigger="click" @command="handleLogout">
         <button class="app-header__user" type="button">
           <span>{{ sessionStore.currentUser?.displayName }}</span>
@@ -38,42 +47,54 @@ async function handleLogout() {
 .app-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  height: 56px;
-  padding: 0 20px;
+  height: 64px;
+  gap: 16px;
+  padding: 0 18px;
   border-bottom: 1px solid var(--am-border);
+  background: var(--am-bg-subtle);
+}
+
+.app-header__tabs-wrap {
+  flex: none;
+  display: flex;
+  align-items: center;
+  width: 560px;
+  height: 40px;
+  min-width: 0;
+  border: 1px solid var(--am-border);
+  border-radius: 8px;
+  padding: 0 5px;
   background: var(--am-bg-surface);
 }
 
-.app-header__title {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-
-  strong {
-    font-size: 16px;
-  }
-
-  span {
-    color: var(--am-text-muted);
-    font-size: 13px;
-  }
+.app-header__tabs {
+  width: 100%;
+  min-width: 0;
 }
 
 .app-header__right {
   display: flex;
+  flex: none;
   align-items: center;
+  gap: 8px;
+  margin-left: auto;
 }
 
 .app-header__user {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  height: 34px;
+  height: 36px;
   border: none;
-  padding: 0 8px;
+  border-radius: 6px;
+  padding: 0 10px;
   color: var(--am-text);
   background: transparent;
   cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    background: var(--am-bg-surface);
+  }
 }
 </style>
