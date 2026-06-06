@@ -2,6 +2,11 @@
 
 A starter for creating a Vite+ monorepo.
 
+## 项目约定
+
+- 项目自有数据库表统一使用 `am_` 前缀。
+- 第三方框架原生表保留上游默认命名，例如 `SPRING_SESSION`、`QRTZ_*`。
+
 ## Development
 
 - Check everything is ready:

@@ -1,16 +1,67 @@
-<!--VITE PLUS START-->
+# 仓库协作规则
 
-# Using Vite+, the Unified Toolchain for the Web
+## 基本要求
 
-This project is using Vite+, a unified toolchain built on top of Vite, Rolldown, Vitest, tsdown, Oxlint, Oxfmt, and Vite Task. Vite+ wraps runtime management, package management, and frontend tooling in a single global CLI called `vp`. Vite+ is distinct from Vite, and it invokes Vite through `vp dev` and `vp build`. Run `vp help` to print a list of commands and `vp <command> --help` for information about a specific command.
+- 始终使用中文交流、编写文档和注释。
+- 默认按最小闭环推进改动；不要把需求顺手扩展到相邻模块。
+- 修改前先确认影响目录；如果后续新增更深层级的 `AGENTS.md`，必须优先读取最近层级规则，冲突时以更近目录规则为准。
+- 规则、约定、架构边界类需求优先固化到仓库文档，再按文档口径改代码。
 
-Docs are local at `node_modules/vite-plus/docs` or online at https://viteplus.dev/guide/.
+## 后端约定
 
-## Review Checklist
+- 后端当前按单 Spring Boot 应用起步，基础设施能力放在 `server/src/main/java/github/luckygc/am/infrastructure`。
+- 运行时数据默认放在应用运行目录下的 `data`，本地文件存储默认使用 `data/files`。
+- Java 字符串判空统一使用 Apache Commons Lang `StringUtils`，不要直接散写原生空值和空白判断组合。
+- 项目不会跨时区使用；项目自有表时间字段使用无时区 `timestamp`，不使用 `timestamptz`。
+- 项目自有数据库表必须使用 `am_` 前缀，例如 `am_archive_file`、`am_archive_category`。
+- Flyway 迁移中新建业务表、平台表、审计表、中间表等项目自有表时，同样必须使用 `am_` 前缀；索引、约束、序列等对象名称应跟随表名保持 `am_` 语义。
+- 项目自有表不允许使用数据库 `CHECK` 约束；枚举、状态、数值范围等校验放在应用层或字典/配置层。
+- 带逻辑删除字段的项目自有表不允许使用覆盖已删除数据的唯一约束；唯一性必须使用 `where deleted_at is null` 的部分唯一索引，只约束未删除记录。
+- 第三方框架原生表不属于项目自有表，例如 Spring Session 的 `SPRING_SESSION`、Quartz 的 `QRTZ_*`。除非明确改为项目自维护表，否则保留框架默认命名，避免偏离上游脚本。
 
-- [ ] Run `vp install` after pulling remote changes and before getting started.
-- [ ] Run `vp check` and `vp test` to format, lint, type check and test changes.
-- [ ] Check if there are `vite.config.ts` tasks or `package.json` scripts necessary for validation, run via `vp run <script>`.
-- [ ] If setup, runtime, or package-manager behavior looks wrong, run `vp env doctor` and include its output when asking for help.
+## 文件存储约定
 
-<!--VITE PLUS END-->
+- 文件存储统一通过 `FileStorageService` 使用；存储层只负责对象内容的上传、下载、删除和存在判断，不提供对象列举和元信息反查作为业务真相源。
+- 文件信息必须落本地数据库；每条文件记录必须固化自身的 `storage_type`、`bucket_name` 和 `object_key`，不能用当前全局存储类型推断历史文件位置；系统只维护一份当前存储配置，不配置默认 `storage_type`，上传时对象存储配置完整则优先对象存储，否则使用 `active-local-bucket` 指定的本地 bucket，下载、删除、存在判断按文件记录中的 `storage_type` 和 `bucket_name` 分发；本地存储允许配置多个 bucket/root，例如应用 `data` 目录和 NAS 挂载目录；对象存储只配置一个 bucket，不设置 active bucket。
+- 对象存储适配 AWS S3、MinIO、腾讯 COS、阿里云 OSS、华为云 OBS，统一使用 S3 兼容协议和同一套对象存储配置。
+- `objectKey` 统一通过 `ObjectKeys.generate(originalFilename)` 生成，格式为 `yyyy/MM/dd/{uuid-v7}.{ext}`；UUID v7 使用开源库 `uuid-creator`，不要手写 UUID v7。
+- 文件扩展名解析使用 Apache Commons IO `FilenameUtils.getExtension`，路径分隔符归一化使用 `FilenameUtils.separatorsToUnix`。
+- 文件内容指纹默认只要求保存 `checksum_sha256`；`checksum_md5` 仅作为历史系统或外部系统兼容备用字段；对象存储返回的 `etag` 只作为存储侧元信息，不作为 checksum 真相源。
+
+## 文档查询
+
+当用户询问库、框架、SDK、API、CLI 工具或云服务的用法、配置、版本迁移、调试和 setup 时，必须使用 Context7 查询当前文档；不要凭记忆回答。
+
+1. 先解析库：
+
+```bash
+npx ctx7@latest library <name> "<用户完整问题>"
+```
+
+2. 选择最匹配的 `/org/project` ID，优先考虑名称精确匹配、描述相关性、代码片段数量、来源信誉和 benchmark 分数。
+3. 再拉取文档：
+
+```bash
+npx ctx7@latest docs <libraryId> "<用户完整问题>"
+```
+
+4. 基于获取到的文档回答或实现。
+
+不要把 API key、密码等敏感信息放入 Context7 查询。遇到配额错误时，告知用户可执行 `npx ctx7@latest login` 或设置 `CONTEXT7_API_KEY`。
+
+## Vite+ 工具链
+
+本项目使用 Vite+，这是构建在 Vite、Rolldown、Vitest、tsdown、Oxlint、Oxfmt 和 Vite Task 之上的统一前端工具链。Vite+ 通过全局 CLI `vp` 管理运行时、包管理和前端任务；它不同于 Vite，运行和构建应使用 `vp dev`、`vp build`。
+
+- 查看命令列表：`vp help`
+- 查看子命令说明：`vp <command> --help`
+- 本地文档：`node_modules/vite-plus/docs`
+- 在线文档：https://viteplus.dev/guide/
+
+## 检查清单
+
+- 拉取远程变更后、开始开发前运行 `vp install`。
+- 前端变更运行 `vp check` 和 `vp test`，用于格式化、lint、类型检查和测试。
+- 检查 `vite.config.ts` tasks 或 `package.json` scripts 中是否有必要验证命令，并通过 `vp run <script>` 执行。
+- 如果 setup、运行时或包管理行为异常，运行 `vp env doctor` 并保留输出。
+- 后端改动至少运行对应 Maven 编译或测试；如果测试需要本机数据库，说明依赖和结果。
