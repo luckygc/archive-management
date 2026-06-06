@@ -2,16 +2,31 @@ package github.luckygc.am.common.security;
 
 import java.util.List;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
-import org.springframework.security.config.Customizer;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.annotation.web.configurers.AuthorizeHttpRequestsConfigurer;
+import org.springframework.security.config.annotation.web.configurers.CorsConfigurer;
+import org.springframework.security.config.annotation.web.configurers.ExceptionHandlingConfigurer;
+import org.springframework.security.config.annotation.web.configurers.FormLoginConfigurer;
+import org.springframework.security.config.annotation.web.configurers.LogoutConfigurer;
+import org.springframework.security.config.annotation.web.configurers.SecurityContextConfigurer;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.crypto.factory.PasswordEncoderFactories;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.HttpStatusEntryPoint;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.context.SecurityContextRepository;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
@@ -19,20 +34,85 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @EnableWebSecurity
 public class SecurityConfig {
 
+    private final SecurityContextRepository securityContextRepository;
+    private final PowLoginFilter powLoginFilter;
+    private final FormLoginAuthenticationSuccessHandler authenticationSuccessHandler;
+    private final FormLoginAuthenticationFailureHandler authenticationFailureHandler;
+    private final HttpStatusLogoutSuccessHandler logoutSuccessHandler;
+
+    public SecurityConfig(
+            SecurityContextRepository securityContextRepository,
+            PowLoginFilter powLoginFilter,
+            FormLoginAuthenticationSuccessHandler authenticationSuccessHandler,
+            FormLoginAuthenticationFailureHandler authenticationFailureHandler,
+            HttpStatusLogoutSuccessHandler logoutSuccessHandler) {
+        this.securityContextRepository = securityContextRepository;
+        this.powLoginFilter = powLoginFilter;
+        this.authenticationSuccessHandler = authenticationSuccessHandler;
+        this.authenticationFailureHandler = authenticationFailureHandler;
+        this.logoutSuccessHandler = logoutSuccessHandler;
+    }
+
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .cors(this::configureCors)
                 .csrf(AbstractHttpConfigurer::disable)
-                .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
-                        .requestMatchers("/actuator/**").hasRole("ACTUATOR")
-                        .anyRequest().authenticated())
-                .httpBasic(Customizer.withDefaults())
-                .formLogin(AbstractHttpConfigurer::disable)
-                .logout(AbstractHttpConfigurer::disable)
+                .securityContext(this::configureSecurityContext)
+                .authorizeHttpRequests(this::configureAuthorization)
+                .addFilterBefore(powLoginFilter, UsernamePasswordAuthenticationFilter.class)
+                .httpBasic(AbstractHttpConfigurer::disable)
+                .formLogin(this::configureFormLogin)
+                .logout(this::configureLogout)
+                .exceptionHandling(this::configureExceptionHandling)
                 .build();
+    }
+
+    private void configureCors(CorsConfigurer<HttpSecurity> cors) {
+        cors.configurationSource(corsConfigurationSource());
+    }
+
+    private void configureSecurityContext(SecurityContextConfigurer<HttpSecurity> securityContext) {
+        securityContext.securityContextRepository(securityContextRepository);
+    }
+
+    private void configureAuthorization(
+            AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry authorize) {
+        authorize
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
+                .requestMatchers("/api/auth/cap/**").permitAll()
+                .requestMatchers("/actuator/**").hasRole("ACTUATOR")
+                .anyRequest().authenticated();
+    }
+
+    private void configureFormLogin(FormLoginConfigurer<HttpSecurity> formLogin) {
+        formLogin
+                .loginPage("/login")
+                .loginProcessingUrl("/api/auth/login")
+                .securityContextRepository(securityContextRepository)
+                .successHandler(authenticationSuccessHandler)
+                .failureHandler(authenticationFailureHandler)
+                .permitAll();
+    }
+
+    private void configureLogout(LogoutConfigurer<HttpSecurity> logout) {
+        logout
+                .logoutUrl("/api/auth/logout")
+                .logoutSuccessHandler(logoutSuccessHandler);
+    }
+
+    private void configureExceptionHandling(ExceptionHandlingConfigurer<HttpSecurity> exceptionHandling) {
+        exceptionHandling.defaultAuthenticationEntryPointFor(unauthorizedEntryPoint(), new ApiRequestMatcher());
+    }
+
+    private AuthenticationEntryPoint unauthorizedEntryPoint() {
+        return new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Bean
+    PasswordEncoder passwordEncoder() {
+        return PasswordEncoderFactories.createDelegatingPasswordEncoder();
     }
 
     @Bean
@@ -54,5 +134,13 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
+    }
+
+    private static class ApiRequestMatcher implements RequestMatcher {
+
+        @Override
+        public boolean matches(HttpServletRequest request) {
+            return request.getRequestURI().startsWith("/api/");
+        }
     }
 }

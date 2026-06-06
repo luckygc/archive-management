@@ -9,6 +9,8 @@
     "preview": "vp preview"
   },
   "dependencies": {
+    "@cap.js/wasm": "catalog:",
+    "@cap.js/widget": "catalog:",
     "@element-plus/icons-vue": "catalog:",
     "element-plus": "catalog:",
     "pinia": "catalog:",

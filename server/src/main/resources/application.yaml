@@ -2,16 +2,6 @@ spring:
     application:
         # 应用名称，也会作为默认日志文件名前缀。
         name: archive-management
-    security:
-        user:
-            # Spring Security 默认用户账号，仅用于基础登录和本地调试。
-            name: admin
-            # Spring Security 默认用户密码，实际部署时请在本地 application.yaml 中修改。
-            password: admin
-            # 默认用户角色，ACTUATOR 用于访问运维端点。
-            roles:
-                - USER
-                - ACTUATOR
     datasource:
         # 业务数据库连接地址。
         url: jdbc:postgresql://localhost:5433/archive_management

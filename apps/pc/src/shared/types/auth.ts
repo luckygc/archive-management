@@ -1,6 +1,7 @@
 export interface LoginCommand {
   username: string;
   password: string;
+  powToken: string;
 }
 
 export interface CurrentUserDto {

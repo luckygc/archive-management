@@ -2,9 +2,17 @@ import { request } from "./client";
 import type { CurrentUserDto, LoginCommand } from "../types/auth";
 
 export function login(command: LoginCommand) {
+  const body = new URLSearchParams();
+  body.set("username", command.username);
+  body.set("password", command.password);
+  body.set("powToken", command.powToken);
+
   return request<CurrentUserDto>("/api/auth/login", {
     method: "POST",
-    body: JSON.stringify(command),
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body,
   });
 }
 

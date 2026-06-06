@@ -6,6 +6,12 @@ settings:
 
 catalogs:
   default:
+    '@cap.js/wasm':
+      specifier: ^0.0.7
+      version: 0.0.7
+    '@cap.js/widget':
+      specifier: ^0.1.54
+      version: 0.1.54
     '@element-plus/icons-vue':
       specifier: ^2.3.2
       version: 2.3.2
@@ -43,17 +49,14 @@ importers:
         specifier: 'catalog:'
         version: 0.1.24(@types/node@25.9.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.100.0)(typescript@6.0.3)(vite@8.0.16(@types/node@25.9.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.100.0)(yaml@2.9.0))(yaml@2.9.0)
 
-  apps/mobile:
-    devDependencies:
-      typescript:
-        specifier: ~6.0.2
-        version: 6.0.3
-      vite-plus:
-        specifier: 'catalog:'
-        version: 0.1.24(@types/node@25.9.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.100.0)(typescript@6.0.3)(vite@8.0.16(@types/node@25.9.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.100.0)(yaml@2.9.0))(yaml@2.9.0)
-
   apps/pc:
     dependencies:
+      '@cap.js/wasm':
+        specifier: 'catalog:'
+        version: 0.0.7
+      '@cap.js/widget':
+        specifier: 'catalog:'
+        version: 0.1.54
       '@element-plus/icons-vue':
         specifier: 'catalog:'
         version: 2.3.2(vue@3.5.35(typescript@6.0.3))
@@ -143,6 +146,12 @@ packages:
 
   '@bufbuild/protobuf@2.12.0':
     resolution: {integrity: sha512-B/XlCaFIP8LOwzo+bz5uFzATYokcwCKQcghqnlfwSmM5eX/qTkvDBnDPs+gXtX/RyjxJ4DRikECcPJbyALA8FA==}
+
+  '@cap.js/wasm@0.0.7':
+    resolution: {integrity: sha512-IgUjrPOUBaOjTp+BkrhfEBBeQ4An7fQiSWWezDy9Uvd+OdTYm4+h3AJU0j/CpHYayp7FltZU+UePC6p28oGQaw==}
+
+  '@cap.js/widget@0.1.54':
+    resolution: {integrity: sha512-mzahtBgROGfR26BcCwy9PPFa6rCPQ+K+vS48+QAonCwjBVeiijWWKRQYx99zGYGICHeBmR8uzVm50RTiM+J3og==}
 
   '@ctrl/tinycolor@4.2.0':
     resolution: {integrity: sha512-kzyuwOAQnXJNLS9PSyrk0CWk35nWJW/zl/6KvnTBMFK65gm7U1/Z5BqjxeapjZCIhQcM/DsrEmcbRwDyXyXK4A==}
@@ -1677,6 +1686,10 @@ snapshots:
       '@babel/helper-validator-identifier': 8.0.0-rc.6
 
   '@bufbuild/protobuf@2.12.0': {}
+
+  '@cap.js/wasm@0.0.7': {}
+
+  '@cap.js/widget@0.1.54': {}
 
   '@ctrl/tinycolor@4.2.0': {}
 

@@ -1104,7 +1104,6 @@
       position: 'fixed', zIndex: Z.bar,
       display: 'none', opacity: '0',
       transform: 'translateY(6px)',
-      transition: 'opacity 0.25s ' + EASE + ', transform 0.3s ' + EASE,
       background: BP.surface,
       border: '1px solid ' + BP.border,
       borderRadius: '8px',
