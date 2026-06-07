@@ -9,7 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 
-import github.luckygc.am.auth.AuthController;
+import github.luckygc.am.module.auth.AuthController;
 
 import tools.jackson.databind.json.JsonMapper;
 

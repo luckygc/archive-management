@@ -12,7 +12,7 @@ import org.springframework.security.web.authentication.AuthenticationSuccessHand
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.stereotype.Component;
 
-import github.luckygc.am.auth.AuthController;
+import github.luckygc.am.module.auth.AuthController;
 
 @Component
 public class FormLoginAuthenticationSuccessHandler implements AuthenticationSuccessHandler {

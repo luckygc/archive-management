@@ -1,4 +1,4 @@
-package github.luckygc.am.auth;
+package github.luckygc.am.module.auth;
 
 import java.util.List;
 

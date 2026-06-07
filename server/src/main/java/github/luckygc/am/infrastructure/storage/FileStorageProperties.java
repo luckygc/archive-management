@@ -12,9 +12,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "archive.storage")
 public class FileStorageProperties {
 
-    private String activeLocalBucket = "local";
+    private String activeLocalBucket = "";
 
-    private List<Local> local = new ArrayList<>(List.of(new Local()));
+    private List<Local> local = new ArrayList<>();
 
     private ObjectStorage object = new ObjectStorage();
 
@@ -22,9 +22,9 @@ public class FileStorageProperties {
     @Getter
     public static class Local {
 
-        private String bucket = "local";
+        private String bucket = "";
 
-        private Path root = Path.of("data/files");
+        private Path root;
 
     }
 

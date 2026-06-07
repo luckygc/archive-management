@@ -13,8 +13,8 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import github.luckygc.am.auth.PowChallengeException;
-import github.luckygc.am.auth.PowChallengeService;
+import github.luckygc.am.module.auth.PowChallengeException;
+import github.luckygc.am.module.auth.PowChallengeService;
 
 @Component
 public class PowLoginFilter extends OncePerRequestFilter {

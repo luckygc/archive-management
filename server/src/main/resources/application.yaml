@@ -160,9 +160,9 @@ archive:
         active-local-bucket: local
         # 本地文件存储 bucket 列表。
         local:
-            # 默认本地 bucket。
+            # 本地 bucket。
             -   bucket: local
-                # 默认本地 bucket 根目录。
+                # 本地 bucket 根目录。
                 root: data/files
             # NAS 挂载 bucket。
             -   bucket: backup

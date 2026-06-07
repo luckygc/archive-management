@@ -1,4 +1,4 @@
-package github.luckygc.am.auth;
+package github.luckygc.am.module.auth;
 
 import java.security.SecureRandom;
 import java.time.Instant;
@@ -39,7 +39,7 @@ public class PowChallengeService {
         long expires = System.currentTimeMillis() + CHALLENGE_EXPIRES_MS;
 
         jdbcClient.sql("""
-                        insert into am_cap_challenge
+                        insert into am_auth_cap_challenge
                             (token, challenge_count, challenge_size, difficulty, expires_at)
                         values
                             (:token, :challengeCount, :challengeSize, :difficulty, :expiresAt)
@@ -68,7 +68,7 @@ public class PowChallengeService {
 
         ChallengeRecord challenge = jdbcClient.sql("""
                         select token, challenge_count, challenge_size, difficulty, expires_at
-                        from am_cap_challenge
+                        from am_auth_cap_challenge
                         where token = :token
                         for update
                         """)
@@ -98,7 +98,7 @@ public class PowChallengeService {
         String tokenKey = id + ":" + sha256Hex(vertoken);
 
         jdbcClient.sql("""
-                        insert into am_cap_token (token_key, expires_at)
+                        insert into am_auth_cap_token (token_key, expires_at)
                         values (:tokenKey, :expiresAt)
                         """)
                 .param("tokenKey", tokenKey)
@@ -133,7 +133,7 @@ public class PowChallengeService {
         }
 
         int deleted = jdbcClient.sql("""
-                        delete from am_cap_token
+                        delete from am_auth_cap_token
                         where token_key = :tokenKey
                           and expires_at > localtimestamp
                         """)
@@ -164,7 +164,7 @@ public class PowChallengeService {
 
         LocalDateTime expiresAt = jdbcClient.sql("""
                         select expires_at
-                        from am_cap_token
+                        from am_auth_cap_token
                         where token_key = :tokenKey
                         """)
                 .param("tokenKey", tokenKey)
@@ -205,14 +205,14 @@ public class PowChallengeService {
     }
 
     private void deleteChallenge(String token) {
-        jdbcClient.sql("delete from am_cap_challenge where token = :token")
+        jdbcClient.sql("delete from am_auth_cap_challenge where token = :token")
                 .param("token", token)
                 .update();
     }
 
     private void cleanExpired() {
-        jdbcClient.sql("delete from am_cap_challenge where expires_at < localtimestamp").update();
-        jdbcClient.sql("delete from am_cap_token where expires_at < localtimestamp").update();
+        jdbcClient.sql("delete from am_auth_cap_challenge where expires_at < localtimestamp").update();
+        jdbcClient.sql("delete from am_auth_cap_token where expires_at < localtimestamp").update();
     }
 
     private String randomHex(int bytesCount) {
