@@ -2,41 +2,57 @@ package github.luckygc.am.infrastructure.hibernate;
 
 import javax.sql.DataSource;
 
+import java.util.Properties;
+
 import org.hibernate.SessionFactory;
 import org.hibernate.StatelessSession;
-import org.hibernate.boot.MetadataSources;
-import org.hibernate.boot.registry.StandardServiceRegistry;
-import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.cfg.AvailableSettings;
+import org.hibernate.cfg.BatchSettings;
+import org.hibernate.cfg.CacheSettings;
 import org.hibernate.dialect.PostgreSQLDialect;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Scope;
-import org.springframework.orm.jpa.hibernate.SpringSessionContext;
-
-import github.luckygc.am.module.auth.AuthRole;
+import org.springframework.jdbc.support.JdbcTransactionManager;
+import org.springframework.orm.jpa.hibernate.LocalSessionFactoryBuilder;
+import org.springframework.transaction.PlatformTransactionManager;
 
 @Configuration
 public class HibernateConfiguration {
 
+    private static final int JDBC_BATCH_SIZE = 50;
+    private static final String ENTITY_BASE_PACKAGE = "github.luckygc.am";
+
     @Bean
     SessionFactory hibernateSessionFactory(DataSource dataSource) {
-        StandardServiceRegistry registry = new StandardServiceRegistryBuilder()
-                .applySetting(AvailableSettings.JAKARTA_NON_JTA_DATASOURCE, dataSource)
-                .applySetting(AvailableSettings.DIALECT, PostgreSQLDialect.class)
-                .applySetting(AvailableSettings.HBM2DDL_AUTO, "none")
-                .build();
-
-        return new MetadataSources(registry)
-                .addAnnotatedClass(AuthRole.class)
-                .buildMetadata()
-                .buildSessionFactory();
+        LocalSessionFactoryBuilder builder = new LocalSessionFactoryBuilder(dataSource);
+        builder.scanPackages(ENTITY_BASE_PACKAGE);
+        builder.addProperties(hibernateProperties());
+        return builder.buildSessionFactory();
     }
 
     @Bean
+    TransactionalStatelessSessionContext transactionalStatelessSessionContext(
+            SessionFactory sessionFactory, DataSource dataSource) {
+        return new TransactionalStatelessSessionContext(sessionFactory, dataSource);
+    }
+
+
+    @Bean
     @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
-    StatelessSession hibernateStatelessSession(SessionFactory sessionFactory) {
-        return SpringSessionContext.currentStatelessSession(sessionFactory);
+    StatelessSession hibernateStatelessSession(TransactionalStatelessSessionContext context) {
+        return context.currentSession();
+    }
+
+    private Properties hibernateProperties() {
+        Properties properties = new Properties();
+        properties.put(AvailableSettings.DIALECT, PostgreSQLDialect.class.getName());
+        properties.put(AvailableSettings.HBM2DDL_AUTO, "none");
+        properties.put(CacheSettings.USE_SECOND_LEVEL_CACHE, false);
+        properties.put(CacheSettings.USE_QUERY_CACHE, false);
+        properties.put(BatchSettings.STATEMENT_BATCH_SIZE, JDBC_BATCH_SIZE);
+        return properties;
     }
 }

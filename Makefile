@@ -11,7 +11,6 @@ help:
 	@echo "  make server-test     测试 server"
 	@echo "  make server-package  打包 server"
 	@echo "  make server-run      启动 server"
-	@echo "  make server-init     初始化 server 运行目录"
 
 server-java:
 	cd $(SERVER_DIR) && java -version
@@ -31,6 +30,3 @@ server-package:
 
 server-run:
 	cd $(SERVER_DIR) && $(MVNW) spring-boot:run
-
-server-init:
-	cd $(SERVER_DIR) && $(MVNW) -q spring-boot:run -Dspring-boot.run.arguments=--init
