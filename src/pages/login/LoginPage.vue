@@ -62,8 +62,7 @@ function resetCapWidget() {
 }
 
 function handleCapSolve(event: Event) {
-  const token = (event as CapSolveEvent).detail.token;
-  powToken.value = token;
+  powToken.value = (event as CapSolveEvent).detail.token;
   securityMessage.value = "安全验证已完成";
   errorMessage.value = "";
 }

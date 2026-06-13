@@ -22,7 +22,7 @@
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.7",
     "sass-embedded": "^1.100.0",
-    "typescript": "~6.0.2",
+    "typescript": "~6.0.3",
     "vite-plugin-vue-devtools": "catalog:",
     "vite-plus": "latest"
   },
