@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { usePageTabsStore } from "../app/stores/pageTabs";
 import AppHeader from "./components/AppHeader.vue";
+import AppContentView from "./components/AppContentView.vue";
 import AppSidebar from "./components/AppSidebar.vue";
 
-const pageTabsStore = usePageTabsStore();
 const sidebarCollapsed = ref(false);
 </script>
 
@@ -19,18 +18,7 @@ const sidebarCollapsed = ref(false);
       <AppHeader class="app-layout__header" />
       <main class="app-layout__content">
         <router-view v-slot="{ Component, route }">
-          <keep-alive :include="pageTabsStore.cacheNames">
-            <component
-              :is="Component"
-              v-if="route.meta.keepAlive"
-              :key="`${route.fullPath}:${pageTabsStore.refreshKey}`"
-            />
-          </keep-alive>
-          <component
-            :is="Component"
-            v-if="!route.meta.keepAlive"
-            :key="`${route.fullPath}:${pageTabsStore.refreshKey}`"
-          />
+          <AppContentView :component="Component" :route="route" />
         </router-view>
       </main>
     </div>

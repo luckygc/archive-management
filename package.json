@@ -12,17 +12,18 @@
   },
   "dependencies": {
     "@cap.js/wasm": "^0.0.7",
-    "@cap.js/widget": "^0.1.54",
+    "@cap.js/widget": "catalog:",
     "@element-plus/icons-vue": "^2.3.2",
-    "element-plus": "^2.14.1",
+    "element-plus": "catalog:",
     "pinia": "^3.0.4",
-    "vue": "^3.5.35",
+    "vue": "catalog:",
     "vue-router": "^5.1.0"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.7",
     "sass-embedded": "^1.100.0",
     "typescript": "~6.0.2",
+    "vite-plugin-vue-devtools": "catalog:",
     "vite-plus": "latest"
   },
   "engines": {

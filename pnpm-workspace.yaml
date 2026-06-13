@@ -14,3 +14,9 @@ peerDependencyRules:
 
 allowBuilds:
   "@parcel/watcher": true
+
+catalog:
+  "@cap.js/widget": ^0.1.56
+  element-plus: ^2.14.2
+  vite-plugin-vue-devtools: ^8.1.2
+  vue: ^3.5.38

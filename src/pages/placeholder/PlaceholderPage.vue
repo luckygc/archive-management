@@ -17,8 +17,8 @@ defineProps<{
 <style scoped lang="scss">
 .placeholder-page {
   height: 100%;
-  padding: 20px;
   overflow: auto;
+  padding: 20px;
 
   h1 {
     margin: 0;

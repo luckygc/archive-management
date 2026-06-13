@@ -1,5 +1,7 @@
 import { defineStore } from "pinia";
-import { computed, ref } from "vue";
+import type { Component } from "vue";
+import { cloneVNode, computed, defineComponent, markRaw, nextTick, ref } from "vue";
+import type { VNode } from "vue";
 import type { RouteLocationNormalizedLoaded } from "vue-router";
 
 export interface PageTab {
@@ -7,6 +9,11 @@ export interface PageTab {
   title: string;
   routeName?: string;
   cacheName?: string;
+  keepAlive: boolean;
+  refreshVersion: number;
+  pageComponent: Component;
+  pageComponentName: string;
+  pageComponentKey: string;
   affix: boolean;
 }
 
@@ -14,11 +21,34 @@ function readString(value: unknown) {
   return typeof value === "string" ? value : "";
 }
 
-function createTab(route: RouteLocationNormalizedLoaded): PageTab | null {
-  if (route.name === "Login") {
-    return null;
-  }
+function normalizeCacheSegment(value: string) {
+  return value.replace(/[^A-Za-z0-9_]/g, "_") || "Route";
+}
 
+function hashFullPath(fullPath: string) {
+  let hash = 5381;
+  for (let index = 0; index < fullPath.length; index += 1) {
+    hash = (hash * 33) ^ fullPath.charCodeAt(index);
+  }
+  return (hash >>> 0).toString(36);
+}
+
+function createCacheBaseName(routeName: string | undefined, fullPath: string) {
+  return `PageTab_${normalizeCacheSegment(routeName || "Route")}_${hashFullPath(fullPath)}`;
+}
+
+function wrapPageVNode(vnode: VNode, componentName: string): Component {
+  return markRaw(
+    defineComponent({
+      name: componentName,
+      setup() {
+        return () => cloneVNode(vnode);
+      },
+    }),
+  );
+}
+
+function createTab(route: RouteLocationNormalizedLoaded, vnode: VNode): PageTab | null {
   const title = readString(route.meta.title);
   if (!title) {
     return null;
@@ -26,12 +56,21 @@ function createTab(route: RouteLocationNormalizedLoaded): PageTab | null {
 
   const routeName = typeof route.name === "string" ? route.name : undefined;
   const cacheName = readString(route.meta.cacheName) || routeName;
+  const keepAlive = route.meta.keepAlive === true;
+  const refreshVersion = 0;
+  const pageComponentName = createCacheBaseName(cacheName, route.fullPath);
+  const pageComponent = wrapPageVNode(vnode, pageComponentName);
 
   return {
     fullPath: route.fullPath,
     title,
     routeName,
-    cacheName: route.meta.keepAlive === true ? cacheName : undefined,
+    cacheName: keepAlive ? cacheName : undefined,
+    keepAlive,
+    refreshVersion,
+    pageComponent,
+    pageComponentName,
+    pageComponentKey: `${route.fullPath}:${refreshVersion}`,
     affix: route.meta.affixTab === true,
   };
 }
@@ -39,14 +78,25 @@ function createTab(route: RouteLocationNormalizedLoaded): PageTab | null {
 export const usePageTabsStore = defineStore("pageTabs", () => {
   const tabs = ref<PageTab[]>([]);
   const activeFullPath = ref("");
-  const refreshKey = ref(0);
-
-  const cacheNames = computed(() =>
-    tabs.value.map((item) => item.cacheName).filter((item): item is string => Boolean(item)),
+  const suspendedCacheName = ref("");
+  const activeTab = computed(() =>
+    tabs.value.find((item) => item.fullPath === activeFullPath.value),
   );
 
-  function openRoute(route: RouteLocationNormalizedLoaded) {
-    const tab = createTab(route);
+  const cacheNames = computed(() =>
+    tabs.value
+      .filter((item) => item.keepAlive)
+      .map((item) => item.pageComponentName)
+      .filter((item): item is string => Boolean(item) && item !== suspendedCacheName.value),
+  );
+
+  function ensureTabEntry(route: RouteLocationNormalizedLoaded, component: VNode | null) {
+    activeFullPath.value = route.fullPath;
+    if (!component) {
+      return;
+    }
+
+    const tab = createTab(route, component);
     if (!tab) {
       return;
     }
@@ -54,8 +104,13 @@ export const usePageTabsStore = defineStore("pageTabs", () => {
     const exists = tabs.value.find((item) => item.fullPath === tab.fullPath);
     if (!exists) {
       tabs.value.push(tab);
+    } else {
+      exists.title = tab.title;
+      exists.routeName = tab.routeName;
+      exists.cacheName = tab.cacheName;
+      exists.keepAlive = tab.keepAlive;
+      exists.affix = tab.affix;
     }
-    activeFullPath.value = tab.fullPath;
   }
 
   function closeTab(fullPath: string) {
@@ -76,9 +131,20 @@ export const usePageTabsStore = defineStore("pageTabs", () => {
     return activeFullPath.value;
   }
 
+  function resolveNextPathAfterClose(fullPath: string) {
+    const index = tabs.value.findIndex((item) => item.fullPath === fullPath);
+    if (index < 0 || tabs.value[index].affix) {
+      return activeFullPath.value;
+    }
+
+    const nextTab = tabs.value[index + 1] ?? tabs.value[index - 1] ?? tabs.value[0];
+    return nextTab?.fullPath ?? "/";
+  }
+
   function closeOthers(fullPath: string) {
     tabs.value = tabs.value.filter((item) => item.affix || item.fullPath === fullPath);
     activeFullPath.value = fullPath;
+    return activeFullPath.value;
   }
 
   function closeAll() {
@@ -90,22 +156,48 @@ export const usePageTabsStore = defineStore("pageTabs", () => {
   function reset() {
     tabs.value = [];
     activeFullPath.value = "";
-    refreshKey.value = 0;
+    suspendedCacheName.value = "";
   }
 
-  function refreshCurrent() {
-    refreshKey.value += 1;
+  async function rerenderTab(tab: PageTab) {
+    tab.refreshVersion += 1;
+    tab.pageComponentKey = `${tab.fullPath}:${tab.refreshVersion}`;
+    await nextTick();
+  }
+
+  async function refreshTab(fullPath: string) {
+    const tab = tabs.value.find((item) => item.fullPath === fullPath);
+    if (!tab) {
+      return;
+    }
+
+    if (tab.keepAlive) {
+      suspendedCacheName.value = tab.pageComponentName;
+      await nextTick();
+      await rerenderTab(tab);
+      suspendedCacheName.value = "";
+      await nextTick();
+      return;
+    }
+
+    await rerenderTab(tab);
+  }
+
+  async function refreshCurrent() {
+    await refreshTab(activeFullPath.value);
   }
 
   return {
     tabs,
     activeFullPath,
-    refreshKey,
+    activeTab,
     cacheNames,
-    openRoute,
+    ensureTabEntry,
+    resolveNextPathAfterClose,
     closeTab,
     closeOthers,
     closeAll,
+    refreshTab,
     refreshCurrent,
     reset,
   };

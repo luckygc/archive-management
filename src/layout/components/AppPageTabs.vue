@@ -20,10 +20,12 @@ async function activateTab(fullPath: string) {
 }
 
 async function closeTab(fullPath: string) {
-  const nextPath = pageTabsStore.closeTab(fullPath);
-  if (fullPath === route.fullPath && nextPath !== route.fullPath) {
+  const isClosingCurrent = fullPath === route.fullPath;
+  const nextPath = pageTabsStore.resolveNextPathAfterClose(fullPath);
+  if (isClosingCurrent && nextPath !== route.fullPath) {
     await router.push(nextPath);
   }
+  pageTabsStore.closeTab(fullPath);
 }
 
 async function closeCurrent() {

@@ -1,5 +1,4 @@
 import { createRouter, createWebHistory } from "vue-router";
-import { usePageTabsStore } from "../stores/pageTabs";
 import { useSessionStore } from "../stores/session";
 import { routes } from "./routes";
 
@@ -30,11 +29,6 @@ router.beforeEach(async (to) => {
   }
 
   return true;
-});
-
-router.afterEach((to) => {
-  const pageTabsStore = usePageTabsStore();
-  pageTabsStore.openRoute(to);
 });
 
 export default router;

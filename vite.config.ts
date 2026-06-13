@@ -1,6 +1,7 @@
 import vue from "@vitejs/plugin-vue";
 import { fileURLToPath, URL } from "node:url";
 import { defineConfig } from "vite-plus";
+import vueDevTools from "vite-plugin-vue-devtools";
 
 const nonFrontendSourcePatterns = [
   ".agents/**",
@@ -18,6 +19,7 @@ export default defineConfig({
         compilerOptions: { isCustomElement: (tag) => tag.startsWith("cap-") },
       },
     }),
+    vueDevTools(),
   ],
   resolve: {
     alias: {
