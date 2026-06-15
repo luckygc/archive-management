@@ -9,6 +9,15 @@ catalogs:
     '@cap.js/widget':
       specifier: ^0.1.56
       version: 0.1.56
+    '@tanstack/table-core':
+      specifier: 9.0.0-beta.9
+      version: 9.0.0-beta.9
+    '@tanstack/vue-table':
+      specifier: 9.0.0-alpha.54
+      version: 9.0.0-alpha.54
+    '@tanstack/vue-virtual':
+      specifier: 3.13.28
+      version: 3.13.28
     element-plus:
       specifier: ^2.14.2
       version: 2.14.2
@@ -36,6 +45,15 @@ importers:
       '@element-plus/icons-vue':
         specifier: ^2.3.2
         version: 2.3.2(vue@3.5.38(typescript@6.0.3))
+      '@tanstack/table-core':
+        specifier: 'catalog:'
+        version: 9.0.0-beta.9
+      '@tanstack/vue-table':
+        specifier: 'catalog:'
+        version: 9.0.0-alpha.54(vue@3.5.38(typescript@6.0.3))
+      '@tanstack/vue-virtual':
+        specifier: 'catalog:'
+        version: 3.13.28(vue@3.5.38(typescript@6.0.3))
       element-plus:
         specifier: 'catalog:'
         version: 2.14.2(vue@3.5.38(typescript@6.0.3))
@@ -765,6 +783,36 @@ packages:
 
   '@sxzz/popperjs-es@2.11.8':
     resolution: {integrity: sha512-wOwESXvvED3S8xBmcPWHs2dUuzrE4XiZeFu7e1hROIJkm02a49N120pmOXxY33sBb6hArItm5W5tcg1cBtV+HQ==}
+
+  '@tanstack/store@0.11.0':
+    resolution: {integrity: sha512-WlzzCt3xi0G6pCAJu1U+2jiECwabETDpQDi3hfkFZvJii9AuZqEKbOiVarX1/bWhTNjU486yQtJCCasi/0q+Cw==}
+
+  '@tanstack/table-core@9.0.0-beta.9':
+    resolution: {integrity: sha512-U4xl4myy1Smrczv4W+U+mMl5X1qTM+bK/5y0K4aOyY8EM3mWLzv0ZNxUM4/3+/HABWd1d4Wdf8XBldGM8Xjg6A==}
+    engines: {node: '>=16'}
+
+  '@tanstack/virtual-core@3.17.0':
+    resolution: {integrity: sha512-gOxY/hFkPh/XQYhnThBHzkbkX3Ed+z/iushyz+R+JAr213aXxUDgQoTgTdrDpBSRsjFM73P/KfUyWmaF9WHMkQ==}
+
+  '@tanstack/vue-store@0.11.0':
+    resolution: {integrity: sha512-w1lE4D7oo6nIUhTQvL/RoTgcvoYJw+KvttWPNJd/Xu+MvNxMnjxFF/LgFp9vwmbNbiGhGCg3ZoPJptwjrfwNYw==}
+    peerDependencies:
+      '@vue/composition-api': ^1.2.1
+      vue: ^2.5.0 || ^3.0.0
+    peerDependenciesMeta:
+      '@vue/composition-api':
+        optional: true
+
+  '@tanstack/vue-table@9.0.0-alpha.54':
+    resolution: {integrity: sha512-jyetsnVhq3ujH0FYZGqttgjONFHER1xPxC3AD/ZqOBWVAIlqn1q3RMD6Vkn0mfVfneRqIX8IszdebtSef4mwnA==}
+    engines: {node: '>=16'}
+    peerDependencies:
+      vue: '>=3.2'
+
+  '@tanstack/vue-virtual@3.13.28':
+    resolution: {integrity: sha512-A+jWpXtMpWXKhGLKQrXeC9mk1VgYeMWSJ+o0CTCEi+HLYMSQFdVmPG9lJz7d4XJyIkc5xVwZU9QY67QpScqnxA==}
+    peerDependencies:
+      vue: ^2.7.0 || ^3.0.0
 
   '@tybys/wasm-util@0.10.2':
     resolution: {integrity: sha512-RoBvJ2X0wuKlWFIjrwffGw1IqZHKQqzIchKaadZZfnNpsAYp2mM0h36JtPCjNDAHGgYez/15uMBpfGwchhiMgg==}
@@ -1774,6 +1822,17 @@ packages:
   vue-component-type-helpers@3.3.4:
     resolution: {integrity: sha512-joip1uZTaQR0nD23N400gIdJ7xY+WiiiMA/BCKz842gvGBknqDQAzklUvDEhqFvvrhQY8S2ZANBMu4X70VMFGw==}
 
+  vue-demi@0.14.10:
+    resolution: {integrity: sha512-nMZBOwuzabUO0nLgIcc6rycZEebF6eeUfaiQx9+WSk8e29IbLvPU9feI6tqW4kTo3hvoYAJkMh8n8D0fuISphg==}
+    engines: {node: '>=12'}
+    hasBin: true
+    peerDependencies:
+      '@vue/composition-api': ^1.0.0-rc.1
+      vue: ^3.0.0-0 || ^2.6.0
+    peerDependenciesMeta:
+      '@vue/composition-api':
+        optional: true
+
   vue-router@5.1.0:
     resolution: {integrity: sha512-HAbiLzLEHQwxPgvsbOJDAwtavszEgLwri6XfyrsPECIFez8+59xc9LofWVdc/HEaSRT822lJ8H9Ns38VVond5g==}
     peerDependencies:
@@ -2362,6 +2421,33 @@ snapshots:
   '@standard-schema/spec@1.1.0': {}
 
   '@sxzz/popperjs-es@2.11.8': {}
+
+  '@tanstack/store@0.11.0': {}
+
+  '@tanstack/table-core@9.0.0-beta.9':
+    dependencies:
+      '@tanstack/store': 0.11.0
+
+  '@tanstack/virtual-core@3.17.0': {}
+
+  '@tanstack/vue-store@0.11.0(vue@3.5.38(typescript@6.0.3))':
+    dependencies:
+      '@tanstack/store': 0.11.0
+      vue: 3.5.38(typescript@6.0.3)
+      vue-demi: 0.14.10(vue@3.5.38(typescript@6.0.3))
+
+  '@tanstack/vue-table@9.0.0-alpha.54(vue@3.5.38(typescript@6.0.3))':
+    dependencies:
+      '@tanstack/table-core': 9.0.0-beta.9
+      '@tanstack/vue-store': 0.11.0(vue@3.5.38(typescript@6.0.3))
+      vue: 3.5.38(typescript@6.0.3)
+    transitivePeerDependencies:
+      - '@vue/composition-api'
+
+  '@tanstack/vue-virtual@3.13.28(vue@3.5.38(typescript@6.0.3))':
+    dependencies:
+      '@tanstack/virtual-core': 3.17.0
+      vue: 3.5.38(typescript@6.0.3)
 
   '@tybys/wasm-util@0.10.2':
     dependencies:
@@ -3308,6 +3394,10 @@ snapshots:
       yaml: 2.9.0
 
   vue-component-type-helpers@3.3.4: {}
+
+  vue-demi@0.14.10(vue@3.5.38(typescript@6.0.3)):
+    dependencies:
+      vue: 3.5.38(typescript@6.0.3)
 
   vue-router@5.1.0(@vue/compiler-sfc@3.5.38)(pinia@3.0.4(typescript@6.0.3)(vue@3.5.38(typescript@6.0.3)))(vite@8.0.16(@types/node@25.9.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.100.0)(yaml@2.9.0))(vue@3.5.38(typescript@6.0.3)):
     dependencies:

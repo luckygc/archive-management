@@ -40,6 +40,18 @@ export const routes: RouteRecordRaw[] = [
         },
       },
       {
+        path: "table-demo",
+        name: "TanStackTableDemo",
+        component: () => import("../../pages/table-demo/TanStackTableDemoPage.vue"),
+        meta: {
+          title: "表格 Demo",
+          icon: "Grid",
+          isMenu: true,
+          keepAlive: true,
+          cacheName: "TanStackTableDemoPage",
+        },
+      },
+      {
         path: "transfer",
         name: "ArchiveTransfer",
         component: () => import("../../pages/placeholder/PlaceholderPage.vue"),
