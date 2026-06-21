@@ -27,7 +27,7 @@
     "sass-embedded": "^1.100.0",
     "typescript": "~6.0.3",
     "vite-plugin-vue-devtools": "catalog:",
-    "vite-plus": "latest"
+    "vite-plus": "catalog:"
   },
   "engines": {
     "node": ">=22.12.0"
