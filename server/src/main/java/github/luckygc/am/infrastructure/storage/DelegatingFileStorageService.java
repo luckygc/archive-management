@@ -2,11 +2,11 @@ package github.luckygc.am.infrastructure.storage;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.HashMap;
 
-class DelegatingFileStorageService implements FileStorageService {
+class DelegatingFileStorageService implements FileStorageService, AutoCloseable {
 
     private final StorageType defaultStorageType;
 
@@ -97,6 +97,27 @@ class DelegatingFileStorageService implements FileStorageService {
             throw new StorageException("未启用文件存储位置: " + storageType + "/" + bucketName);
         }
         return backend;
+    }
+
+    @Override
+    public void close() throws IOException {
+        IOException failure = null;
+        for (FileStorageBackend backend : backends.values()) {
+            if (backend instanceof AutoCloseable closeable) {
+                try {
+                    closeable.close();
+                } catch (Exception ex) {
+                    if (failure == null) {
+                        failure = new IOException("关闭文件存储后端失败", ex);
+                    } else {
+                        failure.addSuppressed(ex);
+                    }
+                }
+            }
+        }
+        if (failure != null) {
+            throw failure;
+        }
     }
 
     private record BackendKey(StorageType storageType, String bucketName) {

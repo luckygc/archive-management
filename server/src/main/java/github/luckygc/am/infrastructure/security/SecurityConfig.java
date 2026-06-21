@@ -39,25 +39,30 @@ public class SecurityConfig {
     private final FormLoginAuthenticationSuccessHandler authenticationSuccessHandler;
     private final FormLoginAuthenticationFailureHandler authenticationFailureHandler;
     private final HttpStatusLogoutSuccessHandler logoutSuccessHandler;
+    private final SecurityCorsProperties corsProperties;
 
     public SecurityConfig(
             SecurityContextRepository securityContextRepository,
             PowLoginFilter powLoginFilter,
             FormLoginAuthenticationSuccessHandler authenticationSuccessHandler,
             FormLoginAuthenticationFailureHandler authenticationFailureHandler,
-            HttpStatusLogoutSuccessHandler logoutSuccessHandler) {
+            HttpStatusLogoutSuccessHandler logoutSuccessHandler,
+            SecurityCorsProperties corsProperties) {
         this.securityContextRepository = securityContextRepository;
         this.powLoginFilter = powLoginFilter;
         this.authenticationSuccessHandler = authenticationSuccessHandler;
         this.authenticationFailureHandler = authenticationFailureHandler;
         this.logoutSuccessHandler = logoutSuccessHandler;
+        this.corsProperties = corsProperties;
     }
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
                 .cors(this::configureCors)
-                .csrf(AbstractHttpConfigurer::disable)
+                .csrf(csrf -> csrf
+                        .spa()
+                        .ignoringRequestMatchers("/api/auth/cap/**"))
                 .securityContext(this::configureSecurityContext)
                 .authorizeHttpRequests(this::configureAuthorization)
                 .addFilterBefore(powLoginFilter, UsernamePasswordAuthenticationFilter.class)
@@ -124,12 +129,13 @@ public class SecurityConfig {
     @Bean
     UrlBasedCorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(List.of("*"));
-        configuration.setAllowedMethods(List.of("*"));
-        configuration.setAllowedHeaders(List.of("*"));
-        configuration.setExposedHeaders(List.of("*"));
-        configuration.setAllowCredentials(true);
-        configuration.setMaxAge(3600L);
+        configuration.setAllowedOrigins(corsProperties.getAllowedOrigins());
+        configuration.setAllowedOriginPatterns(corsProperties.getAllowedOriginPatterns());
+        configuration.setAllowedMethods(corsProperties.getAllowedMethods());
+        configuration.setAllowedHeaders(corsProperties.getAllowedHeaders());
+        configuration.setExposedHeaders(corsProperties.getExposedHeaders());
+        configuration.setAllowCredentials(corsProperties.isAllowCredentials());
+        configuration.setMaxAge(corsProperties.getMaxAge());
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

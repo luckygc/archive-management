@@ -154,6 +154,36 @@ logging:
         root: INFO
 
 archive:
+    auth:
+        bootstrap-admin:
+            # 是否在启动时初始化管理员账号；仅在本地初始化或部署初始化时显式开启。
+            enabled: ${AM_BOOTSTRAP_ADMIN_ENABLED:false}
+            # 初始化管理员账号。
+            username: ${AM_BOOTSTRAP_ADMIN_USERNAME:admin}
+            # 初始化管理员密码，开启初始化时必须通过环境变量提供。
+            password: ${AM_BOOTSTRAP_ADMIN_PASSWORD:}
+            # 初始化管理员显示名称。
+            display-name: ${AM_BOOTSTRAP_ADMIN_DISPLAY_NAME:系统管理员}
+    security:
+        cors:
+            # 默认不允许跨域携带凭证；需要跨域部署时显式配置可信前端 Origin。
+            allowed-origins: []
+            allowed-origin-patterns: []
+            allowed-methods:
+                - GET
+                - POST
+                - PUT
+                - PATCH
+                - DELETE
+                - OPTIONS
+            allowed-headers:
+                - Content-Type
+                - X-XSRF-TOKEN
+                - X-Trace-Id
+            exposed-headers:
+                - X-Trace-Id
+            allow-credentials: true
+            max-age: 3600
     storage:
         # 上传策略：对象存储配置完整时优先对象存储，否则使用 active-local-bucket 指定的本地 bucket。
         # 当前使用的本地存储 bucket。

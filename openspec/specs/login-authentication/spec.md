@@ -13,7 +13,7 @@
 #### Scenario: 创建安全验证挑战
 
 - **WHEN** 客户端请求 `POST /api/auth/cap/challenge`
-- **THEN** 系统 SHALL 创建一条 `am_cap_challenge` 挑战记录
+- **THEN** 系统 SHALL 创建一条 `am_auth_cap_challenge` 挑战记录
 - **AND** 响应 SHALL 包含 `challenge`、`token` 和 `expires`
 - **AND** `challenge` SHALL 包含挑战数量 `c`、挑战尺寸 `s` 和难度 `d`
 - **AND** challenge 默认有效期 SHALL 为 10 分钟
@@ -24,7 +24,7 @@
 - **WHEN** 客户端请求 `POST /api/auth/cap/redeem` 并提交 token 与完整 solutions
 - **THEN** 系统 SHALL 校验每个 solution 是否匹配 challenge 规则
 - **AND** 系统 SHALL 删除已提交的 challenge token
-- **AND** 校验成功时 SHALL 创建一条 `am_cap_token` 令牌记录
+- **AND** 校验成功时 SHALL 创建一条 `am_auth_cap_token` 令牌记录
 - **AND** 响应 SHALL 包含 `success: true`、一次性登录令牌 `token` 和 `expires`
 - **AND** 令牌默认有效期 SHALL 为 20 分钟
 
@@ -86,22 +86,30 @@
 #### Scenario: 加载启用用户
 
 - **WHEN** 系统按用户名加载用户
-- **THEN** 系统 SHALL 从 `am_user` 读取用户账号、密码密文、显示名称和启用状态
+- **THEN** 系统 SHALL 从 `am_auth_user` 读取用户账号、密码密文、显示名称和启用状态
 - **AND** 系统 SHALL 只允许启用用户通过认证
 
 #### Scenario: 加载用户角色
 
 - **WHEN** 系统构造登录用户权限
-- **THEN** 系统 SHALL 从 `am_user_role` 读取用户角色名称
+- **THEN** 系统 SHALL 从 `am_auth_user_role_rel` 和 `am_auth_role` 读取用户角色名称
 - **AND** 写入 Spring Security 权限时 SHALL 自动添加 `ROLE_` 前缀
 - **AND** 对外返回当前用户时 SHALL 去除 `ROLE_` 前缀
 
-#### Scenario: 初始管理员账号
+#### Scenario: 显式初始化管理员账号
 
-- **WHEN** 数据库迁移初始化认证数据
-- **THEN** 系统 SHALL 创建默认用户 `admin`
-- **AND** 默认用户显示名称 SHALL 为 `系统管理员`
-- **AND** 默认用户 SHALL 具有 `系统管理员` 和 `系统监控` 角色
+- **GIVEN** 配置 `archive.auth.bootstrap-admin.enabled` 为 `true`
+- **AND** 配置提供非空管理员账号、密码和显示名称
+- **WHEN** 应用启动且管理员账号不存在
+- **THEN** 系统 SHALL 创建该管理员用户
+- **AND** 系统 SHALL 使用 `PasswordEncoder` 保存密码密文
+- **AND** 该管理员用户 SHALL 具有 `系统管理员` 和 `系统监控` 角色
+
+#### Scenario: 不创建固定默认管理员
+
+- **GIVEN** 配置 `archive.auth.bootstrap-admin.enabled` 不为 `true`
+- **WHEN** 应用启动
+- **THEN** 系统 SHALL NOT 创建固定账号密码的默认管理员
 
 ### Requirement: 当前用户查询
 

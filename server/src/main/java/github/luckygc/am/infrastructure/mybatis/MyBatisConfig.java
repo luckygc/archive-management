@@ -1,4 +1,4 @@
-package github.luckygc.am.common.config;
+package github.luckygc.am.infrastructure.mybatis;
 
 import org.apache.ibatis.annotations.Mapper;
 import org.mybatis.spring.annotation.MapperScan;

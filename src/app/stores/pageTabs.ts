@@ -1,7 +1,5 @@
 import { defineStore } from "pinia";
-import type { Component } from "vue";
-import { cloneVNode, computed, defineComponent, markRaw, nextTick, ref } from "vue";
-import type { VNode } from "vue";
+import { computed, nextTick, ref } from "vue";
 import type { RouteLocationNormalizedLoaded } from "vue-router";
 
 export interface PageTab {
@@ -11,7 +9,6 @@ export interface PageTab {
   cacheName?: string;
   keepAlive: boolean;
   refreshVersion: number;
-  pageComponent: Component;
   pageComponentName: string;
   pageComponentKey: string;
   affix: boolean;
@@ -37,18 +34,7 @@ function createCacheBaseName(routeName: string | undefined, fullPath: string) {
   return `PageTab_${normalizeCacheSegment(routeName || "Route")}_${hashFullPath(fullPath)}`;
 }
 
-function wrapPageVNode(vnode: VNode, componentName: string): Component {
-  return markRaw(
-    defineComponent({
-      name: componentName,
-      setup() {
-        return () => cloneVNode(vnode);
-      },
-    }),
-  );
-}
-
-function createTab(route: RouteLocationNormalizedLoaded, vnode: VNode): PageTab | null {
+function createTab(route: RouteLocationNormalizedLoaded): PageTab | null {
   const title = readString(route.meta.title);
   if (!title) {
     return null;
@@ -59,7 +45,6 @@ function createTab(route: RouteLocationNormalizedLoaded, vnode: VNode): PageTab 
   const keepAlive = route.meta.keepAlive === true;
   const refreshVersion = 0;
   const pageComponentName = createCacheBaseName(cacheName, route.fullPath);
-  const pageComponent = wrapPageVNode(vnode, pageComponentName);
 
   return {
     fullPath: route.fullPath,
@@ -68,7 +53,6 @@ function createTab(route: RouteLocationNormalizedLoaded, vnode: VNode): PageTab 
     cacheName: keepAlive ? cacheName : undefined,
     keepAlive,
     refreshVersion,
-    pageComponent,
     pageComponentName,
     pageComponentKey: `${route.fullPath}:${refreshVersion}`,
     affix: route.meta.affixTab === true,
@@ -90,13 +74,10 @@ export const usePageTabsStore = defineStore("pageTabs", () => {
       .filter((item): item is string => Boolean(item) && item !== suspendedCacheName.value),
   );
 
-  function ensureTabEntry(route: RouteLocationNormalizedLoaded, component: VNode | null) {
+  function ensureTabEntry(route: RouteLocationNormalizedLoaded) {
     activeFullPath.value = route.fullPath;
-    if (!component) {
-      return;
-    }
 
-    const tab = createTab(route, component);
+    const tab = createTab(route);
     if (!tab) {
       return;
     }
