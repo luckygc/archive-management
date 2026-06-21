@@ -28,7 +28,7 @@ public class PowLoginFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return !"POST".equalsIgnoreCase(request.getMethod()) || !"/api/auth/login".equals(request.getRequestURI());
+        return !"POST".equalsIgnoreCase(request.getMethod()) || !"/api/auth:login".equals(request.getRequestURI());
     }
 
     @Override

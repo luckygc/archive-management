@@ -23,12 +23,12 @@ import github.luckygc.am.infrastructure.security.ArchiveUserDetails;
 @RequestMapping("/api/auth")
 public class AuthController {
 
-    @GetMapping("/me")
+    @GetMapping("/session")
     public CurrentUserDto me(Authentication authentication) {
         return CurrentUserDto.from(authentication);
     }
 
-    @PostMapping("/logout")
+    @PostMapping(":logout")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void logout(HttpServletRequest request) {
         SecurityContextHolder.clearContext();

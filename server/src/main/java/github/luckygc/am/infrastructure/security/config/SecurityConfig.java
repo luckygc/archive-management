@@ -88,7 +88,7 @@ public class SecurityConfig {
             AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry authorize) {
         authorize
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/auth:login").permitAll()
                 .requestMatchers("/api/auth/cap/**").permitAll()
                 .requestMatchers("/actuator/**").hasRole("系统监控")
                 .anyRequest().authenticated();
@@ -97,7 +97,7 @@ public class SecurityConfig {
     private void configureFormLogin(FormLoginConfigurer<HttpSecurity> formLogin) {
         formLogin
                 .loginPage("/login")
-                .loginProcessingUrl("/api/auth/login")
+                .loginProcessingUrl("/api/auth:login")
                 .securityContextRepository(securityContextRepository)
                 .successHandler(authenticationSuccessHandler)
                 .failureHandler(authenticationFailureHandler)
@@ -106,7 +106,7 @@ public class SecurityConfig {
 
     private void configureLogout(LogoutConfigurer<HttpSecurity> logout) {
         logout
-                .logoutUrl("/api/auth/logout")
+                .logoutUrl("/api/auth:logout")
                 .logoutSuccessHandler(logoutSuccessHandler);
     }
 

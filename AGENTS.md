@@ -39,6 +39,16 @@
 - 固定 CRUD 表优先使用 Hibernate Data Repositories，并通过 Spring 事务边界复用 Hibernate `StatelessSession`；不要引入 Spring Data JPA。Repository 对外不得返回 `Stream`、Hibernate Query、游标等依赖 session 生命周期的对象，必须在 `@Transactional` 方法内消费完查询结果。动态表、复杂 SQL、批处理、报表和认证适配查询继续使用 JdbcClient 或 MyBatis。
 - StringUtils.removeStart已过时，替换为Strings.CS.removeStart
 
+## API 设计约定
+
+- API URL 设计参考 Google Cloud API Design Guide / AIP 的资源导向模型：先识别资源名词、层级和标准方法，再决定是否需要自定义方法；不要直接按数据库表、页面按钮或服务方法名暴露接口。
+- 标准 CRUD 优先使用资源路径和 HTTP 方法表达：`GET /api/books/{id}` 查询单个资源，`GET /api/books` 查询集合，`POST /api/books` 创建，`PATCH /api/books/{id}` 局部更新，`DELETE /api/books/{id}` 删除。
+- 只有标准方法无法自然表达的动作才使用自定义方法。自定义方法路径使用 AIP 风格冒号动作：`POST /api/books/{id}:archive`、`POST /api/auth:login`；动词使用 lower camelCase，不使用 `/archive`、`/_archive`、`/validate_token`、`/validateToken` 这类路径段承载项目自有动作。
+- 自定义方法如果只读取数据且请求参数适合 query string，可使用 `GET`；有副作用、消费令牌、改变服务端状态或提交复杂请求体时使用 `POST`。
+- 查询当前登录会话这类单例资源使用资源名表达，例如 `GET /api/auth/session`；登录、退出等非 CRUD 动作使用 `POST /api/auth:login`、`POST /api/auth:logout`。
+- 响应包装、错误结构、分页结构不照搬 Google RPC 合同；在项目形成统一响应模型前，按当前 Spring MVC / Spring Security / 前端调用的实际合同保持最小一致。
+- 第三方组件或外部协议强制要求的回调路径可以作为适配例外保留，例如 CAP widget 固定使用的 `/api/auth/cap/challenge`、`/api/auth/cap/redeem`、`/api/auth/cap/validateToken`；这类例外不得扩散为项目自有 API 命名风格。
+
 ## 文件存储约定
 
 - 文件存储统一通过 `FileStorageService` 使用；存储层只负责对象内容的上传、下载、删除和存在判断，不提供对象列举和元信息反查作为业务真相源。
