@@ -4,8 +4,17 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "ready": "vp check && vp build",
+    "ready": "vp run check && vp run test && vp run build",
     "dev": "vp dev",
+    "check": "vp check",
+    "check:fix": "vp check --fix",
+    "lint": "vp lint",
+    "lint:fix": "vp lint --fix",
+    "fmt": "vp fmt",
+    "fmt:check": "vp fmt --check",
+    "fmt:write": "vp fmt --write",
+    "test": "vp test run --passWithNoTests",
+    "test:watch": "vp test watch",
     "build": "tsc && vp build",
     "preview": "vp preview",
     "prepare": "vp config"
