@@ -98,17 +98,7 @@ comment on column am_auth_cap_token.token_key is 'Cap token key，格式为 id:s
 comment on column am_auth_cap_token.expires_at is 'token 过期时间';
 comment on column am_auth_cap_token.created_at is '创建时间';
 
-insert into am_auth_user (username, password, display_name)
-values ('admin', '{noop}admin', '系统管理员');
-
 insert into am_auth_role (role_name, description)
 values
     ('系统管理员', '系统默认管理员角色'),
     ('系统监控', '允许访问系统监控端点');
-
-insert into am_auth_user_role_rel (user_id, role_id)
-select auth_user.id, role.id
-from am_auth_user auth_user
-cross join am_auth_role role
-where auth_user.username = 'admin'
-  and role.role_name in ('系统管理员', '系统监控');

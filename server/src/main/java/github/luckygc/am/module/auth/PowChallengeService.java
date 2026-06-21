@@ -148,6 +148,7 @@ public class PowChallengeService {
     private Map<String, Object> redeemFailure(String message) {
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("success", false);
+        response.put("error", message);
         response.put("message", message);
         return response;
     }

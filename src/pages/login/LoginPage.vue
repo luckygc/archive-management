@@ -2,7 +2,7 @@
 import { Lock, User } from "@element-plus/icons-vue";
 import { reactive, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import type { CapWidget } from "@cap.js/widget";
+import type { CapErrorEvent, CapWidget } from "@cap.js/widget";
 import { useSessionStore } from "../../app/stores/session";
 
 const route = useRoute();
@@ -72,9 +72,12 @@ function handleCapReset() {
   securityMessage.value = "请完成安全验证";
 }
 
-function handleCapError() {
+function handleCapError(event: Event) {
+  const detail = (event as CapErrorEvent).detail;
   powToken.value = "";
-  securityMessage.value = "安全验证失败，请重试";
+  securityMessage.value = detail?.message
+    ? `安全验证失败：${detail.message}`
+    : "安全验证失败，请重试";
 }
 </script>
 

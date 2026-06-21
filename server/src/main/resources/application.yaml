@@ -166,8 +166,10 @@ archive:
             display-name: ${AM_BOOTSTRAP_ADMIN_DISPLAY_NAME:系统管理员}
     security:
         cors:
-            # 默认不允许跨域携带凭证；需要跨域部署时显式配置可信前端 Origin。
-            allowed-origins: []
+            # 允许本地 Vite 前端跨域携带凭证访问后端；部署时改为实际可信前端 Origin。
+            allowed-origins:
+                - http://localhost:5173
+                - http://127.0.0.1:5173
             allowed-origin-patterns: []
             allowed-methods:
                 - GET

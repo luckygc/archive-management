@@ -1,13 +1,20 @@
 <script setup lang="ts">
 import { ArrowDown, RefreshRight, SwitchButton } from "@element-plus/icons-vue";
-import { useRouter } from "vue-router";
+import { computed } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { usePageTabsStore } from "../../app/stores/pageTabs";
 import { useSessionStore } from "../../app/stores/session";
-import AppPageTabs from "./AppPageTabs.vue";
 
+const route = useRoute();
 const router = useRouter();
 const pageTabsStore = usePageTabsStore();
 const sessionStore = useSessionStore();
+
+const breadcrumbItems = computed(() =>
+  route.matched
+    .map((item) => (typeof item.meta.title === "string" ? item.meta.title : ""))
+    .filter(Boolean),
+);
 
 async function handleLogout() {
   await sessionStore.logoutCurrentUser();
@@ -17,8 +24,12 @@ async function handleLogout() {
 
 <template>
   <header class="app-header">
-    <div class="app-header__tabs-wrap">
-      <AppPageTabs class="app-header__tabs" />
+    <div class="app-header__nav">
+      <el-breadcrumb v-if="breadcrumbItems.length > 1" separator="/">
+        <el-breadcrumb-item v-for="item in breadcrumbItems" :key="item">
+          {{ item }}
+        </el-breadcrumb-item>
+      </el-breadcrumb>
     </div>
     <div class="app-header__right">
       <el-button
@@ -47,28 +58,14 @@ async function handleLogout() {
 .app-header {
   display: flex;
   align-items: center;
-  height: 64px;
+  height: 56px;
   gap: 16px;
   padding: 0 18px;
   border-bottom: 1px solid var(--am-border);
-  background: var(--am-bg-subtle);
-}
-
-.app-header__tabs-wrap {
-  flex: none;
-  display: flex;
-  align-items: center;
-  width: 560px;
-  height: 40px;
-  min-width: 0;
-  border: 1px solid var(--am-border);
-  border-radius: 8px;
-  padding: 0 5px;
   background: var(--am-bg-surface);
 }
 
-.app-header__tabs {
-  width: 100%;
+.app-header__nav {
   min-width: 0;
 }
 
@@ -94,7 +91,7 @@ async function handleLogout() {
 
   &:hover,
   &:focus-visible {
-    background: var(--am-bg-surface);
+    background: var(--am-bg-page);
   }
 }
 </style>

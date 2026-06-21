@@ -10,11 +10,7 @@ const rows = [
 
 <template>
   <section class="archive-library-page">
-    <header class="archive-library-page__header">
-      <div>
-        <h1>档案库</h1>
-        <p>按分类、全宗和保管期限管理在库档案。</p>
-      </div>
+    <header class="archive-library-page__toolbar">
       <el-button type="primary">新增档案</el-button>
     </header>
     <section class="archive-library-page__body">
@@ -39,22 +35,12 @@ const rows = [
   padding: 20px;
 }
 
-.archive-library-page__header {
+.archive-library-page__toolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 16px;
   margin-bottom: 16px;
-
-  h1 {
-    margin: 0;
-    font-size: 24px;
-  }
-
-  p {
-    margin: 4px 0 0;
-    color: var(--am-text-muted);
-  }
 }
 
 .archive-library-page__body {

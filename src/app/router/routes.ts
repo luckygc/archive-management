@@ -28,16 +28,56 @@ export const routes: RouteRecordRaw[] = [
         },
       },
       {
-        path: "archive-library",
-        name: "ArchiveLibrary",
-        component: () => import("../../pages/archive-library/ArchiveLibraryPage.vue"),
+        path: "archive",
+        name: "ArchiveManagement",
         meta: {
-          title: "档案库",
+          title: "档案管理",
           icon: "FolderOpened",
           isMenu: true,
-          keepAlive: true,
-          cacheName: "ArchiveLibraryPage",
         },
+        children: [
+          {
+            path: "library",
+            name: "ArchiveLibrary",
+            component: () => import("../../pages/archive-library/ArchiveLibraryPage.vue"),
+            meta: {
+              title: "档案库",
+              icon: "Collection",
+              isMenu: true,
+              keepAlive: true,
+              cacheName: "ArchiveLibraryPage",
+            },
+          },
+          {
+            path: "catalog",
+            name: "ArchiveCatalog",
+            meta: {
+              title: "目录配置",
+              icon: "Files",
+              isMenu: true,
+            },
+            children: [
+              {
+                path: "fonds",
+                name: "ArchiveFonds",
+                component: () => import("../../pages/placeholder/PlaceholderPage.vue"),
+                meta: {
+                  title: "全宗管理",
+                  isMenu: true,
+                },
+              },
+              {
+                path: "categories",
+                name: "ArchiveCategories",
+                component: () => import("../../pages/placeholder/PlaceholderPage.vue"),
+                meta: {
+                  title: "档案分类",
+                  isMenu: true,
+                },
+              },
+            ],
+          },
+        ],
       },
       {
         path: "table-demo",
@@ -54,44 +94,120 @@ export const routes: RouteRecordRaw[] = [
       {
         path: "transfer",
         name: "ArchiveTransfer",
-        component: () => import("../../pages/placeholder/PlaceholderPage.vue"),
-        props: {
-          title: "移交接收",
-          description: "承载档案移交、接收、质检和入库流程。",
-        },
         meta: {
           title: "移交接收",
           icon: "Switch",
           isMenu: true,
         },
+        children: [
+          {
+            path: "batches",
+            name: "TransferBatches",
+            component: () => import("../../pages/placeholder/PlaceholderPage.vue"),
+            meta: {
+              title: "移交批次",
+              isMenu: true,
+            },
+          },
+          {
+            path: "receiving",
+            name: "TransferReceiving",
+            component: () => import("../../pages/placeholder/PlaceholderPage.vue"),
+            meta: {
+              title: "接收登记",
+              isMenu: true,
+            },
+          },
+        ],
       },
       {
         path: "borrow",
         name: "ArchiveBorrow",
-        component: () => import("../../pages/placeholder/PlaceholderPage.vue"),
-        props: {
-          title: "借阅利用",
-          description: "承载借阅申请、审批、归还和利用记录。",
-        },
         meta: {
           title: "借阅利用",
           icon: "Reading",
           isMenu: true,
         },
+        children: [
+          {
+            path: "requests",
+            name: "BorrowRequests",
+            component: () => import("../../pages/placeholder/PlaceholderPage.vue"),
+            meta: {
+              title: "借阅申请",
+              isMenu: true,
+            },
+          },
+          {
+            path: "records",
+            name: "BorrowRecords",
+            component: () => import("../../pages/placeholder/PlaceholderPage.vue"),
+            meta: {
+              title: "利用记录",
+              isMenu: true,
+            },
+          },
+        ],
       },
       {
         path: "system",
         name: "SystemManagement",
-        component: () => import("../../pages/placeholder/PlaceholderPage.vue"),
-        props: {
-          title: "系统配置",
-          description: "维护用户、角色、存储、字典和系统参数。",
-        },
         meta: {
           title: "系统配置",
           icon: "Setting",
           isMenu: true,
         },
+        children: [
+          {
+            path: "users",
+            name: "SystemUsers",
+            component: () => import("../../pages/placeholder/PlaceholderPage.vue"),
+            meta: {
+              title: "用户管理",
+              icon: "User",
+              isMenu: true,
+            },
+          },
+          {
+            path: "permissions",
+            name: "SystemPermissions",
+            meta: {
+              title: "权限配置",
+              icon: "Lock",
+              isMenu: true,
+            },
+            children: [
+              {
+                path: "roles",
+                name: "SystemRoles",
+                component: () => import("../../pages/placeholder/PlaceholderPage.vue"),
+                meta: {
+                  title: "角色管理",
+                  isMenu: true,
+                },
+              },
+              {
+                path: "positions",
+                name: "SystemPositions",
+                component: () => import("../../pages/placeholder/PlaceholderPage.vue"),
+                meta: {
+                  title: "岗位管理",
+                  isMenu: true,
+                },
+              },
+            ],
+          },
+          {
+            path: "storage",
+            name: "SystemStorage",
+            component: () => import("../../pages/placeholder/PlaceholderPage.vue"),
+            meta: {
+              title: "存储配置",
+              icon: "Coin",
+              isMenu: true,
+            },
+          },
+        ],
       },
     ],
   },

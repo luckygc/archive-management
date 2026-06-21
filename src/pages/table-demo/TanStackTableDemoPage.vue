@@ -907,14 +907,6 @@ function columnLabel(column: Column<typeof tableFeatureSet, ArchiveRow, unknown>
 
 <template>
   <section class="table-demo-page">
-    <header class="table-demo-page__header">
-      <div>
-        <h1>TanStack 表格 Demo</h1>
-        <p>基础能力验证：虚拟滚动、排序、筛选、列拖拽、列宽调整、长文本 Tooltip 和点击编辑。</p>
-      </div>
-      <el-button @click="resetTableState">重置演示状态</el-button>
-    </header>
-
     <section class="table-demo-page__toolbar">
       <el-input
         v-model="globalFilter"
@@ -985,6 +977,7 @@ function columnLabel(column: Column<typeof tableFeatureSet, ArchiveRow, unknown>
       <el-tag v-if="editedCellKeys.size > 0" type="warning" effect="plain">
         已编辑 {{ editedCellKeys.size }} 个单元格
       </el-tag>
+      <el-button @click="resetTableState">重置演示状态</el-button>
     </section>
 
     <section ref="tableBodyRef" class="table-demo-page__body">
@@ -1219,25 +1212,6 @@ function columnLabel(column: Column<typeof tableFeatureSet, ArchiveRow, unknown>
   min-height: 0;
   overflow: hidden;
   padding: 20px;
-}
-
-.table-demo-page__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 16px;
-
-  h1 {
-    margin: 0;
-    font-size: 24px;
-    line-height: 1.25;
-  }
-
-  p {
-    margin: 4px 0 0;
-    color: var(--am-text-muted);
-  }
 }
 
 .table-demo-page__toolbar,

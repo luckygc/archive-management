@@ -8,14 +8,33 @@ const route = useRoute();
 const router = useRouter();
 const pageTabsStore = usePageTabsStore();
 
+type TabClickContext = {
+  paneName?: string | number;
+  props?: {
+    name?: string | number;
+  };
+};
+
 const canCloseCurrent = computed(() => {
   const current = pageTabsStore.tabs.find((item) => item.fullPath === route.fullPath);
   return Boolean(current && !current.affix);
 });
 
+function readPaneName(tab: TabClickContext) {
+  const name = tab.paneName ?? tab.props?.name;
+  return typeof name === "string" ? name : "";
+}
+
 async function activateTab(fullPath: string) {
   if (fullPath !== route.fullPath) {
     await router.push(fullPath);
+  }
+}
+
+async function handleTabClick(tab: TabClickContext) {
+  const fullPath = readPaneName(tab);
+  if (fullPath) {
+    await activateTab(fullPath);
   }
 }
 
@@ -60,27 +79,29 @@ async function handleTabCommand(command: string) {
 
 <template>
   <nav class="app-page-tabs" aria-label="已打开页面">
-    <div class="app-page-tabs__strip">
-      <div
-        v-for="tab in pageTabsStore.tabs"
-        :key="tab.fullPath"
-        class="app-page-tabs__item"
-        :class="{ 'is-active': tab.fullPath === route.fullPath }"
-      >
-        <button class="app-page-tabs__label" type="button" @click="activateTab(tab.fullPath)">
-          <span>{{ tab.title }}</span>
-        </button>
-        <button
-          v-if="!tab.affix"
-          class="app-page-tabs__close"
-          :aria-label="`关闭${tab.title}`"
-          type="button"
-          @click="closeTab(tab.fullPath)"
-        >
-          <el-icon><Close /></el-icon>
-        </button>
-      </div>
-    </div>
+    <el-tabs
+      class="app-page-tabs__tabs"
+      type="card"
+      :model-value="route.fullPath"
+      @tab-click="handleTabClick"
+    >
+      <el-tab-pane v-for="tab in pageTabsStore.tabs" :key="tab.fullPath" :name="tab.fullPath">
+        <template #label>
+          <span class="app-page-tabs__label">
+            <span class="app-page-tabs__title">{{ tab.title }}</span>
+            <button
+              v-if="!tab.affix"
+              class="app-page-tabs__close"
+              :aria-label="`关闭${tab.title}`"
+              type="button"
+              @click.stop.prevent="closeTab(tab.fullPath)"
+            >
+              <el-icon><Close /></el-icon>
+            </button>
+          </span>
+        </template>
+      </el-tab-pane>
+    </el-tabs>
     <el-dropdown trigger="click" @command="handleTabCommand">
       <button class="app-page-tabs__more" type="button" aria-label="页签操作">
         <el-icon><MoreFilled /></el-icon>
@@ -103,59 +124,31 @@ async function handleTabCommand(command: string) {
   display: flex;
   align-items: center;
   min-width: 0;
-  height: 100%;
-  gap: 4px;
+  height: 40px;
+  gap: 8px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--am-border);
+  background: var(--am-bg-subtle);
 }
 
-.app-page-tabs__strip {
-  display: flex;
-  align-items: center;
+.app-page-tabs__tabs {
+  flex: 1;
   min-width: 0;
-  max-width: 100%;
-  gap: 4px;
   overflow: hidden;
-}
-
-.app-page-tabs__item {
-  display: inline-flex;
-  align-items: center;
-  min-width: 0;
-  max-width: 146px;
-  height: 30px;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  color: var(--am-text-muted);
-  background: transparent;
-
-  &:hover,
-  &:focus-within {
-    color: var(--am-text);
-    background: var(--am-bg-page);
-  }
-
-  &.is-active {
-    border-color: var(--am-border-strong);
-    color: var(--am-text);
-    background: var(--am-bg-subtle);
-  }
 }
 
 .app-page-tabs__label {
   display: inline-flex;
   align-items: center;
+  gap: 8px;
   min-width: 0;
-  height: 100%;
-  border: none;
-  padding: 0 8px 0 10px;
-  color: inherit;
-  background: transparent;
-  cursor: pointer;
+  max-width: 176px;
+}
 
-  span {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
+.app-page-tabs__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .app-page-tabs__close {
@@ -165,18 +158,19 @@ async function handleTabCommand(command: string) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin-right: 6px;
   border: none;
-  border-radius: 4px;
+  border-radius: 50%;
   padding: 0;
   color: inherit;
   background: transparent;
   font-size: 12px;
+  opacity: 0.72;
   cursor: pointer;
 
   &:hover,
   &:focus-visible {
-    background: #e2e8f0;
+    color: var(--am-text);
+    background: var(--am-border);
   }
 }
 
@@ -184,17 +178,18 @@ async function handleTabCommand(command: string) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
-  border: none;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--am-border);
   border-radius: 6px;
   color: var(--am-text-muted);
-  background: transparent;
+  background: var(--am-bg-surface);
   cursor: pointer;
 
   &:hover,
   &:focus-visible {
     color: var(--am-text);
+    border-color: var(--am-border-strong);
     background: var(--am-bg-page);
   }
 }

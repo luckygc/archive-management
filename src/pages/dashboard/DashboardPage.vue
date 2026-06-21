@@ -18,11 +18,7 @@ const tasks = [
 
 <template>
   <section class="dashboard-page">
-    <div class="dashboard-page__header">
-      <div>
-        <h1>工作台</h1>
-        <p>档案业务运行概览</p>
-      </div>
+    <div class="dashboard-page__toolbar">
       <div class="dashboard-page__actions">
         <el-button>新建移交</el-button>
         <el-button type="primary">档案入库</el-button>
@@ -84,21 +80,11 @@ const tasks = [
   padding: 20px;
 }
 
-.dashboard-page__header {
+.dashboard-page__toolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 16px;
-
-  h1 {
-    margin: 0;
-    font-size: 24px;
-  }
-
-  p {
-    margin: 4px 0 0;
-    color: var(--am-text-muted);
-  }
 }
 
 .dashboard-page__actions {

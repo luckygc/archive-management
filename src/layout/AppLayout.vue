@@ -2,6 +2,7 @@
 import { ref } from "vue";
 import AppHeader from "./components/AppHeader.vue";
 import AppContentView from "./components/AppContentView.vue";
+import AppPageTabs from "./components/AppPageTabs.vue";
 import AppSidebar from "./components/AppSidebar.vue";
 
 const sidebarCollapsed = ref(false);
@@ -16,6 +17,7 @@ const sidebarCollapsed = ref(false);
     />
     <div class="app-layout__main">
       <AppHeader class="app-layout__header" />
+      <AppPageTabs class="app-layout__tabs" />
       <main class="app-layout__content">
         <router-view v-slot="{ Component, route }">
           <AppContentView :component="Component" :route="route" />
@@ -54,6 +56,10 @@ const sidebarCollapsed = ref(false);
 }
 
 .app-layout__header {
+  flex-shrink: 0;
+}
+
+.app-layout__tabs {
   flex-shrink: 0;
 }
 
