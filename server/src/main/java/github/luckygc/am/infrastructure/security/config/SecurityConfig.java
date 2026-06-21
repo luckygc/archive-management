@@ -65,7 +65,7 @@ public class SecurityConfig {
                 .cors(this::configureCors)
                 .csrf(csrf -> csrf
                         .spa()
-                        .ignoringRequestMatchers("/api/auth/cap/**"))
+                        .ignoringRequestMatchers("/api/v1/auth/cap/**"))
                 .securityContext(this::configureSecurityContext)
                 .authorizeHttpRequests(this::configureAuthorization)
                 .addFilterBefore(powLoginFilter, UsernamePasswordAuthenticationFilter.class)
@@ -88,8 +88,8 @@ public class SecurityConfig {
             AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry authorize) {
         authorize
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/auth:login").permitAll()
-                .requestMatchers("/api/auth/cap/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/v1/auth:login").permitAll()
+                .requestMatchers("/api/v1/auth/cap/**").permitAll()
                 .requestMatchers("/actuator/**").hasRole("系统监控")
                 .anyRequest().authenticated();
     }
@@ -97,7 +97,7 @@ public class SecurityConfig {
     private void configureFormLogin(FormLoginConfigurer<HttpSecurity> formLogin) {
         formLogin
                 .loginPage("/login")
-                .loginProcessingUrl("/api/auth:login")
+                .loginProcessingUrl("/api/v1/auth:login")
                 .securityContextRepository(securityContextRepository)
                 .successHandler(authenticationSuccessHandler)
                 .failureHandler(authenticationFailureHandler)
@@ -106,7 +106,7 @@ public class SecurityConfig {
 
     private void configureLogout(LogoutConfigurer<HttpSecurity> logout) {
         logout
-                .logoutUrl("/api/auth:logout")
+                .logoutUrl("/api/v1/auth:logout")
                 .logoutSuccessHandler(logoutSuccessHandler);
     }
 

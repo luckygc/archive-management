@@ -117,7 +117,7 @@ function handleCapError(event: Event) {
         <div class="login-page__pow">
           <cap-widget
             ref="capWidget"
-            data-cap-api-endpoint="/api/auth/cap/"
+            data-cap-api-endpoint="/api/v1/auth/cap/"
             data-cap-worker-count="2"
             data-cap-i18n-initial-state="点击完成安全验证"
             data-cap-i18n-verifying-label="正在验证..."

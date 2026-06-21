@@ -12,7 +12,7 @@
 
 #### Scenario: 创建安全验证挑战
 
-- **WHEN** 客户端请求 `POST /api/auth/cap/challenge`
+- **WHEN** 客户端请求 `POST /api/v1/auth/cap/challenge`
 - **THEN** 系统 SHALL 创建一条 `am_auth_cap_challenge` 挑战记录
 - **AND** 响应 SHALL 包含 `challenge`、`token` 和 `expires`
 - **AND** `challenge` SHALL 包含挑战数量 `c`、挑战尺寸 `s` 和难度 `d`
@@ -21,7 +21,7 @@
 #### Scenario: 兑换安全验证令牌
 
 - **GIVEN** 客户端持有未过期的 challenge token
-- **WHEN** 客户端请求 `POST /api/auth/cap/redeem` 并提交 token 与完整 solutions
+- **WHEN** 客户端请求 `POST /api/v1/auth/cap/redeem` 并提交 token 与完整 solutions
 - **THEN** 系统 SHALL 校验每个 solution 是否匹配 challenge 规则
 - **AND** 系统 SHALL 删除已提交的 challenge token
 - **AND** 校验成功时 SHALL 创建一条 `am_auth_cap_token` 令牌记录
@@ -37,14 +37,14 @@
 
 #### Scenario: 校验安全验证令牌
 
-- **WHEN** 客户端请求 `POST /api/auth/cap/validateToken`
+- **WHEN** 客户端请求 `POST /api/v1/auth/cap/validateToken`
 - **THEN** 系统 SHALL 按提交的 token 返回 `{ "success": true }` 或 `{ "success": false }`
 - **AND** 当 `keepToken` 为 `true` 时，系统 SHALL 只检查令牌有效性，不消费令牌
 - **AND** 当 `keepToken` 不为 `true` 时，系统 SHALL 消费一次性令牌
 
 #### Scenario: CAP 协议端点例外
 
-- **THEN** CAP 安全验证端点 SHALL 保持 CAP widget 约定的 `/api/auth/cap/challenge`、`/api/auth/cap/redeem` 和 `/api/auth/cap/validateToken`
+- **THEN** CAP 安全验证端点 SHALL 保持 CAP widget 约定的 `/api/v1/auth/cap/challenge`、`/api/v1/auth/cap/redeem` 和 `/api/v1/auth/cap/validateToken`
 - **AND** 这些端点 SHALL NOT 作为项目自有 API 动作路径命名示例
 
 ### Requirement: 账号密码登录
@@ -54,13 +54,13 @@
 #### Scenario: 登录请求格式
 
 - **WHEN** 客户端提交登录请求
-- **THEN** 请求 SHALL 使用 `POST /api/auth:login`
+- **THEN** 请求 SHALL 使用 `POST /api/v1/auth:login`
 - **AND** 请求体 SHALL 使用 `application/x-www-form-urlencoded`
 - **AND** 请求参数 SHALL 包含 `username`、`password` 和 `powToken`
 
 #### Scenario: 登录前消费安全验证令牌
 
-- **GIVEN** 客户端提交 `POST /api/auth:login`
+- **GIVEN** 客户端提交 `POST /api/v1/auth:login`
 - **WHEN** `powToken` 为空、格式错误、已过期或不存在
 - **THEN** 系统 SHALL 拒绝登录
 - **AND** 响应状态 SHALL 为 `401 Unauthorized`
@@ -123,7 +123,7 @@
 #### Scenario: 查询当前用户
 
 - **GIVEN** 客户端已登录
-- **WHEN** 客户端请求 `GET /api/auth/session`
+- **WHEN** 客户端请求 `GET /api/v1/auth/session`
 - **THEN** 系统 SHALL 返回当前用户 JSON
 - **AND** 当前用户 JSON SHALL 包含 `username`、`displayName` 和 `roles`
 
@@ -140,7 +140,7 @@
 #### Scenario: 退出当前会话
 
 - **GIVEN** 客户端已登录
-- **WHEN** 客户端请求 `POST /api/auth:logout`
+- **WHEN** 客户端请求 `POST /api/v1/auth:logout`
 - **THEN** 系统 SHALL 清理当前 SecurityContext
 - **AND** 系统 SHALL 使当前 HTTP session 失效
 - **AND** 响应状态 SHALL 为 `204 No Content`

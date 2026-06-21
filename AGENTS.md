@@ -42,12 +42,13 @@
 ## API 设计约定
 
 - API URL 设计参考 Google Cloud API Design Guide / AIP 的资源导向模型：先识别资源名词、层级和标准方法，再决定是否需要自定义方法；不要直接按数据库表、页面按钮或服务方法名暴露接口。
-- 标准 CRUD 优先使用资源路径和 HTTP 方法表达：`GET /api/books/{id}` 查询单个资源，`GET /api/books` 查询集合，`POST /api/books` 创建，`PATCH /api/books/{id}` 局部更新，`DELETE /api/books/{id}` 删除。
-- 只有标准方法无法自然表达的动作才使用自定义方法。自定义方法路径使用 AIP 风格冒号动作：`POST /api/books/{id}:archive`、`POST /api/auth:login`；动词使用 lower camelCase，不使用 `/archive`、`/_archive`、`/validate_token`、`/validateToken` 这类路径段承载项目自有动作。
+- REST API 路径必须在 `/api` 后包含主版本号，例如 `/api/v1`；只暴露 `v1`、`v2` 这类主版本，不使用 `v1.0`、`v1.1`、`v1.4.2` 这类 minor/patch 版本。
+- 标准 CRUD 优先使用资源路径和 HTTP 方法表达：`GET /api/v1/books/{id}` 查询单个资源，`GET /api/v1/books` 查询集合，`POST /api/v1/books` 创建，`PATCH /api/v1/books/{id}` 局部更新，`DELETE /api/v1/books/{id}` 删除。
+- 只有标准方法无法自然表达的动作才使用自定义方法。自定义方法路径使用 AIP 风格冒号动作：`POST /api/v1/books/{id}:archive`、`POST /api/v1/auth:login`；动词使用 lower camelCase，不使用 `/archive`、`/_archive`、`/validate_token`、`/validateToken` 这类路径段承载项目自有动作。
 - 自定义方法如果只读取数据且请求参数适合 query string，可使用 `GET`；有副作用、消费令牌、改变服务端状态或提交复杂请求体时使用 `POST`。
-- 查询当前登录会话这类单例资源使用资源名表达，例如 `GET /api/auth/session`；登录、退出等非 CRUD 动作使用 `POST /api/auth:login`、`POST /api/auth:logout`。
+- 查询当前登录会话这类单例资源使用资源名表达，例如 `GET /api/v1/auth/session`；登录、退出等非 CRUD 动作使用 `POST /api/v1/auth:login`、`POST /api/v1/auth:logout`。
 - 响应包装、错误结构、分页结构不照搬 Google RPC 合同；在项目形成统一响应模型前，按当前 Spring MVC / Spring Security / 前端调用的实际合同保持最小一致。
-- 第三方组件或外部协议强制要求的回调路径可以作为适配例外保留，例如 CAP widget 固定使用的 `/api/auth/cap/challenge`、`/api/auth/cap/redeem`、`/api/auth/cap/validateToken`；这类例外不得扩散为项目自有 API 命名风格。
+- 第三方组件或外部协议强制要求的回调路径可以作为适配例外保留，例如 CAP widget 固定使用的 `/api/v1/auth/cap/challenge`、`/api/v1/auth/cap/redeem`、`/api/v1/auth/cap/validateToken`；这类例外不得扩散为项目自有 API 命名风格。
 
 ## 文件存储约定
 

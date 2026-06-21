@@ -1,5 +1,5 @@
 SERVER_DIR := server
-MVNW := ./mvnw
+MVN := mvn
 VP := vp
 
 .PHONY: help frontend-install frontend-check frontend-test frontend-build frontend-ready frontend-dev server-java server-deps server-compile server-test server-package server-run server-init
@@ -40,19 +40,19 @@ frontend-dev:
 
 server-java:
 	cd $(SERVER_DIR) && java -version
-	cd $(SERVER_DIR) && $(MVNW) -version
+	cd $(SERVER_DIR) && $(MVN) -version
 
 server-deps:
-	cd $(SERVER_DIR) && $(MVNW) -q dependency:resolve
+	cd $(SERVER_DIR) && $(MVN) -q dependency:resolve
 
 server-compile:
-	cd $(SERVER_DIR) && $(MVNW) compile
+	cd $(SERVER_DIR) && $(MVN) compile
 
 server-test:
-	cd $(SERVER_DIR) && $(MVNW) test
+	cd $(SERVER_DIR) && $(MVN) test
 
 server-package:
-	cd $(SERVER_DIR) && $(MVNW) package
+	cd $(SERVER_DIR) && $(MVN) package
 
 server-run:
-	cd $(SERVER_DIR) && $(MVNW) spring-boot:run
+	cd $(SERVER_DIR) && $(MVN) spring-boot:run

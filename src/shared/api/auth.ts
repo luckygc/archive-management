@@ -7,7 +7,7 @@ export function login(command: LoginCommand) {
   body.set("password", command.password);
   body.set("powToken", command.powToken);
 
-  return request<CurrentUserDto>("/api/auth:login", {
+  return request<CurrentUserDto>("/api/v1/auth:login", {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
@@ -17,11 +17,11 @@ export function login(command: LoginCommand) {
 }
 
 export function getCurrentUser() {
-  return request<CurrentUserDto>("/api/auth/session");
+  return request<CurrentUserDto>("/api/v1/auth/session");
 }
 
 export function logout() {
-  return request<void>("/api/auth:logout", {
+  return request<void>("/api/v1/auth:logout", {
     method: "POST",
   });
 }
