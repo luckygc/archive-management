@@ -9,8 +9,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 
-import github.luckygc.am.module.auth.AuthController;
-
 import tools.jackson.databind.json.JsonMapper;
 
 @Component
@@ -22,7 +20,7 @@ public class AuthenticationResponseWriter {
         this.jsonMapper = jsonMapper;
     }
 
-    public void writeCurrentUser(HttpServletResponse response, AuthController.CurrentUserDto currentUser)
+    public void writeCurrentUser(HttpServletResponse response, Object currentUser)
             throws IOException {
         response.setStatus(HttpStatus.OK.value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);

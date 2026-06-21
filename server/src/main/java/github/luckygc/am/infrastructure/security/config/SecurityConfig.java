@@ -1,12 +1,11 @@
 package github.luckygc.am.infrastructure.security.config;
 
 import github.luckygc.am.infrastructure.security.util.FormLoginAuthenticationFailureHandler;
-import github.luckygc.am.infrastructure.security.util.FormLoginAuthenticationSuccessHandler;
 import github.luckygc.am.infrastructure.security.util.HttpStatusLogoutSuccessHandler;
-import github.luckygc.am.infrastructure.security.filter.PowLoginFilter;
 
 import jakarta.servlet.http.HttpServletRequest;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -26,10 +25,12 @@ import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.util.matcher.RequestMatcher;
+import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
@@ -38,16 +39,16 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
 
     private final SecurityContextRepository securityContextRepository;
-    private final PowLoginFilter powLoginFilter;
-    private final FormLoginAuthenticationSuccessHandler authenticationSuccessHandler;
+    private final OncePerRequestFilter powLoginFilter;
+    private final AuthenticationSuccessHandler authenticationSuccessHandler;
     private final FormLoginAuthenticationFailureHandler authenticationFailureHandler;
     private final HttpStatusLogoutSuccessHandler logoutSuccessHandler;
     private final SecurityCorsProperties corsProperties;
 
     public SecurityConfig(
             SecurityContextRepository securityContextRepository,
-            PowLoginFilter powLoginFilter,
-            FormLoginAuthenticationSuccessHandler authenticationSuccessHandler,
+            @Qualifier("powLoginFilter") OncePerRequestFilter powLoginFilter,
+            @Qualifier("formLoginAuthenticationSuccessHandler") AuthenticationSuccessHandler authenticationSuccessHandler,
             FormLoginAuthenticationFailureHandler authenticationFailureHandler,
             HttpStatusLogoutSuccessHandler logoutSuccessHandler,
             SecurityCorsProperties corsProperties) {

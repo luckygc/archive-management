@@ -9,12 +9,14 @@ import org.hibernate.cfg.BatchSettings;
 import org.hibernate.cfg.CacheSettings;
 import org.hibernate.dialect.PostgreSQLDialect;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Scope;
 import org.springframework.orm.jpa.hibernate.LocalSessionFactoryBuilder;
 
 @Configuration
+@ConditionalOnBean(DataSource.class)
 public class HibernateConfiguration {
 
     private static final int JDBC_BATCH_SIZE = 50;
@@ -33,7 +35,6 @@ public class HibernateConfiguration {
             SessionFactory sessionFactory, DataSource dataSource) {
         return new TransactionalStatelessSessionContext(sessionFactory, dataSource);
     }
-
 
     @Bean
     @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)

@@ -21,9 +21,9 @@
 - 后端当前按单 Spring Boot 应用起步；业务功能统一放在 `server/src/main/java/github/luckygc/am/module` 下，并按业务边界拆子包，例如 `module/auth`。
 - 基础设施能力统一放在 `server/src/main/java/github/luckygc/am/infrastructure` 下，只承载技术适配，例如 Spring Security、Hibernate、文件存储、外部系统客户端、缓存和调度适配。
 - `common` 只放跨业务模块共享的应用基础约定，不承载业务模块，也不承载具体外部技术适配；认证、用户、权限、档案、存储对象等业务语义不得放入 `common`。
-- 业务模块内部默认按 `api` 和 `internal` 划分边界：`api` 只放允许其他模块依赖的对外合同，例如服务接口、跨模块 DTO、跨模块事件、命令、查询和值对象；`internal` 放控制器、应用服务实现、领域对象、实体、Repository、Mapper、内部 DTO 和内部事件等实现细节。
-- 跨业务模块协作只能依赖目标模块的 `api` 包；不得依赖其他模块的 `internal` 包、实体、Repository、Mapper、Controller 或服务实现类。事件是否属于 API 取决于是否允许其他模块订阅并依赖字段语义：跨模块事件放 `api`，模块内部事件放 `internal`。
-- 控制器请求/响应 DTO 如果只服务本模块 HTTP 接口，不作为跨模块合同，放在本模块 `internal` 的 web/controller 相关包内；只有被其他模块作为稳定合同依赖的 DTO 才放入 `api`。
+- 业务模块不按 `api` / `internal` 继续拆包；当前是单体应用，不按微服务式模块合同组织代码。实体、Repository、Mapper、Controller、Service、DTO 等按业务模块直接放在对应模块包下，必要时再按 `web`、`service`、`dto`、`mapper` 等实现形态拆子包。
+- 跨业务模块协作允许直接依赖目标业务模块公开的类，但不要绕过目标模块已有 Service 去直接操作其 Repository、Mapper 或底层表；需要复用业务能力时优先抽出明确的 Service 方法。
+- 控制器请求/响应 DTO 如果只服务本模块 HTTP 接口，可放在模块内的 `dto` 或 `web` 相关包下；只有确实跨多个模块复用时再提升为模块根下稳定类型。
 - 后端架构边界通过 ArchUnit 测试固化；调整包结构、跨模块调用或公共类型落点时，必须同步维护对应架构测试。
 - Java 字符串判空统一使用 Apache Commons Lang `StringUtils`，不要直接散写原生空值和空白判断组合。
 - 摘要、编码、Hex 等通用加密/编码类方法优先使用 Apache Commons Codec 等成熟工具库，不要在业务代码里手写通用算法封装。
@@ -36,7 +36,7 @@
 - 项目自有表不允许使用数据库 `CHECK` 约束；枚举、状态、数值范围等校验放在应用层或字典/配置层。
 - 带逻辑删除字段的项目自有表不允许使用覆盖已删除数据的唯一约束；唯一性必须使用 `where deleted_at is null` 的部分唯一索引，只约束未删除记录。
 - 第三方框架原生表不属于项目自有表，例如 Spring Session 的 `SPRING_SESSION`、Quartz 的 `QRTZ_*`。除非明确改为项目自维护表，否则保留框架默认命名，避免偏离上游脚本。
-- 固定 CRUD 表优先使用 Hibernate Data Repositories，并通过 Spring 事务边界复用 Hibernate `StatelessSession`；不要引入 Spring Data JPA。Repository 对外不得返回 `Stream`、Hibernate Query、游标等依赖 session 生命周期的对象，必须在 `@Transactional` 方法内消费完查询结果。动态表、复杂 SQL、批处理、报表和认证适配查询继续使用 JdbcClient 或 MyBatis。
+- 当前持久化入口是 Jakarta Data 和 MyBatis：固定 CRUD 表优先使用 Jakarta Data Repository；动态表、复杂 SQL、批处理、报表和认证适配查询使用 MyBatis 或 JdbcClient；不要引入 Spring Data JPA。业务代码不得直接使用 Hibernate 有状态 `Session`、Hibernate `Query` 或其他依赖 Session 生命周期的对象；如确需 Hibernate 底层适配，只能封装在基础设施层，不能外泄为业务模块合同。Repository 对外不得返回 `Stream`、游标等依赖会话生命周期的对象，必须在 `@Transactional` 方法内消费完查询结果。
 - StringUtils.removeStart已过时，替换为Strings.CS.removeStart
 
 ## API 设计约定
