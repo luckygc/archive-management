@@ -1,4 +1,4 @@
-package github.luckygc.am.infrastructure.security;
+package github.luckygc.am.infrastructure.security.config;
 
 import java.util.ArrayList;
 import java.util.List;

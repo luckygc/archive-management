@@ -1,5 +1,6 @@
-package github.luckygc.am.infrastructure.security;
+package github.luckygc.am.infrastructure.security.util;
 
+import github.luckygc.am.infrastructure.security.AuthenticationResponseWriter;
 import java.io.IOException;
 
 import jakarta.servlet.ServletException;

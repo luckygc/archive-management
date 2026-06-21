@@ -1,4 +1,4 @@
-package github.luckygc.am.infrastructure.security;
+package github.luckygc.am.infrastructure.security.util;
 
 import java.io.IOException;
 
