@@ -2,6 +2,7 @@ package github.luckygc.am.infrastructure.hibernate;
 
 import java.util.Properties;
 import javax.sql.DataSource;
+
 import org.hibernate.SessionFactory;
 import org.hibernate.StatelessSession;
 import org.hibernate.cfg.AvailableSettings;

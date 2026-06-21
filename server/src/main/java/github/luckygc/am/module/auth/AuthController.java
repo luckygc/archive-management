@@ -5,7 +5,6 @@ import java.util.List;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -41,14 +40,16 @@ public class AuthController {
     public record CurrentUserDto(String username, String displayName, List<String> roles) {
 
         public static CurrentUserDto from(Authentication authentication) {
-            List<String> roles = authentication.getAuthorities().stream()
-                    .map(GrantedAuthority::getAuthority)
-                    .map(authority -> Strings.CS.removeStart(authority, "ROLE_"))
-                    .toList();
+            List<String> roles =
+                    authentication.getAuthorities().stream()
+                            .map(GrantedAuthority::getAuthority)
+                            .map(authority -> Strings.CS.removeStart(authority, "ROLE_"))
+                            .toList();
             String username = authentication.getName();
-            String displayName = authentication.getPrincipal() instanceof ArchiveUserDetails userDetails
-                    ? userDetails.displayName()
-                    : username;
+            String displayName =
+                    authentication.getPrincipal() instanceof ArchiveUserDetails userDetails
+                            ? userDetails.displayName()
+                            : username;
             return new CurrentUserDto(username, displayName, roles);
         }
     }

@@ -13,25 +13,22 @@ import org.junit.jupiter.api.io.TempDir;
 
 class DelegatingFileStorageServiceTests {
 
-    @TempDir
-    Path tempDir;
+    @TempDir Path tempDir;
 
     @Test
     void useDefaultStorageTypeWhenUpload() throws Exception {
         FileStorageBackend localBackend = localBackend();
-        DelegatingFileStorageService service = new DelegatingFileStorageService(
-                StorageType.LOCAL,
-                "local-test",
-                List.of(localBackend)
-        );
+        DelegatingFileStorageService service =
+                new DelegatingFileStorageService(
+                        StorageType.LOCAL, "local-test", List.of(localBackend));
 
         byte[] content = "archive file".getBytes(StandardCharsets.UTF_8);
-        StorageObjectInfo stored = service.putObject(
-                "2026/06/06/demo.txt",
-                new ByteArrayInputStream(content),
-                content.length,
-                "text/plain"
-        );
+        StorageObjectInfo stored =
+                service.putObject(
+                        "2026/06/06/demo.txt",
+                        new ByteArrayInputStream(content),
+                        content.length,
+                        "text/plain");
 
         assertThat(stored.storageType()).isEqualTo(StorageType.LOCAL);
         assertThat(stored.bucketName()).isEqualTo("local-test");
@@ -40,30 +37,28 @@ class DelegatingFileStorageServiceTests {
 
     @Test
     void rejectStorageTypeWithoutConfiguredBackend() {
-        DelegatingFileStorageService service = new DelegatingFileStorageService(
-                StorageType.LOCAL,
-                "local-test",
-                List.of(localBackend())
-        );
+        DelegatingFileStorageService service =
+                new DelegatingFileStorageService(
+                        StorageType.LOCAL, "local-test", List.of(localBackend()));
 
-        assertThatThrownBy(() -> service.objectExists(StorageType.S3, "bucket", "2026/06/06/demo.txt"))
+        assertThatThrownBy(
+                        () -> service.objectExists(StorageType.S3, "bucket", "2026/06/06/demo.txt"))
                 .isInstanceOf(StorageException.class)
                 .hasMessageContaining("未启用文件存储位置: S3/bucket");
     }
 
     @Test
     void routeTencentCosByStorageTypeAndBucketName() {
-        DelegatingFileStorageService service = new DelegatingFileStorageService(
-                StorageType.S3,
-                "archive",
-                List.of(
-                        objectBackend(StorageType.S3, "archive"),
-                        objectBackend(StorageType.MINIO, "archive"),
-                        objectBackend(StorageType.COS, "archive"),
-                        objectBackend(StorageType.OSS, "archive"),
-                        objectBackend(StorageType.OBS, "archive")
-                )
-        );
+        DelegatingFileStorageService service =
+                new DelegatingFileStorageService(
+                        StorageType.S3,
+                        "archive",
+                        List.of(
+                                objectBackend(StorageType.S3, "archive"),
+                                objectBackend(StorageType.MINIO, "archive"),
+                                objectBackend(StorageType.COS, "archive"),
+                                objectBackend(StorageType.OSS, "archive"),
+                                objectBackend(StorageType.OBS, "archive")));
 
         assertThat(service.bucketName(StorageType.COS)).isEqualTo("archive");
     }
@@ -72,18 +67,24 @@ class DelegatingFileStorageServiceTests {
     void routeLocalStorageByBucketName() throws Exception {
         LocalFileStorageService dataBackend = localBackend("data", tempDir.resolve("data"));
         LocalFileStorageService nasBackend = localBackend("nas", tempDir.resolve("nas"));
-        DelegatingFileStorageService service = new DelegatingFileStorageService(
-                StorageType.LOCAL,
-                "data",
-                List.of(dataBackend, nasBackend)
-        );
+        DelegatingFileStorageService service =
+                new DelegatingFileStorageService(
+                        StorageType.LOCAL, "data", List.of(dataBackend, nasBackend));
 
         byte[] content = "nas file".getBytes(StandardCharsets.UTF_8);
-        dataBackend.putObject("2026/06/06/demo.txt", new ByteArrayInputStream("data file".getBytes(StandardCharsets.UTF_8)),
-                9, "text/plain");
-        nasBackend.putObject("2026/06/06/demo.txt", new ByteArrayInputStream(content), content.length, "text/plain");
+        dataBackend.putObject(
+                "2026/06/06/demo.txt",
+                new ByteArrayInputStream("data file".getBytes(StandardCharsets.UTF_8)),
+                9,
+                "text/plain");
+        nasBackend.putObject(
+                "2026/06/06/demo.txt",
+                new ByteArrayInputStream(content),
+                content.length,
+                "text/plain");
 
-        try (FileStorageResource resource = service.getObject(StorageType.LOCAL, "nas", "2026/06/06/demo.txt")) {
+        try (FileStorageResource resource =
+                service.getObject(StorageType.LOCAL, "nas", "2026/06/06/demo.txt")) {
             assertThat(resource.bucketName()).isEqualTo("nas");
             assertThat(resource.inputStream().readAllBytes()).isEqualTo(content);
         }
@@ -93,19 +94,17 @@ class DelegatingFileStorageServiceTests {
     void uploadToActiveLocalBucket() throws Exception {
         LocalFileStorageService dataBackend = localBackend("data", tempDir.resolve("data"));
         LocalFileStorageService nasBackend = localBackend("nas", tempDir.resolve("nas"));
-        DelegatingFileStorageService service = new DelegatingFileStorageService(
-                StorageType.LOCAL,
-                "nas",
-                List.of(dataBackend, nasBackend)
-        );
+        DelegatingFileStorageService service =
+                new DelegatingFileStorageService(
+                        StorageType.LOCAL, "nas", List.of(dataBackend, nasBackend));
 
         byte[] content = "active nas file".getBytes(StandardCharsets.UTF_8);
-        StorageObjectInfo stored = service.putObject(
-                "2026/06/06/active.txt",
-                new ByteArrayInputStream(content),
-                content.length,
-                "text/plain"
-        );
+        StorageObjectInfo stored =
+                service.putObject(
+                        "2026/06/06/active.txt",
+                        new ByteArrayInputStream(content),
+                        content.length,
+                        "text/plain");
 
         assertThat(stored.bucketName()).isEqualTo("nas");
         assertThat(dataBackend.objectExists("2026/06/06/active.txt")).isFalse();
@@ -136,9 +135,13 @@ class DelegatingFileStorageServiceTests {
             }
 
             @Override
-            public StorageObjectInfo putObject(String objectKey, java.io.InputStream inputStream, long contentLength,
-                                               String contentType) {
-                return new StorageObjectInfo(storageType, bucketName, objectKey, contentLength, contentType, null, null);
+            public StorageObjectInfo putObject(
+                    String objectKey,
+                    java.io.InputStream inputStream,
+                    long contentLength,
+                    String contentType) {
+                return new StorageObjectInfo(
+                        storageType, bucketName, objectKey, contentLength, contentType, null, null);
             }
 
             @Override
@@ -152,8 +155,7 @@ class DelegatingFileStorageServiceTests {
             }
 
             @Override
-            public void deleteObject(String objectKey) {
-            }
+            public void deleteObject(String objectKey) {}
         };
     }
 }

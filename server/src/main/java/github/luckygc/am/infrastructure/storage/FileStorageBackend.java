@@ -10,11 +10,8 @@ interface FileStorageBackend {
     String bucketName();
 
     StorageObjectInfo putObject(
-            String objectKey,
-            InputStream inputStream,
-            long contentLength,
-            String contentType
-    ) throws IOException;
+            String objectKey, InputStream inputStream, long contentLength, String contentType)
+            throws IOException;
 
     FileStorageResource getObject(String objectKey) throws IOException;
 

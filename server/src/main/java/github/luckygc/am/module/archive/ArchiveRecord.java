@@ -1,15 +1,18 @@
 package github.luckygc.am.module.archive;
 
+import java.time.LocalDateTime;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
-import lombok.Data;
+
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+
+import lombok.Data;
 
 @Data
 @Entity
@@ -40,12 +43,6 @@ public class ArchiveRecord {
 
     @Column(name = "security_level", length = 50)
     private String securityLevel;
-
-    @Column(name = "organization_id")
-    private Long organizationId;
-
-    @Column(name = "organization_code", length = 100)
-    private String organizationCode;
 
     @Column(name = "sort_order", nullable = false)
     private int sortOrder;

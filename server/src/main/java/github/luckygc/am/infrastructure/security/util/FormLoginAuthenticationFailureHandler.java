@@ -1,6 +1,5 @@
 package github.luckygc.am.infrastructure.security.util;
 
-import github.luckygc.am.infrastructure.security.AuthenticationResponseWriter;
 import java.io.IOException;
 
 import jakarta.servlet.ServletException;
@@ -10,6 +9,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.stereotype.Component;
+
+import github.luckygc.am.infrastructure.security.AuthenticationResponseWriter;
 
 @Component
 public class FormLoginAuthenticationFailureHandler implements AuthenticationFailureHandler {

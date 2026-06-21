@@ -1,8 +1,5 @@
 package github.luckygc.am.infrastructure.security.config;
 
-import github.luckygc.am.infrastructure.security.util.FormLoginAuthenticationFailureHandler;
-import github.luckygc.am.infrastructure.security.util.HttpStatusLogoutSuccessHandler;
-
 import jakarta.servlet.http.HttpServletRequest;
 
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -10,9 +7,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.annotation.web.configurers.AuthorizeHttpRequestsConfigurer;
 import org.springframework.security.config.annotation.web.configurers.CorsConfigurer;
@@ -20,7 +18,6 @@ import org.springframework.security.config.annotation.web.configurers.ExceptionH
 import org.springframework.security.config.annotation.web.configurers.FormLoginConfigurer;
 import org.springframework.security.config.annotation.web.configurers.LogoutConfigurer;
 import org.springframework.security.config.annotation.web.configurers.SecurityContextConfigurer;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.AuthenticationEntryPoint;
@@ -30,9 +27,12 @@ import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.util.matcher.RequestMatcher;
-import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import github.luckygc.am.infrastructure.security.util.FormLoginAuthenticationFailureHandler;
+import github.luckygc.am.infrastructure.security.util.HttpStatusLogoutSuccessHandler;
 
 @Configuration
 @EnableWebSecurity
@@ -62,11 +62,8 @@ public class SecurityConfig {
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        return http
-                .cors(this::configureCors)
-                .csrf(csrf -> csrf
-                        .spa()
-                        .ignoringRequestMatchers("/api/v1/auth/cap/**"))
+        return http.cors(this::configureCors)
+                .csrf(csrf -> csrf.spa().ignoringRequestMatchers("/api/v1/auth/cap/**"))
                 .securityContext(this::configureSecurityContext)
                 .authorizeHttpRequests(this::configureAuthorization)
                 .addFilterBefore(powLoginFilter, UsernamePasswordAuthenticationFilter.class)
@@ -86,13 +83,19 @@ public class SecurityConfig {
     }
 
     private void configureAuthorization(
-            AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry authorize) {
+            AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry
+                    authorize) {
         authorize
-                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/v1/auth:login").permitAll()
-                .requestMatchers("/api/v1/auth/cap/**").permitAll()
-                .requestMatchers("/actuator/**").hasRole("系统监控")
-                .anyRequest().authenticated();
+                .requestMatchers(HttpMethod.OPTIONS, "/**")
+                .permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/v1/auth:login")
+                .permitAll()
+                .requestMatchers("/api/v1/auth/cap/**")
+                .permitAll()
+                .requestMatchers("/actuator/**")
+                .hasRole("系统监控")
+                .anyRequest()
+                .authenticated();
     }
 
     private void configureFormLogin(FormLoginConfigurer<HttpSecurity> formLogin) {
@@ -106,13 +109,13 @@ public class SecurityConfig {
     }
 
     private void configureLogout(LogoutConfigurer<HttpSecurity> logout) {
-        logout
-                .logoutUrl("/api/v1/auth:logout")
-                .logoutSuccessHandler(logoutSuccessHandler);
+        logout.logoutUrl("/api/v1/auth:logout").logoutSuccessHandler(logoutSuccessHandler);
     }
 
-    private void configureExceptionHandling(ExceptionHandlingConfigurer<HttpSecurity> exceptionHandling) {
-        exceptionHandling.defaultAuthenticationEntryPointFor(unauthorizedEntryPoint(), new ApiRequestMatcher());
+    private void configureExceptionHandling(
+            ExceptionHandlingConfigurer<HttpSecurity> exceptionHandling) {
+        exceptionHandling.defaultAuthenticationEntryPointFor(
+                unauthorizedEntryPoint(), new ApiRequestMatcher());
     }
 
     private AuthenticationEntryPoint unauthorizedEntryPoint() {
@@ -125,8 +128,8 @@ public class SecurityConfig {
     }
 
     @Bean
-    AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration)
-            throws Exception {
+    AuthenticationManager authenticationManager(
+            AuthenticationConfiguration authenticationConfiguration) throws Exception {
         return authenticationConfiguration.getAuthenticationManager();
     }
 

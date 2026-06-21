@@ -18,6 +18,7 @@
         <java.version>25</java.version>
         <hibernate.version>7.4.1.Final</hibernate.version>
         <spring-ai.version>2.0.0-M8</spring-ai.version>
+        <spotless.version>2.46.1</spotless.version>
     </properties>
 
     <dependencies>
@@ -244,6 +245,40 @@
                         </configuration>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+                <version>${spotless.version}</version>
+                <configuration>
+                    <formats>
+                        <format>
+                            <includes>
+                                <include>pom.xml</include>
+                                <include>src/main/resources/**/*.sql</include>
+                                <include>src/main/resources/**/*.yaml</include>
+                                <include>src/main/resources/**/*.yml</include>
+                                <include>src/test/resources/**/*.sql</include>
+                                <include>src/test/resources/**/*.yaml</include>
+                                <include>src/test/resources/**/*.yml</include>
+                            </includes>
+                            <trimTrailingWhitespace/>
+                            <endWithNewline/>
+                        </format>
+                    </formats>
+                    <java>
+                        <googleJavaFormat>
+                            <version>1.28.0</version>
+                            <style>AOSP</style>
+                            <formatJavadoc>false</formatJavadoc>
+                        </googleJavaFormat>
+                        <importOrder>
+                            <order>java|javax,jakarta,org,com,github,,#</order>
+                        </importOrder>
+                        <removeUnusedImports/>
+                        <formatAnnotations/>
+                    </java>
+                </configuration>
             </plugin>
         </plugins>
     </build>

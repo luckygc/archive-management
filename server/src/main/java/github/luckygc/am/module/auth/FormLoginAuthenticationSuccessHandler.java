@@ -1,6 +1,5 @@
 package github.luckygc.am.module.auth;
 
-import github.luckygc.am.infrastructure.security.AuthenticationResponseWriter;
 import java.io.IOException;
 
 import jakarta.servlet.ServletException;
@@ -12,6 +11,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.stereotype.Component;
+
+import github.luckygc.am.infrastructure.security.AuthenticationResponseWriter;
 
 @Component
 public class FormLoginAuthenticationSuccessHandler implements AuthenticationSuccessHandler {
@@ -28,14 +29,13 @@ public class FormLoginAuthenticationSuccessHandler implements AuthenticationSucc
 
     @Override
     public void onAuthenticationSuccess(
-            HttpServletRequest request,
-            HttpServletResponse response,
-            Authentication authentication)
+            HttpServletRequest request, HttpServletResponse response, Authentication authentication)
             throws IOException, ServletException {
         var securityContext = SecurityContextHolder.createEmptyContext();
         securityContext.setAuthentication(authentication);
         SecurityContextHolder.setContext(securityContext);
         securityContextRepository.saveContext(securityContext, request, response);
-        responseWriter.writeCurrentUser(response, AuthController.CurrentUserDto.from(authentication));
+        responseWriter.writeCurrentUser(
+                response, AuthController.CurrentUserDto.from(authentication));
     }
 }

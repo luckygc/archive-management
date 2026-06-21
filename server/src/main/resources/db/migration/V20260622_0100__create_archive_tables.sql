@@ -8,8 +8,6 @@ create table am_archive_record
     archive_status      varchar(50)  not null,
     process_status     varchar(50)  not null,
     security_level      varchar(50),
-    organization_id     bigint,
-    organization_code   varchar(100),
     sort_order          integer      not null default 0,
     archived_at         timestamp,
     deleted_flag        boolean      not null default false,
@@ -26,9 +24,6 @@ create index idx_am_archive_record_category_active
 create index idx_am_archive_record_year_active
     on am_archive_record (archive_year)
     where deleted_flag = false;
-create index idx_am_archive_record_organization_active
-    on am_archive_record (organization_id, organization_code)
-    where deleted_flag = false;
 create index idx_am_archive_record_sort_active
     on am_archive_record (sort_order, id)
     where deleted_flag = false;
@@ -43,8 +38,6 @@ comment on column am_archive_record.category_name is '档案分类名称';
 comment on column am_archive_record.archive_status is '档案状态';
 comment on column am_archive_record.process_status is '流程状态';
 comment on column am_archive_record.security_level is '密级';
-comment on column am_archive_record.organization_id is '机构 ID';
-comment on column am_archive_record.organization_code is '机构编码';
 comment on column am_archive_record.sort_order is '排序字段';
 comment on column am_archive_record.archived_at is '归档时间';
 comment on column am_archive_record.deleted_flag is '删除标记';

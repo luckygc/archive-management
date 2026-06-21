@@ -2,7 +2,7 @@ SERVER_DIR := server
 MVN := mvn
 VP := vp
 
-.PHONY: help frontend-install frontend-check frontend-test frontend-build frontend-ready frontend-dev server-java server-deps server-compile server-test server-package server-run server-init
+.PHONY: help frontend-install frontend-check frontend-test frontend-build frontend-ready frontend-dev server-java server-deps server-format-check server-format server-compile server-test server-package server-run server-init
 
 help:
 	@echo "可用命令:"
@@ -14,6 +14,8 @@ help:
 	@echo "  make frontend-dev      启动前端开发服务"
 	@echo "  make server-java     打印 Java/Maven 版本"
 	@echo "  make server-deps     下载 Maven 依赖"
+	@echo "  make server-format-check  检查 server 格式"
+	@echo "  make server-format   自动格式化 server"
 	@echo "  make server-compile  编译 server"
 	@echo "  make server-test     测试 server"
 	@echo "  make server-package  打包 server"
@@ -44,6 +46,12 @@ server-java:
 
 server-deps:
 	cd $(SERVER_DIR) && $(MVN) -q dependency:resolve
+
+server-format-check:
+	cd $(SERVER_DIR) && $(MVN) spotless:check
+
+server-format:
+	cd $(SERVER_DIR) && $(MVN) spotless:apply
 
 server-compile:
 	cd $(SERVER_DIR) && $(MVN) compile

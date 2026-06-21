@@ -9,8 +9,8 @@ public record FileStorageResource(
         String objectKey,
         InputStream inputStream,
         long contentLength,
-        String contentType
-) implements AutoCloseable {
+        String contentType)
+        implements AutoCloseable {
 
     @Override
     public void close() throws IOException {

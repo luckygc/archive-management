@@ -32,17 +32,29 @@ class LocalFileStorageService implements FileStorageBackend {
     }
 
     @Override
-    public StorageObjectInfo putObject(String objectKey, InputStream inputStream, long contentLength, String contentType)
+    public StorageObjectInfo putObject(
+            String objectKey, InputStream inputStream, long contentLength, String contentType)
             throws IOException {
         String normalizedObjectKey = ObjectKeys.normalize(objectKey);
         Path target = resolve(normalizedObjectKey);
         Files.createDirectories(target.getParent());
-        Path tempFile = target.resolveSibling(target.getFileName() + "." + UUID.randomUUID() + ".tmp");
+        Path tempFile =
+                target.resolveSibling(target.getFileName() + "." + UUID.randomUUID() + ".tmp");
         try {
             long written = Files.copy(inputStream, tempFile, StandardCopyOption.REPLACE_EXISTING);
-            Files.move(tempFile, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-            return new StorageObjectInfo(storageType(), bucketName(), normalizedObjectKey, written, contentType,
-                    Files.getLastModifiedTime(target).toInstant(), null);
+            Files.move(
+                    tempFile,
+                    target,
+                    StandardCopyOption.REPLACE_EXISTING,
+                    StandardCopyOption.ATOMIC_MOVE);
+            return new StorageObjectInfo(
+                    storageType(),
+                    bucketName(),
+                    normalizedObjectKey,
+                    written,
+                    contentType,
+                    Files.getLastModifiedTime(target).toInstant(),
+                    null);
         } finally {
             Files.deleteIfExists(tempFile);
         }
@@ -56,8 +68,13 @@ class LocalFileStorageService implements FileStorageBackend {
             throw new NoSuchFileException(normalizedObjectKey);
         }
         String contentType = Files.probeContentType(file);
-        return new FileStorageResource(storageType(), bucketName(), normalizedObjectKey, Files.newInputStream(file),
-                Files.size(file), contentType);
+        return new FileStorageResource(
+                storageType(),
+                bucketName(),
+                normalizedObjectKey,
+                Files.newInputStream(file),
+                Files.size(file),
+                contentType);
     }
 
     @Override
@@ -77,5 +94,4 @@ class LocalFileStorageService implements FileStorageBackend {
         }
         return path;
     }
-
 }

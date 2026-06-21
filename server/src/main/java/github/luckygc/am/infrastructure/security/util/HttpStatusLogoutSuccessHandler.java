@@ -16,9 +16,7 @@ public class HttpStatusLogoutSuccessHandler implements LogoutSuccessHandler {
 
     @Override
     public void onLogoutSuccess(
-            HttpServletRequest request,
-            HttpServletResponse response,
-            Authentication authentication)
+            HttpServletRequest request, HttpServletResponse response, Authentication authentication)
             throws IOException, ServletException {
         response.setStatus(HttpStatus.NO_CONTENT.value());
     }

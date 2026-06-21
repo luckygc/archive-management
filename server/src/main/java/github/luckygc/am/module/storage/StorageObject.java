@@ -1,6 +1,7 @@
 package github.luckygc.am.module.storage;
 
-import github.luckygc.am.infrastructure.storage.StorageType;
+import java.time.LocalDateTime;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -9,9 +10,12 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
-import lombok.Data;
+
 import org.hibernate.annotations.CreationTimestamp;
+
+import github.luckygc.am.infrastructure.storage.StorageType;
+
+import lombok.Data;
 
 @Data
 @Entity

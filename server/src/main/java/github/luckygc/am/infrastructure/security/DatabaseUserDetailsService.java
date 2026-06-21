@@ -22,17 +22,23 @@ public class DatabaseUserDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        ArchiveUserRecord user = jdbcClient.sql("""
+        ArchiveUserRecord user =
+                jdbcClient
+                        .sql(
+                                """
                         select id, username, password, display_name, enabled
                         from am_auth_user
                         where username = :username
                         """)
-                .param("username", username)
-                .query(this::mapUser)
-                .optional()
-                .orElseThrow(() -> new UsernameNotFoundException("用户不存在"));
+                        .param("username", username)
+                        .query(this::mapUser)
+                        .optional()
+                        .orElseThrow(() -> new UsernameNotFoundException("用户不存在"));
 
-        List<SimpleGrantedAuthority> authorities = jdbcClient.sql("""
+        List<SimpleGrantedAuthority> authorities =
+                jdbcClient
+                        .sql(
+                                """
                         select role.role_name
                         from am_auth_user_role_rel user_role
                         join am_auth_role role on role.id = user_role.role_id
@@ -40,9 +46,12 @@ public class DatabaseUserDetailsService implements UserDetailsService {
                           and role.enabled = true
                         order by role.role_name
                         """)
-                .param("userId", user.id())
-                .query((rs, rowNum) -> new SimpleGrantedAuthority("ROLE_" + rs.getString("role_name")))
-                .list();
+                        .param("userId", user.id())
+                        .query(
+                                (rs, rowNum) ->
+                                        new SimpleGrantedAuthority(
+                                                "ROLE_" + rs.getString("role_name")))
+                        .list();
 
         return new ArchiveUserDetails(
                 user.id(),
@@ -62,6 +71,6 @@ public class DatabaseUserDetailsService implements UserDetailsService {
                 rs.getBoolean("enabled"));
     }
 
-    private record ArchiveUserRecord(Long id, String username, String password, String displayName, boolean enabled) {
-    }
+    private record ArchiveUserRecord(
+            Long id, String username, String password, String displayName, boolean enabled) {}
 }

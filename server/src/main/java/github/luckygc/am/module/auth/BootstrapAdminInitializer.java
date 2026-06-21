@@ -10,7 +10,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
-@ConditionalOnProperty(prefix = "archive.auth.bootstrap-admin", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(
+        prefix = "archive.auth.bootstrap-admin",
+        name = "enabled",
+        havingValue = "true")
 public class BootstrapAdminInitializer implements ApplicationRunner {
 
     private final BootstrapAdminProperties properties;
@@ -33,30 +36,41 @@ public class BootstrapAdminInitializer implements ApplicationRunner {
             return;
         }
 
-        String username = requireText(properties.getUsername(), "archive.auth.bootstrap-admin.username");
-        String password = requireText(properties.getPassword(), "archive.auth.bootstrap-admin.password");
-        String displayName = requireText(properties.getDisplayName(), "archive.auth.bootstrap-admin.display-name");
+        String username =
+                requireText(properties.getUsername(), "archive.auth.bootstrap-admin.username");
+        String password =
+                requireText(properties.getPassword(), "archive.auth.bootstrap-admin.password");
+        String displayName =
+                requireText(
+                        properties.getDisplayName(), "archive.auth.bootstrap-admin.display-name");
 
-        boolean exists = jdbcClient.sql("select exists(select 1 from am_auth_user where username = :username)")
-                .param("username", username)
-                .query((rs, rowNum) -> rs.getBoolean(1))
-                .single();
+        boolean exists =
+                jdbcClient
+                        .sql("select exists(select 1 from am_auth_user where username = :username)")
+                        .param("username", username)
+                        .query((rs, rowNum) -> rs.getBoolean(1))
+                        .single();
         if (exists) {
             return;
         }
 
-        Long userId = jdbcClient.sql("""
+        Long userId =
+                jdbcClient
+                        .sql(
+                                """
                         insert into am_auth_user (username, password, display_name)
                         values (:username, :password, :displayName)
                         returning id
                         """)
-                .param("username", username)
-                .param("password", passwordEncoder.encode(password))
-                .param("displayName", displayName)
-                .query((rs, rowNum) -> rs.getLong("id"))
-                .single();
+                        .param("username", username)
+                        .param("password", passwordEncoder.encode(password))
+                        .param("displayName", displayName)
+                        .query((rs, rowNum) -> rs.getLong("id"))
+                        .single();
 
-        jdbcClient.sql("""
+        jdbcClient
+                .sql(
+                        """
                         insert into am_auth_user_role_rel (user_id, role_id)
                         select :userId, id
                         from am_auth_role

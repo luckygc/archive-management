@@ -12,8 +12,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 class LocalFileStorageServiceTests {
 
-    @TempDir
-    Path tempDir;
+    @TempDir Path tempDir;
 
     @Test
     void putGetExistsAndDeleteObject() throws Exception {
@@ -22,12 +21,12 @@ class LocalFileStorageServiceTests {
         LocalFileStorageService service = new LocalFileStorageService(properties);
 
         byte[] content = "archive file".getBytes(StandardCharsets.UTF_8);
-        StorageObjectInfo stored = service.putObject(
-                "fonds/demo.txt",
-                new ByteArrayInputStream(content),
-                content.length,
-                "text/plain"
-        );
+        StorageObjectInfo stored =
+                service.putObject(
+                        "fonds/demo.txt",
+                        new ByteArrayInputStream(content),
+                        content.length,
+                        "text/plain");
 
         assertThat(stored.objectKey()).isEqualTo("fonds/demo.txt");
         assertThat(stored.contentLength()).isEqualTo(content.length);

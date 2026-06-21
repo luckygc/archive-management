@@ -9,6 +9,4 @@ public record StorageObjectInfo(
         long contentLength,
         String contentType,
         Instant lastModified,
-        String eTag
-) {
-}
+        String eTag) {}

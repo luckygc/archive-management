@@ -13,7 +13,8 @@ public class TransactionalStatelessSessionContext {
     private final SessionFactory sessionFactory;
     private final DataSource dataSource;
 
-    public TransactionalStatelessSessionContext(SessionFactory sessionFactory, DataSource dataSource) {
+    public TransactionalStatelessSessionContext(
+            SessionFactory sessionFactory, DataSource dataSource) {
         this.sessionFactory = sessionFactory;
         this.dataSource = dataSource;
     }
@@ -24,26 +25,30 @@ public class TransactionalStatelessSessionContext {
             return statelessSession;
         }
         if (resource != null) {
-            throw new IllegalStateException("SessionFactory 已绑定非 StatelessSession 资源: " + resource.getClass().getName());
+            throw new IllegalStateException(
+                    "SessionFactory 已绑定非 StatelessSession 资源: " + resource.getClass().getName());
         }
         if (!TransactionSynchronizationManager.isSynchronizationActive()) {
             throw new IllegalStateException("当前线程没有激活的 Spring 事务同步，无法获取事务内 StatelessSession");
         }
 
-        StatelessSession statelessSession = sessionFactory.openStatelessSession(DataSourceUtils.getConnection(dataSource));
+        StatelessSession statelessSession =
+                sessionFactory.openStatelessSession(DataSourceUtils.getConnection(dataSource));
         TransactionSynchronizationManager.bindResource(sessionFactory, statelessSession);
         TransactionSynchronizationManager.registerSynchronization(
                 new StatelessSessionSynchronization(sessionFactory, statelessSession));
         return statelessSession;
     }
 
-    private static final class StatelessSessionSynchronization implements TransactionSynchronization {
+    private static final class StatelessSessionSynchronization
+            implements TransactionSynchronization {
 
         private final SessionFactory sessionFactory;
         private final StatelessSession statelessSession;
         private boolean holderActive = true;
 
-        private StatelessSessionSynchronization(SessionFactory sessionFactory, StatelessSession statelessSession) {
+        private StatelessSessionSynchronization(
+                SessionFactory sessionFactory, StatelessSession statelessSession) {
             this.sessionFactory = sessionFactory;
             this.statelessSession = statelessSession;
         }

@@ -14,21 +14,26 @@ class DelegatingFileStorageService implements FileStorageService, AutoCloseable 
 
     private final Map<BackendKey, FileStorageBackend> backends;
 
-    DelegatingFileStorageService(StorageType defaultStorageType, String defaultBucketName, List<FileStorageBackend> backends) {
+    DelegatingFileStorageService(
+            StorageType defaultStorageType,
+            String defaultBucketName,
+            List<FileStorageBackend> backends) {
         this.defaultStorageType = defaultStorageType;
         this.defaultBucketName = defaultBucketName;
         this.backends = new HashMap<>();
         for (FileStorageBackend backend : backends) {
             BackendKey backendKey = new BackendKey(backend.storageType(), backend.bucketName());
             if (this.backends.put(backendKey, backend) != null) {
-                throw new StorageException("文件存储位置重复配置: " + backend.storageType() + "/" + backend.bucketName());
+                throw new StorageException(
+                        "文件存储位置重复配置: " + backend.storageType() + "/" + backend.bucketName());
             }
         }
         backend(defaultStorageType, defaultBucketName);
     }
 
     @Override
-    public StorageObjectInfo putObject(String objectKey, InputStream inputStream, long contentLength, String contentType)
+    public StorageObjectInfo putObject(
+            String objectKey, InputStream inputStream, long contentLength, String contentType)
             throws IOException {
         return putObject(defaultStorageType, objectKey, inputStream, contentLength, contentType);
     }
@@ -39,9 +44,10 @@ class DelegatingFileStorageService implements FileStorageService, AutoCloseable 
             String objectKey,
             InputStream inputStream,
             long contentLength,
-            String contentType
-    ) throws IOException {
-        return backend(storageType, bucketName(storageType)).putObject(objectKey, inputStream, contentLength, contentType);
+            String contentType)
+            throws IOException {
+        return backend(storageType, bucketName(storageType))
+                .putObject(objectKey, inputStream, contentLength, contentType);
     }
 
     @Override
@@ -50,7 +56,8 @@ class DelegatingFileStorageService implements FileStorageService, AutoCloseable 
     }
 
     @Override
-    public FileStorageResource getObject(StorageType storageType, String bucketName, String objectKey) throws IOException {
+    public FileStorageResource getObject(
+            StorageType storageType, String bucketName, String objectKey) throws IOException {
         return backend(storageType, bucketName).getObject(objectKey);
     }
 
@@ -60,7 +67,8 @@ class DelegatingFileStorageService implements FileStorageService, AutoCloseable 
     }
 
     @Override
-    public boolean objectExists(StorageType storageType, String bucketName, String objectKey) throws IOException {
+    public boolean objectExists(StorageType storageType, String bucketName, String objectKey)
+            throws IOException {
         return backend(storageType, bucketName).objectExists(objectKey);
     }
 
@@ -70,7 +78,8 @@ class DelegatingFileStorageService implements FileStorageService, AutoCloseable 
     }
 
     @Override
-    public void deleteObject(StorageType storageType, String bucketName, String objectKey) throws IOException {
+    public void deleteObject(StorageType storageType, String bucketName, String objectKey)
+            throws IOException {
         backend(storageType, bucketName).deleteObject(objectKey);
     }
 
@@ -120,6 +129,5 @@ class DelegatingFileStorageService implements FileStorageService, AutoCloseable 
         }
     }
 
-    private record BackendKey(StorageType storageType, String bucketName) {
-    }
+    private record BackendKey(StorageType storageType, String bucketName) {}
 }

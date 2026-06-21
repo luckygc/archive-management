@@ -1,7 +1,8 @@
 package github.luckygc.am.module.auth;
 
-import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+
+import lombok.Data;
 
 @Data
 @ConfigurationProperties(prefix = "archive.auth.bootstrap-admin")

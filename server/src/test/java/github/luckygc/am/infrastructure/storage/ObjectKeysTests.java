@@ -14,7 +14,8 @@ class ObjectKeysTests {
         String objectKey = ObjectKeys.generate(LocalDate.of(2026, 6, 6), "原始文件.PDF");
 
         assertThat(objectKey)
-                .matches("2026/06/06/[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\\.pdf");
+                .matches(
+                        "2026/06/06/[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\\.pdf");
     }
 
     @Test
@@ -22,7 +23,8 @@ class ObjectKeysTests {
         String objectKey = ObjectKeys.generate(LocalDate.of(2026, 6, 6), "demo.bad extension");
 
         assertThat(objectKey)
-                .matches("2026/06/06/[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}");
+                .matches(
+                        "2026/06/06/[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}");
     }
 
     @Test
@@ -33,7 +35,6 @@ class ObjectKeysTests {
 
     @Test
     void normalizeWindowsSeparatorsToObjectKeySeparators() {
-        assertThat(ObjectKeys.normalize("fonds\\2026\\demo.txt"))
-                .isEqualTo("fonds/2026/demo.txt");
+        assertThat(ObjectKeys.normalize("fonds\\2026\\demo.txt")).isEqualTo("fonds/2026/demo.txt");
     }
 }

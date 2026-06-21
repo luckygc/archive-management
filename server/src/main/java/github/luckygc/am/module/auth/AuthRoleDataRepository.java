@@ -8,6 +8,7 @@ import jakarta.data.repository.BasicRepository;
 import jakarta.data.repository.Find;
 import jakarta.data.repository.OrderBy;
 import jakarta.data.repository.Repository;
+
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,8 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Repository
 public interface AuthRoleDataRepository extends BasicRepository<AuthRole, Long> {
 
-    @Nullable
-    @Transactional(readOnly = true)
+    @Nullable @Transactional(readOnly = true)
     @Find
     AuthRole findOptionalByRoleName(@Nonnull String roleName);
 
