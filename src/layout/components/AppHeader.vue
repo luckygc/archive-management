@@ -25,7 +25,7 @@ async function handleLogout() {
 <template>
   <header class="app-header">
     <div class="app-header__nav">
-      <el-breadcrumb v-if="breadcrumbItems.length > 1" separator="/">
+      <el-breadcrumb separator="/">
         <el-breadcrumb-item v-for="item in breadcrumbItems" :key="item">
           {{ item }}
         </el-breadcrumb-item>

@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { computed, nextTick, ref } from "vue";
+import { computed, nextTick, ref, shallowRef } from "vue";
 import type { RouteLocationNormalizedLoaded } from "vue-router";
 
 export interface PageTab {
@@ -60,7 +60,7 @@ function createTab(route: RouteLocationNormalizedLoaded): PageTab | null {
 }
 
 export const usePageTabsStore = defineStore("pageTabs", () => {
-  const tabs = ref<PageTab[]>([]);
+  const tabs = shallowRef<PageTab[]>([]);
   const activeFullPath = ref("");
   const suspendedCacheName = ref("");
   const activeTab = computed(() =>
@@ -84,13 +84,20 @@ export const usePageTabsStore = defineStore("pageTabs", () => {
 
     const exists = tabs.value.find((item) => item.fullPath === tab.fullPath);
     if (!exists) {
-      tabs.value.push(tab);
+      tabs.value = [...tabs.value, tab];
     } else {
-      exists.title = tab.title;
-      exists.routeName = tab.routeName;
-      exists.cacheName = tab.cacheName;
-      exists.keepAlive = tab.keepAlive;
-      exists.affix = tab.affix;
+      tabs.value = tabs.value.map((item) =>
+        item.fullPath === tab.fullPath
+          ? {
+              ...item,
+              title: tab.title,
+              routeName: tab.routeName,
+              cacheName: tab.cacheName,
+              keepAlive: tab.keepAlive,
+              affix: tab.affix,
+            }
+          : item,
+      );
     }
   }
 
@@ -101,13 +108,14 @@ export const usePageTabsStore = defineStore("pageTabs", () => {
     }
 
     const isActive = activeFullPath.value === fullPath;
-    tabs.value.splice(index, 1);
+    const nextTabs = tabs.value.filter((item) => item.fullPath !== fullPath);
+    tabs.value = nextTabs;
 
     if (!isActive) {
       return activeFullPath.value;
     }
 
-    const nextTab = tabs.value[index] ?? tabs.value[index - 1] ?? tabs.value[0];
+    const nextTab = nextTabs[index] ?? nextTabs[index - 1] ?? nextTabs[0];
     activeFullPath.value = nextTab?.fullPath ?? "/";
     return activeFullPath.value;
   }
@@ -128,6 +136,28 @@ export const usePageTabsStore = defineStore("pageTabs", () => {
     return activeFullPath.value;
   }
 
+  function closeLeft(fullPath: string) {
+    const index = tabs.value.findIndex((item) => item.fullPath === fullPath);
+    if (index < 0) {
+      return activeFullPath.value;
+    }
+
+    tabs.value = tabs.value.filter((item, itemIndex) => item.affix || itemIndex >= index);
+    activeFullPath.value = fullPath;
+    return activeFullPath.value;
+  }
+
+  function closeRight(fullPath: string) {
+    const index = tabs.value.findIndex((item) => item.fullPath === fullPath);
+    if (index < 0) {
+      return activeFullPath.value;
+    }
+
+    tabs.value = tabs.value.filter((item, itemIndex) => item.affix || itemIndex <= index);
+    activeFullPath.value = fullPath;
+    return activeFullPath.value;
+  }
+
   function closeAll() {
     tabs.value = tabs.value.filter((item) => item.affix);
     activeFullPath.value = tabs.value[0]?.fullPath ?? "/";
@@ -141,8 +171,16 @@ export const usePageTabsStore = defineStore("pageTabs", () => {
   }
 
   async function rerenderTab(tab: PageTab) {
-    tab.refreshVersion += 1;
-    tab.pageComponentKey = `${tab.fullPath}:${tab.refreshVersion}`;
+    const refreshVersion = tab.refreshVersion + 1;
+    tabs.value = tabs.value.map((item) =>
+      item.fullPath === tab.fullPath
+        ? {
+            ...item,
+            refreshVersion,
+            pageComponentKey: `${item.fullPath}:${refreshVersion}`,
+          }
+        : item,
+    );
     await nextTick();
   }
 
@@ -177,6 +215,8 @@ export const usePageTabsStore = defineStore("pageTabs", () => {
     resolveNextPathAfterClose,
     closeTab,
     closeOthers,
+    closeLeft,
+    closeRight,
     closeAll,
     refreshTab,
     refreshCurrent,
