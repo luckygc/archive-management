@@ -51,5 +51,4 @@ public class ArchiveFonds {
     @Column(name = "updated_at", nullable = false)
     @UpdateTimestamp
     private LocalDateTime updatedAt;
-
 }

@@ -30,26 +30,26 @@ class GlobalExceptionHandler {
         String status = canonicalStatus(statusCode);
         String reason = reason(status, exception);
         List<Map<String, Object>> details = details(reason, request, fieldViolations(exception));
-        return ResponseEntity.status(statusCode).body(error(statusCode.value(), message, status, details));
+        return ResponseEntity.status(statusCode)
+                .body(error(statusCode.value(), message, status, details));
     }
 
     @ExceptionHandler(Exception.class)
-    ResponseEntity<ApiErrorResponse> handleException(Exception exception, HttpServletRequest request) {
+    ResponseEntity<ApiErrorResponse> handleException(
+            Exception exception, HttpServletRequest request) {
         log.error("未处理的接口异常", exception);
         List<Map<String, Object>> details = details("UNHANDLED_EXCEPTION", request, List.of());
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(error(
-                        HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                        "服务处理失败，请稍后重试",
-                        "INTERNAL",
-                        details));
+                .body(
+                        error(
+                                HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                                "服务处理失败，请稍后重试",
+                                "INTERNAL",
+                                details));
     }
 
     private ApiErrorResponse error(
-            int code,
-            String message,
-            String status,
-            List<Map<String, Object>> details) {
+            int code, String message, String status, List<Map<String, Object>> details) {
         return new ApiErrorResponse(new ApiErrorResponse.Error(code, message, status, details));
     }
 
@@ -83,7 +83,8 @@ class GlobalExceptionHandler {
         return metadata;
     }
 
-    private List<ApiErrorResponse.FieldViolation> fieldViolations(ResponseStatusException exception) {
+    private List<ApiErrorResponse.FieldViolation> fieldViolations(
+            ResponseStatusException exception) {
         if (exception instanceof ApiBadRequestException badRequestException) {
             return badRequestException.fieldViolations();
         }

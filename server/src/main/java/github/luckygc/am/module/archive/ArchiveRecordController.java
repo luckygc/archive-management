@@ -33,18 +33,24 @@ public class ArchiveRecordController {
 
     @GetMapping("/api/v1/archive-records")
     public ArchiveRecordListDto listRecords(
-            Long categoryId, ArchiveLevel archiveLevel, String fondsCode, Authentication authentication) {
-        return archiveRecordRoutingService.listRecords(categoryId, archiveLevel, fondsCode, currentUserId(authentication));
+            Long categoryId,
+            ArchiveLevel archiveLevel,
+            String fondsCode,
+            Authentication authentication) {
+        return archiveRecordRoutingService.listRecords(
+                categoryId, archiveLevel, fondsCode, currentUserId(authentication));
     }
 
     @PostMapping("/api/v1/archive-records:search")
-    public ArchiveRecordListDto searchRecords(@RequestBody ArchiveRecordQueryRequest request, Authentication authentication) {
+    public ArchiveRecordListDto searchRecords(
+            @RequestBody ArchiveRecordQueryRequest request, Authentication authentication) {
         return archiveRecordRoutingService.searchRecords(request, currentUserId(authentication));
     }
 
     @PostMapping("/api/v1/archive-records")
     @ResponseStatus(HttpStatus.CREATED)
-    public ArchiveRecordDto createRecord(@RequestBody ArchiveRecordRequest request, Authentication authentication) {
+    public ArchiveRecordDto createRecord(
+            @RequestBody ArchiveRecordRequest request, Authentication authentication) {
         return archiveRecordRoutingService.createRecord(request, currentUserId(authentication));
     }
 
@@ -53,7 +59,8 @@ public class ArchiveRecordController {
             @PathVariable Long id,
             @RequestParam(required = false) ArchiveLayoutSurface surface,
             Authentication authentication) {
-        return archiveRecordRoutingService.getRecordDetail(id, currentUserId(authentication), surface);
+        return archiveRecordRoutingService.getRecordDetail(
+                id, currentUserId(authentication), surface);
     }
 
     @PatchMapping("/api/v1/archive-records/{id}")
@@ -87,7 +94,8 @@ public class ArchiveRecordController {
     }
 
     private Long currentUserId(Authentication authentication) {
-        if (authentication != null && authentication.getPrincipal() instanceof ArchiveUserDetails userDetails) {
+        if (authentication != null
+                && authentication.getPrincipal() instanceof ArchiveUserDetails userDetails) {
             return userDetails.id();
         }
         return null;

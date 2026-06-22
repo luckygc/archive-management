@@ -90,5 +90,4 @@ public class ArchiveRecord {
     @Column(name = "updated_at", nullable = false)
     @UpdateTimestamp
     private LocalDateTime updatedAt;
-
 }

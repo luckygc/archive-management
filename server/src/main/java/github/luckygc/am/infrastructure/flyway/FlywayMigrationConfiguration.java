@@ -1,6 +1,5 @@
 package github.luckygc.am.infrastructure.flyway;
 
-import org.flywaydb.core.Flyway;
 import org.springframework.boot.flyway.autoconfigure.FlywayMigrationStrategy;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

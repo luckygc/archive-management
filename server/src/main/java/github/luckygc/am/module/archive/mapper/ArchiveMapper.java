@@ -178,7 +178,8 @@ public interface ArchiveMapper {
 
     int markDynamicRecordDeleted(@Param("tableName") String tableName, @Param("id") Long id);
 
-    Map<String, Object> loadDynamicRecord(@Param("tableName") String tableName, @Param("id") Long id);
+    Map<String, Object> loadDynamicRecord(
+            @Param("tableName") String tableName, @Param("id") Long id);
 
     Map<String, Object> getArchiveRecord(@Param("id") Long id);
 
@@ -205,7 +206,10 @@ public interface ArchiveMapper {
 
     int markArchiveRecordDeleted(@Param("id") Long id);
 
-    int lockArchiveRecord(@Param("id") Long id, @Param("lockReason") String lockReason, @Param("lockedBy") Long lockedBy);
+    int lockArchiveRecord(
+            @Param("id") Long id,
+            @Param("lockReason") String lockReason,
+            @Param("lockedBy") Long lockedBy);
 
     int unlockArchiveRecord(@Param("id") Long id);
 
@@ -216,7 +220,8 @@ public interface ArchiveMapper {
 
     int deleteSearchProjection(@Param("archiveRecordId") Long archiveRecordId);
 
-    int insertSearchOutbox(@Param("archiveRecordId") Long archiveRecordId, @Param("eventType") String eventType);
+    int insertSearchOutbox(
+            @Param("archiveRecordId") Long archiveRecordId, @Param("eventType") String eventType);
 
     List<Map<String, Object>> listPendingSearchOutbox(@Param("limit") int limit);
 
@@ -253,11 +258,15 @@ public interface ArchiveMapper {
 
     int deleteUniqueConstraintFields(@Param("constraintId") Long constraintId);
 
-    int insertUniqueConstraintField(@Param("constraintId") Long constraintId, @Param("fieldId") Long fieldId, @Param("fieldOrder") int fieldOrder);
+    int insertUniqueConstraintField(
+            @Param("constraintId") Long constraintId,
+            @Param("fieldId") Long fieldId,
+            @Param("fieldOrder") int fieldOrder);
 
     List<Map<String, Object>> listUniqueConstraintFields(@Param("constraintId") Long constraintId);
 
-    int markFieldsExactSearchable(@Param("categoryId") Long categoryId, @Param("fieldIds") List<Long> fieldIds);
+    int markFieldsExactSearchable(
+            @Param("categoryId") Long categoryId, @Param("fieldIds") List<Long> fieldIds);
 
     List<Map<String, Object>> listFieldLayouts(
             @Param("categoryId") Long categoryId,

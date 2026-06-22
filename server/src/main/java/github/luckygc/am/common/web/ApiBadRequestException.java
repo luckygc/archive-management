@@ -17,7 +17,8 @@ public class ApiBadRequestException extends ResponseStatusException {
         this(message, List.of(new ApiErrorResponse.FieldViolation(field, description)));
     }
 
-    public ApiBadRequestException(String message, List<ApiErrorResponse.FieldViolation> fieldViolations) {
+    public ApiBadRequestException(
+            String message, List<ApiErrorResponse.FieldViolation> fieldViolations) {
         super(HttpStatus.BAD_REQUEST, message);
         this.fieldViolations = List.copyOf(fieldViolations);
     }

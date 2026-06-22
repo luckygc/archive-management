@@ -113,5 +113,4 @@ public class ArchiveField {
     @Column(name = "updated_at", nullable = false)
     @UpdateTimestamp
     private LocalDateTime updatedAt;
-
 }

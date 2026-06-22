@@ -32,13 +32,13 @@ public class ArchiveVolumeService {
         if (record.archiveLevel() != ArchiveLevel.ITEM) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "只能将卷内条目加入案卷");
         }
-        if (!volume.fondsCode().equals(record.fondsCode()) || !volume.categoryCode().equals(record.categoryCode())) {
+        if (!volume.fondsCode().equals(record.fondsCode())
+                || !volume.categoryCode().equals(record.categoryCode())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "案卷和档案记录不属于同一全宗和分类");
         }
-        int updated = archiveMapper.moveRecordToVolume(
-                volumeId,
-                archiveRecordId,
-                displayOrder == null ? 0 : displayOrder);
+        int updated =
+                archiveMapper.moveRecordToVolume(
+                        volumeId, archiveRecordId, displayOrder == null ? 0 : displayOrder);
         if (updated == 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "卷内条目已锁定或不存在，不能加入案卷");
         }
