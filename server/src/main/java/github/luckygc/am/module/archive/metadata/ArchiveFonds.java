@@ -1,4 +1,4 @@
-package github.luckygc.am.module.archive;
+package github.luckygc.am.module.archive.metadata;
 
 import java.time.LocalDateTime;
 
@@ -10,29 +10,30 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import lombok.Data;
 
 @Data
 @Entity
-@Table(name = "am_archive_record_electronic_file")
-public class ArchiveRecordElectronicFile {
+@Table(name = "am_archive_fonds")
+public class ArchiveFonds {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "archive_record_id", nullable = false)
-    private Long archiveRecordId;
+    @Column(name = "fonds_code", nullable = false, length = 100)
+    private String fondsCode;
 
-    @Column(name = "storage_object_id", nullable = false)
-    private Long storageObjectId;
+    @Column(name = "fonds_name", nullable = false)
+    private String fondsName;
 
-    @Column(name = "usage_type", nullable = false, length = 50)
-    private String usageType = "DEFAULT";
+    @Column(nullable = false)
+    private boolean enabled = true;
 
-    @Column(name = "display_order", nullable = false)
-    private int displayOrder;
+    @Column(name = "sort_order", nullable = false)
+    private int sortOrder;
 
     @Column(name = "deleted_flag", nullable = false)
     private boolean deletedFlag;
@@ -43,4 +44,11 @@ public class ArchiveRecordElectronicFile {
     @Column(name = "created_at", nullable = false)
     @CreationTimestamp
     private LocalDateTime createdAt;
+
+    @Column(name = "updated_by")
+    private Long updatedBy;
+
+    @Column(name = "updated_at", nullable = false)
+    @UpdateTimestamp
+    private LocalDateTime updatedAt;
 }

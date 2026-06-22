@@ -39,10 +39,10 @@ create table am_archive_category
     parent_id         bigint references am_archive_category (id),
     category_code     varchar(100) not null,
     category_name     varchar(255) not null,
-    management_mode   varchar(30)  not null default 'ITEM_ONLY',
+    management_mode   varchar(30)  not null default 'item_only',
     volume_table_name varchar(100),
     item_table_name   varchar(100),
-    table_status      varchar(30)  not null default 'NOT_BUILT',
+    table_status      varchar(30)  not null default 'not_built',
     built_at          timestamp,
     enabled           boolean      not null default true,
     sort_order        integer      not null default 0,
@@ -65,10 +65,10 @@ comment on column am_archive_category.id is '主键';
 comment on column am_archive_category.parent_id is '父级档案分类 ID';
 comment on column am_archive_category.category_code is '档案分类编码';
 comment on column am_archive_category.category_name is '档案分类名称';
-comment on column am_archive_category.management_mode is '管理模式：ITEM_ONLY 只按条目管理，VOLUME_ITEM 按案卷和卷内管理';
+comment on column am_archive_category.management_mode is '管理模式：item_only 只按条目管理，volume_item 按案卷和卷内条目管理';
 comment on column am_archive_category.volume_table_name is '案卷层级动态记录表名';
 comment on column am_archive_category.item_table_name is '卷内条目层级动态记录表名';
-comment on column am_archive_category.table_status is '动态表状态';
+comment on column am_archive_category.table_status is '动态表状态：not_built 未建表，built 已建表';
 comment on column am_archive_category.built_at is '最近建表时间';
 comment on column am_archive_category.enabled is '是否启用';
 comment on column am_archive_category.sort_order is '排序字段';
@@ -82,7 +82,7 @@ create table am_archive_field
 (
     id                bigserial primary key,
     category_id       bigint       not null references am_archive_category (id),
-    archive_level     varchar(30)  not null default 'ITEM',
+    archive_level     varchar(30)  not null default 'item',
     field_code        varchar(80)  not null,
     field_name        varchar(255) not null,
     field_type        varchar(30)  not null,
@@ -90,7 +90,7 @@ create table am_archive_field
     text_length       integer,
     decimal_precision integer,
     decimal_scale     integer,
-    edit_control      varchar(30)  not null default 'INPUT',
+    edit_control      varchar(30)  not null default 'input',
     list_visible      boolean      not null default true,
     list_width        integer,
     list_sort_order   integer      not null default 0,
@@ -121,15 +121,15 @@ create index idx_am_archive_field_category_active
 comment on table am_archive_field is '档案分类字段定义表';
 comment on column am_archive_field.id is '主键';
 comment on column am_archive_field.category_id is '档案分类 ID';
-comment on column am_archive_field.archive_level is '字段适用层级：VOLUME 案卷，ITEM 卷内条目';
+comment on column am_archive_field.archive_level is '字段适用层级：volume 案卷，item 卷内条目';
 comment on column am_archive_field.field_code is '字段编码';
 comment on column am_archive_field.field_name is '字段名称';
-comment on column am_archive_field.field_type is '字段类型';
+comment on column am_archive_field.field_type is '字段类型：text 文本，integer 整数，decimal 小数，date 日期，datetime 日期时间';
 comment on column am_archive_field.column_name is '动态表列名';
 comment on column am_archive_field.text_length is '文本长度';
 comment on column am_archive_field.decimal_precision is '小数总位数';
 comment on column am_archive_field.decimal_scale is '小数位数';
-comment on column am_archive_field.edit_control is '编辑控件';
+comment on column am_archive_field.edit_control is '编辑控件：input 单行输入，textarea 多行输入，number 数字输入，date 日期选择，datetime 日期时间选择';
 comment on column am_archive_field.list_visible is '是否列表显示';
 comment on column am_archive_field.list_width is '列表列宽';
 comment on column am_archive_field.list_sort_order is '列表布局排序';
@@ -152,7 +152,7 @@ comment on column am_archive_field.updated_at is '更新时间';
 create table am_archive_record
 (
     id             bigserial primary key,
-    archive_level  varchar(30)  not null default 'ITEM',
+    archive_level  varchar(30)  not null default 'item',
     parent_id      bigint references am_archive_record (id),
     fonds_code     varchar(100) not null,
     fonds_name     varchar(255) not null,
@@ -195,7 +195,7 @@ create index idx_am_archive_record_created_at on am_archive_record (created_at);
 
 comment on table am_archive_record is '档案记录主表';
 comment on column am_archive_record.id is '主键';
-comment on column am_archive_record.archive_level is '档案层级：VOLUME 案卷，ITEM 卷内条目';
+comment on column am_archive_record.archive_level is '档案层级：volume 案卷，item 卷内条目';
 comment on column am_archive_record.parent_id is '父档案记录 ID；卷内条目指向案卷，未组卷为空';
 comment on column am_archive_record.fonds_code is '全宗编码';
 comment on column am_archive_record.fonds_name is '全宗名称';
@@ -294,7 +294,7 @@ create table am_archive_unique_constraint
 (
     id            bigserial primary key,
     category_id   bigint       not null references am_archive_category (id),
-    archive_level varchar(30)  not null default 'ITEM',
+    archive_level varchar(30)  not null default 'item',
     constraint_code     varchar(80)  not null,
     constraint_name     varchar(255) not null,
     include_fonds boolean      not null default false,
@@ -320,7 +320,7 @@ create index idx_am_archive_unique_constraint_category_active
 comment on table am_archive_unique_constraint is '档案分类唯一约束表';
 comment on column am_archive_unique_constraint.id is '主键';
 comment on column am_archive_unique_constraint.category_id is '档案分类 ID';
-comment on column am_archive_unique_constraint.archive_level is '约束适用层级：VOLUME 案卷，ITEM 卷内条目';
+comment on column am_archive_unique_constraint.archive_level is '约束适用层级：volume 案卷，item 卷内条目';
 comment on column am_archive_unique_constraint.constraint_code is '约束编码';
 comment on column am_archive_unique_constraint.constraint_name is '约束名称';
 comment on column am_archive_unique_constraint.include_fonds is '是否按全宗范围唯一';
@@ -381,7 +381,7 @@ create index idx_am_archive_field_layout_order_active
 comment on table am_archive_field_layout is '档案分类字段布局配置表';
 comment on column am_archive_field_layout.id is '主键';
 comment on column am_archive_field_layout.category_id is '档案分类 ID';
-comment on column am_archive_field_layout.surface is '布局场景：TABLE、DETAIL、EDIT';
+comment on column am_archive_field_layout.surface is '布局场景：table 表格，detail 详情，edit 编辑';
 comment on column am_archive_field_layout.owner_user_id is '个人布局所属用户 ID；为空表示公共布局';
 comment on column am_archive_field_layout.field_id is '字段定义 ID';
 comment on column am_archive_field_layout.visible is '该布局是否显示字段';

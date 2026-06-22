@@ -50,40 +50,40 @@ interface CategorySelectNode {
 }
 
 const fieldTypeOptions: Array<{ label: string; value: ArchiveFieldType }> = [
-  { label: "文本", value: "TEXT" },
-  { label: "整数", value: "INTEGER" },
-  { label: "小数", value: "DECIMAL" },
-  { label: "日期", value: "DATE" },
-  { label: "日期时间", value: "DATETIME" },
+  { label: "文本", value: "text" },
+  { label: "整数", value: "integer" },
+  { label: "小数", value: "decimal" },
+  { label: "日期", value: "date" },
+  { label: "日期时间", value: "datetime" },
 ];
 
 const fieldControlLabels: Record<ArchiveFieldControl, string> = {
-  INPUT: "单行输入",
-  TEXTAREA: "多行文本",
-  NUMBER: "数字输入",
-  DATE: "日期选择",
-  DATETIME: "日期时间",
+  input: "单行输入",
+  textarea: "多行文本",
+  number: "数字输入",
+  date: "日期选择",
+  datetime: "日期时间",
 };
 
 const layoutSurfaceOptions: Array<{ label: string; value: ArchiveLayoutSurface }> = [
-  { label: "表格", value: "TABLE" },
-  { label: "详情", value: "DETAIL" },
-  { label: "编辑", value: "EDIT" },
+  { label: "表格", value: "table" },
+  { label: "详情", value: "detail" },
+  { label: "编辑", value: "edit" },
 ];
 
 const layoutScopeOptions: Array<{ label: string; value: ArchiveLayoutScope }> = [
-  { label: "公共布局", value: "PUBLIC" },
-  { label: "我的布局", value: "MINE" },
+  { label: "公共布局", value: "public" },
+  { label: "我的布局", value: "mine" },
 ];
 
 const archiveLevelOptions: Array<{ label: string; value: ArchiveLevel }> = [
-  { label: "卷内", value: "ITEM" },
-  { label: "案卷", value: "VOLUME" },
+  { label: "卷内", value: "item" },
+  { label: "案卷", value: "volume" },
 ];
 
 const managementModeOptions: Array<{ label: string; value: ArchiveManagementMode }> = [
-  { label: "按条目管理", value: "ITEM_ONLY" },
-  { label: "按案卷/卷内管理", value: "VOLUME_ITEM" },
+  { label: "按条目管理", value: "item_only" },
+  { label: "按案卷/卷内管理", value: "volume_item" },
 ];
 
 const categoriesLoading = ref(false);
@@ -95,9 +95,9 @@ const categoryDialogVisible = ref(false);
 const fieldDialogVisible = ref(false);
 const constraintDialogVisible = ref(false);
 const activeConfigTab = ref("fields");
-const activeArchiveLevel = ref<ArchiveLevel>("ITEM");
-const activeLayoutSurface = ref<ArchiveLayoutSurface>("TABLE");
-const activeLayoutScope = ref<ArchiveLayoutScope>("MINE");
+const activeArchiveLevel = ref<ArchiveLevel>("item");
+const activeLayoutSurface = ref<ArchiveLayoutSurface>("table");
+const activeLayoutScope = ref<ArchiveLayoutScope>("mine");
 const layoutLoading = ref(false);
 const editingCategoryId = ref<number>();
 const editingFieldId = ref<number>();
@@ -112,20 +112,20 @@ const categoryForm = reactive<ArchiveCategoryCommand>({
   categoryCode: "",
   categoryName: "",
   parentId: undefined,
-  managementMode: "ITEM_ONLY",
+  managementMode: "item_only",
   enabled: true,
   sortOrder: 0,
 });
 
 const fieldForm = reactive<ArchiveFieldCommand>({
-  archiveLevel: "ITEM",
+  archiveLevel: "item",
   fieldCode: "",
   fieldName: "",
-  fieldType: "TEXT",
+  fieldType: "text",
   textLength: 500,
   decimalPrecision: 18,
   decimalScale: 2,
-  editControl: "INPUT",
+  editControl: "input",
   listVisible: true,
   listWidth: undefined,
   listSortOrder: 0,
@@ -142,7 +142,7 @@ const fieldForm = reactive<ArchiveFieldCommand>({
 });
 
 const constraintForm = reactive<ArchiveUniqueConstraintCommand>({
-  archiveLevel: "ITEM",
+  archiveLevel: "item",
   constraintCode: "",
   constraintName: "",
   includeFonds: true,
@@ -172,13 +172,13 @@ const currentLevelConstraints = computed(() =>
 );
 
 const currentLevelTableName = computed(() =>
-  activeArchiveLevel.value === "VOLUME"
+  activeArchiveLevel.value === "volume"
     ? selectedCategory.value?.volumeTableName
     : selectedCategory.value?.itemTableName,
 );
 
 function tableStatusText(row: ArchiveCategoryDto) {
-  return row.tableStatus === "BUILT" ? "已建表" : "未建表";
+  return row.tableStatus === "built" ? "已建表" : "未建表";
 }
 
 function fieldControlText(value: ArchiveFieldControl) {
@@ -186,16 +186,16 @@ function fieldControlText(value: ArchiveFieldControl) {
 }
 
 function fieldControlOptions(fieldType: ArchiveFieldType) {
-  if (fieldType === "TEXT") {
-    return ["INPUT", "TEXTAREA"] satisfies ArchiveFieldControl[];
+  if (fieldType === "text") {
+    return ["input", "textarea"] satisfies ArchiveFieldControl[];
   }
-  if (fieldType === "INTEGER" || fieldType === "DECIMAL") {
-    return ["NUMBER"] satisfies ArchiveFieldControl[];
+  if (fieldType === "integer" || fieldType === "decimal") {
+    return ["number"] satisfies ArchiveFieldControl[];
   }
-  if (fieldType === "DATE") {
-    return ["DATE"] satisfies ArchiveFieldControl[];
+  if (fieldType === "date") {
+    return ["date"] satisfies ArchiveFieldControl[];
   }
-  return ["DATETIME"] satisfies ArchiveFieldControl[];
+  return ["datetime"] satisfies ArchiveFieldControl[];
 }
 
 function defaultFieldControl(fieldType: ArchiveFieldType): ArchiveFieldControl {
@@ -263,7 +263,7 @@ function resetCategoryForm(row?: ArchiveCategoryDto) {
   categoryForm.categoryCode = row?.categoryCode ?? "";
   categoryForm.categoryName = row?.categoryName ?? "";
   categoryForm.parentId = row?.parentId;
-  categoryForm.managementMode = row?.managementMode ?? "ITEM_ONLY";
+  categoryForm.managementMode = row?.managementMode ?? "item_only";
   categoryForm.enabled = row?.enabled ?? true;
   categoryForm.sortOrder = row?.sortOrder ?? 0;
 }
@@ -273,7 +273,7 @@ function resetFieldForm(row?: ArchiveFieldDto) {
   fieldForm.archiveLevel = row?.archiveLevel ?? activeArchiveLevel.value;
   fieldForm.fieldCode = row?.fieldCode ?? "";
   fieldForm.fieldName = row?.fieldName ?? "";
-  fieldForm.fieldType = row?.fieldType ?? "TEXT";
+  fieldForm.fieldType = row?.fieldType ?? "text";
   fieldForm.textLength = row?.textLength ?? 500;
   fieldForm.decimalPrecision = row?.decimalPrecision ?? 18;
   fieldForm.decimalScale = row?.decimalScale ?? 2;
@@ -515,7 +515,7 @@ function layoutCommand() {
     items: layoutItems.value.map((item, index) => ({
       fieldId: item.fieldId,
       visible: item.visible,
-      listWidth: activeLayoutSurface.value === "TABLE" ? item.listWidth : undefined,
+      listWidth: activeLayoutSurface.value === "table" ? item.listWidth : undefined,
       colSpan: item.colSpan,
       rowOrder: index * 10,
       colOrder: 0,
@@ -530,7 +530,7 @@ async function saveLayout() {
   saving.value = true;
   try {
     const layout =
-      activeLayoutScope.value === "PUBLIC"
+      activeLayoutScope.value === "public"
         ? await savePublicArchiveCategoryLayout(
             selectedCategoryId.value,
             activeLayoutSurface.value,
@@ -551,7 +551,7 @@ async function saveLayout() {
 }
 
 function layoutItemStyle(item: ArchiveFieldLayoutItemDto) {
-  return activeLayoutSurface.value === "TABLE"
+  return activeLayoutSurface.value === "table"
     ? undefined
     : { gridColumn: `span ${Math.min(Math.max(item.colSpan || 1, 1), 2)}` };
 }
@@ -582,7 +582,7 @@ async function buildTable() {
 watch(
   () => fieldForm.fieldType,
   (fieldType) => {
-    if (!fieldControlOptions(fieldType).includes(fieldForm.editControl ?? "INPUT")) {
+    if (!fieldControlOptions(fieldType).includes(fieldForm.editControl ?? "input")) {
       fieldForm.editControl = defaultFieldControl(fieldType);
     }
   },
@@ -627,12 +627,12 @@ onMounted(loadCategories);
         <el-table-column prop="categoryName" label="分类名称" min-width="190" />
         <el-table-column prop="managementMode" label="管理模式" width="130">
           <template #default="{ row }">
-            {{ row.managementMode === "VOLUME_ITEM" ? "案卷/卷内" : "条目" }}
+            {{ row.managementMode === "volume_item" ? "案卷/卷内" : "条目" }}
           </template>
         </el-table-column>
         <el-table-column prop="tableStatus" label="建表状态" width="110">
           <template #default="{ row }">
-            <el-tag :type="row.tableStatus === 'BUILT' ? 'success' : 'info'">
+            <el-tag :type="row.tableStatus === 'built' ? 'success' : 'info'">
               {{ tableStatusText(row) }}
             </el-tag>
           </template>
@@ -675,7 +675,7 @@ onMounted(loadCategories);
           <el-table v-loading="fieldsLoading" :data="currentLevelFields" height="100%">
             <el-table-column prop="archiveLevel" label="层级" width="80">
               <template #default="{ row }">{{
-                row.archiveLevel === "VOLUME" ? "案卷" : "卷内"
+                row.archiveLevel === "volume" ? "案卷" : "卷内"
               }}</template>
             </el-table-column>
             <el-table-column prop="fieldCode" label="字段编码" width="150" />
@@ -722,7 +722,7 @@ onMounted(loadCategories);
               v-model="layoutItems"
               v-loading="layoutLoading || saving"
               class="archive-layout-config__list"
-              :class="{ 'is-table': activeLayoutSurface === 'TABLE' }"
+              :class="{ 'is-table': activeLayoutSurface === 'table' }"
               handle=".archive-layout-config__drag"
               :animation="120"
               ghost-class="archive-layout-config__ghost"
@@ -743,7 +743,7 @@ onMounted(loadCategories);
                 </div>
                 <el-switch v-model="item.visible" />
                 <el-input-number
-                  v-if="activeLayoutSurface === 'TABLE'"
+                  v-if="activeLayoutSurface === 'table'"
                   v-model="item.listWidth"
                   :min="80"
                   :max="600"
@@ -763,7 +763,7 @@ onMounted(loadCategories);
           <el-table v-loading="constraintsLoading" :data="currentLevelConstraints" height="100%">
             <el-table-column prop="archiveLevel" label="层级" width="80">
               <template #default="{ row }">{{
-                row.archiveLevel === "VOLUME" ? "案卷" : "卷内"
+                row.archiveLevel === "volume" ? "案卷" : "卷内"
               }}</template>
             </el-table-column>
             <el-table-column prop="constraintCode" label="约束编码" width="140" />
@@ -862,10 +862,10 @@ onMounted(loadCategories);
             />
           </el-select>
         </el-form-item>
-        <el-form-item v-if="fieldForm.fieldType === 'TEXT'" label="文本长度">
+        <el-form-item v-if="fieldForm.fieldType === 'text'" label="文本长度">
           <el-input-number v-model="fieldForm.textLength" :min="1" />
         </el-form-item>
-        <template v-if="fieldForm.fieldType === 'DECIMAL'">
+        <template v-if="fieldForm.fieldType === 'decimal'">
           <el-form-item label="总位数">
             <el-input-number v-model="fieldForm.decimalPrecision" :min="1" />
           </el-form-item>

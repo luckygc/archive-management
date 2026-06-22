@@ -60,7 +60,7 @@ async function loadDetail() {
   loading.value = true;
   try {
     const [recordDetail, fondsRows] = await Promise.all([
-      getArchiveRecord(recordId.value, "EDIT"),
+      getArchiveRecord(recordId.value, "edit"),
       listArchiveFonds(true),
     ]);
     detail.value = recordDetail;

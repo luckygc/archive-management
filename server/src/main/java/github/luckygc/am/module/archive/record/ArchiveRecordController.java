@@ -1,4 +1,4 @@
-package github.luckygc.am.module.archive;
+package github.luckygc.am.module.archive.record;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -13,14 +13,16 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import github.luckygc.am.common.security.AuthenticatedUser;
-import github.luckygc.am.module.archive.ArchiveRecordRoutingService.ArchiveRecordDetailDto;
-import github.luckygc.am.module.archive.ArchiveRecordRoutingService.ArchiveRecordDto;
-import github.luckygc.am.module.archive.ArchiveRecordRoutingService.ArchiveRecordListDto;
-import github.luckygc.am.module.archive.ArchiveRecordRoutingService.ArchiveRecordQueryRequest;
-import github.luckygc.am.module.archive.ArchiveRecordRoutingService.ArchiveRecordRequest;
-import github.luckygc.am.module.archive.ArchiveRecordRoutingService.ArchiveRecordUpdateRequest;
-import github.luckygc.am.module.archive.ArchiveRecordRoutingService.DeleteRecordRequest;
-import github.luckygc.am.module.archive.ArchiveRecordRoutingService.LockRecordRequest;
+import github.luckygc.am.module.archive.ArchiveLevel;
+import github.luckygc.am.module.archive.metadata.ArchiveLayoutSurface;
+import github.luckygc.am.module.archive.record.ArchiveRecordRoutingService.ArchiveRecordDetailDto;
+import github.luckygc.am.module.archive.record.ArchiveRecordRoutingService.ArchiveRecordDto;
+import github.luckygc.am.module.archive.record.ArchiveRecordRoutingService.ArchiveRecordListDto;
+import github.luckygc.am.module.archive.record.ArchiveRecordRoutingService.ArchiveRecordQueryRequest;
+import github.luckygc.am.module.archive.record.ArchiveRecordRoutingService.ArchiveRecordRequest;
+import github.luckygc.am.module.archive.record.ArchiveRecordRoutingService.ArchiveRecordUpdateRequest;
+import github.luckygc.am.module.archive.record.ArchiveRecordRoutingService.DeleteRecordRequest;
+import github.luckygc.am.module.archive.record.ArchiveRecordRoutingService.LockRecordRequest;
 
 @RestController
 public class ArchiveRecordController {

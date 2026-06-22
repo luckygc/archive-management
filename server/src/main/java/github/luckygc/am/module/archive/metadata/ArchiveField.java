@@ -1,4 +1,4 @@
-package github.luckygc.am.module.archive;
+package github.luckygc.am.module.archive.metadata;
 
 import java.time.LocalDateTime;
 
@@ -13,6 +13,8 @@ import jakarta.persistence.Table;
 
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+
+import github.luckygc.am.module.archive.ArchiveLevel;
 
 import lombok.Data;
 
@@ -30,7 +32,7 @@ public class ArchiveField {
 
     @Column(name = "archive_level", nullable = false, length = 30)
     @Enumerated(EnumType.STRING)
-    private ArchiveLevel archiveLevel = ArchiveLevel.ITEM;
+    private ArchiveLevel archiveLevel = ArchiveLevel.item;
 
     @Column(name = "field_code", nullable = false, length = 80)
     private String fieldCode;
@@ -56,7 +58,7 @@ public class ArchiveField {
 
     @Column(name = "edit_control", nullable = false, length = 30)
     @Enumerated(EnumType.STRING)
-    private ArchiveFieldControl editControl = ArchiveFieldControl.INPUT;
+    private ArchiveFieldControl editControl = ArchiveFieldControl.input;
 
     @Column(name = "list_visible", nullable = false)
     private boolean listVisible = true;

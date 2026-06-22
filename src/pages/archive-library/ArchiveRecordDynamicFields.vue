@@ -38,11 +38,11 @@ function fieldStyle(field: ArchiveFieldDto) {
 }
 
 function inputType(field: ArchiveFieldDto) {
-  return field.editControl === "DATETIME" ? "datetime" : "date";
+  return field.editControl === "datetime" ? "datetime" : "date";
 }
 
 function valueFormat(field: ArchiveFieldDto) {
-  return field.editControl === "DATE" ? "YYYY-MM-DD" : "YYYY-MM-DDTHH:mm:ss";
+  return field.editControl === "date" ? "YYYY-MM-DD" : "YYYY-MM-DDTHH:mm:ss";
 }
 
 function updateField(field: ArchiveFieldDto, value: unknown) {
@@ -59,19 +59,19 @@ function updateField(field: ArchiveFieldDto, value: unknown) {
       </div>
       <el-form-item v-else-if="mode === 'edit'" :label="field.fieldName" :style="fieldStyle(field)">
         <el-input-number
-          v-if="field.editControl === 'NUMBER'"
+          v-if="field.editControl === 'number'"
           :model-value="fieldValue(field) as number"
           @update:model-value="(value: number | undefined) => updateField(field, value)"
         />
         <el-date-picker
-          v-else-if="field.editControl === 'DATE' || field.editControl === 'DATETIME'"
+          v-else-if="field.editControl === 'date' || field.editControl === 'datetime'"
           :model-value="fieldValue(field) as string"
           :type="inputType(field)"
           :value-format="valueFormat(field)"
           @update:model-value="(value: string | undefined) => updateField(field, value)"
         />
         <el-input
-          v-else-if="field.editControl === 'TEXTAREA'"
+          v-else-if="field.editControl === 'textarea'"
           :model-value="fieldValue(field) as string"
           type="textarea"
           :rows="4"

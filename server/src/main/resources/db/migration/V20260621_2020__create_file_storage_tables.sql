@@ -24,7 +24,7 @@ create unique index uk_am_storage_object_location_active
 
 comment on table am_storage_object is '文件存储对象信息表';
 comment on column am_storage_object.id is '主键';
-comment on column am_storage_object.storage_type is '存储类型：LOCAL、S3、MINIO、COS、OSS、OBS';
+comment on column am_storage_object.storage_type is '存储类型：local 本地文件，s3 标准 S3，对象存储兼容服务默认类型，minio MinIO，cos 腾讯云 COS，oss 阿里云 OSS，obs 华为云 OBS';
 comment on column am_storage_object.bucket_name is '存储桶名称；本地存储使用固定逻辑桶名';
 comment on column am_storage_object.object_key is '对象存储键，由 ObjectKeys 生成';
 comment on column am_storage_object.original_filename is '上传时原始文件名';

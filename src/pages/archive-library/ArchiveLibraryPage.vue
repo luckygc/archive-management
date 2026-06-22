@@ -92,7 +92,7 @@ function buildCategoryOptions(rows: ArchiveCategoryDto[]) {
     nodeMap.set(row.id, {
       value: row.id,
       label: row.categoryName,
-      disabled: row.tableStatus !== "BUILT",
+      disabled: row.tableStatus !== "built",
       children: [],
     });
   }
@@ -152,23 +152,23 @@ function fieldFilter(field: ArchiveFieldDto) {
 
 function isRangeField(fieldType: ArchiveFieldType) {
   return (
-    fieldType === "INTEGER" ||
-    fieldType === "DECIMAL" ||
-    fieldType === "DATE" ||
-    fieldType === "DATETIME"
+    fieldType === "integer" ||
+    fieldType === "decimal" ||
+    fieldType === "date" ||
+    fieldType === "datetime"
   );
 }
 
 function isDateRangeField(fieldType: ArchiveFieldType) {
-  return fieldType === "DATE" || fieldType === "DATETIME";
+  return fieldType === "date" || fieldType === "datetime";
 }
 
 function dateInputType(field: ArchiveFieldDto) {
-  return field.fieldType === "DATETIME" ? "datetime" : "date";
+  return field.fieldType === "datetime" ? "datetime" : "date";
 }
 
 function dateRangeFormat(field: ArchiveFieldDto) {
-  return field.fieldType === "DATETIME" ? "YYYY-MM-DDTHH:mm:ss" : "YYYY-MM-DD";
+  return field.fieldType === "datetime" ? "YYYY-MM-DDTHH:mm:ss" : "YYYY-MM-DD";
 }
 
 function hasFilterValue(value: unknown) {

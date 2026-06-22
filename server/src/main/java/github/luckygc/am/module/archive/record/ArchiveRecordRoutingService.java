@@ -1,4 +1,4 @@
-package github.luckygc.am.module.archive;
+package github.luckygc.am.module.archive.record;
 
 import java.math.BigDecimal;
 import java.sql.Date;
@@ -22,14 +22,19 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.exception.BadRequestException;
-import github.luckygc.am.module.archive.ArchiveMetadataService.ArchiveCategoryDto;
-import github.luckygc.am.module.archive.ArchiveMetadataService.ArchiveFieldDto;
-import github.luckygc.am.module.archive.ArchiveMetadataService.ArchiveFondsDto;
-import github.luckygc.am.module.archive.ArchiveMetadataService.ArchiveUniqueConstraintDto;
-import github.luckygc.am.module.archive.ArchiveMetadataService.ArchiveUniqueConstraintFieldDto;
+import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.mapper.ArchiveSqlAssignment;
 import github.luckygc.am.module.archive.mapper.ArchiveSqlCondition;
+import github.luckygc.am.module.archive.metadata.ArchiveFieldType;
+import github.luckygc.am.module.archive.metadata.ArchiveLayoutSurface;
+import github.luckygc.am.module.archive.metadata.ArchiveManagementMode;
+import github.luckygc.am.module.archive.metadata.ArchiveMetadataService;
+import github.luckygc.am.module.archive.metadata.ArchiveMetadataService.ArchiveCategoryDto;
+import github.luckygc.am.module.archive.metadata.ArchiveMetadataService.ArchiveFieldDto;
+import github.luckygc.am.module.archive.metadata.ArchiveMetadataService.ArchiveFondsDto;
+import github.luckygc.am.module.archive.metadata.ArchiveMetadataService.ArchiveUniqueConstraintDto;
+import github.luckygc.am.module.archive.metadata.ArchiveMetadataService.ArchiveUniqueConstraintFieldDto;
 
 @Service
 public class ArchiveRecordRoutingService {
@@ -55,11 +60,11 @@ public class ArchiveRecordRoutingService {
     }
 
     public ArchiveRecordListDto listRecords(Long categoryId, String fondsCode) {
-        return listRecords(categoryId, ArchiveLevel.ITEM, fondsCode, null);
+        return listRecords(categoryId, ArchiveLevel.item, fondsCode, null);
     }
 
     public ArchiveRecordListDto listRecords(Long categoryId, String fondsCode, Long userId) {
-        return listRecords(categoryId, ArchiveLevel.ITEM, fondsCode, userId);
+        return listRecords(categoryId, ArchiveLevel.item, fondsCode, userId);
     }
 
     public ArchiveRecordListDto listRecords(
@@ -86,7 +91,7 @@ public class ArchiveRecordRoutingService {
         String tableName = dynamicTableName(category, archiveLevel);
         List<ArchiveFieldDto> fields =
                 archiveMetadataService.listEffectiveFields(
-                        request.categoryId(), archiveLevel, ArchiveLayoutSurface.TABLE, userId);
+                        request.categoryId(), archiveLevel, ArchiveLayoutSurface.table, userId);
         List<ArchiveFieldDto> visibleFields =
                 fields.stream()
                         .filter(ArchiveFieldDto::listVisible)
@@ -120,7 +125,7 @@ public class ArchiveRecordRoutingService {
                 archiveMapper.listDynamicRecords(
                         tableName,
                         selectColumns(visibleFields),
-                        archiveLevel.name(),
+                        archiveLevel.value(),
                         StringUtils.trimToNull(request.fondsCode()),
                         conditions,
                         recordIds);
@@ -164,7 +169,7 @@ public class ArchiveRecordRoutingService {
 
         Long recordId =
                 archiveMapper.insertArchiveRecord(
-                        archiveLevel.name(),
+                        archiveLevel.value(),
                         parentId,
                         fonds.fondsCode(),
                         fonds.fondsName(),
@@ -191,9 +196,9 @@ public class ArchiveRecordRoutingService {
     public SearchProjectionRebuildResult rebuildSearchProjection(Long categoryId) {
         ArchiveCategoryDto category = archiveMetadataService.getCategory(categoryId);
         int rebuilt = 0;
-        for (ArchiveLevel archiveLevel : ArchiveLevel.values()) {
-            if (archiveLevel == ArchiveLevel.VOLUME
-                    && category.managementMode() != ArchiveManagementMode.VOLUME_ITEM) {
+        for (ArchiveLevel archiveLevel : ArchiveLevel.orderedValues()) {
+            if (archiveLevel == ArchiveLevel.volume
+                    && category.managementMode() != ArchiveManagementMode.volume_item) {
                 continue;
             }
             if (!isDynamicTableBuilt(category, archiveLevel)) {
@@ -209,7 +214,7 @@ public class ArchiveRecordRoutingService {
             }
             List<Map<String, Object>> rows =
                     archiveMapper.listRecordsForSearchRebuild(
-                            tableName, selectColumns(fullTextFields), archiveLevel.name());
+                            tableName, selectColumns(fullTextFields), archiveLevel.value());
             for (Map<String, Object> row : rows) {
                 enqueueSearchProjection(number(row, "id").longValue(), SEARCH_EVENT_UPSERT);
                 rebuilt++;
@@ -220,7 +225,7 @@ public class ArchiveRecordRoutingService {
     }
 
     public ArchiveRecordDetailDto getRecordDetail(Long id) {
-        return getRecordDetail(id, null, ArchiveLayoutSurface.DETAIL);
+        return getRecordDetail(id, null, ArchiveLayoutSurface.detail);
     }
 
     public ArchiveRecordDetailDto getRecordDetail(
@@ -231,7 +236,7 @@ public class ArchiveRecordRoutingService {
                 archiveMetadataService.listEffectiveFields(
                         category.id(),
                         record.archiveLevel(),
-                        surface == null ? ArchiveLayoutSurface.DETAIL : surface,
+                        surface == null ? ArchiveLayoutSurface.detail : surface,
                         userId);
         Map<String, Object> dynamicRecord = loadDynamicRecord(category, record.id());
         return new ArchiveRecordDetailDto(
@@ -300,7 +305,7 @@ public class ArchiveRecordRoutingService {
         upsertPhysicalObjectIfPresent(id, request.physicalObject(), userId);
         enqueueSearchProjection(id, SEARCH_EVENT_UPSERT);
         drainSearchProjectionOutbox();
-        ArchiveRecordDetailDto after = getRecordDetail(id, userId, ArchiveLayoutSurface.EDIT);
+        ArchiveRecordDetailDto after = getRecordDetail(id, userId, ArchiveLayoutSurface.edit);
         insertRecordAudit(AUDIT_OPERATION_UPDATE, after.record(), null, userId);
         return after;
     }
@@ -373,7 +378,7 @@ public class ArchiveRecordRoutingService {
         }
         return new ArchiveRecordDto(
                 number(row, "id").longValue(),
-                ArchiveLevel.valueOf(string(row, "archiveLevel")),
+                ArchiveLevel.fromValue(string(row, "archiveLevel")),
                 longOrNull(row, "parentId"),
                 string(row, "fondsCode"),
                 string(row, "fondsName"),
@@ -453,23 +458,23 @@ public class ArchiveRecordRoutingService {
     private String dynamicTableName(ArchiveCategoryDto category, ArchiveLevel archiveLevel) {
         ArchiveLevel normalizedLevel = normalizeArchiveLevel(archiveLevel);
         String tableName =
-                normalizedLevel == ArchiveLevel.VOLUME
+                normalizedLevel == ArchiveLevel.volume
                         ? category.volumeTableName()
                         : category.itemTableName();
         if (StringUtils.isNotBlank(tableName)) {
             return tableName;
         }
-        return "am_archive_record_" + normalizedLevel.name().toLowerCase() + "_" + category.id();
+        return "am_archive_record_" + normalizedLevel.value().toLowerCase() + "_" + category.id();
     }
 
     private ArchiveLevel normalizeArchiveLevel(ArchiveLevel archiveLevel) {
-        return archiveLevel == null ? ArchiveLevel.ITEM : archiveLevel;
+        return archiveLevel == null ? ArchiveLevel.item : archiveLevel;
     }
 
     private void ensureArchiveLevelAllowed(ArchiveCategoryDto category, ArchiveLevel archiveLevel) {
         ArchiveLevel normalizedLevel = normalizeArchiveLevel(archiveLevel);
-        if (normalizedLevel == ArchiveLevel.VOLUME
-                && category.managementMode() != ArchiveManagementMode.VOLUME_ITEM) {
+        if (normalizedLevel == ArchiveLevel.volume
+                && category.managementMode() != ArchiveManagementMode.volume_item) {
             throw badRequest("该分类未启用案卷管理");
         }
     }
@@ -481,7 +486,7 @@ public class ArchiveRecordRoutingService {
 
     private Long validateParentForWrite(
             ArchiveLevel archiveLevel, Long parentId, String categoryCode, String fondsCode) {
-        if (archiveLevel == ArchiveLevel.VOLUME) {
+        if (archiveLevel == ArchiveLevel.volume) {
             if (parentId != null) {
                 throw badRequest("案卷不能设置父记录");
             }
@@ -491,7 +496,7 @@ public class ArchiveRecordRoutingService {
             return null;
         }
         ArchiveRecordDto parent = getRecord(parentId);
-        if (parent.archiveLevel() != ArchiveLevel.VOLUME) {
+        if (parent.archiveLevel() != ArchiveLevel.volume) {
             throw badRequest("卷内条目只能挂接到案卷");
         }
         if (parent.lockedFlag()) {
@@ -574,7 +579,7 @@ public class ArchiveRecordRoutingService {
     private List<ArchiveSqlCondition> toSearchConditions(
             ArchiveFieldDto field, ArchiveRecordFieldFilter filter) {
         List<ArchiveSqlCondition> conditions = new ArrayList<>();
-        if (field.fieldType() == ArchiveFieldType.TEXT) {
+        if (field.fieldType() == ArchiveFieldType.text) {
             Object value = convertValue(field, filter.value());
             if (value != null) {
                 conditions.add(new ArchiveSqlCondition(field.columnName(), "EQ", value));
@@ -635,7 +640,7 @@ public class ArchiveRecordRoutingService {
             return null;
         }
         return switch (field.fieldType()) {
-            case DATE -> {
+            case date -> {
                 if (value instanceof Date date) {
                     yield date.toLocalDate().toString();
                 }
@@ -644,7 +649,7 @@ public class ArchiveRecordRoutingService {
                 }
                 yield value;
             }
-            case DATETIME -> {
+            case datetime -> {
                 if (value instanceof Timestamp timestamp) {
                     yield timestamp.toLocalDateTime().format(DATE_TIME_FORMATTER);
                 }
@@ -719,7 +724,7 @@ public class ArchiveRecordRoutingService {
             return;
         }
         ArchiveCategoryDto category = getCategoryByCode(string(recordRow, "categoryCode"));
-        ArchiveLevel archiveLevel = ArchiveLevel.valueOf(string(recordRow, "archiveLevel"));
+        ArchiveLevel archiveLevel = ArchiveLevel.fromValue(string(recordRow, "archiveLevel"));
         String tableName = dynamicTableName(category, archiveLevel);
         if (!isDynamicTableBuilt(category, archiveLevel)) {
             archiveMapper.deleteSearchProjection(recordId);
@@ -796,20 +801,20 @@ public class ArchiveRecordRoutingService {
         }
         try {
             return switch (field.fieldType()) {
-                case TEXT -> convertTextValue(field, value);
-                case INTEGER ->
+                case text -> convertTextValue(field, value);
+                case integer ->
                         value instanceof Number number
                                 ? number.intValue()
                                 : Integer.valueOf(value.toString());
-                case DECIMAL ->
+                case decimal ->
                         value instanceof BigDecimal decimal
                                 ? decimal
                                 : new BigDecimal(value.toString());
-                case DATE ->
+                case date ->
                         value instanceof LocalDate localDate
                                 ? Date.valueOf(localDate)
                                 : Date.valueOf(value.toString());
-                case DATETIME ->
+                case datetime ->
                         value instanceof LocalDateTime localDateTime
                                 ? Timestamp.valueOf(localDateTime)
                                 : Timestamp.valueOf(LocalDateTime.parse(value.toString()));

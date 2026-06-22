@@ -25,7 +25,7 @@ class LocalFileStorageService implements FileStorageBackend {
 
     @Override
     public StorageType storageType() {
-        return StorageType.LOCAL;
+        return StorageType.local;
     }
 
     @Override

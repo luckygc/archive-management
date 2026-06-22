@@ -25,21 +25,21 @@ class FileStorageConfiguration {
         boolean objectStorageConfigured = isObjectStorageConfigured(properties.getObject());
         if (objectStorageConfigured) {
             backends.add(
-                    new S3CompatibleFileStorageService(StorageType.S3, properties.getObject()));
+                    new S3CompatibleFileStorageService(StorageType.s3, properties.getObject()));
             backends.add(
-                    new S3CompatibleFileStorageService(StorageType.MINIO, properties.getObject()));
+                    new S3CompatibleFileStorageService(StorageType.minio, properties.getObject()));
             backends.add(
-                    new S3CompatibleFileStorageService(StorageType.COS, properties.getObject()));
+                    new S3CompatibleFileStorageService(StorageType.cos, properties.getObject()));
             backends.add(
-                    new S3CompatibleFileStorageService(StorageType.OSS, properties.getObject()));
+                    new S3CompatibleFileStorageService(StorageType.oss, properties.getObject()));
             backends.add(
-                    new S3CompatibleFileStorageService(StorageType.OBS, properties.getObject()));
+                    new S3CompatibleFileStorageService(StorageType.obs, properties.getObject()));
         }
         if (backends.isEmpty()) {
             throw new StorageException("至少需要配置一种文件存储后端");
         }
         StorageType defaultStorageType =
-                objectStorageConfigured ? StorageType.S3 : StorageType.LOCAL;
+                objectStorageConfigured ? StorageType.s3 : StorageType.local;
         String defaultBucketName =
                 objectStorageConfigured
                         ? properties.getObject().getBucket().trim()

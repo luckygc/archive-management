@@ -1,8 +1,9 @@
-package github.luckygc.am.module.archive;
+package github.luckygc.am.module.archive.metadata;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 
 @Service
@@ -127,7 +129,7 @@ public class ArchiveMetadataService {
                         request.parentId(),
                         request.categoryCode().trim(),
                         request.categoryName().trim(),
-                        normalizeManagementMode(request.managementMode()).name(),
+                        normalizeManagementMode(request.managementMode()).value(),
                         request.enabled() == null || request.enabled(),
                         request.sortOrder() == null ? 0 : request.sortOrder());
         return getCategory(id);
@@ -145,7 +147,7 @@ public class ArchiveMetadataService {
                         request.parentId(),
                         request.categoryCode().trim(),
                         request.categoryName().trim(),
-                        normalizeManagementMode(request.managementMode()).name(),
+                        normalizeManagementMode(request.managementMode()).value(),
                         request.enabled() == null || request.enabled(),
                         request.sortOrder() == null ? 0 : request.sortOrder());
         if (updated == 0) {
@@ -183,13 +185,13 @@ public class ArchiveMetadataService {
     }
 
     public List<ArchiveFieldDto> listEnabledFields(Long categoryId) {
-        return listEnabledFields(categoryId, ArchiveLevel.ITEM);
+        return listEnabledFields(categoryId, ArchiveLevel.item);
     }
 
     public List<ArchiveFieldDto> listEnabledFields(Long categoryId, ArchiveLevel archiveLevel) {
         requireId(categoryId);
         return archiveMapper
-                .listFields(categoryId, normalizeArchiveLevel(archiveLevel).name(), true)
+                .listFields(categoryId, normalizeArchiveLevel(archiveLevel).value(), true)
                 .stream()
                 .map(this::mapField)
                 .toList();
@@ -197,7 +199,7 @@ public class ArchiveMetadataService {
 
     public List<ArchiveFieldDto> listEffectiveFields(
             Long categoryId, ArchiveLayoutSurface surface, Long userId) {
-        return listEffectiveFields(categoryId, ArchiveLevel.ITEM, surface, userId);
+        return listEffectiveFields(categoryId, ArchiveLevel.item, surface, userId);
     }
 
     public List<ArchiveFieldDto> listEffectiveFields(
@@ -208,7 +210,7 @@ public class ArchiveMetadataService {
 
     public ArchiveFieldLayoutDto getFieldLayout(
             Long categoryId, ArchiveLayoutSurface surface, String scope, Long userId) {
-        return getFieldLayout(categoryId, ArchiveLevel.ITEM, surface, scope, userId);
+        return getFieldLayout(categoryId, ArchiveLevel.item, surface, scope, userId);
     }
 
     public ArchiveFieldLayoutDto getFieldLayout(
@@ -221,23 +223,23 @@ public class ArchiveMetadataService {
         getCategory(categoryId);
         ArchiveLevel normalizedLevel = normalizeArchiveLevel(archiveLevel);
         ArchiveLayoutScope layoutScope = ArchiveLayoutScope.from(scope);
-        if (layoutScope == ArchiveLayoutScope.MINE) {
+        if (layoutScope == ArchiveLayoutScope.mine) {
             requireUser(userId);
         }
         List<ArchiveFieldDto> fields = listEnabledFields(categoryId, normalizedLevel);
         List<ArchiveFieldLayoutItemDto> items =
                 switch (layoutScope) {
-                    case PUBLIC -> publicLayoutItems(categoryId, surface, fields);
-                    case MINE -> effectiveLayoutItems(categoryId, surface, userId, fields);
-                    case EFFECTIVE -> effectiveLayoutItems(categoryId, surface, userId, fields);
+                    case public_ -> publicLayoutItems(categoryId, surface, fields);
+                    case mine -> effectiveLayoutItems(categoryId, surface, userId, fields);
+                    case effective -> effectiveLayoutItems(categoryId, surface, userId, fields);
                 };
-        return new ArchiveFieldLayoutDto(surface, layoutScope.name(), items);
+        return new ArchiveFieldLayoutDto(surface, layoutScope.value(), items);
     }
 
     @Transactional
     public ArchiveFieldLayoutDto savePublicFieldLayout(
             Long categoryId, ArchiveLayoutSurface surface, ArchiveFieldLayoutRequest request) {
-        return savePublicFieldLayout(categoryId, ArchiveLevel.ITEM, surface, request);
+        return savePublicFieldLayout(categoryId, ArchiveLevel.item, surface, request);
     }
 
     @Transactional
@@ -248,7 +250,7 @@ public class ArchiveMetadataService {
             ArchiveFieldLayoutRequest request) {
         saveFieldLayout(categoryId, archiveLevel, surface, null, true, request);
         return getFieldLayout(
-                categoryId, archiveLevel, surface, ArchiveLayoutScope.PUBLIC.name(), null);
+                categoryId, archiveLevel, surface, ArchiveLayoutScope.public_.value(), null);
     }
 
     @Transactional
@@ -257,7 +259,7 @@ public class ArchiveMetadataService {
             ArchiveLayoutSurface surface,
             ArchiveFieldLayoutRequest request,
             Long userId) {
-        return saveMyFieldLayout(categoryId, ArchiveLevel.ITEM, surface, request, userId);
+        return saveMyFieldLayout(categoryId, ArchiveLevel.item, surface, request, userId);
     }
 
     @Transactional
@@ -270,7 +272,7 @@ public class ArchiveMetadataService {
         requireUser(userId);
         saveFieldLayout(categoryId, archiveLevel, surface, userId, false, request);
         return getFieldLayout(
-                categoryId, archiveLevel, surface, ArchiveLayoutScope.MINE.name(), userId);
+                categoryId, archiveLevel, surface, ArchiveLayoutScope.mine.value(), userId);
     }
 
     @Transactional
@@ -282,15 +284,15 @@ public class ArchiveMetadataService {
         Long id =
                 archiveMapper.insertField(
                         categoryId,
-                        values.archiveLevel().name(),
+                        values.archiveLevel().value(),
                         values.fieldCode(),
                         values.fieldName(),
-                        values.fieldType().name(),
+                        values.fieldType().value(),
                         toColumnName(values.fieldCode()),
                         values.textLength(),
                         values.decimalPrecision(),
                         values.decimalScale(),
-                        values.editControl().name(),
+                        values.editControl().value(),
                         values.listVisible(),
                         values.listWidth(),
                         values.listSortOrder(),
@@ -329,15 +331,15 @@ public class ArchiveMetadataService {
                 archiveMapper.updateField(
                         fieldId,
                         categoryId,
-                        values.archiveLevel().name(),
+                        values.archiveLevel().value(),
                         values.fieldCode(),
                         values.fieldName(),
-                        values.fieldType().name(),
+                        values.fieldType().value(),
                         toColumnName(values.fieldCode()),
                         values.textLength(),
                         values.decimalPrecision(),
                         values.decimalScale(),
-                        values.editControl().name(),
+                        values.editControl().value(),
                         values.listVisible(),
                         values.listWidth(),
                         values.listSortOrder(),
@@ -380,7 +382,7 @@ public class ArchiveMetadataService {
 
     @Transactional
     public ArchiveCategoryDto buildTable(Long categoryId) {
-        return buildTable(categoryId, ArchiveLevel.ITEM);
+        return buildTable(categoryId, ArchiveLevel.item);
     }
 
     @Transactional
@@ -434,7 +436,7 @@ public class ArchiveMetadataService {
             }
         }
         archiveMapper.updateCategoryTableStatus(
-                categoryId, archiveLevel.name(), tableName, ArchiveTableStatus.BUILT.name());
+                categoryId, archiveLevel.value(), tableName, ArchiveTableStatus.built.value());
         for (ArchiveUniqueConstraintDto constraint : listUniqueConstraints(categoryId)) {
             if (constraint.enabled() && constraint.archiveLevel() == archiveLevel) {
                 createUniqueIndex(categoryId, tableName, constraint);
@@ -466,7 +468,7 @@ public class ArchiveMetadataService {
         Long id =
                 archiveMapper.insertUniqueConstraint(
                         categoryId,
-                        values.archiveLevel().name(),
+                        values.archiveLevel().value(),
                         values.constraintCode(),
                         values.constraintName(),
                         values.includeFonds(),
@@ -501,7 +503,7 @@ public class ArchiveMetadataService {
                 archiveMapper.updateUniqueConstraint(
                         constraintId,
                         categoryId,
-                        values.archiveLevel().name(),
+                        values.archiveLevel().value(),
                         values.constraintCode(),
                         values.constraintName(),
                         values.includeFonds(),
@@ -585,13 +587,13 @@ public class ArchiveMetadataService {
     private String dynamicTableName(ArchiveCategoryDto category, ArchiveLevel archiveLevel) {
         ArchiveLevel normalizedLevel = normalizeArchiveLevel(archiveLevel);
         String configuredName =
-                normalizedLevel == ArchiveLevel.VOLUME
+                normalizedLevel == ArchiveLevel.volume
                         ? category.volumeTableName()
                         : category.itemTableName();
         if (StringUtils.isNotBlank(configuredName)) {
             return configuredName;
         }
-        return "am_archive_record_" + normalizedLevel.name().toLowerCase() + "_" + category.id();
+        return "am_archive_record_" + normalizedLevel.value().toLowerCase() + "_" + category.id();
     }
 
     private void syncDynamicColumnAfterFieldUpdate(
@@ -678,7 +680,7 @@ public class ArchiveMetadataService {
 
     private String uniqueConstraintIndexName(
             Long categoryId, ArchiveLevel archiveLevel, String constraintCode) {
-        String seed = categoryId + "_" + archiveLevel.name() + "_" + constraintCode;
+        String seed = categoryId + "_" + archiveLevel.value() + "_" + constraintCode;
         return "uk_am_archive_constraint_" + Math.abs(seed.hashCode());
     }
 
@@ -697,12 +699,12 @@ public class ArchiveMetadataService {
             throw badRequest("字段类型不能为空");
         }
         Integer textLength = request.textLength();
-        if (fieldType == ArchiveFieldType.TEXT && (textLength == null || textLength <= 0)) {
+        if (fieldType == ArchiveFieldType.text && (textLength == null || textLength <= 0)) {
             textLength = DEFAULT_TEXT_LENGTH;
         }
         Integer decimalPrecision = request.decimalPrecision();
         Integer decimalScale = request.decimalScale();
-        if (fieldType == ArchiveFieldType.DECIMAL) {
+        if (fieldType == ArchiveFieldType.decimal) {
             decimalPrecision =
                     decimalPrecision == null ? DEFAULT_DECIMAL_PRECISION : decimalPrecision;
             decimalScale = decimalScale == null ? DEFAULT_DECIMAL_SCALE : decimalScale;
@@ -743,13 +745,13 @@ public class ArchiveMetadataService {
     }
 
     private ArchiveLevel normalizeArchiveLevel(ArchiveLevel archiveLevel) {
-        return archiveLevel == null ? ArchiveLevel.ITEM : archiveLevel;
+        return archiveLevel == null ? ArchiveLevel.item : archiveLevel;
     }
 
     private void ensureArchiveLevelAllowed(ArchiveCategoryDto category, ArchiveLevel archiveLevel) {
         ArchiveLevel normalizedLevel = normalizeArchiveLevel(archiveLevel);
-        if (normalizedLevel == ArchiveLevel.VOLUME
-                && category.managementMode() != ArchiveManagementMode.VOLUME_ITEM) {
+        if (normalizedLevel == ArchiveLevel.volume
+                && category.managementMode() != ArchiveManagementMode.volume_item) {
             throw badRequest("该分类未启用案卷管理");
         }
     }
@@ -760,7 +762,7 @@ public class ArchiveMetadataService {
     }
 
     private ArchiveManagementMode normalizeManagementMode(ArchiveManagementMode managementMode) {
-        return managementMode == null ? ArchiveManagementMode.ITEM_ONLY : managementMode;
+        return managementMode == null ? ArchiveManagementMode.item_only : managementMode;
     }
 
     private ArchiveFieldControl defaultEditControl(
@@ -769,22 +771,22 @@ public class ArchiveMetadataService {
             return editControl;
         }
         return switch (fieldType) {
-            case TEXT -> ArchiveFieldControl.INPUT;
-            case INTEGER, DECIMAL -> ArchiveFieldControl.NUMBER;
-            case DATE -> ArchiveFieldControl.DATE;
-            case DATETIME -> ArchiveFieldControl.DATETIME;
+            case text -> ArchiveFieldControl.input;
+            case integer, decimal -> ArchiveFieldControl.number;
+            case date -> ArchiveFieldControl.date;
+            case datetime -> ArchiveFieldControl.datetime;
         };
     }
 
     private void validateEditControl(ArchiveFieldType fieldType, ArchiveFieldControl editControl) {
         boolean valid =
                 switch (fieldType) {
-                    case TEXT ->
-                            editControl == ArchiveFieldControl.INPUT
-                                    || editControl == ArchiveFieldControl.TEXTAREA;
-                    case INTEGER, DECIMAL -> editControl == ArchiveFieldControl.NUMBER;
-                    case DATE -> editControl == ArchiveFieldControl.DATE;
-                    case DATETIME -> editControl == ArchiveFieldControl.DATETIME;
+                    case text ->
+                            editControl == ArchiveFieldControl.input
+                                    || editControl == ArchiveFieldControl.textarea;
+                    case integer, decimal -> editControl == ArchiveFieldControl.number;
+                    case date -> editControl == ArchiveFieldControl.date;
+                    case datetime -> editControl == ArchiveFieldControl.datetime;
                 };
         if (!valid) {
             throw badRequest("编辑控件与字段类型不匹配");
@@ -870,10 +872,10 @@ public class ArchiveMetadataService {
                                 java.util.stream.Collectors.toMap(
                                         ArchiveFieldDto::id, field -> field));
         ArchiveLevel archiveLevel =
-                fields.isEmpty() ? ArchiveLevel.ITEM : fields.get(0).archiveLevel();
+                fields.isEmpty() ? ArchiveLevel.item : fields.get(0).archiveLevel();
         return archiveMapper
                 .listFieldLayouts(
-                        categoryId, archiveLevel.name(), surface.name(), userId, publicLayout)
+                        categoryId, archiveLevel.value(), surface.value(), userId, publicLayout)
                 .stream()
                 .filter(row -> fieldsById.containsKey(number(row, "fieldId").longValue()))
                 .map(
@@ -895,7 +897,7 @@ public class ArchiveMetadataService {
                                         field.fieldType(),
                                         field.editControl(),
                                         surfaceVisible(surface, field),
-                                        surface == ArchiveLayoutSurface.TABLE
+                                        surface == ArchiveLayoutSurface.table
                                                 ? field.listWidth()
                                                 : null,
                                         surfaceColSpan(surface, field),
@@ -927,7 +929,7 @@ public class ArchiveMetadataService {
                                         ArchiveFieldDto::id, field -> field));
         Set<Long> seenFieldIds = new HashSet<>();
         archiveMapper.deleteFieldLayouts(
-                categoryId, normalizedLevel.name(), surface.name(), userId, publicLayout);
+                categoryId, normalizedLevel.value(), surface.value(), userId, publicLayout);
         for (ArchiveFieldLayoutItemRequest item : items) {
             if (item == null || item.fieldId() == null || !fieldsById.containsKey(item.fieldId())) {
                 throw badRequest("布局字段只能选择当前分类字段");
@@ -937,11 +939,11 @@ public class ArchiveMetadataService {
             }
             archiveMapper.insertFieldLayout(
                     categoryId,
-                    surface.name(),
+                    surface.value(),
                     userId,
                     item.fieldId(),
                     item.visible() == null || item.visible(),
-                    surface == ArchiveLayoutSurface.TABLE
+                    surface == ArchiveLayoutSurface.table
                             ? normalizeListWidth(item.listWidth())
                             : null,
                     normalizeColSpan(item.colSpan()),
@@ -956,7 +958,7 @@ public class ArchiveMetadataService {
             return field;
         }
         return switch (surface) {
-            case TABLE ->
+            case table ->
                     copyField(
                             field,
                             item.visible(),
@@ -968,7 +970,7 @@ public class ArchiveMetadataService {
                             field.editVisible(),
                             field.editColSpan(),
                             field.editSortOrder());
-            case DETAIL ->
+            case detail ->
                     copyField(
                             field,
                             field.listVisible(),
@@ -980,7 +982,7 @@ public class ArchiveMetadataService {
                             field.editVisible(),
                             field.editColSpan(),
                             field.editSortOrder());
-            case EDIT ->
+            case edit ->
                     copyField(
                             field,
                             field.listVisible(),
@@ -1037,25 +1039,25 @@ public class ArchiveMetadataService {
 
     private boolean surfaceVisible(ArchiveLayoutSurface surface, ArchiveFieldDto field) {
         return switch (surface) {
-            case TABLE -> field.listVisible();
-            case DETAIL -> field.detailVisible();
-            case EDIT -> field.editVisible();
+            case table -> field.listVisible();
+            case detail -> field.detailVisible();
+            case edit -> field.editVisible();
         };
     }
 
     private int surfaceColSpan(ArchiveLayoutSurface surface, ArchiveFieldDto field) {
         return switch (surface) {
-            case TABLE -> 1;
-            case DETAIL -> field.detailColSpan();
-            case EDIT -> field.editColSpan();
+            case table -> 1;
+            case detail -> field.detailColSpan();
+            case edit -> field.editColSpan();
         };
     }
 
     private int layoutOrder(ArchiveLayoutSurface surface, ArchiveFieldDto field) {
         return switch (surface) {
-            case TABLE -> field.listSortOrder();
-            case DETAIL -> field.detailSortOrder();
-            case EDIT -> field.editSortOrder();
+            case table -> field.listSortOrder();
+            case detail -> field.detailSortOrder();
+            case edit -> field.editSortOrder();
         };
     }
 
@@ -1104,14 +1106,14 @@ public class ArchiveMetadataService {
 
     private String sqlType(ArchiveFieldDto field) {
         return switch (field.fieldType()) {
-            case TEXT ->
+            case text ->
                     "varchar("
                             + (field.textLength() == null
                                     ? DEFAULT_TEXT_LENGTH
                                     : field.textLength())
                             + ")";
-            case INTEGER -> "integer";
-            case DECIMAL ->
+            case integer -> "integer";
+            case decimal ->
                     "numeric(%d,%d)"
                             .formatted(
                                     field.decimalPrecision() == null
@@ -1120,8 +1122,8 @@ public class ArchiveMetadataService {
                                     field.decimalScale() == null
                                             ? DEFAULT_DECIMAL_SCALE
                                             : field.decimalScale());
-            case DATE -> "date";
-            case DATETIME -> "timestamp";
+            case date -> "date";
+            case datetime -> "timestamp";
         };
     }
 
@@ -1196,10 +1198,10 @@ public class ArchiveMetadataService {
                 parentId == null ? null : parentId.longValue(),
                 string(row, "categoryCode"),
                 string(row, "categoryName"),
-                ArchiveManagementMode.valueOf(string(row, "managementMode")),
+                ArchiveManagementMode.fromValue(string(row, "managementMode")),
                 string(row, "volumeTableName"),
                 string(row, "itemTableName"),
-                ArchiveTableStatus.valueOf(string(row, "tableStatus")),
+                ArchiveTableStatus.fromValue(string(row, "tableStatus")),
                 dateTime(row, "builtAt"),
                 bool(row, "enabled"),
                 number(row, "sortOrder").intValue(),
@@ -1211,15 +1213,15 @@ public class ArchiveMetadataService {
         return new ArchiveFieldDto(
                 number(row, "id").longValue(),
                 number(row, "categoryId").longValue(),
-                ArchiveLevel.valueOf(string(row, "archiveLevel")),
+                ArchiveLevel.fromValue(string(row, "archiveLevel")),
                 string(row, "fieldCode"),
                 string(row, "fieldName"),
-                ArchiveFieldType.valueOf(string(row, "fieldType")),
+                ArchiveFieldType.fromValue(string(row, "fieldType")),
                 string(row, "columnName"),
                 integerOrNull(row, "textLength"),
                 integerOrNull(row, "decimalPrecision"),
                 integerOrNull(row, "decimalScale"),
-                ArchiveFieldControl.valueOf(string(row, "editControl")),
+                ArchiveFieldControl.fromValue(string(row, "editControl")),
                 bool(row, "listVisible"),
                 integerOrNull(row, "listWidth"),
                 number(row, "listSortOrder").intValue(),
@@ -1257,7 +1259,7 @@ public class ArchiveMetadataService {
         return new ArchiveUniqueConstraintDto(
                 number(row, "id").longValue(),
                 number(row, "categoryId").longValue(),
-                ArchiveLevel.valueOf(string(row, "archiveLevel")),
+                ArchiveLevel.fromValue(string(row, "archiveLevel")),
                 string(row, "constraintCode"),
                 string(row, "constraintName"),
                 bool(row, "includeFonds"),
@@ -1272,7 +1274,7 @@ public class ArchiveMetadataService {
         return new ArchiveUniqueConstraintFieldDto(
                 number(row, "fieldId").longValue(),
                 number(row, "fieldOrder").intValue(),
-                ArchiveLevel.valueOf(string(row, "archiveLevel")),
+                ArchiveLevel.fromValue(string(row, "archiveLevel")),
                 string(row, "fieldCode"),
                 string(row, "fieldName"),
                 string(row, "columnName"));
@@ -1443,16 +1445,23 @@ public class ArchiveMetadataService {
             Integer colOrder) {}
 
     private enum ArchiveLayoutScope {
-        PUBLIC,
-        MINE,
-        EFFECTIVE;
+        public_,
+        mine,
+        effective;
+
+        private String value() {
+            return this == public_ ? "public" : name();
+        }
 
         private static ArchiveLayoutScope from(String value) {
             if (StringUtils.isBlank(value)) {
-                return EFFECTIVE;
+                return effective;
             }
+            String normalizedValue = value.trim().toLowerCase(Locale.ROOT);
             try {
-                return ArchiveLayoutScope.valueOf(value.trim().toUpperCase());
+                return "public".equals(normalizedValue)
+                        ? public_
+                        : ArchiveLayoutScope.valueOf(normalizedValue);
             } catch (IllegalArgumentException exception) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "布局范围不合法");
             }

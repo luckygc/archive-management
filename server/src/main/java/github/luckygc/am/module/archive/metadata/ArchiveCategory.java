@@ -1,4 +1,4 @@
-package github.luckygc.am.module.archive;
+package github.luckygc.am.module.archive.metadata;
 
 import java.time.LocalDateTime;
 
@@ -36,7 +36,7 @@ public class ArchiveCategory {
 
     @Column(name = "management_mode", nullable = false, length = 30)
     @Enumerated(EnumType.STRING)
-    private ArchiveManagementMode managementMode = ArchiveManagementMode.ITEM_ONLY;
+    private ArchiveManagementMode managementMode = ArchiveManagementMode.item_only;
 
     @Column(name = "volume_table_name", length = 100)
     private String volumeTableName;
@@ -46,7 +46,7 @@ public class ArchiveCategory {
 
     @Column(name = "table_status", nullable = false, length = 30)
     @Enumerated(EnumType.STRING)
-    private ArchiveTableStatus tableStatus = ArchiveTableStatus.NOT_BUILT;
+    private ArchiveTableStatus tableStatus = ArchiveTableStatus.not_built;
 
     @Column(name = "built_at")
     private LocalDateTime builtAt;

@@ -1,4 +1,4 @@
-package github.luckygc.am.module.archive;
+package github.luckygc.am.module.archive.metadata;
 
 import jakarta.data.repository.BasicRepository;
 import jakarta.data.repository.Repository;

@@ -287,8 +287,8 @@
 
     <update id="updateCategoryTableStatus">
         update am_archive_category
-        set item_table_name = case when #{archiveLevel} = 'ITEM' then #{tableName} else item_table_name end,
-            volume_table_name = case when #{archiveLevel} = 'VOLUME' then #{tableName} else volume_table_name end,
+        set item_table_name = case when #{archiveLevel} = 'item' then #{tableName} else item_table_name end,
+            volume_table_name = case when #{archiveLevel} = 'volume' then #{tableName} else volume_table_name end,
             table_status = #{tableStatus},
             built_at = localtimestamp,
             updated_at = localtimestamp
@@ -746,7 +746,7 @@
             display_order = #{displayOrder},
             updated_at = localtimestamp
         where id = #{archiveRecordId}
-          and archive_level = 'ITEM'
+          and archive_level = 'item'
           and deleted_flag = false
           and locked_flag = false
     </update>

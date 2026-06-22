@@ -21,7 +21,7 @@
 - 后端当前按单 Spring Boot 应用起步；业务功能统一放在 `server/src/main/java/github/luckygc/am/module` 下，并按业务边界拆子包，例如 `module/auth`。
 - 基础设施能力统一放在 `server/src/main/java/github/luckygc/am/infrastructure` 下，只承载技术适配，例如 Spring Security、Hibernate、文件存储、外部系统客户端、缓存和调度适配。
 - `common` 只放跨业务模块共享的应用基础约定，不承载业务模块，也不承载具体外部技术适配；认证、用户、权限、档案、存储对象等业务语义不得放入 `common`。
-- 业务模块不按 `api` / `internal` 继续拆包；当前是单体应用，不按微服务式模块合同组织代码。实体、Repository、Mapper、Controller、Service、DTO 等按业务模块直接放在对应模块包下，必要时再按 `web`、`service`、`dto`、`mapper` 等实现形态拆子包。
+- 业务模块不按 `api` / `internal` 继续拆包；当前是单体应用，不按微服务式模块合同组织代码。单个业务模块根包下，同一业务子域相关类达到 5 个及以上时，应按业务子域分包；分包依据是业务边界，不是机械按数量或按 Controller/Service/Repository 横切分层。子域包内部再次变大时，才继续按 `web`、`service`、`dto`、`repository`、`mapper` 等实现形态拆包。
 - 跨业务模块协作允许直接依赖目标业务模块公开的类，但不要绕过目标模块已有 Service 去直接操作其 Repository、Mapper 或底层表；需要复用业务能力时优先抽出明确的 Service 方法。
 - 控制器请求/响应 DTO 如果只服务本模块 HTTP 接口，可放在模块内的 `dto` 或 `web` 相关包下；只有确实跨多个模块复用时再提升为模块根下稳定类型。
 - 后端架构边界通过 ArchUnit 测试固化；调整包结构、跨模块调用或公共类型落点时，必须同步维护对应架构测试。
@@ -30,14 +30,13 @@
 - Java 字符串判空统一使用 Apache Commons Lang `StringUtils`，不要直接散写原生空值和空白判断组合。
 - 摘要、编码、Hex 等通用加密/编码类方法优先使用 Apache Commons Codec 等成熟工具库，不要在业务代码里手写通用算法封装。
 - 方法参数校验、请求参数校验这类纯校验操作不应该被事务包裹；只有确实需要原子写入、状态变更、消费令牌、扣减库存、锁定记录等场景才开启事务。
-- 数据库以 PostgreSQL 为唯一优先目标；项目自有 DDL、索引、约束、查询和执行计划可以围绕 PostgreSQL 能力优化，不为 MySQL、Oracle、SQL Server 等数据库做兼容性折中。
+- 数据库和 Flyway 迁移以 PostgreSQL 为唯一优先目标；项目自有 DDL、索引、约束、查询、执行计划和迁移脚本可以围绕 PostgreSQL 能力优化，不为 MySQL、Oracle、SQL Server 等数据库做兼容性折中。除非明确新增其他数据库支持，不维护多数据库迁移分支。
 - SQL 默认不使用双引号或反引号包裹标识符，也不要通过 `as "camelCase"` 这类 quoted alias 维持大小写；表名、列名、别名、索引名和约束名都使用小写 snake_case，让非法标识符尽早暴露。查询列名与结果名相同的场景不要写 `fonds_code as fonds_code` 这类冗余别名，只有表达式或确需更名时才使用小写 snake_case alias。动态 SQL 同样不要依赖自动引用标识符兜底，拼接前应校验标识符合法性。
-- Flyway 迁移默认按 PostgreSQL 编写；除非明确新增其他数据库支持，不维护多数据库迁移分支，也不为了跨库兼容回避 PostgreSQL 的成熟能力。
 - Flyway 迁移，档案server的pom.xml里版本未达到1.0.0时，都按照目标结构修改，1.0.0之后使用增量迁移
 - 项目不会跨时区使用；项目自有表时间字段使用无时区 `timestamp`，不使用 `timestamptz`。
-- 项目自有数据库表必须使用 `am_模块_表名` 命名，例如 `am_auth_user`、`am_archive_file`、`am_storage_file`；不要只使用 `am_表名` 这类缺少模块语义的名称。
-- Flyway 迁移中新建业务表、平台表、审计表、中间表等项目自有表时，同样必须使用 `am_模块_表名`；索引、约束、序列等对象名称应跟随表名保持 `am_模块_` 语义。
+- 项目自有数据库表必须使用 `am_模块_表名` 命名，例如 `am_auth_user`、`am_archive_file`、`am_storage_file`；不要只使用 `am_表名` 这类缺少模块语义的名称。Flyway 迁移中新建业务表、平台表、审计表、中间表等项目自有表时同样适用；索引、约束、序列等对象名称应跟随表名保持 `am_模块_` 语义。
 - 项目自有表不允许使用数据库 `CHECK` 约束；枚举、状态、数值范围等校验放在应用层或字典/配置层。
+- 实体枚举字段默认按文本持久化：Java enum 常量名直接使用对外和入库的小写 snake_case 值，实体属性标注 `@Enumerated(EnumType.STRING)`；不要依赖 `enum.ordinal()`，也不要为简单枚举手写 `AttributeConverter` 或额外注册 Jackson/MVC 枚举转换器。DDL 的 `comment on column` 必须列出每个枚举值及其含义。
 - 带逻辑删除字段的项目自有表不允许使用覆盖已删除数据的唯一约束；唯一性必须使用 `where deleted_at is null` 的部分唯一索引，只约束未删除记录。
 - 第三方框架原生表不属于项目自有表，例如 Spring Session 的 `SPRING_SESSION`、Quartz 的 `QRTZ_*`。除非明确改为项目自维护表，否则保留框架默认命名，避免偏离上游脚本。
 - 当前持久化入口是 Jakarta Data 和 MyBatis：固定 CRUD 表优先使用 Jakarta Data Repository；动态表、复杂 SQL、批处理、报表和认证适配查询统一使用 MyBatis；不要在项目代码里使用 JdbcClient 作为持久化入口，不要引入 Spring Data JPA。业务代码不得直接使用 Hibernate 有状态 `Session`、Hibernate `Query` 或其他依赖 Session 生命周期的对象；如确需 Hibernate 底层适配，只能封装在基础设施层，不能外泄为业务模块合同。Repository 对外不得返回 `Stream`、游标等依赖会话生命周期的对象，必须在 `@Transactional` 方法内消费完查询结果。

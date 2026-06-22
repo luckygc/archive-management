@@ -1,12 +1,13 @@
-package github.luckygc.am.module.archive;
+package github.luckygc.am.module.archive.record;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import github.luckygc.am.module.archive.ArchiveRecordRoutingService.ArchiveRecordDto;
+import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
+import github.luckygc.am.module.archive.record.ArchiveRecordRoutingService.ArchiveRecordDto;
 
 @Service
 public class ArchiveVolumeService {
@@ -25,11 +26,11 @@ public class ArchiveVolumeService {
         archiveRecordRoutingService.ensureRecordEditable(archiveRecordId);
         ArchiveRecordDto volume = archiveRecordRoutingService.getRecord(volumeId);
         archiveRecordRoutingService.ensureRecordEditable(volumeId);
-        if (volume.archiveLevel() != ArchiveLevel.VOLUME) {
+        if (volume.archiveLevel() != ArchiveLevel.volume) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "目标记录不是案卷");
         }
         ArchiveRecordDto record = archiveRecordRoutingService.getRecord(archiveRecordId);
-        if (record.archiveLevel() != ArchiveLevel.ITEM) {
+        if (record.archiveLevel() != ArchiveLevel.item) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "只能将卷内条目加入案卷");
         }
         if (!volume.fondsCode().equals(record.fondsCode())

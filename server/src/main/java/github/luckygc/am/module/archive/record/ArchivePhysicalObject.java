@@ -1,4 +1,4 @@
-package github.luckygc.am.module.archive;
+package github.luckygc.am.module.archive.record;
 
 import java.time.LocalDateTime;
 
