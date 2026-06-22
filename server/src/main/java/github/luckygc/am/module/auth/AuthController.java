@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import github.luckygc.am.infrastructure.security.ArchiveUserDetails;
+import github.luckygc.am.common.security.AuthenticatedUser;
 
 @RestController
 public class AuthController {
@@ -45,7 +45,7 @@ public class AuthController {
                             .toList();
             String username = authentication.getName();
             String displayName =
-                    authentication.getPrincipal() instanceof ArchiveUserDetails userDetails
+                    authentication.getPrincipal() instanceof AuthenticatedUser userDetails
                             ? userDetails.displayName()
                             : username;
             return new CurrentUserDto(username, displayName, roles);

@@ -12,7 +12,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
-import org.springframework.jdbc.core.simple.JdbcClient;
 
 @SpringBootTest(
         properties = {
@@ -20,7 +19,9 @@ import org.springframework.jdbc.core.simple.JdbcClient;
                     + "org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration,"
                     + "org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration,"
                     + "org.springframework.boot.session.jdbc.autoconfigure.JdbcSessionAutoConfiguration,"
-                    + "org.springframework.ai.model.deepseek.autoconfigure.DeepSeekChatAutoConfiguration"
+                    + "org.springframework.ai.model.deepseek.autoconfigure.DeepSeekChatAutoConfiguration",
+            "flowable.process.enabled=false",
+            "flowable.eventregistry.enabled=false"
         })
 class ServerApplicationTests {
 
@@ -28,14 +29,7 @@ class ServerApplicationTests {
     void contextLoads() {}
 
     @TestConfiguration
-    static class TestJdbcConfiguration {
-
-        @Bean
-        JdbcClient jdbcClient() {
-            return sql -> {
-                throw new UnsupportedOperationException("空启动测试不访问数据库");
-            };
-        }
+    static class TestPersistenceConfiguration {
 
         @Bean
         SqlSessionFactory sqlSessionFactory() {

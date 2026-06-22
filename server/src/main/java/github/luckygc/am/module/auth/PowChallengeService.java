@@ -11,7 +11,6 @@ import java.util.Map;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,11 +23,15 @@ public class PowChallengeService {
     private static final long CHALLENGE_EXPIRES_MS = 600_000L;
     private static final long TOKEN_EXPIRES_MS = 20 * 60 * 1000L;
 
-    private final JdbcClient jdbcClient;
+    private final AuthCapChallengeDataRepository challengeRepository;
+    private final AuthCapTokenDataRepository tokenRepository;
     private final SecureRandom secureRandom = new SecureRandom();
 
-    public PowChallengeService(JdbcClient jdbcClient) {
-        this.jdbcClient = jdbcClient;
+    public PowChallengeService(
+            AuthCapChallengeDataRepository challengeRepository,
+            AuthCapTokenDataRepository tokenRepository) {
+        this.challengeRepository = challengeRepository;
+        this.tokenRepository = tokenRepository;
     }
 
     @Transactional
@@ -38,20 +41,13 @@ public class PowChallengeService {
         String token = randomHex(25);
         long expires = System.currentTimeMillis() + CHALLENGE_EXPIRES_MS;
 
-        jdbcClient
-                .sql(
-                        """
-                        insert into am_auth_cap_challenge
-                            (token, challenge_count, challenge_size, difficulty, expires_at)
-                        values
-                            (:token, :challengeCount, :challengeSize, :difficulty, :expiresAt)
-                        """)
-                .param("token", token)
-                .param("challengeCount", DEFAULT_CHALLENGE_COUNT)
-                .param("challengeSize", DEFAULT_CHALLENGE_SIZE)
-                .param("difficulty", DEFAULT_CHALLENGE_DIFFICULTY)
-                .param("expiresAt", toLocalDateTime(expires))
-                .update();
+        AuthCapChallenge challenge = new AuthCapChallenge();
+        challenge.setToken(token);
+        challenge.setChallengeCount(DEFAULT_CHALLENGE_COUNT);
+        challenge.setChallengeSize(DEFAULT_CHALLENGE_SIZE);
+        challenge.setDifficulty(DEFAULT_CHALLENGE_DIFFICULTY);
+        challenge.setExpiresAt(toLocalDateTime(expires));
+        challengeRepository.save(challenge);
 
         return new CapChallengeResponse(
                 new CapChallenge(
@@ -73,31 +69,12 @@ public class PowChallengeService {
 
         cleanExpired();
 
-        ChallengeRecord challenge =
-                jdbcClient
-                        .sql(
-                                """
-                        select token, challenge_count, challenge_size, difficulty, expires_at
-                        from am_auth_cap_challenge
-                        where token = :token
-                        for update
-                        """)
-                        .param("token", command.token())
-                        .query(
-                                (rs, rowNum) ->
-                                        new ChallengeRecord(
-                                                rs.getString("token"),
-                                                rs.getInt("challenge_count"),
-                                                rs.getInt("challenge_size"),
-                                                rs.getInt("difficulty"),
-                                                rs.getTimestamp("expires_at").toLocalDateTime()))
-                        .optional()
-                        .orElse(null);
+        AuthCapChallenge challenge = challengeRepository.findById(command.token()).orElse(null);
 
         deleteChallenge(command.token());
 
         if (challenge == null
-                || toEpochMillis(challenge.expiresAt()) < System.currentTimeMillis()) {
+                || toEpochMillis(challenge.getExpiresAt()) < System.currentTimeMillis()) {
             return redeemFailure("Challenge invalid or expired");
         }
 
@@ -110,15 +87,10 @@ public class PowChallengeService {
         String id = randomHex(8);
         String tokenKey = id + ":" + sha256Hex(vertoken);
 
-        jdbcClient
-                .sql(
-                        """
-                        insert into am_auth_cap_token (token_key, expires_at)
-                        values (:tokenKey, :expiresAt)
-                        """)
-                .param("tokenKey", tokenKey)
-                .param("expiresAt", toLocalDateTime(expires))
-                .update();
+        AuthCapToken capToken = new AuthCapToken();
+        capToken.setTokenKey(tokenKey);
+        capToken.setExpiresAt(toLocalDateTime(expires));
+        tokenRepository.save(capToken);
 
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("success", true);
@@ -147,16 +119,7 @@ public class PowChallengeService {
             throw new PowChallengeException("安全验证已失效，请重试");
         }
 
-        int deleted =
-                jdbcClient
-                        .sql(
-                                """
-                        delete from am_auth_cap_token
-                        where token_key = :tokenKey
-                          and expires_at > localtimestamp
-                        """)
-                        .param("tokenKey", tokenKey)
-                        .update();
+        int deleted = tokenRepository.consume(tokenKey, LocalDateTime.now());
 
         if (deleted != 1) {
             throw new PowChallengeException("安全验证已失效，请重试");
@@ -182,17 +145,7 @@ public class PowChallengeService {
         }
 
         LocalDateTime expiresAt =
-                jdbcClient
-                        .sql(
-                                """
-                        select expires_at
-                        from am_auth_cap_token
-                        where token_key = :tokenKey
-                        """)
-                        .param("tokenKey", tokenKey)
-                        .query((rs, rowNum) -> rs.getTimestamp("expires_at").toLocalDateTime())
-                        .optional()
-                        .orElse(null);
+                tokenRepository.findById(tokenKey).map(AuthCapToken::getExpiresAt).orElse(null);
 
         return expiresAt != null && toEpochMillis(expiresAt) > System.currentTimeMillis();
     }
@@ -210,14 +163,15 @@ public class PowChallengeService {
         return parts[0] + ":" + sha256Hex(parts[1]);
     }
 
-    private boolean validSolutions(ChallengeRecord challenge, List<Long> solutions) {
-        if (solutions.size() != challenge.challengeCount()) {
+    private boolean validSolutions(AuthCapChallenge challenge, List<Long> solutions) {
+        if (solutions.size() != challenge.getChallengeCount()) {
             return false;
         }
 
-        for (int index = 0; index < challenge.challengeCount(); index++) {
-            String salt = prng(challenge.token() + (index + 1), challenge.challengeSize());
-            String target = prng(challenge.token() + (index + 1) + "d", challenge.difficulty());
+        for (int index = 0; index < challenge.getChallengeCount(); index++) {
+            String salt = prng(challenge.getToken() + (index + 1), challenge.getChallengeSize());
+            String target =
+                    prng(challenge.getToken() + (index + 1) + "d", challenge.getDifficulty());
             if (!sha256Hex(salt + solutions.get(index)).startsWith(target)) {
                 return false;
             }
@@ -227,17 +181,13 @@ public class PowChallengeService {
     }
 
     private void deleteChallenge(String token) {
-        jdbcClient
-                .sql("delete from am_auth_cap_challenge where token = :token")
-                .param("token", token)
-                .update();
+        challengeRepository.deleteById(token);
     }
 
     private void cleanExpired() {
-        jdbcClient
-                .sql("delete from am_auth_cap_challenge where expires_at < localtimestamp")
-                .update();
-        jdbcClient.sql("delete from am_auth_cap_token where expires_at < localtimestamp").update();
+        LocalDateTime now = LocalDateTime.now();
+        challengeRepository.deleteExpired(now);
+        tokenRepository.deleteExpired(now);
     }
 
     private String randomHex(int bytesCount) {
@@ -296,11 +246,4 @@ public class PowChallengeService {
     public record CapRedeemCommand(String token, List<Long> solutions) {}
 
     public record CapValidateCommand(String token, Boolean keepToken) {}
-
-    private record ChallengeRecord(
-            String token,
-            int challengeCount,
-            int challengeSize,
-            int difficulty,
-            LocalDateTime expiresAt) {}
 }

@@ -6,6 +6,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import github.luckygc.am.common.storage.StorageType;
+
 class DelegatingFileStorageService implements FileStorageService, AutoCloseable {
 
     private final StorageType defaultStorageType;

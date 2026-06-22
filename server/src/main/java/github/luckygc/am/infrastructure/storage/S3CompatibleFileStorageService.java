@@ -5,6 +5,8 @@ import java.net.URI;
 
 import org.apache.commons.lang3.StringUtils;
 
+import github.luckygc.am.common.storage.StorageType;
+
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.ResponseInputStream;

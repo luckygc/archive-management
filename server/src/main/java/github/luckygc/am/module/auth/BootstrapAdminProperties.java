@@ -1,5 +1,7 @@
 package github.luckygc.am.module.auth;
 
+import java.util.List;
+
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import lombok.Data;
@@ -15,4 +17,6 @@ public class BootstrapAdminProperties {
     private String password = "";
 
     private String displayName = "系统管理员";
+
+    private List<String> roleNames = List.of();
 }

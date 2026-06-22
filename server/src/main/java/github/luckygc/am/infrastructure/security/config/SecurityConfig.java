@@ -44,6 +44,7 @@ public class SecurityConfig {
     private final FormLoginAuthenticationFailureHandler authenticationFailureHandler;
     private final HttpStatusLogoutSuccessHandler logoutSuccessHandler;
     private final SecurityCorsProperties corsProperties;
+    private final SecurityAuthorizationProperties authorizationProperties;
 
     public SecurityConfig(
             SecurityContextRepository securityContextRepository,
@@ -51,13 +52,15 @@ public class SecurityConfig {
             @Qualifier("formLoginAuthenticationSuccessHandler") AuthenticationSuccessHandler authenticationSuccessHandler,
             FormLoginAuthenticationFailureHandler authenticationFailureHandler,
             HttpStatusLogoutSuccessHandler logoutSuccessHandler,
-            SecurityCorsProperties corsProperties) {
+            SecurityCorsProperties corsProperties,
+            SecurityAuthorizationProperties authorizationProperties) {
         this.securityContextRepository = securityContextRepository;
         this.powLoginFilter = powLoginFilter;
         this.authenticationSuccessHandler = authenticationSuccessHandler;
         this.authenticationFailureHandler = authenticationFailureHandler;
         this.logoutSuccessHandler = logoutSuccessHandler;
         this.corsProperties = corsProperties;
+        this.authorizationProperties = authorizationProperties;
     }
 
     @Bean
@@ -93,7 +96,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/auth/cap/**")
                 .permitAll()
                 .requestMatchers("/actuator/**")
-                .hasRole("系统监控")
+                .hasRole(authorizationProperties.getActuatorRoleName())
                 .anyRequest()
                 .authenticated();
     }

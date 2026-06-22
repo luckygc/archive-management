@@ -10,6 +10,8 @@ import java.util.UUID;
 
 import org.apache.commons.lang3.StringUtils;
 
+import github.luckygc.am.common.storage.StorageType;
+
 class LocalFileStorageService implements FileStorageBackend {
 
     private final String bucket;

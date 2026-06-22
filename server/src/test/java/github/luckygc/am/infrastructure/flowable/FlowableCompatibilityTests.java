@@ -16,7 +16,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest(
         properties = {
-            "spring.ai.model.deepseek.autoconfigure.enabled=false",
+            "spring.ai.deepseek.chat.enabled=false",
             "spring.flyway.enabled=false",
             "spring.autoconfigure.exclude="
                     + "org.springframework.ai.model.deepseek.autoconfigure.DeepSeekChatAutoConfiguration",

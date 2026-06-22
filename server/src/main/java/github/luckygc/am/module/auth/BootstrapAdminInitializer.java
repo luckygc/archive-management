@@ -4,7 +4,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,15 +16,21 @@ import org.springframework.transaction.annotation.Transactional;
 public class BootstrapAdminInitializer implements ApplicationRunner {
 
     private final BootstrapAdminProperties properties;
-    private final JdbcClient jdbcClient;
+    private final AuthUserDataRepository userRepository;
+    private final AuthRoleDataRepository roleRepository;
+    private final AuthUserRoleRelationDataRepository userRoleRelationRepository;
     private final PasswordEncoder passwordEncoder;
 
     public BootstrapAdminInitializer(
             BootstrapAdminProperties properties,
-            JdbcClient jdbcClient,
+            AuthUserDataRepository userRepository,
+            AuthRoleDataRepository roleRepository,
+            AuthUserRoleRelationDataRepository userRoleRelationRepository,
             PasswordEncoder passwordEncoder) {
         this.properties = properties;
-        this.jdbcClient = jdbcClient;
+        this.userRepository = userRepository;
+        this.roleRepository = roleRepository;
+        this.userRoleRelationRepository = userRoleRelationRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -44,41 +49,30 @@ public class BootstrapAdminInitializer implements ApplicationRunner {
                 requireText(
                         properties.getDisplayName(), "archive.auth.bootstrap-admin.display-name");
 
-        boolean exists =
-                jdbcClient
-                        .sql("select exists(select 1 from am_auth_user where username = :username)")
-                        .param("username", username)
-                        .query((rs, rowNum) -> rs.getBoolean(1))
-                        .single();
-        if (exists) {
+        if (userRepository.findOptionalByUsername(username) != null) {
             return;
         }
 
-        Long userId =
-                jdbcClient
-                        .sql(
-                                """
-                        insert into am_auth_user (username, password, display_name)
-                        values (:username, :password, :displayName)
-                        returning id
-                        """)
-                        .param("username", username)
-                        .param("password", passwordEncoder.encode(password))
-                        .param("displayName", displayName)
-                        .query((rs, rowNum) -> rs.getLong("id"))
-                        .single();
+        AuthUser user = new AuthUser();
+        user.setUsername(username);
+        user.setPassword(passwordEncoder.encode(password));
+        user.setDisplayName(displayName);
+        user = userRepository.save(user);
 
-        jdbcClient
-                .sql(
-                        """
-                        insert into am_auth_user_role_rel (user_id, role_id)
-                        select :userId, id
-                        from am_auth_role
-                        where role_name in ('系统管理员', '系统监控')
-                        on conflict do nothing
-                        """)
-                .param("userId", userId)
-                .update();
+        for (String roleName : properties.getRoleNames()) {
+            grantRole(user.getId(), roleName);
+        }
+    }
+
+    private void grantRole(Long userId, String roleName) {
+        AuthRole role = roleRepository.findOptionalByRoleName(roleName);
+        if (role == null) {
+            return;
+        }
+        AuthUserRoleRelation relation = new AuthUserRoleRelation();
+        relation.setUserId(userId);
+        relation.setRoleId(role.getId());
+        userRoleRelationRepository.save(relation);
     }
 
     private static String requireText(String value, String propertyName) {

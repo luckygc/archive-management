@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import github.luckygc.am.infrastructure.security.ArchiveUserDetails;
+import github.luckygc.am.common.security.AuthenticatedUser;
 import github.luckygc.am.module.archive.ArchiveRecordRoutingService.ArchiveRecordDetailDto;
 import github.luckygc.am.module.archive.ArchiveRecordRoutingService.ArchiveRecordDto;
 import github.luckygc.am.module.archive.ArchiveRecordRoutingService.ArchiveRecordListDto;
@@ -95,7 +95,7 @@ public class ArchiveRecordController {
 
     private Long currentUserId(Authentication authentication) {
         if (authentication != null
-                && authentication.getPrincipal() instanceof ArchiveUserDetails userDetails) {
+                && authentication.getPrincipal() instanceof AuthenticatedUser userDetails) {
             return userDetails.id();
         }
         return null;

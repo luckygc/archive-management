@@ -11,6 +11,8 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import github.luckygc.am.common.storage.StorageType;
+
 class DelegatingFileStorageServiceTests {
 
     @TempDir Path tempDir;

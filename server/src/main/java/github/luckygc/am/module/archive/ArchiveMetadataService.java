@@ -1279,12 +1279,12 @@ public class ArchiveMetadataService {
     }
 
     private String string(Map<String, Object> row, String key) {
-        Object value = row.get(key);
+        Object value = value(row, key);
         return value == null ? null : value.toString();
     }
 
     private boolean bool(Map<String, Object> row, String key) {
-        Object value = row.get(key);
+        Object value = value(row, key);
         return value instanceof Boolean bool ? bool : Boolean.parseBoolean(String.valueOf(value));
     }
 
@@ -1297,7 +1297,7 @@ public class ArchiveMetadataService {
     }
 
     private Number numberOrNull(Map<String, Object> row, String key) {
-        Object value = row.get(key);
+        Object value = value(row, key);
         return value instanceof Number number ? number : null;
     }
 
@@ -1307,8 +1307,28 @@ public class ArchiveMetadataService {
     }
 
     private LocalDateTime dateTime(Map<String, Object> row, String key) {
-        Object value = row.get(key);
+        Object value = value(row, key);
         return value instanceof LocalDateTime dateTime ? dateTime : null;
+    }
+
+    private Object value(Map<String, Object> row, String key) {
+        if (row.containsKey(key)) {
+            return row.get(key);
+        }
+        return row.get(camelToSnake(key));
+    }
+
+    private String camelToSnake(String key) {
+        StringBuilder result = new StringBuilder(key.length() + 4);
+        for (int index = 0; index < key.length(); index++) {
+            char ch = key.charAt(index);
+            if (Character.isUpperCase(ch)) {
+                result.append('_').append(Character.toLowerCase(ch));
+            } else {
+                result.append(ch);
+            }
+        }
+        return result.toString();
     }
 
     public record ArchiveFondsRequest(

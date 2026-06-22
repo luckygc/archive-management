@@ -6,12 +6,12 @@
 
     <select id="listFonds" resultType="map">
         select id,
-               fonds_code as "fondsCode",
-               fonds_name as "fondsName",
+               fonds_code,
+               fonds_name,
                enabled,
-               sort_order as "sortOrder",
-               created_at as "createdAt",
-               updated_at as "updatedAt"
+               sort_order,
+               created_at,
+               updated_at
         from am_archive_fonds
         where deleted_flag = false
         <if test="enabled != null">
@@ -44,42 +44,42 @@
 
     <select id="getFonds" resultType="map">
         select id,
-               fonds_code as "fondsCode",
-               fonds_name as "fondsName",
+               fonds_code,
+               fonds_name,
                enabled,
-               sort_order as "sortOrder",
-               created_at as "createdAt",
-               updated_at as "updatedAt"
+               sort_order,
+               created_at,
+               updated_at
         from am_archive_fonds
         where id = #{id} and deleted_flag = false
     </select>
 
     <select id="getFondsByCode" resultType="map">
         select id,
-               fonds_code as "fondsCode",
-               fonds_name as "fondsName",
+               fonds_code,
+               fonds_name,
                enabled,
-               sort_order as "sortOrder",
-               created_at as "createdAt",
-               updated_at as "updatedAt"
+               sort_order,
+               created_at,
+               updated_at
         from am_archive_fonds
         where fonds_code = #{fondsCode} and deleted_flag = false
     </select>
 
     <select id="listCategories" resultType="map">
         select id,
-               parent_id as "parentId",
-               category_code as "categoryCode",
-               category_name as "categoryName",
-               management_mode as "managementMode",
-               volume_table_name as "volumeTableName",
-               item_table_name as "itemTableName",
-               table_status as "tableStatus",
-               built_at as "builtAt",
+               parent_id,
+               category_code,
+               category_name,
+               management_mode,
+               volume_table_name,
+               item_table_name,
+               table_status,
+               built_at,
                enabled,
-               sort_order as "sortOrder",
-               created_at as "createdAt",
-               updated_at as "updatedAt"
+               sort_order,
+               created_at,
+               updated_at
         from am_archive_category
         where deleted_flag = false
         <if test="enabled != null">
@@ -115,18 +115,18 @@
 
     <select id="getCategory" resultType="map">
         select id,
-               parent_id as "parentId",
-               category_code as "categoryCode",
-               category_name as "categoryName",
-               management_mode as "managementMode",
-               volume_table_name as "volumeTableName",
-               item_table_name as "itemTableName",
-               table_status as "tableStatus",
-               built_at as "builtAt",
+               parent_id,
+               category_code,
+               category_name,
+               management_mode,
+               volume_table_name,
+               item_table_name,
+               table_status,
+               built_at,
                enabled,
-               sort_order as "sortOrder",
-               created_at as "createdAt",
-               updated_at as "updatedAt"
+               sort_order,
+               created_at,
+               updated_at
         from am_archive_category
         where id = #{id} and deleted_flag = false
     </select>
@@ -145,31 +145,31 @@
 
     <select id="listFields" resultType="map">
         select id,
-               category_id as "categoryId",
-               archive_level as "archiveLevel",
-               field_code as "fieldCode",
-               field_name as "fieldName",
-               field_type as "fieldType",
-               column_name as "columnName",
-               text_length as "textLength",
-               decimal_precision as "decimalPrecision",
-               decimal_scale as "decimalScale",
-               edit_control as "editControl",
-               list_visible as "listVisible",
-               list_width as "listWidth",
-               list_sort_order as "listSortOrder",
-               detail_visible as "detailVisible",
-               detail_col_span as "detailColSpan",
-               detail_sort_order as "detailSortOrder",
-               edit_visible as "editVisible",
-               edit_col_span as "editColSpan",
-               edit_sort_order as "editSortOrder",
-               exact_searchable as "exactSearchable",
-               full_text_searchable as "fullTextSearchable",
+               category_id,
+               archive_level,
+               field_code,
+               field_name,
+               field_type,
+               column_name,
+               text_length,
+               decimal_precision,
+               decimal_scale,
+               edit_control,
+               list_visible,
+               list_width,
+               list_sort_order,
+               detail_visible,
+               detail_col_span,
+               detail_sort_order,
+               edit_visible,
+               edit_col_span,
+               edit_sort_order,
+               exact_searchable,
+               full_text_searchable,
                enabled,
-               sort_order as "sortOrder",
-               created_at as "createdAt",
-               updated_at as "updatedAt"
+               sort_order,
+               created_at,
+               updated_at
         from am_archive_field
         where category_id = #{categoryId} and deleted_flag = false
         <if test="archiveLevel != null">
@@ -232,31 +232,31 @@
 
     <select id="getField" resultType="map">
         select id,
-               category_id as "categoryId",
-               archive_level as "archiveLevel",
-               field_code as "fieldCode",
-               field_name as "fieldName",
-               field_type as "fieldType",
-               column_name as "columnName",
-               text_length as "textLength",
-               decimal_precision as "decimalPrecision",
-               decimal_scale as "decimalScale",
-               edit_control as "editControl",
-               list_visible as "listVisible",
-               list_width as "listWidth",
-               list_sort_order as "listSortOrder",
-               detail_visible as "detailVisible",
-               detail_col_span as "detailColSpan",
-               detail_sort_order as "detailSortOrder",
-               edit_visible as "editVisible",
-               edit_col_span as "editColSpan",
-               edit_sort_order as "editSortOrder",
-               exact_searchable as "exactSearchable",
-               full_text_searchable as "fullTextSearchable",
+               category_id,
+               archive_level,
+               field_code,
+               field_name,
+               field_type,
+               column_name,
+               text_length,
+               decimal_precision,
+               decimal_scale,
+               edit_control,
+               list_visible,
+               list_width,
+               list_sort_order,
+               detail_visible,
+               detail_col_span,
+               detail_sort_order,
+               edit_visible,
+               edit_col_span,
+               edit_sort_order,
+               exact_searchable,
+               full_text_searchable,
                enabled,
-               sort_order as "sortOrder",
-               created_at as "createdAt",
-               updated_at as "updatedAt"
+               sort_order,
+               created_at,
+               updated_at
         from am_archive_field
         where id = #{id} and deleted_flag = false
     </select>
@@ -443,33 +443,33 @@
 
     <select id="getArchiveRecord" resultType="map">
         select id,
-               archive_level as "archiveLevel",
-               parent_id as "parentId",
-               fonds_code as "fondsCode",
-               fonds_name as "fondsName",
-               category_code as "categoryCode",
-               category_name as "categoryName",
-               archive_no as "archiveNo",
-               electronic_status as "electronicStatus",
-               archive_year as "archiveYear",
-               locked_flag as "lockedFlag",
-               lock_reason as "lockReason",
-               locked_by as "lockedBy",
-               locked_at as "lockedAt"
+               archive_level,
+               parent_id,
+               fonds_code,
+               fonds_name,
+               category_code,
+               category_name,
+               archive_no,
+               electronic_status,
+               archive_year,
+               locked_flag,
+               lock_reason,
+               locked_by,
+               locked_at
         from am_archive_record
         where id = #{id} and deleted_flag = false
     </select>
 
     <select id="getPhysicalObjectByRecordId" resultType="map">
         select id,
-               archive_record_id as "archiveRecordId",
-               physical_status as "physicalStatus",
-               box_no as "boxNo",
-               location_no as "locationNo",
+               archive_record_id,
+               physical_status,
+               box_no,
+               location_no,
                barcode,
                remark,
-               created_at as "createdAt",
-               updated_at as "updatedAt"
+               created_at,
+               updated_at
         from am_archive_physical_object
         where archive_record_id = #{archiveRecordId}
           and deleted_flag = false
@@ -548,8 +548,8 @@
 
     <select id="listPendingSearchOutbox" resultType="map">
         select id,
-               archive_record_id as "archiveRecordId",
-               event_type as "eventType"
+               archive_record_id,
+               event_type
         from am_archive_record_search_outbox
         where status = 'PENDING'
           and (next_retry_at is null or next_retry_at &lt;= localtimestamp)
@@ -576,7 +576,7 @@
     </update>
 
     <select id="searchRecordIds" resultType="map">
-        select archive_record_id as "archiveRecordId",
+        select archive_record_id,
                search_text &lt;@&gt; #{keyword} as score
         from am_archive_record_search
         where search_text @@@ #{keyword}
@@ -585,15 +585,15 @@
 
     <select id="listUniqueConstraints" resultType="map">
         select id,
-               category_id as "categoryId",
-               archive_level as "archiveLevel",
-               constraint_code as "constraintCode",
-               constraint_name as "constraintName",
-               include_fonds as "includeFonds",
-               index_name as "indexName",
+               category_id,
+               archive_level,
+               constraint_code,
+               constraint_name,
+               include_fonds,
+               index_name,
                enabled,
-               created_at as "createdAt",
-               updated_at as "updatedAt"
+               created_at,
+               updated_at
         from am_archive_unique_constraint
         where category_id = #{categoryId} and deleted_flag = false
         order by archive_level, id
@@ -601,15 +601,15 @@
 
     <select id="getUniqueConstraint" resultType="map">
         select id,
-               category_id as "categoryId",
-               archive_level as "archiveLevel",
-               constraint_code as "constraintCode",
-               constraint_name as "constraintName",
-               include_fonds as "includeFonds",
-               index_name as "indexName",
+               category_id,
+               archive_level,
+               constraint_code,
+               constraint_name,
+               include_fonds,
+               index_name,
                enabled,
-               created_at as "createdAt",
-               updated_at as "updatedAt"
+               created_at,
+               updated_at
         from am_archive_unique_constraint
         where id = #{id} and deleted_flag = false
     </select>
@@ -651,13 +651,13 @@
 
     <select id="listUniqueConstraintFields" resultType="map">
         select rf.id,
-               rf.constraint_id as "constraintId",
-               rf.field_id as "fieldId",
-               rf.field_order as "fieldOrder",
-               f.archive_level as "archiveLevel",
-               f.field_code as "fieldCode",
-               f.field_name as "fieldName",
-               f.column_name as "columnName"
+               rf.constraint_id,
+               rf.field_id,
+               rf.field_order,
+               f.archive_level,
+               f.field_code,
+               f.field_name,
+               f.column_name
         from am_archive_unique_constraint_field rf
         join am_archive_field f on f.id = rf.field_id and f.deleted_flag = false
         where rf.constraint_id = #{constraintId}
@@ -678,19 +678,19 @@
 
     <select id="listFieldLayouts" resultType="map">
         select layout.id,
-               layout.category_id as "categoryId",
+               layout.category_id,
                layout.surface,
-               layout.owner_user_id as "ownerUserId",
-               layout.field_id as "fieldId",
-               field.field_code as "fieldCode",
-               field.field_name as "fieldName",
-               field.field_type as "fieldType",
-               field.edit_control as "editControl",
+               layout.owner_user_id,
+               layout.field_id,
+               field.field_code,
+               field.field_name,
+               field.field_type,
+               field.edit_control,
                layout.visible,
-               layout.list_width as "listWidth",
-               layout.col_span as "colSpan",
-               layout.row_order as "rowOrder",
-               layout.col_order as "colOrder"
+               layout.list_width,
+               layout.col_span,
+               layout.row_order,
+               layout.col_order
         from am_archive_field_layout layout
         join am_archive_field field on field.id = layout.field_id
         where layout.category_id = #{categoryId}

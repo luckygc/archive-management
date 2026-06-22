@@ -20,6 +20,24 @@ class ArchitectureRulesTest {
                     .resideInAnyPackage("..module..", "..infrastructure..");
 
     @ArchTest
+    static final ArchRule common_should_not_depend_on_web_frameworks =
+            noClasses()
+                    .that()
+                    .resideInAPackage("..common..")
+                    .should()
+                    .dependOnClassesThat()
+                    .resideInAnyPackage("org.springframework..", "jakarta.servlet..");
+
+    @ArchTest
+    static final ArchRule module_should_not_depend_on_infrastructure =
+            noClasses()
+                    .that()
+                    .resideInAPackage("..module..")
+                    .should()
+                    .dependOnClassesThat()
+                    .resideInAnyPackage("..infrastructure..");
+
+    @ArchTest
     static final ArchRule infrastructure_should_not_depend_on_business_ =
             noClasses()
                     .that()

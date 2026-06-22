@@ -21,7 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import github.luckygc.am.common.web.ApiBadRequestException;
+import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.archive.ArchiveMetadataService.ArchiveCategoryDto;
 import github.luckygc.am.module.archive.ArchiveMetadataService.ArchiveFieldDto;
 import github.luckygc.am.module.archive.ArchiveMetadataService.ArchiveFondsDto;
@@ -109,7 +109,7 @@ public class ArchiveRecordRoutingService {
         if (StringUtils.isNotBlank(request.keyword())) {
             recordIds =
                     archiveMapper.searchRecordIds(request.keyword().trim()).stream()
-                            .map(row -> ((Number) row.get("archiveRecordId")).longValue())
+                            .map(row -> number(row, "archiveRecordId").longValue())
                             .toList();
             if (recordIds.isEmpty()) {
                 return new ArchiveRecordListDto(category, visibleFields, true, List.of());
@@ -605,10 +605,7 @@ public class ArchiveRecordRoutingService {
         }
         StringBuilder columns = new StringBuilder();
         for (ArchiveFieldDto field : fields) {
-            columns.append(", d.")
-                    .append(field.columnName())
-                    .append(" as ")
-                    .append(field.columnName());
+            columns.append(", d.").append(field.columnName());
         }
         return columns.toString();
     }
@@ -852,26 +849,26 @@ public class ArchiveRecordRoutingService {
                 operatedBy);
     }
 
-    private ResponseStatusException badRequest(String message) {
-        return new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
+    private BadRequestException badRequest(String message) {
+        return new BadRequestException(message);
     }
 
-    private ResponseStatusException badRequest(String message, String field, String description) {
-        return new ApiBadRequestException(message, field, description);
+    private BadRequestException badRequest(String message, String field, String description) {
+        return new BadRequestException(message, field, description);
     }
 
     private String string(Map<String, Object> row, String key) {
-        Object value = row.get(key);
+        Object value = value(row, key);
         return value == null ? null : value.toString();
     }
 
     private boolean bool(Map<String, Object> row, String key) {
-        Object value = row.get(key);
+        Object value = value(row, key);
         return value instanceof Boolean bool ? bool : Boolean.parseBoolean(String.valueOf(value));
     }
 
     private Number number(Map<String, Object> row, String key) {
-        Object value = row.get(key);
+        Object value = value(row, key);
         if (value instanceof Number number) {
             return number;
         }
@@ -879,13 +876,33 @@ public class ArchiveRecordRoutingService {
     }
 
     private Long longOrNull(Map<String, Object> row, String key) {
-        Object value = row.get(key);
+        Object value = value(row, key);
         return value instanceof Number number ? number.longValue() : null;
     }
 
     private LocalDateTime dateTime(Map<String, Object> row, String key) {
-        Object value = row.get(key);
+        Object value = value(row, key);
         return value instanceof LocalDateTime dateTime ? dateTime : null;
+    }
+
+    private Object value(Map<String, Object> row, String key) {
+        if (row.containsKey(key)) {
+            return row.get(key);
+        }
+        return row.get(camelToSnake(key));
+    }
+
+    private String camelToSnake(String key) {
+        StringBuilder result = new StringBuilder(key.length() + 4);
+        for (int index = 0; index < key.length(); index++) {
+            char ch = key.charAt(index);
+            if (Character.isUpperCase(ch)) {
+                result.append('_').append(Character.toLowerCase(ch));
+            } else {
+                result.append(ch);
+            }
+        }
+        return result.toString();
     }
 
     public record ArchiveRecordQueryRequest(

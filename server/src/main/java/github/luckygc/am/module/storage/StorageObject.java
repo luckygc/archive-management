@@ -13,7 +13,7 @@ import jakarta.persistence.Table;
 
 import org.hibernate.annotations.CreationTimestamp;
 
-import github.luckygc.am.infrastructure.storage.StorageType;
+import github.luckygc.am.common.storage.StorageType;
 
 import lombok.Data;
 

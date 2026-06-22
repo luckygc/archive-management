@@ -31,6 +31,7 @@
 - 摘要、编码、Hex 等通用加密/编码类方法优先使用 Apache Commons Codec 等成熟工具库，不要在业务代码里手写通用算法封装。
 - 方法参数校验、请求参数校验这类纯校验操作不应该被事务包裹；只有确实需要原子写入、状态变更、消费令牌、扣减库存、锁定记录等场景才开启事务。
 - 数据库以 PostgreSQL 为唯一优先目标；项目自有 DDL、索引、约束、查询和执行计划可以围绕 PostgreSQL 能力优化，不为 MySQL、Oracle、SQL Server 等数据库做兼容性折中。
+- SQL 默认不使用双引号或反引号包裹标识符，也不要通过 `as "camelCase"` 这类 quoted alias 维持大小写；表名、列名、别名、索引名和约束名都使用小写 snake_case，让非法标识符尽早暴露。查询列名与结果名相同的场景不要写 `fonds_code as fonds_code` 这类冗余别名，只有表达式或确需更名时才使用小写 snake_case alias。动态 SQL 同样不要依赖自动引用标识符兜底，拼接前应校验标识符合法性。
 - Flyway 迁移默认按 PostgreSQL 编写；除非明确新增其他数据库支持，不维护多数据库迁移分支，也不为了跨库兼容回避 PostgreSQL 的成熟能力。
 - Flyway 迁移，档案server的pom.xml里版本未达到1.0.0时，都按照目标结构修改，1.0.0之后使用增量迁移
 - 项目不会跨时区使用；项目自有表时间字段使用无时区 `timestamp`，不使用 `timestamptz`。
@@ -39,7 +40,7 @@
 - 项目自有表不允许使用数据库 `CHECK` 约束；枚举、状态、数值范围等校验放在应用层或字典/配置层。
 - 带逻辑删除字段的项目自有表不允许使用覆盖已删除数据的唯一约束；唯一性必须使用 `where deleted_at is null` 的部分唯一索引，只约束未删除记录。
 - 第三方框架原生表不属于项目自有表，例如 Spring Session 的 `SPRING_SESSION`、Quartz 的 `QRTZ_*`。除非明确改为项目自维护表，否则保留框架默认命名，避免偏离上游脚本。
-- 当前持久化入口是 Jakarta Data 和 MyBatis：固定 CRUD 表优先使用 Jakarta Data Repository；动态表、复杂 SQL、批处理、报表和认证适配查询使用 MyBatis 或 JdbcClient；不要引入 Spring Data JPA。业务代码不得直接使用 Hibernate 有状态 `Session`、Hibernate `Query` 或其他依赖 Session 生命周期的对象；如确需 Hibernate 底层适配，只能封装在基础设施层，不能外泄为业务模块合同。Repository 对外不得返回 `Stream`、游标等依赖会话生命周期的对象，必须在 `@Transactional` 方法内消费完查询结果。
+- 当前持久化入口是 Jakarta Data 和 MyBatis：固定 CRUD 表优先使用 Jakarta Data Repository；动态表、复杂 SQL、批处理、报表和认证适配查询统一使用 MyBatis；不要在项目代码里使用 JdbcClient 作为持久化入口，不要引入 Spring Data JPA。业务代码不得直接使用 Hibernate 有状态 `Session`、Hibernate `Query` 或其他依赖 Session 生命周期的对象；如确需 Hibernate 底层适配，只能封装在基础设施层，不能外泄为业务模块合同。Repository 对外不得返回 `Stream`、游标等依赖会话生命周期的对象，必须在 `@Transactional` 方法内消费完查询结果。
 - StringUtils.removeStart已过时，替换为Strings.CS.removeStart
 
 ## API 设计约定
