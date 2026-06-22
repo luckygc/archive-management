@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions
+        xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+        xmlns:flowable="http://flowable.org/bpmn"
+        targetNamespace="archive-management-tests">
+    <process id="flowableCompatibilityProcess" name="Flowable Compatibility Process" isExecutable="true">
+        <startEvent id="start" />
+        <sequenceFlow id="flow_start_review" sourceRef="start" targetRef="reviewTask" />
+        <userTask id="reviewTask" name="Review" flowable:candidateUsers="compatibility-user" />
+        <sequenceFlow id="flow_review_end" sourceRef="reviewTask" targetRef="end" />
+        <endEvent id="end" />
+    </process>
+</definitions>

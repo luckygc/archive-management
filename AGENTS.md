@@ -25,6 +25,8 @@
 - 跨业务模块协作允许直接依赖目标业务模块公开的类，但不要绕过目标模块已有 Service 去直接操作其 Repository、Mapper 或底层表；需要复用业务能力时优先抽出明确的 Service 方法。
 - 控制器请求/响应 DTO 如果只服务本模块 HTTP 接口，可放在模块内的 `dto` 或 `web` 相关包下；只有确实跨多个模块复用时再提升为模块根下稳定类型。
 - 后端架构边界通过 ArchUnit 测试固化；调整包结构、跨模块调用或公共类型落点时，必须同步维护对应架构测试。
+- Java 代码格式化统一以 Spotless 调用 `google-java-format` 的 AOSP 风格为真相源，不再另行维护手写缩进、折行、空格、括号位置等细粒度格式规则；需要格式化时运行 Maven/Makefile 暴露的 Spotless 任务。
+- Java 导入整理最终交给 Spotless：先按 `google-java-format` 处理格式，再按 `importOrder` 分组排序，并执行 `removeUnusedImports`。当前导入分组顺序为 `java|javax`、`jakarta`、`org`、`com`、`github`、其他导入、静态导入；不要手工调整成 IDE 默认顺序或 Checkstyle 口径。
 - Java 字符串判空统一使用 Apache Commons Lang `StringUtils`，不要直接散写原生空值和空白判断组合。
 - 摘要、编码、Hex 等通用加密/编码类方法优先使用 Apache Commons Codec 等成熟工具库，不要在业务代码里手写通用算法封装。
 - 方法参数校验、请求参数校验这类纯校验操作不应该被事务包裹；只有确实需要原子写入、状态变更、消费令牌、扣减库存、锁定记录等场景才开启事务。

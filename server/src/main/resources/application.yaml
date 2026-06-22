@@ -127,6 +127,13 @@ mybatis:
         # null 参数默认 JDBC 类型。
         jdbc-type-for-null: "NULL"
 
+flowable:
+    # Flowable 使用当前应用 DataSource 和事务管理器；引入 process starter 后会启用 BPMN process engine。
+    # 框架原生 ACT_* 表由 Flowable 自身维护，属于第三方框架表命名例外。
+    database-schema-update: true
+    # 审批流首版不依赖异步执行器，避免引入额外后台线程行为。
+    async-executor-activate: false
+
 management:
     endpoints:
         web:
