@@ -39,7 +39,9 @@ create table am_archive_category
     parent_id         bigint references am_archive_category (id),
     category_code     varchar(100) not null,
     category_name     varchar(255) not null,
-    record_table_name varchar(100),
+    management_mode   varchar(30)  not null default 'ITEM_ONLY',
+    volume_table_name varchar(100),
+    item_table_name   varchar(100),
     table_status      varchar(30)  not null default 'NOT_BUILT',
     built_at          timestamp,
     enabled           boolean      not null default true,
@@ -63,7 +65,9 @@ comment on column am_archive_category.id is '主键';
 comment on column am_archive_category.parent_id is '父级档案分类 ID';
 comment on column am_archive_category.category_code is '档案分类编码';
 comment on column am_archive_category.category_name is '档案分类名称';
-comment on column am_archive_category.record_table_name is '动态记录表名';
+comment on column am_archive_category.management_mode is '管理模式：ITEM_ONLY 只按条目管理，VOLUME_ITEM 按案卷和卷内管理';
+comment on column am_archive_category.volume_table_name is '案卷层级动态记录表名';
+comment on column am_archive_category.item_table_name is '卷内条目层级动态记录表名';
 comment on column am_archive_category.table_status is '动态表状态';
 comment on column am_archive_category.built_at is '最近建表时间';
 comment on column am_archive_category.enabled is '是否启用';
@@ -78,6 +82,7 @@ create table am_archive_field
 (
     id                bigserial primary key,
     category_id       bigint       not null references am_archive_category (id),
+    archive_level     varchar(30)  not null default 'ITEM',
     field_code        varchar(80)  not null,
     field_name        varchar(255) not null,
     field_type        varchar(30)  not null,
@@ -107,15 +112,16 @@ create table am_archive_field
 );
 
 create unique index uk_am_archive_field_code_active
-    on am_archive_field (category_id, field_code)
+    on am_archive_field (category_id, archive_level, field_code)
     where deleted_flag = false;
 create index idx_am_archive_field_category_active
-    on am_archive_field (category_id, sort_order, id)
+    on am_archive_field (category_id, archive_level, sort_order, id)
     where deleted_flag = false;
 
 comment on table am_archive_field is '档案分类字段定义表';
 comment on column am_archive_field.id is '主键';
 comment on column am_archive_field.category_id is '档案分类 ID';
+comment on column am_archive_field.archive_level is '字段适用层级：VOLUME 案卷，ITEM 卷内条目';
 comment on column am_archive_field.field_code is '字段编码';
 comment on column am_archive_field.field_name is '字段名称';
 comment on column am_archive_field.field_type is '字段类型';
@@ -146,13 +152,17 @@ comment on column am_archive_field.updated_at is '更新时间';
 create table am_archive_record
 (
     id             bigserial primary key,
+    archive_level  varchar(30)  not null default 'ITEM',
+    parent_id      bigint references am_archive_record (id),
+    fonds_code     varchar(100) not null,
+    fonds_name     varchar(255) not null,
     category_code  varchar(100) not null,
     category_name  varchar(255) not null,
     archive_no     varchar(100),
-    archive_status varchar(50)  not null,
-    process_status varchar(50)  not null,
+    electronic_status varchar(50)  not null,
     security_level varchar(50),
     sort_order     integer      not null default 0,
+    display_order  integer      not null default 0,
     archived_at    timestamp,
     archive_year   integer      not null,
     locked_flag    boolean      not null default false,
@@ -167,7 +177,13 @@ create table am_archive_record
 );
 
 create index idx_am_archive_record_category_active
-    on am_archive_record (category_code)
+    on am_archive_record (category_code, archive_level)
+    where deleted_flag = false;
+create index idx_am_archive_record_parent_active
+    on am_archive_record (parent_id, display_order, id)
+    where deleted_flag = false;
+create index idx_am_archive_record_fonds_active
+    on am_archive_record (fonds_code, category_code, archive_level)
     where deleted_flag = false;
 create index idx_am_archive_record_year_active
     on am_archive_record (archive_year)
@@ -179,13 +195,17 @@ create index idx_am_archive_record_created_at on am_archive_record (created_at);
 
 comment on table am_archive_record is '档案记录主表';
 comment on column am_archive_record.id is '主键';
+comment on column am_archive_record.archive_level is '档案层级：VOLUME 案卷，ITEM 卷内条目';
+comment on column am_archive_record.parent_id is '父档案记录 ID；卷内条目指向案卷，未组卷为空';
+comment on column am_archive_record.fonds_code is '全宗编码';
+comment on column am_archive_record.fonds_name is '全宗名称';
 comment on column am_archive_record.category_code is '档案分类编码';
 comment on column am_archive_record.category_name is '档案分类名称';
 comment on column am_archive_record.archive_no is '档号';
-comment on column am_archive_record.archive_status is '档案状态';
-comment on column am_archive_record.process_status is '流程状态';
+comment on column am_archive_record.electronic_status is '电子档案状态';
 comment on column am_archive_record.security_level is '密级';
 comment on column am_archive_record.sort_order is '排序字段';
+comment on column am_archive_record.display_order is '同一案卷内卷内排序';
 comment on column am_archive_record.archived_at is '归档时间';
 comment on column am_archive_record.archive_year is '年度';
 comment on column am_archive_record.locked_flag is '业务锁定标记';
@@ -198,76 +218,7 @@ comment on column am_archive_record.created_at is '创建时间';
 comment on column am_archive_record.updated_by is '更新人用户 ID';
 comment on column am_archive_record.updated_at is '更新时间';
 
-create table am_archive_volume
-(
-    id            bigserial primary key,
-    fonds_code    varchar(100) not null,
-    fonds_name    varchar(255) not null,
-    category_code varchar(100) not null,
-    category_name varchar(255) not null,
-    volume_no     varchar(100) not null,
-    sort_order    integer      not null default 0,
-    deleted_flag  boolean      not null default false,
-    created_by    bigint,
-    created_at    timestamp    not null default localtimestamp,
-    updated_by    bigint,
-    updated_at    timestamp    not null default localtimestamp
-);
-
-create unique index uk_am_archive_volume_no_active
-    on am_archive_volume (fonds_code, category_code, volume_no)
-    where deleted_flag = false;
-create index idx_am_archive_volume_sort_active
-    on am_archive_volume (sort_order, id)
-    where deleted_flag = false;
-create index idx_am_archive_volume_created_at on am_archive_volume (created_at);
-
-comment on table am_archive_volume is '档案案卷表';
-comment on column am_archive_volume.id is '主键';
-comment on column am_archive_volume.fonds_code is '全宗编码';
-comment on column am_archive_volume.fonds_name is '全宗名称';
-comment on column am_archive_volume.category_code is '档案分类编码';
-comment on column am_archive_volume.category_name is '档案分类名称';
-comment on column am_archive_volume.volume_no is '案卷号';
-comment on column am_archive_volume.sort_order is '排序字段';
-comment on column am_archive_volume.deleted_flag is '删除标记';
-comment on column am_archive_volume.created_by is '创建人用户 ID';
-comment on column am_archive_volume.created_at is '创建时间';
-comment on column am_archive_volume.updated_by is '更新人用户 ID';
-comment on column am_archive_volume.updated_at is '更新时间';
-
-create table am_archive_volume_item
-(
-    id                bigserial primary key,
-    volume_id         bigint       not null references am_archive_volume (id),
-    archive_record_id bigint       not null references am_archive_record (id),
-    fonds_code        varchar(100) not null,
-    category_code     varchar(100) not null,
-    display_order     integer      not null default 0,
-    deleted_flag      boolean      not null default false,
-    created_by        bigint,
-    created_at        timestamp    not null default localtimestamp
-);
-
-create unique index uk_am_archive_volume_item_active
-    on am_archive_volume_item (volume_id, archive_record_id)
-    where deleted_flag = false;
-create index idx_am_archive_volume_item_record_active
-    on am_archive_volume_item (archive_record_id)
-    where deleted_flag = false;
-
-comment on table am_archive_volume_item is '案卷卷内档案记录关联表';
-comment on column am_archive_volume_item.id is '主键';
-comment on column am_archive_volume_item.volume_id is '案卷 ID';
-comment on column am_archive_volume_item.archive_record_id is '档案记录 ID';
-comment on column am_archive_volume_item.fonds_code is '全宗编码冗余';
-comment on column am_archive_volume_item.category_code is '档案分类编码冗余';
-comment on column am_archive_volume_item.display_order is '卷内排序';
-comment on column am_archive_volume_item.deleted_flag is '删除标记';
-comment on column am_archive_volume_item.created_by is '创建人用户 ID';
-comment on column am_archive_volume_item.created_at is '创建时间';
-
-create table am_archive_record_storage_object
+create table am_archive_record_electronic_file
 (
     id                bigserial primary key,
     archive_record_id bigint      not null references am_archive_record (id),
@@ -279,29 +230,73 @@ create table am_archive_record_storage_object
     created_at        timestamp   not null default localtimestamp
 );
 
-create unique index uk_am_archive_record_storage_object_active
-    on am_archive_record_storage_object (archive_record_id, storage_object_id, usage_type)
+create unique index uk_am_archive_record_electronic_file_active
+    on am_archive_record_electronic_file (archive_record_id, storage_object_id, usage_type)
     where deleted_flag = false;
-create index idx_am_archive_record_storage_object_file_active
-    on am_archive_record_storage_object (storage_object_id)
+create index idx_am_archive_record_electronic_file_object_active
+    on am_archive_record_electronic_file (storage_object_id)
     where deleted_flag = false;
 
-comment on table am_archive_record_storage_object is '档案记录和存储对象关联表';
-comment on column am_archive_record_storage_object.id is '主键';
-comment on column am_archive_record_storage_object.archive_record_id is '档案记录 ID';
-comment on column am_archive_record_storage_object.storage_object_id is '存储对象 ID';
-comment on column am_archive_record_storage_object.usage_type is '文件用途类型';
-comment on column am_archive_record_storage_object.display_order is '文件排序';
-comment on column am_archive_record_storage_object.deleted_flag is '删除标记';
-comment on column am_archive_record_storage_object.created_by is '创建人用户 ID';
-comment on column am_archive_record_storage_object.created_at is '创建时间';
+comment on table am_archive_record_electronic_file is '档案记录和电子文件关联表';
+comment on column am_archive_record_electronic_file.id is '主键';
+comment on column am_archive_record_electronic_file.archive_record_id is '档案记录 ID，可为案卷或卷内条目';
+comment on column am_archive_record_electronic_file.storage_object_id is '存储对象 ID';
+comment on column am_archive_record_electronic_file.usage_type is '文件用途类型';
+comment on column am_archive_record_electronic_file.display_order is '文件排序';
+comment on column am_archive_record_electronic_file.deleted_flag is '删除标记';
+comment on column am_archive_record_electronic_file.created_by is '创建人用户 ID';
+comment on column am_archive_record_electronic_file.created_at is '创建时间';
 
-create table am_archive_unique_rule
+create table am_archive_physical_object
+(
+    id                bigserial primary key,
+    archive_record_id bigint      not null references am_archive_record (id),
+    physical_status   varchar(50) not null default 'NONE',
+    box_no            varchar(100),
+    location_no       varchar(100),
+    barcode           varchar(100),
+    remark            varchar(500),
+    deleted_flag      boolean     not null default false,
+    created_by        bigint,
+    created_at        timestamp   not null default localtimestamp,
+    updated_by        bigint,
+    updated_at        timestamp   not null default localtimestamp
+);
+
+create index idx_am_archive_physical_object_record_active
+    on am_archive_physical_object (archive_record_id)
+    where deleted_flag = false;
+create unique index uk_am_archive_physical_object_record_active
+    on am_archive_physical_object (archive_record_id)
+    where deleted_flag = false;
+create index idx_am_archive_physical_object_location_active
+    on am_archive_physical_object (location_no, box_no)
+    where deleted_flag = false;
+create index idx_am_archive_physical_object_barcode_active
+    on am_archive_physical_object (barcode)
+    where deleted_flag = false;
+
+comment on table am_archive_physical_object is '档案实体载体信息表';
+comment on column am_archive_physical_object.id is '主键';
+comment on column am_archive_physical_object.archive_record_id is '档案记录 ID，可为案卷或卷内条目';
+comment on column am_archive_physical_object.physical_status is '实物状态';
+comment on column am_archive_physical_object.box_no is '盒号';
+comment on column am_archive_physical_object.location_no is '库位号';
+comment on column am_archive_physical_object.barcode is '条码';
+comment on column am_archive_physical_object.remark is '备注';
+comment on column am_archive_physical_object.deleted_flag is '删除标记';
+comment on column am_archive_physical_object.created_by is '创建人用户 ID';
+comment on column am_archive_physical_object.created_at is '创建时间';
+comment on column am_archive_physical_object.updated_by is '更新人用户 ID';
+comment on column am_archive_physical_object.updated_at is '更新时间';
+
+create table am_archive_unique_constraint
 (
     id            bigserial primary key,
     category_id   bigint       not null references am_archive_category (id),
-    rule_code     varchar(80)  not null,
-    rule_name     varchar(255) not null,
+    archive_level varchar(30)  not null default 'ITEM',
+    constraint_code     varchar(80)  not null,
+    constraint_name     varchar(255) not null,
     include_fonds boolean      not null default false,
     index_name    varchar(100) not null,
     enabled       boolean      not null default true,
@@ -312,45 +307,49 @@ create table am_archive_unique_rule
     updated_at    timestamp    not null default localtimestamp
 );
 
-create unique index uk_am_archive_unique_rule_code_active
-    on am_archive_unique_rule (category_id, rule_code)
+create unique index uk_am_archive_unique_constraint_code_active
+    on am_archive_unique_constraint (category_id, archive_level, constraint_code)
     where deleted_flag = false;
-create index idx_am_archive_unique_rule_category_active
-    on am_archive_unique_rule (category_id, id)
+create unique index uk_am_archive_unique_constraint_index_active
+    on am_archive_unique_constraint (index_name)
+    where deleted_flag = false;
+create index idx_am_archive_unique_constraint_category_active
+    on am_archive_unique_constraint (category_id, archive_level, id)
     where deleted_flag = false;
 
-comment on table am_archive_unique_rule is '档案分类唯一规则表';
-comment on column am_archive_unique_rule.id is '主键';
-comment on column am_archive_unique_rule.category_id is '档案分类 ID';
-comment on column am_archive_unique_rule.rule_code is '规则编码';
-comment on column am_archive_unique_rule.rule_name is '规则名称';
-comment on column am_archive_unique_rule.include_fonds is '是否按全宗范围唯一';
-comment on column am_archive_unique_rule.index_name is '动态表唯一索引名';
-comment on column am_archive_unique_rule.enabled is '是否启用';
-comment on column am_archive_unique_rule.deleted_flag is '删除标记';
-comment on column am_archive_unique_rule.created_by is '创建人用户 ID';
-comment on column am_archive_unique_rule.created_at is '创建时间';
-comment on column am_archive_unique_rule.updated_by is '更新人用户 ID';
-comment on column am_archive_unique_rule.updated_at is '更新时间';
+comment on table am_archive_unique_constraint is '档案分类唯一约束表';
+comment on column am_archive_unique_constraint.id is '主键';
+comment on column am_archive_unique_constraint.category_id is '档案分类 ID';
+comment on column am_archive_unique_constraint.archive_level is '约束适用层级：VOLUME 案卷，ITEM 卷内条目';
+comment on column am_archive_unique_constraint.constraint_code is '约束编码';
+comment on column am_archive_unique_constraint.constraint_name is '约束名称';
+comment on column am_archive_unique_constraint.include_fonds is '是否按全宗范围唯一';
+comment on column am_archive_unique_constraint.index_name is '动态表唯一索引名';
+comment on column am_archive_unique_constraint.enabled is '是否启用';
+comment on column am_archive_unique_constraint.deleted_flag is '删除标记';
+comment on column am_archive_unique_constraint.created_by is '创建人用户 ID';
+comment on column am_archive_unique_constraint.created_at is '创建时间';
+comment on column am_archive_unique_constraint.updated_by is '更新人用户 ID';
+comment on column am_archive_unique_constraint.updated_at is '更新时间';
 
-create table am_archive_unique_rule_field
+create table am_archive_unique_constraint_field
 (
     id          bigserial primary key,
-    rule_id     bigint  not null references am_archive_unique_rule (id),
+    constraint_id     bigint  not null references am_archive_unique_constraint (id),
     field_id    bigint  not null references am_archive_field (id),
     field_order integer not null default 0
 );
 
-create unique index uk_am_archive_unique_rule_field_active
-    on am_archive_unique_rule_field (rule_id, field_id);
-create index idx_am_archive_unique_rule_field_order
-    on am_archive_unique_rule_field (rule_id, field_order, id);
+create unique index uk_am_archive_unique_constraint_field_active
+    on am_archive_unique_constraint_field (constraint_id, field_id);
+create index idx_am_archive_unique_constraint_field_order
+    on am_archive_unique_constraint_field (constraint_id, field_order, id);
 
-comment on table am_archive_unique_rule_field is '档案分类唯一规则字段表';
-comment on column am_archive_unique_rule_field.id is '主键';
-comment on column am_archive_unique_rule_field.rule_id is '唯一规则 ID';
-comment on column am_archive_unique_rule_field.field_id is '字段定义 ID';
-comment on column am_archive_unique_rule_field.field_order is '字段顺序';
+comment on table am_archive_unique_constraint_field is '档案分类唯一约束字段表';
+comment on column am_archive_unique_constraint_field.id is '主键';
+comment on column am_archive_unique_constraint_field.constraint_id is '唯一约束 ID';
+comment on column am_archive_unique_constraint_field.field_id is '字段定义 ID';
+comment on column am_archive_unique_constraint_field.field_order is '字段顺序';
 
 create table am_archive_field_layout
 (

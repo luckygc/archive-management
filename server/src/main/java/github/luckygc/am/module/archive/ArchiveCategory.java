@@ -34,8 +34,15 @@ public class ArchiveCategory {
     @Column(name = "category_name", nullable = false)
     private String categoryName;
 
-    @Column(name = "record_table_name", length = 100)
-    private String recordTableName;
+    @Column(name = "management_mode", nullable = false, length = 30)
+    @Enumerated(EnumType.STRING)
+    private ArchiveManagementMode managementMode = ArchiveManagementMode.ITEM_ONLY;
+
+    @Column(name = "volume_table_name", length = 100)
+    private String volumeTableName;
+
+    @Column(name = "item_table_name", length = 100)
+    private String itemTableName;
 
     @Column(name = "table_status", nullable = false, length = 30)
     @Enumerated(EnumType.STRING)

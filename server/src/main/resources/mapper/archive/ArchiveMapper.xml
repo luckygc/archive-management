@@ -71,7 +71,9 @@
                parent_id as "parentId",
                category_code as "categoryCode",
                category_name as "categoryName",
-               record_table_name as "recordTableName",
+               management_mode as "managementMode",
+               volume_table_name as "volumeTableName",
+               item_table_name as "itemTableName",
                table_status as "tableStatus",
                built_at as "builtAt",
                enabled,
@@ -88,8 +90,8 @@
 
     <select id="insertCategory" resultType="long">
         insert into am_archive_category
-            (parent_id, category_code, category_name, enabled, sort_order)
-        values (#{parentId}, #{categoryCode}, #{categoryName}, #{enabled}, #{sortOrder})
+            (parent_id, category_code, category_name, management_mode, enabled, sort_order)
+        values (#{parentId}, #{categoryCode}, #{categoryName}, #{managementMode}, #{enabled}, #{sortOrder})
         returning id
     </select>
 
@@ -98,6 +100,7 @@
         set parent_id = #{parentId},
             category_code = #{categoryCode},
             category_name = #{categoryName},
+            management_mode = #{managementMode},
             enabled = #{enabled},
             sort_order = #{sortOrder},
             updated_at = localtimestamp
@@ -115,7 +118,9 @@
                parent_id as "parentId",
                category_code as "categoryCode",
                category_name as "categoryName",
-               record_table_name as "recordTableName",
+               management_mode as "managementMode",
+               volume_table_name as "volumeTableName",
+               item_table_name as "itemTableName",
                table_status as "tableStatus",
                built_at as "builtAt",
                enabled,
@@ -141,6 +146,7 @@
     <select id="listFields" resultType="map">
         select id,
                category_id as "categoryId",
+               archive_level as "archiveLevel",
                field_code as "fieldCode",
                field_name as "fieldName",
                field_type as "fieldType",
@@ -166,21 +172,24 @@
                updated_at as "updatedAt"
         from am_archive_field
         where category_id = #{categoryId} and deleted_flag = false
+        <if test="archiveLevel != null">
+            and archive_level = #{archiveLevel}
+        </if>
         <if test="enabled != null">
             and enabled = #{enabled}
         </if>
-        order by sort_order, id
+        order by archive_level, sort_order, id
     </select>
 
     <select id="insertField" resultType="long">
         insert into am_archive_field
-            (category_id, field_code, field_name, field_type, column_name,
+            (category_id, archive_level, field_code, field_name, field_type, column_name,
              text_length, decimal_precision, decimal_scale, edit_control, list_visible,
              list_width, list_sort_order, detail_visible, detail_col_span, detail_sort_order,
              edit_visible, edit_col_span, edit_sort_order,
              exact_searchable, full_text_searchable, enabled, sort_order)
         values
-            (#{categoryId}, #{fieldCode}, #{fieldName}, #{fieldType}, #{columnName},
+            (#{categoryId}, #{archiveLevel}, #{fieldCode}, #{fieldName}, #{fieldType}, #{columnName},
              #{textLength}, #{decimalPrecision}, #{decimalScale}, #{editControl}, #{listVisible},
              #{listWidth}, #{listSortOrder}, #{detailVisible}, #{detailColSpan}, #{detailSortOrder},
              #{editVisible}, #{editColSpan}, #{editSortOrder},
@@ -190,7 +199,8 @@
 
     <update id="updateField">
         update am_archive_field
-        set field_code = #{fieldCode},
+        set archive_level = #{archiveLevel},
+            field_code = #{fieldCode},
             field_name = #{fieldName},
             column_name = #{columnName},
             text_length = #{textLength},
@@ -223,6 +233,7 @@
     <select id="getField" resultType="map">
         select id,
                category_id as "categoryId",
+               archive_level as "archiveLevel",
                field_code as "fieldCode",
                field_name as "fieldName",
                field_type as "fieldType",
@@ -276,7 +287,8 @@
 
     <update id="updateCategoryTableStatus">
         update am_archive_category
-        set record_table_name = #{tableName},
+        set item_table_name = case when #{archiveLevel} = 'ITEM' then #{tableName} else item_table_name end,
+            volume_table_name = case when #{archiveLevel} = 'VOLUME' then #{tableName} else volume_table_name end,
             table_status = #{tableStatus},
             built_at = localtimestamp,
             updated_at = localtimestamp
@@ -285,12 +297,16 @@
 
     <select id="listRecordOverview" resultType="map">
         select id,
+               archive_level,
+               parent_id,
+               fonds_code,
+               fonds_name,
                category_code,
                category_name,
                archive_no,
-               archive_status,
-               process_status,
+               electronic_status,
                archive_year,
+               display_order,
                locked_flag,
                lock_reason,
                locked_by,
@@ -302,13 +318,16 @@
 
     <select id="listDynamicRecords" resultType="map">
         select r.id,
-               d.fonds_code,
+               r.archive_level,
+               r.parent_id,
+               r.fonds_code,
+               r.fonds_name,
                r.category_code,
                r.category_name,
                r.archive_no,
-               r.archive_status,
-               r.process_status,
+               r.electronic_status,
                r.archive_year,
+               r.display_order,
                r.locked_flag,
                r.lock_reason,
                r.locked_by,
@@ -318,9 +337,9 @@
         join ${tableName} d on d.id = r.id
         where r.deleted_flag = false
           and d.deleted_flag = false
-          and r.category_code = #{categoryCode}
+          and r.archive_level = #{archiveLevel}
         <if test="fondsCode != null and fondsCode != ''">
-            and d.fonds_code = #{fondsCode}
+            and r.fonds_code = #{fondsCode}
         </if>
         <if test="conditions != null">
             <foreach collection="conditions" item="condition">
@@ -360,21 +379,23 @@
 
     <select id="listRecordsForSearchRebuild" resultType="map">
         select r.id,
-               d.fonds_code
+               r.fonds_code
                ${selectColumns}
         from am_archive_record r
         join ${tableName} d on d.id = r.id
         where r.deleted_flag = false
           and d.deleted_flag = false
-          and r.category_code = #{categoryCode}
+          and r.archive_level = #{archiveLevel}
         order by r.id
     </select>
 
     <select id="insertArchiveRecord" resultType="long">
         insert into am_archive_record
-            (category_code, category_name, archive_no, archive_status, process_status, archive_year)
+            (archive_level, parent_id, fonds_code, fonds_name, category_code, category_name,
+             archive_no, electronic_status, archive_year)
         values
-            (#{categoryCode}, #{categoryName}, #{archiveNo}, #{archiveStatus}, #{processStatus}, #{archiveYear})
+            (#{archiveLevel}, #{parentId}, #{fondsCode}, #{fondsName}, #{categoryCode}, #{categoryName},
+             #{archiveNo}, #{electronicStatus}, #{archiveYear})
         returning id
     </select>
 
@@ -389,8 +410,10 @@
     <update id="updateArchiveRecord">
         update am_archive_record
         set archive_no = #{archiveNo},
-            archive_status = #{archiveStatus},
-            process_status = #{processStatus},
+            parent_id = #{parentId},
+            fonds_code = #{fondsCode},
+            fonds_name = #{fondsName},
+            electronic_status = #{electronicStatus},
             archive_year = #{archiveYear},
             updated_at = localtimestamp
         where id = #{id} and deleted_flag = false and locked_flag = false
@@ -420,11 +443,14 @@
 
     <select id="getArchiveRecord" resultType="map">
         select id,
+               archive_level as "archiveLevel",
+               parent_id as "parentId",
+               fonds_code as "fondsCode",
+               fonds_name as "fondsName",
                category_code as "categoryCode",
                category_name as "categoryName",
                archive_no as "archiveNo",
-               archive_status as "archiveStatus",
-               process_status as "processStatus",
+               electronic_status as "electronicStatus",
                archive_year as "archiveYear",
                locked_flag as "lockedFlag",
                lock_reason as "lockReason",
@@ -433,6 +459,36 @@
         from am_archive_record
         where id = #{id} and deleted_flag = false
     </select>
+
+    <select id="getPhysicalObjectByRecordId" resultType="map">
+        select id,
+               archive_record_id as "archiveRecordId",
+               physical_status as "physicalStatus",
+               box_no as "boxNo",
+               location_no as "locationNo",
+               barcode,
+               remark,
+               created_at as "createdAt",
+               updated_at as "updatedAt"
+        from am_archive_physical_object
+        where archive_record_id = #{archiveRecordId}
+          and deleted_flag = false
+    </select>
+
+    <insert id="upsertPhysicalObject">
+        insert into am_archive_physical_object
+            (archive_record_id, physical_status, box_no, location_no, barcode, remark, created_by, updated_by)
+        values
+            (#{archiveRecordId}, #{physicalStatus}, #{boxNo}, #{locationNo}, #{barcode}, #{remark}, #{userId}, #{userId})
+        on conflict (archive_record_id) where deleted_flag = false
+        do update set physical_status = excluded.physical_status,
+                      box_no = excluded.box_no,
+                      location_no = excluded.location_no,
+                      barcode = excluded.barcode,
+                      remark = excluded.remark,
+                      updated_by = excluded.updated_by,
+                      updated_at = localtimestamp
+    </insert>
 
     <insert id="insertRecordAudit">
         insert into am_archive_record_audit
@@ -527,47 +583,50 @@
         order by score, archive_record_id desc
     </select>
 
-    <select id="listUniqueRules" resultType="map">
+    <select id="listUniqueConstraints" resultType="map">
         select id,
                category_id as "categoryId",
-               rule_code as "ruleCode",
-               rule_name as "ruleName",
+               archive_level as "archiveLevel",
+               constraint_code as "constraintCode",
+               constraint_name as "constraintName",
                include_fonds as "includeFonds",
                index_name as "indexName",
                enabled,
                created_at as "createdAt",
                updated_at as "updatedAt"
-        from am_archive_unique_rule
+        from am_archive_unique_constraint
         where category_id = #{categoryId} and deleted_flag = false
-        order by id
+        order by archive_level, id
     </select>
 
-    <select id="getUniqueRule" resultType="map">
+    <select id="getUniqueConstraint" resultType="map">
         select id,
                category_id as "categoryId",
-               rule_code as "ruleCode",
-               rule_name as "ruleName",
+               archive_level as "archiveLevel",
+               constraint_code as "constraintCode",
+               constraint_name as "constraintName",
                include_fonds as "includeFonds",
                index_name as "indexName",
                enabled,
                created_at as "createdAt",
                updated_at as "updatedAt"
-        from am_archive_unique_rule
+        from am_archive_unique_constraint
         where id = #{id} and deleted_flag = false
     </select>
 
-    <select id="insertUniqueRule" resultType="long">
-        insert into am_archive_unique_rule
-            (category_id, rule_code, rule_name, include_fonds, index_name, enabled)
+    <select id="insertUniqueConstraint" resultType="long">
+        insert into am_archive_unique_constraint
+            (category_id, archive_level, constraint_code, constraint_name, include_fonds, index_name, enabled)
         values
-            (#{categoryId}, #{ruleCode}, #{ruleName}, #{includeFonds}, #{indexName}, #{enabled})
+            (#{categoryId}, #{archiveLevel}, #{constraintCode}, #{constraintName}, #{includeFonds}, #{indexName}, #{enabled})
         returning id
     </select>
 
-    <update id="updateUniqueRule">
-        update am_archive_unique_rule
-        set rule_code = #{ruleCode},
-            rule_name = #{ruleName},
+    <update id="updateUniqueConstraint">
+        update am_archive_unique_constraint
+        set archive_level = #{archiveLevel},
+            constraint_code = #{constraintCode},
+            constraint_name = #{constraintName},
             include_fonds = #{includeFonds},
             index_name = #{indexName},
             enabled = #{enabled},
@@ -575,32 +634,33 @@
         where id = #{id} and category_id = #{categoryId} and deleted_flag = false
     </update>
 
-    <update id="deleteUniqueRule">
-        update am_archive_unique_rule
+    <update id="deleteUniqueConstraint">
+        update am_archive_unique_constraint
         set deleted_flag = true, updated_at = localtimestamp
         where id = #{id} and category_id = #{categoryId} and deleted_flag = false
     </update>
 
-    <delete id="deleteUniqueRuleFields">
-        delete from am_archive_unique_rule_field where rule_id = #{ruleId}
+    <delete id="deleteUniqueConstraintFields">
+        delete from am_archive_unique_constraint_field where constraint_id = #{constraintId}
     </delete>
 
-    <insert id="insertUniqueRuleField">
-        insert into am_archive_unique_rule_field (rule_id, field_id, field_order)
-        values (#{ruleId}, #{fieldId}, #{fieldOrder})
+    <insert id="insertUniqueConstraintField">
+        insert into am_archive_unique_constraint_field (constraint_id, field_id, field_order)
+        values (#{constraintId}, #{fieldId}, #{fieldOrder})
     </insert>
 
-    <select id="listUniqueRuleFields" resultType="map">
+    <select id="listUniqueConstraintFields" resultType="map">
         select rf.id,
-               rf.rule_id as "ruleId",
+               rf.constraint_id as "constraintId",
                rf.field_id as "fieldId",
                rf.field_order as "fieldOrder",
+               f.archive_level as "archiveLevel",
                f.field_code as "fieldCode",
                f.field_name as "fieldName",
                f.column_name as "columnName"
-        from am_archive_unique_rule_field rf
+        from am_archive_unique_constraint_field rf
         join am_archive_field f on f.id = rf.field_id and f.deleted_flag = false
-        where rf.rule_id = #{ruleId}
+        where rf.constraint_id = #{constraintId}
         order by rf.field_order, rf.id
     </select>
 
@@ -637,6 +697,7 @@
           and layout.surface = #{surface}
           and layout.deleted_flag = false
           and field.deleted_flag = false
+          and field.archive_level = #{archiveLevel}
         <choose>
             <when test="publicLayout">
                 and layout.owner_user_id is null
@@ -655,6 +716,13 @@
         where category_id = #{categoryId}
           and surface = #{surface}
           and deleted_flag = false
+          and field_id in (
+              select id
+              from am_archive_field
+              where category_id = #{categoryId}
+                and archive_level = #{archiveLevel}
+                and deleted_flag = false
+          )
         <choose>
             <when test="publicLayout">
                 and owner_user_id is null
@@ -672,17 +740,14 @@
             (#{categoryId}, #{surface}, #{ownerUserId}, #{fieldId}, #{visible}, #{listWidth}, #{colSpan}, #{rowOrder}, #{colOrder})
     </insert>
 
-    <select id="findVolumeScope" resultType="map">
-        select fonds_code as "fondsCode",
-               category_code as "categoryCode"
-        from am_archive_volume
-        where id = #{id} and deleted_flag = false
-    </select>
-
-    <insert id="insertVolumeItem">
-        insert into am_archive_volume_item
-            (volume_id, archive_record_id, fonds_code, category_code, display_order)
-        values
-            (#{volumeId}, #{archiveRecordId}, #{fondsCode}, #{categoryCode}, #{displayOrder})
-    </insert>
+    <update id="moveRecordToVolume">
+        update am_archive_record
+        set parent_id = #{volumeId},
+            display_order = #{displayOrder},
+            updated_at = localtimestamp
+        where id = #{archiveRecordId}
+          and archive_level = 'ITEM'
+          and deleted_flag = false
+          and locked_flag = false
+    </update>
 </mapper>

@@ -10,32 +10,36 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import lombok.Data;
 
 @Data
 @Entity
-@Table(name = "am_archive_volume_item")
-public class ArchiveVolumeItem {
+@Table(name = "am_archive_physical_object")
+public class ArchivePhysicalObject {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "volume_id", nullable = false)
-    private Long volumeId;
-
     @Column(name = "archive_record_id", nullable = false)
     private Long archiveRecordId;
 
-    @Column(name = "fonds_code", nullable = false, length = 100)
-    private String fondsCode;
+    @Column(name = "physical_status", nullable = false, length = 50)
+    private String physicalStatus = "NONE";
 
-    @Column(name = "category_code", nullable = false, length = 100)
-    private String categoryCode;
+    @Column(name = "box_no", length = 100)
+    private String boxNo;
 
-    @Column(name = "display_order", nullable = false)
-    private int displayOrder;
+    @Column(name = "location_no", length = 100)
+    private String locationNo;
+
+    @Column(name = "barcode", length = 100)
+    private String barcode;
+
+    @Column(name = "remark", length = 500)
+    private String remark;
 
     @Column(name = "deleted_flag", nullable = false)
     private boolean deletedFlag;
@@ -47,4 +51,10 @@ public class ArchiveVolumeItem {
     @CreationTimestamp
     private LocalDateTime createdAt;
 
+    @Column(name = "updated_by")
+    private Long updatedBy;
+
+    @Column(name = "updated_at", nullable = false)
+    @UpdateTimestamp
+    private LocalDateTime updatedAt;
 }

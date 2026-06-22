@@ -27,21 +27,34 @@ const fondsName = computed(() => {
   return fonds.value.find((item) => item.fondsCode === fondsCode)?.fondsName ?? fondsCode ?? "";
 });
 
-function statusText(value?: string) {
+function electronicStatusText(value?: string) {
   if (value === "DRAFT") {
     return "草稿";
   }
   if (value === "ARCHIVED") {
     return "已归档";
   }
-  if (value === "APPROVING") {
-    return "审批中";
+  if (value === "BORROWED") {
+    return "借阅中";
   }
-  if (value === "COMPLETED") {
-    return "已完成";
-  }
+  return value ?? "-";
+}
+
+function physicalStatusText(value?: string) {
   if (value === "NONE") {
-    return "无流程";
+    return "无实物";
+  }
+  if (value === "REGISTERED") {
+    return "已登记";
+  }
+  if (value === "TRANSFERRING") {
+    return "移交中";
+  }
+  if (value === "IN_STORAGE") {
+    return "已入库";
+  }
+  if (value === "BORROWED") {
+    return "借阅中";
   }
   return value ?? "-";
 }
@@ -138,11 +151,23 @@ watch(() => route.params.id, loadDetail, { immediate: true });
             <el-descriptions-item label="年度">
               {{ detail.record.archiveYear }}
             </el-descriptions-item>
-            <el-descriptions-item label="档案状态">
-              {{ statusText(detail.record.archiveStatus) }}
+            <el-descriptions-item label="电子状态">
+              {{ electronicStatusText(detail.record.electronicStatus) }}
             </el-descriptions-item>
-            <el-descriptions-item label="流程状态">
-              {{ statusText(detail.record.processStatus) }}
+            <el-descriptions-item label="实物状态">
+              {{ physicalStatusText(detail.physicalObject?.physicalStatus) }}
+            </el-descriptions-item>
+            <el-descriptions-item label="盒号">
+              {{ detail.physicalObject?.boxNo || "-" }}
+            </el-descriptions-item>
+            <el-descriptions-item label="库位号">
+              {{ detail.physicalObject?.locationNo || "-" }}
+            </el-descriptions-item>
+            <el-descriptions-item label="条码">
+              {{ detail.physicalObject?.barcode || "-" }}
+            </el-descriptions-item>
+            <el-descriptions-item label="实物备注">
+              {{ detail.physicalObject?.remark || "-" }}
             </el-descriptions-item>
           </el-descriptions>
         </section>

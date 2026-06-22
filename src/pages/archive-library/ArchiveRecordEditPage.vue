@@ -24,8 +24,14 @@ const form = reactive<ArchiveRecordUpdateCommand>({
   fondsCode: "",
   archiveNo: "",
   archiveYear: new Date().getFullYear(),
-  archiveStatus: "DRAFT",
-  processStatus: "NONE",
+  electronicStatus: "DRAFT",
+  physicalObject: {
+    physicalStatus: "NONE",
+    boxNo: "",
+    locationNo: "",
+    barcode: "",
+    remark: "",
+  },
   dynamicFields: {},
 });
 
@@ -36,8 +42,14 @@ function resetForm(recordDetail: ArchiveRecordDetailDto) {
   form.fondsCode = recordDetail.record.fondsCode;
   form.archiveNo = recordDetail.record.archiveNo ?? "";
   form.archiveYear = recordDetail.record.archiveYear;
-  form.archiveStatus = recordDetail.record.archiveStatus;
-  form.processStatus = recordDetail.record.processStatus;
+  form.electronicStatus = recordDetail.record.electronicStatus;
+  form.physicalObject = {
+    physicalStatus: recordDetail.physicalObject?.physicalStatus ?? "NONE",
+    boxNo: recordDetail.physicalObject?.boxNo ?? "",
+    locationNo: recordDetail.physicalObject?.locationNo ?? "",
+    barcode: recordDetail.physicalObject?.barcode ?? "",
+    remark: recordDetail.physicalObject?.remark ?? "",
+  };
   form.dynamicFields = { ...recordDetail.dynamicFields };
 }
 
@@ -129,18 +141,33 @@ watch(() => route.params.id, loadDetail, { immediate: true });
             <el-form-item label="年度">
               <el-input-number v-model="form.archiveYear" :min="1" />
             </el-form-item>
-            <el-form-item label="档案状态">
-              <el-select v-model="form.archiveStatus">
+            <el-form-item label="电子状态">
+              <el-select v-model="form.electronicStatus">
                 <el-option label="草稿" value="DRAFT" />
                 <el-option label="已归档" value="ARCHIVED" />
+                <el-option label="借阅中" value="BORROWED" />
               </el-select>
             </el-form-item>
-            <el-form-item label="流程状态">
-              <el-select v-model="form.processStatus">
-                <el-option label="无流程" value="NONE" />
-                <el-option label="审批中" value="APPROVING" />
-                <el-option label="已完成" value="COMPLETED" />
+            <el-form-item label="实物状态">
+              <el-select v-model="form.physicalObject.physicalStatus">
+                <el-option label="无实物" value="NONE" />
+                <el-option label="已登记" value="REGISTERED" />
+                <el-option label="移交中" value="TRANSFERRING" />
+                <el-option label="已入库" value="IN_STORAGE" />
+                <el-option label="借阅中" value="BORROWED" />
               </el-select>
+            </el-form-item>
+            <el-form-item label="盒号">
+              <el-input v-model="form.physicalObject.boxNo" />
+            </el-form-item>
+            <el-form-item label="库位号">
+              <el-input v-model="form.physicalObject.locationNo" />
+            </el-form-item>
+            <el-form-item label="条码">
+              <el-input v-model="form.physicalObject.barcode" />
+            </el-form-item>
+            <el-form-item label="实物备注">
+              <el-input v-model="form.physicalObject.remark" type="textarea" :rows="2" />
             </el-form-item>
           </div>
         </section>

@@ -8,4 +8,5 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Transactional(rollbackFor = Throwable.class, isolation = Isolation.READ_COMMITTED)
 @Repository
-public interface ArchiveVolumeDataRepository extends BasicRepository<ArchiveVolume, Long> {}
+public interface ArchiveRecordElectronicFileDataRepository
+        extends BasicRepository<ArchiveRecordElectronicFile, Long> {}

@@ -28,6 +28,10 @@ public class ArchiveField {
     @Column(name = "category_id", nullable = false)
     private Long categoryId;
 
+    @Column(name = "archive_level", nullable = false, length = 30)
+    @Enumerated(EnumType.STRING)
+    private ArchiveLevel archiveLevel = ArchiveLevel.ITEM;
+
     @Column(name = "field_code", nullable = false, length = 80)
     private String fieldCode;
 

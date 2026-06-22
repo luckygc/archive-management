@@ -24,8 +24,8 @@ import github.luckygc.am.module.archive.ArchiveMetadataService.ArchiveFieldLayou
 import github.luckygc.am.module.archive.ArchiveMetadataService.ArchiveFieldRequest;
 import github.luckygc.am.module.archive.ArchiveMetadataService.ArchiveFondsDto;
 import github.luckygc.am.module.archive.ArchiveMetadataService.ArchiveFondsRequest;
-import github.luckygc.am.module.archive.ArchiveMetadataService.ArchiveUniqueRuleDto;
-import github.luckygc.am.module.archive.ArchiveMetadataService.ArchiveUniqueRuleRequest;
+import github.luckygc.am.module.archive.ArchiveMetadataService.ArchiveUniqueConstraintDto;
+import github.luckygc.am.module.archive.ArchiveMetadataService.ArchiveUniqueConstraintRequest;
 
 @RestController
 public class ArchiveMetadataController {
@@ -120,30 +120,33 @@ public class ArchiveMetadataController {
             @PathVariable Long categoryId,
             @PathVariable ArchiveLayoutSurface surface,
             @RequestParam(required = false) String scope,
+            @RequestParam(required = false) ArchiveLevel archiveLevel,
             Authentication authentication) {
-        return archiveMetadataService.getFieldLayout(categoryId, surface, scope, currentUserId(authentication));
+        return archiveMetadataService.getFieldLayout(categoryId, archiveLevel, surface, scope, currentUserId(authentication));
     }
 
     @PatchMapping("/api/v1/archive-categories/{categoryId}/layouts/{surface}")
     public ArchiveFieldLayoutDto savePublicFieldLayout(
             @PathVariable Long categoryId,
             @PathVariable ArchiveLayoutSurface surface,
+            @RequestParam(required = false) ArchiveLevel archiveLevel,
             @RequestBody ArchiveFieldLayoutRequest request) {
-        return archiveMetadataService.savePublicFieldLayout(categoryId, surface, request);
+        return archiveMetadataService.savePublicFieldLayout(categoryId, archiveLevel, surface, request);
     }
 
     @PostMapping("/api/v1/archive-categories/{categoryId}/layouts/{surface}:saveMyLayout")
     public ArchiveFieldLayoutDto saveMyFieldLayout(
             @PathVariable Long categoryId,
             @PathVariable ArchiveLayoutSurface surface,
+            @RequestParam(required = false) ArchiveLevel archiveLevel,
             @RequestBody ArchiveFieldLayoutRequest request,
             Authentication authentication) {
-        return archiveMetadataService.saveMyFieldLayout(categoryId, surface, request, currentUserId(authentication));
+        return archiveMetadataService.saveMyFieldLayout(categoryId, archiveLevel, surface, request, currentUserId(authentication));
     }
 
     @PostMapping("/api/v1/archive-categories/{id}:buildTable")
-    public ArchiveCategoryDto buildTable(@PathVariable Long id) {
-        return archiveMetadataService.buildTable(id);
+    public ArchiveCategoryDto buildTable(@PathVariable Long id, @RequestParam(required = false) ArchiveLevel archiveLevel) {
+        return archiveMetadataService.buildTable(id, archiveLevel);
     }
 
     @PostMapping("/api/v1/archive-categories/{id}:rebuildSearchProjection")
@@ -151,30 +154,30 @@ public class ArchiveMetadataController {
         return archiveRecordRoutingService.rebuildSearchProjection(id);
     }
 
-    @GetMapping("/api/v1/archive-categories/{categoryId}/unique-rules")
-    public List<ArchiveUniqueRuleDto> listUniqueRules(@PathVariable Long categoryId) {
-        return archiveMetadataService.listUniqueRules(categoryId);
+    @GetMapping("/api/v1/archive-categories/{categoryId}/unique-constraints")
+    public List<ArchiveUniqueConstraintDto> listUniqueConstraints(@PathVariable Long categoryId) {
+        return archiveMetadataService.listUniqueConstraints(categoryId);
     }
 
-    @PostMapping("/api/v1/archive-categories/{categoryId}/unique-rules")
+    @PostMapping("/api/v1/archive-categories/{categoryId}/unique-constraints")
     @ResponseStatus(HttpStatus.CREATED)
-    public ArchiveUniqueRuleDto createUniqueRule(
-            @PathVariable Long categoryId, @RequestBody ArchiveUniqueRuleRequest request) {
-        return archiveMetadataService.createUniqueRule(categoryId, request);
+    public ArchiveUniqueConstraintDto createUniqueConstraint(
+            @PathVariable Long categoryId, @RequestBody ArchiveUniqueConstraintRequest request) {
+        return archiveMetadataService.createUniqueConstraint(categoryId, request);
     }
 
-    @PatchMapping("/api/v1/archive-categories/{categoryId}/unique-rules/{ruleId}")
-    public ArchiveUniqueRuleDto updateUniqueRule(
+    @PatchMapping("/api/v1/archive-categories/{categoryId}/unique-constraints/{constraintId}")
+    public ArchiveUniqueConstraintDto updateUniqueConstraint(
             @PathVariable Long categoryId,
-            @PathVariable Long ruleId,
-            @RequestBody ArchiveUniqueRuleRequest request) {
-        return archiveMetadataService.updateUniqueRule(categoryId, ruleId, request);
+            @PathVariable Long constraintId,
+            @RequestBody ArchiveUniqueConstraintRequest request) {
+        return archiveMetadataService.updateUniqueConstraint(categoryId, constraintId, request);
     }
 
-    @DeleteMapping("/api/v1/archive-categories/{categoryId}/unique-rules/{ruleId}")
+    @DeleteMapping("/api/v1/archive-categories/{categoryId}/unique-constraints/{constraintId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteUniqueRule(@PathVariable Long categoryId, @PathVariable Long ruleId) {
-        archiveMetadataService.deleteUniqueRule(categoryId, ruleId);
+    public void deleteUniqueConstraint(@PathVariable Long categoryId, @PathVariable Long constraintId) {
+        archiveMetadataService.deleteUniqueConstraint(categoryId, constraintId);
     }
 
     private Long currentUserId(Authentication authentication) {

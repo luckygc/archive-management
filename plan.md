@@ -116,8 +116,8 @@ updated_at timestamp not null default localtimestamp
 唯一规则对应的索引示例：
 
 ```sql
-create unique index uk_am_archive_data_c_1_rule_1
-    on am_archive_data_c_1 (fonds_code, f_doc_no)
+create unique index uk_am_archive_record_item_1_rule_1
+    on am_archive_record_item_1 (fonds_code, f_doc_no)
     where deleted_flag = false;
 ```
 

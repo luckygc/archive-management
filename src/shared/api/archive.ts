@@ -6,6 +6,7 @@ import type {
   ArchiveFieldDto,
   ArchiveFieldLayoutCommand,
   ArchiveFieldLayoutDto,
+  ArchiveLevel,
   ArchiveLayoutScope,
   ArchiveLayoutSurface,
   ArchiveFondsCommand,
@@ -16,8 +17,8 @@ import type {
   ArchiveRecordListDto,
   ArchiveRecordQuery,
   ArchiveRecordUpdateCommand,
-  ArchiveUniqueRuleCommand,
-  ArchiveUniqueRuleDto,
+  ArchiveUniqueConstraintCommand,
+  ArchiveUniqueConstraintDto,
 } from "../types/archive";
 
 function queryString(params: Record<string, string | number | boolean | undefined>) {
@@ -111,9 +112,10 @@ export function getArchiveCategoryLayout(
   categoryId: number,
   surface: ArchiveLayoutSurface,
   scope?: ArchiveLayoutScope,
+  archiveLevel?: ArchiveLevel,
 ) {
   return request<ArchiveFieldLayoutDto>(
-    `/api/v1/archive-categories/${categoryId}/layouts/${surface}${queryString({ scope })}`,
+    `/api/v1/archive-categories/${categoryId}/layouts/${surface}${queryString({ scope, archiveLevel })}`,
   );
 }
 
@@ -121,9 +123,10 @@ export function savePublicArchiveCategoryLayout(
   categoryId: number,
   surface: ArchiveLayoutSurface,
   command: ArchiveFieldLayoutCommand,
+  archiveLevel?: ArchiveLevel,
 ) {
   return request<ArchiveFieldLayoutDto>(
-    `/api/v1/archive-categories/${categoryId}/layouts/${surface}`,
+    `/api/v1/archive-categories/${categoryId}/layouts/${surface}${queryString({ archiveLevel })}`,
     {
       method: "PATCH",
       body: JSON.stringify(command),
@@ -135,9 +138,10 @@ export function saveMyArchiveCategoryLayout(
   categoryId: number,
   surface: ArchiveLayoutSurface,
   command: ArchiveFieldLayoutCommand,
+  archiveLevel?: ArchiveLevel,
 ) {
   return request<ArchiveFieldLayoutDto>(
-    `/api/v1/archive-categories/${categoryId}/layouts/${surface}:saveMyLayout`,
+    `/api/v1/archive-categories/${categoryId}/layouts/${surface}:saveMyLayout${queryString({ archiveLevel })}`,
     {
       method: "POST",
       body: JSON.stringify(command),
@@ -145,30 +149,41 @@ export function saveMyArchiveCategoryLayout(
   );
 }
 
-export function buildArchiveCategoryTable(categoryId: number) {
-  return request<ArchiveCategoryDto>(`/api/v1/archive-categories/${categoryId}:buildTable`, {
-    method: "POST",
-  });
+export function buildArchiveCategoryTable(categoryId: number, archiveLevel?: ArchiveLevel) {
+  return request<ArchiveCategoryDto>(
+    `/api/v1/archive-categories/${categoryId}:buildTable${queryString({ archiveLevel })}`,
+    {
+      method: "POST",
+    },
+  );
 }
 
-export function listArchiveUniqueRules(categoryId: number) {
-  return request<ArchiveUniqueRuleDto[]>(`/api/v1/archive-categories/${categoryId}/unique-rules`);
+export function listArchiveUniqueConstraints(categoryId: number) {
+  return request<ArchiveUniqueConstraintDto[]>(
+    `/api/v1/archive-categories/${categoryId}/unique-constraints`,
+  );
 }
 
-export function createArchiveUniqueRule(categoryId: number, command: ArchiveUniqueRuleCommand) {
-  return request<ArchiveUniqueRuleDto>(`/api/v1/archive-categories/${categoryId}/unique-rules`, {
-    method: "POST",
-    body: JSON.stringify(command),
-  });
-}
-
-export function updateArchiveUniqueRule(
+export function createArchiveUniqueConstraint(
   categoryId: number,
-  ruleId: number,
-  command: ArchiveUniqueRuleCommand,
+  command: ArchiveUniqueConstraintCommand,
 ) {
-  return request<ArchiveUniqueRuleDto>(
-    `/api/v1/archive-categories/${categoryId}/unique-rules/${ruleId}`,
+  return request<ArchiveUniqueConstraintDto>(
+    `/api/v1/archive-categories/${categoryId}/unique-constraints`,
+    {
+      method: "POST",
+      body: JSON.stringify(command),
+    },
+  );
+}
+
+export function updateArchiveUniqueConstraint(
+  categoryId: number,
+  constraintId: number,
+  command: ArchiveUniqueConstraintCommand,
+) {
+  return request<ArchiveUniqueConstraintDto>(
+    `/api/v1/archive-categories/${categoryId}/unique-constraints/${constraintId}`,
     {
       method: "PATCH",
       body: JSON.stringify(command),
@@ -176,13 +191,20 @@ export function updateArchiveUniqueRule(
   );
 }
 
-export function deleteArchiveUniqueRule(categoryId: number, ruleId: number) {
-  return request<void>(`/api/v1/archive-categories/${categoryId}/unique-rules/${ruleId}`, {
-    method: "DELETE",
-  });
+export function deleteArchiveUniqueConstraint(categoryId: number, constraintId: number) {
+  return request<void>(
+    `/api/v1/archive-categories/${categoryId}/unique-constraints/${constraintId}`,
+    {
+      method: "DELETE",
+    },
+  );
 }
 
-export function listArchiveRecords(params: { categoryId?: number; fondsCode?: string }) {
+export function listArchiveRecords(params: {
+  categoryId?: number;
+  archiveLevel?: ArchiveLevel;
+  fondsCode?: string;
+}) {
   return request<ArchiveRecordListDto>(`/api/v1/archive-records${queryString(params)}`);
 }
 

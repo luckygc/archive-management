@@ -1,5 +1,6 @@
 create or replace function seed_archive_field(
     input_category_id bigint,
+    input_archive_level varchar,
     input_field_code varchar,
     input_field_name varchar,
     input_field_type varchar,
@@ -23,11 +24,12 @@ as
 $$
 begin
     insert into am_archive_field
-        (category_id, field_code, field_name, field_type, column_name, list_visible,
+        (category_id, archive_level, field_code, field_name, field_type, column_name, list_visible,
          exact_searchable, full_text_searchable, edit_control, list_width, list_sort_order,
          detail_visible, detail_col_span, detail_sort_order, edit_visible, edit_col_span,
          edit_sort_order, enabled, sort_order)
     select input_category_id,
+           input_archive_level,
            input_field_code,
            input_field_name,
            input_field_type,
@@ -55,17 +57,19 @@ begin
         select 1
         from am_archive_field
         where category_id = input_category_id
+          and archive_level = input_archive_level
           and field_code = input_field_code
           and deleted_flag = false
     );
 end
 $$;
 
-create or replace function seed_archive_unique_rule(
+create or replace function seed_archive_unique_constraint(
     input_category_id bigint,
+    input_archive_level varchar,
     input_table_name text,
-    input_rule_code varchar,
-    input_rule_name varchar,
+    input_constraint_code varchar,
+    input_constraint_name varchar,
     input_include_fonds boolean,
     input_field_codes varchar[]
 ) returns void
@@ -73,39 +77,41 @@ language plpgsql
 as
 $$
 declare
-    output_rule_id bigint;
+    output_constraint_id bigint;
     output_index_name varchar;
     output_field_id bigint;
     output_column_name varchar;
-    output_index_columns text := '';
+    output_index_columns text[] := array[]::text[];
     output_field_order integer := 0;
     current_field_code varchar;
 begin
-    output_index_name := 'uk_seed_archive_' || input_category_id || '_' || input_rule_code;
+    output_index_name := 'uk_seed_archive_' || input_category_id || '_' || lower(input_archive_level) || '_' || input_constraint_code;
 
-    insert into am_archive_unique_rule
-        (category_id, rule_code, rule_name, include_fonds, index_name, enabled)
-    select input_category_id, input_rule_code, input_rule_name, input_include_fonds, output_index_name, true
+    insert into am_archive_unique_constraint
+        (category_id, archive_level, constraint_code, constraint_name, include_fonds, index_name, enabled)
+    select input_category_id, input_archive_level, input_constraint_code, input_constraint_name, input_include_fonds, output_index_name, true
     where not exists (
         select 1
-        from am_archive_unique_rule
+        from am_archive_unique_constraint
         where category_id = input_category_id
-          and rule_code = input_rule_code
+          and archive_level = input_archive_level
+          and constraint_code = input_constraint_code
           and deleted_flag = false
     );
 
     select id
-    into output_rule_id
-    from am_archive_unique_rule
+    into output_constraint_id
+    from am_archive_unique_constraint
     where category_id = input_category_id
-      and rule_code = input_rule_code
+      and archive_level = input_archive_level
+      and constraint_code = input_constraint_code
       and deleted_flag = false;
 
-    delete from am_archive_unique_rule_field
-    where rule_id = output_rule_id;
+    delete from am_archive_unique_constraint_field
+    where constraint_id = output_constraint_id;
 
     if input_include_fonds then
-        output_index_columns := 'fonds_code';
+        output_index_columns := array['fonds_code'];
     end if;
 
     foreach current_field_code in array input_field_codes loop
@@ -113,23 +119,24 @@ begin
         into output_field_id, output_column_name
         from am_archive_field
         where category_id = input_category_id
+          and archive_level = input_archive_level
           and field_code = current_field_code
           and deleted_flag = false;
 
         if output_field_id is null then
-            raise exception '示例唯一规则字段不存在：category_id=%, field_code=%',
+            raise exception '示例唯一约束字段不存在：category_id=%, field_code=%',
                 input_category_id, current_field_code;
         end if;
 
-        insert into am_archive_unique_rule_field (rule_id, field_id, field_order)
-        values (output_rule_id, output_field_id, output_field_order);
+        insert into am_archive_unique_constraint_field (constraint_id, field_id, field_order)
+        values (output_constraint_id, output_field_id, output_field_order);
 
         update am_archive_field
         set exact_searchable = true,
             updated_at = localtimestamp
         where id = output_field_id;
 
-        output_index_columns := concat_ws(', ', output_index_columns, output_column_name);
+        output_index_columns := output_index_columns || output_column_name;
         output_field_order := output_field_order + 1;
     end loop;
 
@@ -137,7 +144,7 @@ begin
         'create unique index if not exists %I on %I (%s) where deleted_flag = false',
         output_index_name,
         input_table_name,
-        output_index_columns
+        (select string_agg(format('%I', column_name), ', ') from unnest(output_index_columns) as column_name)
     );
 end
 $$;
@@ -145,6 +152,9 @@ $$;
 create or replace function seed_archive_category(
     input_category_code varchar,
     input_category_name varchar,
+    input_parent_code varchar,
+    input_management_mode varchar,
+    input_build_table boolean,
     input_sort_order integer
 ) returns bigint
 language plpgsql
@@ -152,10 +162,23 @@ as
 $$
 declare
     output_category_id bigint;
+    output_parent_id bigint;
     output_table_name text;
 begin
-    insert into am_archive_category (category_code, category_name, enabled, sort_order)
-    select input_category_code, input_category_name, true, input_sort_order
+    if input_parent_code is not null then
+        select id
+        into output_parent_id
+        from am_archive_category
+        where category_code = input_parent_code
+          and deleted_flag = false;
+
+        if output_parent_id is null then
+            raise exception '示例父分类不存在：category_code=%', input_parent_code;
+        end if;
+    end if;
+
+    insert into am_archive_category (parent_id, category_code, category_name, management_mode, enabled, sort_order)
+    select output_parent_id, input_category_code, input_category_name, input_management_mode, true, input_sort_order
     where not exists (
         select 1
         from am_archive_category
@@ -169,12 +192,15 @@ begin
     where category_code = input_category_code
       and deleted_flag = false;
 
-    output_table_name := 'am_archive_data_c_' || output_category_id;
+    output_table_name := 'am_archive_record_item_' || output_category_id;
 
     update am_archive_category
-    set record_table_name = output_table_name,
-        table_status = 'BUILT',
-        built_at = coalesce(built_at, localtimestamp),
+    set parent_id = output_parent_id,
+        category_name = input_category_name,
+        management_mode = input_management_mode,
+        item_table_name = case when input_build_table then output_table_name else null end,
+        table_status = case when input_build_table then 'BUILT' else 'NOT_BUILT' end,
+        built_at = case when input_build_table then coalesce(built_at, localtimestamp) else null end,
         updated_at = localtimestamp
     where id = output_category_id;
 
@@ -203,12 +229,16 @@ $$;
 do
 $$
 declare
+    ws_category_id bigint;
+    zy_category_id bigint;
+    mt_category_id bigint;
     gw_category_id bigint;
     ht_category_id bigint;
     kj_category_id bigint;
     xm_category_id bigint;
     zp_category_id bigint;
     gw_table text;
+    gw_volume_table text;
     ht_table text;
     kj_table text;
     xm_table text;
@@ -224,52 +254,82 @@ begin
         ('Z004', '研发中心全宗', true, 50)
     on conflict do nothing;
 
-    gw_category_id := seed_archive_category('GW', '公文档案', 10);
-    ht_category_id := seed_archive_category('HT', '合同档案', 20);
-    kj_category_id := seed_archive_category('KJ', '会计凭证', 30);
-    xm_category_id := seed_archive_category('XM', '项目档案', 40);
-    zp_category_id := seed_archive_category('ZP', '照片档案', 50);
+    ws_category_id := seed_archive_category('WS', '文书档案', null, 'ITEM_ONLY', false, 10);
+    zy_category_id := seed_archive_category('ZY', '专业档案', null, 'ITEM_ONLY', false, 20);
+    mt_category_id := seed_archive_category('MT', '声像档案', null, 'ITEM_ONLY', false, 30);
+    gw_category_id := seed_archive_category('GW', '公文档案', 'WS', 'VOLUME_ITEM', true, 10);
+    ht_category_id := seed_archive_category('HT', '合同档案', 'WS', 'ITEM_ONLY', true, 20);
+    kj_category_id := seed_archive_category('KJ', '会计凭证', 'ZY', 'ITEM_ONLY', true, 10);
+    xm_category_id := seed_archive_category('XM', '项目档案', 'ZY', 'ITEM_ONLY', true, 20);
+    zp_category_id := seed_archive_category('ZP', '照片档案', 'MT', 'ITEM_ONLY', true, 10);
 
-    gw_table := 'am_archive_data_c_' || gw_category_id;
-    ht_table := 'am_archive_data_c_' || ht_category_id;
-    kj_table := 'am_archive_data_c_' || kj_category_id;
-    xm_table := 'am_archive_data_c_' || xm_category_id;
-    zp_table := 'am_archive_data_c_' || zp_category_id;
+    gw_table := 'am_archive_record_item_' || gw_category_id;
+    gw_volume_table := 'am_archive_record_volume_' || gw_category_id;
+    ht_table := 'am_archive_record_item_' || ht_category_id;
+    kj_table := 'am_archive_record_item_' || kj_category_id;
+    xm_table := 'am_archive_record_item_' || xm_category_id;
+    zp_table := 'am_archive_record_item_' || zp_category_id;
 
-    perform seed_archive_field(gw_category_id, 'title', '题名', 'TEXT', 'f_title', 10, true, true, true, 'INPUT', 280, true, 2, 2);
-    perform seed_archive_field(gw_category_id, 'doc_no', '文号', 'TEXT', 'f_doc_no', 20, true, true, true, 'INPUT', 180, true, 1, 1);
-    perform seed_archive_field(gw_category_id, 'responsible_org', '责任机构', 'TEXT', 'f_responsible_org', 30, true, true, true, 'INPUT', 160, true, 1, 1);
-    perform seed_archive_field(gw_category_id, 'formed_date', '成文日期', 'DATE', 'f_formed_date', 40, true, true, false, 'DATE', 120, true, 1, 1);
-    perform seed_archive_field(gw_category_id, 'secret_level', '密级', 'TEXT', 'f_secret_level', 50, true, true, false, 'INPUT', 100, true, 1, 1);
-    perform seed_archive_field(gw_category_id, 'summary', '内容摘要', 'TEXT', 'f_summary', 60, false, false, true, 'TEXTAREA', null, true, 2, 2);
+    perform seed_archive_field(gw_category_id, 'ITEM', 'title', '题名', 'TEXT', 'f_title', 10, true, true, true, 'INPUT', 280, true, 2, 2);
+    perform seed_archive_field(gw_category_id, 'ITEM', 'doc_no', '文号', 'TEXT', 'f_doc_no', 20, true, true, true, 'INPUT', 180, true, 1, 1);
+    perform seed_archive_field(gw_category_id, 'ITEM', 'responsible_org', '责任机构', 'TEXT', 'f_responsible_org', 30, true, true, true, 'INPUT', 160, true, 1, 1);
+    perform seed_archive_field(gw_category_id, 'ITEM', 'formed_date', '成文日期', 'DATE', 'f_formed_date', 40, true, true, false, 'DATE', 120, true, 1, 1);
+    perform seed_archive_field(gw_category_id, 'ITEM', 'secret_level', '密级', 'TEXT', 'f_secret_level', 50, true, true, false, 'INPUT', 100, true, 1, 1);
+    perform seed_archive_field(gw_category_id, 'ITEM', 'summary', '内容摘要', 'TEXT', 'f_summary', 60, false, false, true, 'TEXTAREA', null, true, 2, 2);
+    perform seed_archive_field(gw_category_id, 'VOLUME', 'volume_no', '案卷号', 'TEXT', 'f_volume_no', 10, true, true, true, 'INPUT', 150, true, 1, 1);
+    perform seed_archive_field(gw_category_id, 'VOLUME', 'volume_title', '案卷题名', 'TEXT', 'f_volume_title', 20, true, true, true, 'INPUT', 280, true, 2, 2);
+    perform seed_archive_field(gw_category_id, 'VOLUME', 'start_date', '起始日期', 'DATE', 'f_start_date', 30, true, true, false, 'DATE', 120, true, 1, 1);
+    perform seed_archive_field(gw_category_id, 'VOLUME', 'end_date', '终止日期', 'DATE', 'f_end_date', 40, true, true, false, 'DATE', 120, true, 1, 1);
+    perform seed_archive_field(gw_category_id, 'VOLUME', 'retention_period', '保管期限', 'TEXT', 'f_retention_period', 50, true, true, false, 'INPUT', 120, true, 1, 1);
 
-    perform seed_archive_field(ht_category_id, 'contract_no', '合同编号', 'TEXT', 'f_contract_no', 10, true, true, true, 'INPUT', 170, true, 1, 1);
-    perform seed_archive_field(ht_category_id, 'counterparty', '相对方', 'TEXT', 'f_counterparty', 20, true, true, true, 'INPUT', 240, true, 2, 2);
-    perform seed_archive_field(ht_category_id, 'amount', '合同金额', 'DECIMAL', 'f_amount', 30, true, true, false, 'NUMBER', 140, true, 1, 1);
-    perform seed_archive_field(ht_category_id, 'sign_date', '签订日期', 'DATE', 'f_sign_date', 40, true, true, false, 'DATE', 120, true, 1, 1);
-    perform seed_archive_field(ht_category_id, 'owner_dept', '承办部门', 'TEXT', 'f_owner_dept', 50, true, true, false, 'INPUT', 160, true, 1, 1);
-    perform seed_archive_field(ht_category_id, 'contract_scope', '合同范围', 'TEXT', 'f_contract_scope', 60, false, false, true, 'TEXTAREA', null, true, 2, 2);
+    perform seed_archive_field(ht_category_id, 'ITEM', 'contract_no', '合同编号', 'TEXT', 'f_contract_no', 10, true, true, true, 'INPUT', 170, true, 1, 1);
+    perform seed_archive_field(ht_category_id, 'ITEM', 'counterparty', '相对方', 'TEXT', 'f_counterparty', 20, true, true, true, 'INPUT', 240, true, 2, 2);
+    perform seed_archive_field(ht_category_id, 'ITEM', 'amount', '合同金额', 'DECIMAL', 'f_amount', 30, true, true, false, 'NUMBER', 140, true, 1, 1);
+    perform seed_archive_field(ht_category_id, 'ITEM', 'sign_date', '签订日期', 'DATE', 'f_sign_date', 40, true, true, false, 'DATE', 120, true, 1, 1);
+    perform seed_archive_field(ht_category_id, 'ITEM', 'owner_dept', '承办部门', 'TEXT', 'f_owner_dept', 50, true, true, false, 'INPUT', 160, true, 1, 1);
+    perform seed_archive_field(ht_category_id, 'ITEM', 'contract_scope', '合同范围', 'TEXT', 'f_contract_scope', 60, false, false, true, 'TEXTAREA', null, true, 2, 2);
 
-    perform seed_archive_field(kj_category_id, 'voucher_no', '凭证号', 'TEXT', 'f_voucher_no', 10, true, true, true, 'INPUT', 150, true, 1, 1);
-    perform seed_archive_field(kj_category_id, 'accounting_period', '会计期间', 'TEXT', 'f_accounting_period', 20, true, true, true, 'INPUT', 120, true, 1, 1);
-    perform seed_archive_field(kj_category_id, 'summary', '摘要', 'TEXT', 'f_summary', 30, true, true, true, 'TEXTAREA', 280, true, 2, 2);
-    perform seed_archive_field(kj_category_id, 'amount', '金额', 'DECIMAL', 'f_amount', 40, true, true, false, 'NUMBER', 120, true, 1, 1);
-    perform seed_archive_field(kj_category_id, 'attachment_count', '附件张数', 'INTEGER', 'f_attachment_count', 50, true, true, false, 'NUMBER', 100, true, 1, 1);
-    perform seed_archive_field(kj_category_id, 'remark', '备注', 'TEXT', 'f_remark', 60, false, false, true, 'TEXTAREA', null, true, 2, 2);
+    perform seed_archive_field(kj_category_id, 'ITEM', 'voucher_no', '凭证号', 'TEXT', 'f_voucher_no', 10, true, true, true, 'INPUT', 150, true, 1, 1);
+    perform seed_archive_field(kj_category_id, 'ITEM', 'accounting_period', '会计期间', 'TEXT', 'f_accounting_period', 20, true, true, true, 'INPUT', 120, true, 1, 1);
+    perform seed_archive_field(kj_category_id, 'ITEM', 'summary', '摘要', 'TEXT', 'f_summary', 30, true, true, true, 'TEXTAREA', 280, true, 2, 2);
+    perform seed_archive_field(kj_category_id, 'ITEM', 'amount', '金额', 'DECIMAL', 'f_amount', 40, true, true, false, 'NUMBER', 120, true, 1, 1);
+    perform seed_archive_field(kj_category_id, 'ITEM', 'attachment_count', '附件张数', 'INTEGER', 'f_attachment_count', 50, true, true, false, 'NUMBER', 100, true, 1, 1);
+    perform seed_archive_field(kj_category_id, 'ITEM', 'remark', '备注', 'TEXT', 'f_remark', 60, false, false, true, 'TEXTAREA', null, true, 2, 2);
 
-    perform seed_archive_field(xm_category_id, 'project_code', '项目编号', 'TEXT', 'f_project_code', 10, true, true, true, 'INPUT', 150, true, 1, 1);
-    perform seed_archive_field(xm_category_id, 'project_name', '项目名称', 'TEXT', 'f_project_name', 20, true, true, true, 'INPUT', 260, true, 2, 2);
-    perform seed_archive_field(xm_category_id, 'manager', '负责人', 'TEXT', 'f_manager', 30, true, true, true, 'INPUT', 120, true, 1, 1);
-    perform seed_archive_field(xm_category_id, 'start_date', '启动日期', 'DATE', 'f_start_date', 40, true, true, false, 'DATE', 120, true, 1, 1);
-    perform seed_archive_field(xm_category_id, 'budget', '预算金额', 'DECIMAL', 'f_budget', 50, true, true, false, 'NUMBER', 140, true, 1, 1);
-    perform seed_archive_field(xm_category_id, 'milestone', '关键节点', 'TEXT', 'f_milestone', 60, false, false, true, 'TEXTAREA', null, true, 2, 2);
+    perform seed_archive_field(xm_category_id, 'ITEM', 'project_code', '项目编号', 'TEXT', 'f_project_code', 10, true, true, true, 'INPUT', 150, true, 1, 1);
+    perform seed_archive_field(xm_category_id, 'ITEM', 'project_name', '项目名称', 'TEXT', 'f_project_name', 20, true, true, true, 'INPUT', 260, true, 2, 2);
+    perform seed_archive_field(xm_category_id, 'ITEM', 'manager', '负责人', 'TEXT', 'f_manager', 30, true, true, true, 'INPUT', 120, true, 1, 1);
+    perform seed_archive_field(xm_category_id, 'ITEM', 'start_date', '启动日期', 'DATE', 'f_start_date', 40, true, true, false, 'DATE', 120, true, 1, 1);
+    perform seed_archive_field(xm_category_id, 'ITEM', 'budget', '预算金额', 'DECIMAL', 'f_budget', 50, true, true, false, 'NUMBER', 140, true, 1, 1);
+    perform seed_archive_field(xm_category_id, 'ITEM', 'milestone', '关键节点', 'TEXT', 'f_milestone', 60, false, false, true, 'TEXTAREA', null, true, 2, 2);
 
-    perform seed_archive_field(zp_category_id, 'photo_title', '照片题名', 'TEXT', 'f_photo_title', 10, true, true, true, 'INPUT', 260, true, 2, 2);
-    perform seed_archive_field(zp_category_id, 'shoot_time', '拍摄时间', 'DATETIME', 'f_shoot_time', 20, true, true, false, 'DATETIME', 170, true, 1, 1);
-    perform seed_archive_field(zp_category_id, 'location', '拍摄地点', 'TEXT', 'f_location', 30, true, true, true, 'INPUT', 180, true, 1, 1);
-    perform seed_archive_field(zp_category_id, 'photographer', '摄影者', 'TEXT', 'f_photographer', 40, true, true, true, 'INPUT', 120, true, 1, 1);
-    perform seed_archive_field(zp_category_id, 'people_count', '人数', 'INTEGER', 'f_people_count', 50, true, true, false, 'NUMBER', 90, true, 1, 1);
-    perform seed_archive_field(zp_category_id, 'scene_description', '场景说明', 'TEXT', 'f_scene_description', 60, false, false, true, 'TEXTAREA', null, true, 2, 2);
+    perform seed_archive_field(zp_category_id, 'ITEM', 'photo_title', '照片题名', 'TEXT', 'f_photo_title', 10, true, true, true, 'INPUT', 260, true, 2, 2);
+    perform seed_archive_field(zp_category_id, 'ITEM', 'shoot_time', '拍摄时间', 'DATETIME', 'f_shoot_time', 20, true, true, false, 'DATETIME', 170, true, 1, 1);
+    perform seed_archive_field(zp_category_id, 'ITEM', 'location', '拍摄地点', 'TEXT', 'f_location', 30, true, true, true, 'INPUT', 180, true, 1, 1);
+    perform seed_archive_field(zp_category_id, 'ITEM', 'photographer', '摄影者', 'TEXT', 'f_photographer', 40, true, true, true, 'INPUT', 120, true, 1, 1);
+    perform seed_archive_field(zp_category_id, 'ITEM', 'people_count', '人数', 'INTEGER', 'f_people_count', 50, true, true, false, 'NUMBER', 90, true, 1, 1);
+    perform seed_archive_field(zp_category_id, 'ITEM', 'scene_description', '场景说明', 'TEXT', 'f_scene_description', 60, false, false, true, 'TEXTAREA', null, true, 2, 2);
+
+    update am_archive_category
+    set volume_table_name = gw_volume_table,
+        updated_at = localtimestamp
+    where id = gw_category_id;
+
+    execute format(
+        'create table if not exists %I (
+            id bigint primary key references am_archive_record (id),
+            fonds_code varchar(100) not null,
+            f_volume_no varchar(500),
+            f_volume_title varchar(500),
+            f_start_date date,
+            f_end_date date,
+            f_retention_period varchar(500),
+            deleted_flag boolean not null default false,
+            created_at timestamp not null default localtimestamp,
+            updated_at timestamp not null default localtimestamp
+        )',
+        gw_volume_table
+    );
 
     execute format(
         'create table if not exists %I (
@@ -287,8 +347,6 @@ begin
         )',
         gw_table
     );
-    execute format('create index if not exists %I on %I (fonds_code) where deleted_flag = false', 'idx_' || gw_table || '_fonds', gw_table);
-
     execute format(
         'create table if not exists %I (
             id bigint primary key references am_archive_record (id),
@@ -305,8 +363,6 @@ begin
         )',
         ht_table
     );
-    execute format('create index if not exists %I on %I (fonds_code) where deleted_flag = false', 'idx_' || ht_table || '_fonds', ht_table);
-
     execute format(
         'create table if not exists %I (
             id bigint primary key references am_archive_record (id),
@@ -323,8 +379,6 @@ begin
         )',
         kj_table
     );
-    execute format('create index if not exists %I on %I (fonds_code) where deleted_flag = false', 'idx_' || kj_table || '_fonds', kj_table);
-
     execute format(
         'create table if not exists %I (
             id bigint primary key references am_archive_record (id),
@@ -341,8 +395,6 @@ begin
         )',
         xm_table
     );
-    execute format('create index if not exists %I on %I (fonds_code) where deleted_flag = false', 'idx_' || xm_table || '_fonds', xm_table);
-
     execute format(
         'create table if not exists %I (
             id bigint primary key references am_archive_record (id),
@@ -359,17 +411,16 @@ begin
         )',
         zp_table
     );
-    execute format('create index if not exists %I on %I (fonds_code) where deleted_flag = false', 'idx_' || zp_table || '_fonds', zp_table);
-
-    perform seed_archive_unique_rule(gw_category_id, gw_table, 'doc_no_unique', '同一全宗文号唯一', true, array['doc_no']);
-    perform seed_archive_unique_rule(ht_category_id, ht_table, 'contract_no_unique', '同一全宗合同编号唯一', true, array['contract_no']);
-    perform seed_archive_unique_rule(kj_category_id, kj_table, 'voucher_period_unique', '同一全宗会计期间凭证号唯一', true, array['accounting_period', 'voucher_no']);
-    perform seed_archive_unique_rule(xm_category_id, xm_table, 'project_code_unique', '同一全宗项目编号唯一', true, array['project_code']);
-    perform seed_archive_unique_rule(zp_category_id, zp_table, 'photo_title_time_unique', '同一全宗照片题名拍摄时间唯一', true, array['photo_title', 'shoot_time']);
+    perform seed_archive_unique_constraint(gw_category_id, 'ITEM', gw_table, 'doc_no_unique', '同一全宗文号唯一', true, array['doc_no']);
+    perform seed_archive_unique_constraint(gw_category_id, 'VOLUME', gw_volume_table, 'volume_no_unique', '同一全宗案卷号唯一', true, array['volume_no']);
+    perform seed_archive_unique_constraint(ht_category_id, 'ITEM', ht_table, 'contract_no_unique', '同一全宗合同编号唯一', true, array['contract_no']);
+    perform seed_archive_unique_constraint(kj_category_id, 'ITEM', kj_table, 'voucher_period_unique', '同一全宗会计期间凭证号唯一', true, array['accounting_period', 'voucher_no']);
+    perform seed_archive_unique_constraint(xm_category_id, 'ITEM', xm_table, 'project_code_unique', '同一全宗项目编号唯一', true, array['project_code']);
+    perform seed_archive_unique_constraint(zp_category_id, 'ITEM', zp_table, 'photo_title_time_unique', '同一全宗照片题名拍摄时间唯一', true, array['photo_title', 'shoot_time']);
 
     if not exists (select 1 from am_archive_record where category_code = 'GW' and archive_no = 'GW-2026-001' and deleted_flag = false) then
-        insert into am_archive_record (category_code, category_name, archive_no, archive_status, process_status, archive_year)
-        values ('GW', '公文档案', 'GW-2026-001', 'DRAFT', 'NONE', 2026)
+        insert into am_archive_record (archive_level, fonds_code, fonds_name, category_code, category_name, archive_no, electronic_status, archive_year)
+        values ('ITEM', 'Z000', '集团全宗', 'GW', '公文档案', 'GW-2026-001', 'DRAFT', 2026)
         returning id into record_id;
         execute format('insert into %I (id, fonds_code, f_title, f_doc_no, f_responsible_org, f_formed_date, f_secret_level, f_summary) values ($1, $2, $3, $4, $5, $6, $7, $8)', gw_table)
         using record_id, 'Z000', '关于年度档案管理工作的通知', '集团办〔2026〕1号', '集团办公室', date '2026-01-12', '内部', '明确年度档案整理、移交、保管和检查工作安排。';
@@ -377,17 +428,17 @@ begin
     end if;
 
     if not exists (select 1 from am_archive_record where category_code = 'GW' and archive_no = 'GW-2026-002' and deleted_flag = false) then
-        insert into am_archive_record (category_code, category_name, archive_no, archive_status, process_status, archive_year)
-        values ('GW', '公文档案', 'GW-2026-002', 'ARCHIVED', 'NONE', 2026)
+        insert into am_archive_record (archive_level, fonds_code, fonds_name, category_code, category_name, archive_no, electronic_status, archive_year)
+        values ('ITEM', 'Z001', '总部全宗', 'GW', '公文档案', 'GW-2026-002', 'ARCHIVED', 2026)
         returning id into record_id;
         execute format('insert into %I (id, fonds_code, f_title, f_doc_no, f_responsible_org, f_formed_date, f_secret_level, f_summary) values ($1, $2, $3, $4, $5, $6, $7, $8)', gw_table)
-        using record_id, 'Z001', '关于上线电子档案借阅流程的批复', '总部办〔2026〕8号', '运营管理部', date '2026-03-06', '公开', '批准在总部和分公司试运行电子档案借阅审批流程。';
+        using record_id, 'Z001', '关于上线电子档案借阅流程的批复', '总部办〔2026〕8号', '运营管理部', date '2026-03-06', '公开', '批准在总部和分公司试运行电子档案借阅流程。';
         perform seed_archive_search(record_id, '关于上线电子档案借阅流程的批复 总部办〔2026〕8号 运营管理部 电子档案借阅审批流程');
     end if;
 
     if not exists (select 1 from am_archive_record where category_code = 'HT' and archive_no = 'HT-2026-001' and deleted_flag = false) then
-        insert into am_archive_record (category_code, category_name, archive_no, archive_status, process_status, archive_year)
-        values ('HT', '合同档案', 'HT-2026-001', 'DRAFT', 'NONE', 2026)
+        insert into am_archive_record (archive_level, fonds_code, fonds_name, category_code, category_name, archive_no, electronic_status, archive_year)
+        values ('ITEM', 'Z001', '总部全宗', 'HT', '合同档案', 'HT-2026-001', 'DRAFT', 2026)
         returning id into record_id;
         execute format('insert into %I (id, fonds_code, f_contract_no, f_counterparty, f_amount, f_sign_date, f_owner_dept, f_contract_scope) values ($1, $2, $3, $4, $5, $6, $7, $8)', ht_table)
         using record_id, 'Z001', 'HT-2026-001', '上海示例科技有限公司', 128000.00, date '2026-02-18', '信息技术部', '档案管理系统建设、上线支持和首年运维服务。';
@@ -395,8 +446,8 @@ begin
     end if;
 
     if not exists (select 1 from am_archive_record where category_code = 'HT' and archive_no = 'HT-2026-002' and deleted_flag = false) then
-        insert into am_archive_record (category_code, category_name, archive_no, archive_status, process_status, archive_year)
-        values ('HT', '合同档案', 'HT-2026-002', 'ARCHIVED', 'NONE', 2026)
+        insert into am_archive_record (archive_level, fonds_code, fonds_name, category_code, category_name, archive_no, electronic_status, archive_year)
+        values ('ITEM', 'Z003', '华南分公司全宗', 'HT', '合同档案', 'HT-2026-002', 'ARCHIVED', 2026)
         returning id into record_id;
         execute format('insert into %I (id, fonds_code, f_contract_no, f_counterparty, f_amount, f_sign_date, f_owner_dept, f_contract_scope) values ($1, $2, $3, $4, $5, $6, $7, $8)', ht_table)
         using record_id, 'Z003', 'HT-2026-002', '广州南方数据服务有限公司', 86500.00, date '2026-04-09', '华南分公司综合部', '历史档案数字化扫描、目录著录和成果验收服务。';
@@ -404,8 +455,8 @@ begin
     end if;
 
     if not exists (select 1 from am_archive_record where category_code = 'KJ' and archive_no = 'KJ-2026-001' and deleted_flag = false) then
-        insert into am_archive_record (category_code, category_name, archive_no, archive_status, process_status, archive_year)
-        values ('KJ', '会计凭证', 'KJ-2026-001', 'DRAFT', 'NONE', 2026)
+        insert into am_archive_record (archive_level, fonds_code, fonds_name, category_code, category_name, archive_no, electronic_status, archive_year)
+        values ('ITEM', 'Z002', '华东分公司全宗', 'KJ', '会计凭证', 'KJ-2026-001', 'DRAFT', 2026)
         returning id into record_id;
         execute format('insert into %I (id, fonds_code, f_voucher_no, f_accounting_period, f_summary, f_amount, f_attachment_count, f_remark) values ($1, $2, $3, $4, $5, $6, $7, $8)', kj_table)
         using record_id, 'Z002', '记-2026-0001', '2026-01', '支付档案系统建设费用', 56000.00, 8, '含合同、验收单、发票和付款审批单。';
@@ -413,8 +464,8 @@ begin
     end if;
 
     if not exists (select 1 from am_archive_record where category_code = 'KJ' and archive_no = 'KJ-2026-002' and deleted_flag = false) then
-        insert into am_archive_record (category_code, category_name, archive_no, archive_status, process_status, archive_year)
-        values ('KJ', '会计凭证', 'KJ-2026-002', 'ARCHIVED', 'NONE', 2026)
+        insert into am_archive_record (archive_level, fonds_code, fonds_name, category_code, category_name, archive_no, electronic_status, archive_year)
+        values ('ITEM', 'Z000', '集团全宗', 'KJ', '会计凭证', 'KJ-2026-002', 'ARCHIVED', 2026)
         returning id into record_id;
         execute format('insert into %I (id, fonds_code, f_voucher_no, f_accounting_period, f_summary, f_amount, f_attachment_count, f_remark) values ($1, $2, $3, $4, $5, $6, $7, $8)', kj_table)
         using record_id, 'Z000', '记-2026-0036', '2026-02', '报销档案库房设备维护费', 12800.50, 5, '含维修清单和审批单。';
@@ -422,8 +473,8 @@ begin
     end if;
 
     if not exists (select 1 from am_archive_record where category_code = 'XM' and archive_no = 'XM-2026-001' and deleted_flag = false) then
-        insert into am_archive_record (category_code, category_name, archive_no, archive_status, process_status, archive_year)
-        values ('XM', '项目档案', 'XM-2026-001', 'DRAFT', 'NONE', 2026)
+        insert into am_archive_record (archive_level, fonds_code, fonds_name, category_code, category_name, archive_no, electronic_status, archive_year)
+        values ('ITEM', 'Z004', '研发中心全宗', 'XM', '项目档案', 'XM-2026-001', 'DRAFT', 2026)
         returning id into record_id;
         execute format('insert into %I (id, fonds_code, f_project_code, f_project_name, f_manager, f_start_date, f_budget, f_milestone) values ($1, $2, $3, $4, $5, $6, $7, $8)', xm_table)
         using record_id, 'Z004', 'PRJ-ARCH-2026', '档案管理平台一期建设', '李明', date '2026-01-20', 350000.00, '完成元数据建模、档案库查询、全文检索和权限边界验证。';
@@ -431,8 +482,8 @@ begin
     end if;
 
     if not exists (select 1 from am_archive_record where category_code = 'XM' and archive_no = 'XM-2026-002' and deleted_flag = false) then
-        insert into am_archive_record (category_code, category_name, archive_no, archive_status, process_status, archive_year)
-        values ('XM', '项目档案', 'XM-2026-002', 'ARCHIVED', 'NONE', 2026)
+        insert into am_archive_record (archive_level, fonds_code, fonds_name, category_code, category_name, archive_no, electronic_status, archive_year)
+        values ('ITEM', 'Z002', '华东分公司全宗', 'XM', '项目档案', 'XM-2026-002', 'ARCHIVED', 2026)
         returning id into record_id;
         execute format('insert into %I (id, fonds_code, f_project_code, f_project_name, f_manager, f_start_date, f_budget, f_milestone) values ($1, $2, $3, $4, $5, $6, $7, $8)', xm_table)
         using record_id, 'Z002', 'PRJ-DIGI-2026', '华东历史档案数字化专项', '周宁', date '2026-02-14', 215000.00, '完成纸质档案清点、扫描质检、目录挂接和移交验收。';
@@ -440,8 +491,8 @@ begin
     end if;
 
     if not exists (select 1 from am_archive_record where category_code = 'ZP' and archive_no = 'ZP-2026-001' and deleted_flag = false) then
-        insert into am_archive_record (category_code, category_name, archive_no, archive_status, process_status, archive_year)
-        values ('ZP', '照片档案', 'ZP-2026-001', 'DRAFT', 'NONE', 2026)
+        insert into am_archive_record (archive_level, fonds_code, fonds_name, category_code, category_name, archive_no, electronic_status, archive_year)
+        values ('ITEM', 'Z000', '集团全宗', 'ZP', '照片档案', 'ZP-2026-001', 'DRAFT', 2026)
         returning id into record_id;
         execute format('insert into %I (id, fonds_code, f_photo_title, f_shoot_time, f_location, f_photographer, f_people_count, f_scene_description) values ($1, $2, $3, $4, $5, $6, $7, $8)', zp_table)
         using record_id, 'Z000', '集团档案室新库房启用仪式', timestamp '2026-03-18 09:30:00', '总部档案中心', '王岚', 26, '新库房启用、档案装具验收和库区安全巡检现场。';
@@ -449,8 +500,8 @@ begin
     end if;
 
     if not exists (select 1 from am_archive_record where category_code = 'ZP' and archive_no = 'ZP-2026-002' and deleted_flag = false) then
-        insert into am_archive_record (category_code, category_name, archive_no, archive_status, process_status, archive_year)
-        values ('ZP', '照片档案', 'ZP-2026-002', 'ARCHIVED', 'NONE', 2026)
+        insert into am_archive_record (archive_level, fonds_code, fonds_name, category_code, category_name, archive_no, electronic_status, archive_year)
+        values ('ITEM', 'Z003', '华南分公司全宗', 'ZP', '照片档案', 'ZP-2026-002', 'ARCHIVED', 2026)
         returning id into record_id;
         execute format('insert into %I (id, fonds_code, f_photo_title, f_shoot_time, f_location, f_photographer, f_people_count, f_scene_description) values ($1, $2, $3, $4, $5, $6, $7, $8)', zp_table)
         using record_id, 'Z003', '华南分公司档案培训现场', timestamp '2026-04-22 14:15:00', '广州培训室', '陈洁', 42, '分公司档案员参加电子归档、借阅审批和库房管理培训。';
@@ -459,7 +510,7 @@ begin
 end
 $$;
 
-drop function seed_archive_field(bigint, varchar, varchar, varchar, varchar, integer, boolean, boolean, boolean, varchar, integer, boolean, integer, integer, integer, integer, boolean, integer);
-drop function seed_archive_unique_rule(bigint, text, varchar, varchar, boolean, varchar[]);
-drop function seed_archive_category(varchar, varchar, integer);
+drop function seed_archive_field(bigint, varchar, varchar, varchar, varchar, varchar, integer, boolean, boolean, boolean, varchar, integer, boolean, integer, integer, integer, integer, boolean, integer);
+drop function seed_archive_unique_constraint(bigint, varchar, text, varchar, varchar, boolean, varchar[]);
+drop function seed_archive_category(varchar, varchar, varchar, varchar, boolean, integer);
 drop function seed_archive_search(bigint, text);

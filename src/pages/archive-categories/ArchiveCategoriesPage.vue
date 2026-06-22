@@ -7,19 +7,19 @@ import {
   buildArchiveCategoryTable,
   createArchiveCategory,
   createArchiveField,
-  createArchiveUniqueRule,
+  createArchiveUniqueConstraint,
   deleteArchiveCategory,
   deleteArchiveField,
-  deleteArchiveUniqueRule,
+  deleteArchiveUniqueConstraint,
   getArchiveCategoryLayout,
   listArchiveCategories,
   listArchiveFields,
-  listArchiveUniqueRules,
+  listArchiveUniqueConstraints,
   saveMyArchiveCategoryLayout,
   savePublicArchiveCategoryLayout,
   updateArchiveCategory,
   updateArchiveField,
-  updateArchiveUniqueRule,
+  updateArchiveUniqueConstraint,
 } from "../../shared/api/archive";
 import type {
   ArchiveCategoryCommand,
@@ -28,11 +28,13 @@ import type {
   ArchiveFieldCommand,
   ArchiveFieldDto,
   ArchiveFieldLayoutItemDto,
+  ArchiveLevel,
   ArchiveLayoutScope,
   ArchiveLayoutSurface,
   ArchiveFieldType,
-  ArchiveUniqueRuleCommand,
-  ArchiveUniqueRuleDto,
+  ArchiveManagementMode,
+  ArchiveUniqueConstraintCommand,
+  ArchiveUniqueConstraintDto,
 } from "../../shared/types/archive";
 
 defineOptions({ name: "ArchiveCategoriesPage" });
@@ -74,36 +76,49 @@ const layoutScopeOptions: Array<{ label: string; value: ArchiveLayoutScope }> = 
   { label: "我的布局", value: "MINE" },
 ];
 
+const archiveLevelOptions: Array<{ label: string; value: ArchiveLevel }> = [
+  { label: "卷内", value: "ITEM" },
+  { label: "案卷", value: "VOLUME" },
+];
+
+const managementModeOptions: Array<{ label: string; value: ArchiveManagementMode }> = [
+  { label: "按条目管理", value: "ITEM_ONLY" },
+  { label: "按案卷/卷内管理", value: "VOLUME_ITEM" },
+];
+
 const categoriesLoading = ref(false);
 const fieldsLoading = ref(false);
-const rulesLoading = ref(false);
+const constraintsLoading = ref(false);
 const saving = ref(false);
 const building = ref(false);
 const categoryDialogVisible = ref(false);
 const fieldDialogVisible = ref(false);
-const ruleDialogVisible = ref(false);
+const constraintDialogVisible = ref(false);
 const activeConfigTab = ref("fields");
+const activeArchiveLevel = ref<ArchiveLevel>("ITEM");
 const activeLayoutSurface = ref<ArchiveLayoutSurface>("TABLE");
 const activeLayoutScope = ref<ArchiveLayoutScope>("MINE");
 const layoutLoading = ref(false);
 const editingCategoryId = ref<number>();
 const editingFieldId = ref<number>();
-const editingRuleId = ref<number>();
+const editingConstraintId = ref<number>();
 const selectedCategoryId = ref<number>();
 const categories = ref<ArchiveCategoryDto[]>([]);
 const fields = ref<ArchiveFieldDto[]>([]);
 const layoutItems = ref<ArchiveFieldLayoutItemDto[]>([]);
-const uniqueRules = ref<ArchiveUniqueRuleDto[]>([]);
+const uniqueConstraints = ref<ArchiveUniqueConstraintDto[]>([]);
 
 const categoryForm = reactive<ArchiveCategoryCommand>({
   categoryCode: "",
   categoryName: "",
   parentId: undefined,
+  managementMode: "ITEM_ONLY",
   enabled: true,
   sortOrder: 0,
 });
 
 const fieldForm = reactive<ArchiveFieldCommand>({
+  archiveLevel: "ITEM",
   fieldCode: "",
   fieldName: "",
   fieldType: "TEXT",
@@ -126,9 +141,10 @@ const fieldForm = reactive<ArchiveFieldCommand>({
   sortOrder: 0,
 });
 
-const ruleForm = reactive<ArchiveUniqueRuleCommand>({
-  ruleCode: "",
-  ruleName: "",
+const constraintForm = reactive<ArchiveUniqueConstraintCommand>({
+  archiveLevel: "ITEM",
+  constraintCode: "",
+  constraintName: "",
   includeFonds: true,
   enabled: true,
   fieldIds: [],
@@ -145,6 +161,20 @@ const parentOptions = computed(() =>
     categories.value.filter((item) => item.id !== editingCategoryId.value),
     editingCategoryId.value,
   ),
+);
+
+const currentLevelFields = computed(() =>
+  fields.value.filter((field) => field.archiveLevel === activeArchiveLevel.value),
+);
+
+const currentLevelConstraints = computed(() =>
+  uniqueConstraints.value.filter((item) => item.archiveLevel === activeArchiveLevel.value),
+);
+
+const currentLevelTableName = computed(() =>
+  activeArchiveLevel.value === "VOLUME"
+    ? selectedCategory.value?.volumeTableName
+    : selectedCategory.value?.itemTableName,
 );
 
 function tableStatusText(row: ArchiveCategoryDto) {
@@ -233,12 +263,14 @@ function resetCategoryForm(row?: ArchiveCategoryDto) {
   categoryForm.categoryCode = row?.categoryCode ?? "";
   categoryForm.categoryName = row?.categoryName ?? "";
   categoryForm.parentId = row?.parentId;
+  categoryForm.managementMode = row?.managementMode ?? "ITEM_ONLY";
   categoryForm.enabled = row?.enabled ?? true;
   categoryForm.sortOrder = row?.sortOrder ?? 0;
 }
 
 function resetFieldForm(row?: ArchiveFieldDto) {
   editingFieldId.value = row?.id;
+  fieldForm.archiveLevel = row?.archiveLevel ?? activeArchiveLevel.value;
   fieldForm.fieldCode = row?.fieldCode ?? "";
   fieldForm.fieldName = row?.fieldName ?? "";
   fieldForm.fieldType = row?.fieldType ?? "TEXT";
@@ -261,13 +293,14 @@ function resetFieldForm(row?: ArchiveFieldDto) {
   fieldForm.sortOrder = row?.sortOrder ?? 0;
 }
 
-function resetRuleForm(row?: ArchiveUniqueRuleDto) {
-  editingRuleId.value = row?.id;
-  ruleForm.ruleCode = row?.ruleCode ?? "";
-  ruleForm.ruleName = row?.ruleName ?? "";
-  ruleForm.includeFonds = row?.includeFonds ?? true;
-  ruleForm.enabled = row?.enabled ?? true;
-  ruleForm.fieldIds = row?.fields.map((field) => field.fieldId) ?? [];
+function resetConstraintForm(row?: ArchiveUniqueConstraintDto) {
+  editingConstraintId.value = row?.id;
+  constraintForm.archiveLevel = row?.archiveLevel ?? activeArchiveLevel.value;
+  constraintForm.constraintCode = row?.constraintCode ?? "";
+  constraintForm.constraintName = row?.constraintName ?? "";
+  constraintForm.includeFonds = row?.includeFonds ?? true;
+  constraintForm.enabled = row?.enabled ?? true;
+  constraintForm.fieldIds = row?.fields.map((field) => field.fieldId) ?? [];
 }
 
 async function loadCategories() {
@@ -277,7 +310,7 @@ async function loadCategories() {
     if (!selectedCategoryId.value && categories.value.length > 0) {
       selectedCategoryId.value = categories.value[0].id;
       await loadFields();
-      await loadUniqueRules();
+      await loadUniqueConstraints();
     }
   } finally {
     categoriesLoading.value = false;
@@ -287,7 +320,7 @@ async function loadCategories() {
 async function loadFields() {
   if (!selectedCategoryId.value) {
     fields.value = [];
-    uniqueRules.value = [];
+    uniqueConstraints.value = [];
     return;
   }
   fieldsLoading.value = true;
@@ -298,23 +331,23 @@ async function loadFields() {
   }
 }
 
-async function loadUniqueRules() {
+async function loadUniqueConstraints() {
   if (!selectedCategoryId.value) {
-    uniqueRules.value = [];
+    uniqueConstraints.value = [];
     return;
   }
-  rulesLoading.value = true;
+  constraintsLoading.value = true;
   try {
-    uniqueRules.value = await listArchiveUniqueRules(selectedCategoryId.value);
+    uniqueConstraints.value = await listArchiveUniqueConstraints(selectedCategoryId.value);
   } finally {
-    rulesLoading.value = false;
+    constraintsLoading.value = false;
   }
 }
 
 async function selectCategory(row: ArchiveCategoryDto) {
   selectedCategoryId.value = row.id;
   await loadFields();
-  await loadUniqueRules();
+  await loadUniqueConstraints();
 }
 
 function openCreateCategory() {
@@ -401,56 +434,60 @@ async function removeField(row: ArchiveFieldDto) {
   await loadFields();
 }
 
-function openCreateRule() {
+function openCreateConstraint() {
   if (!selectedCategoryId.value) {
     ElMessage.warning("请先选择档案分类");
     return;
   }
-  resetRuleForm();
-  ruleDialogVisible.value = true;
+  resetConstraintForm();
+  constraintDialogVisible.value = true;
 }
 
-function openEditRule(row: ArchiveUniqueRuleDto) {
-  resetRuleForm(row);
-  ruleDialogVisible.value = true;
+function openEditConstraint(row: ArchiveUniqueConstraintDto) {
+  resetConstraintForm(row);
+  constraintDialogVisible.value = true;
 }
 
-async function submitRule() {
+async function submitConstraint() {
   if (!selectedCategoryId.value) {
     return;
   }
-  if (ruleForm.fieldIds.length === 0) {
-    ElMessage.warning("请选择唯一规则字段");
+  if (constraintForm.fieldIds.length === 0) {
+    ElMessage.warning("请选择唯一约束字段");
     return;
   }
   saving.value = true;
   try {
-    if (editingRuleId.value) {
-      await updateArchiveUniqueRule(selectedCategoryId.value, editingRuleId.value, ruleForm);
+    if (editingConstraintId.value) {
+      await updateArchiveUniqueConstraint(
+        selectedCategoryId.value,
+        editingConstraintId.value,
+        constraintForm,
+      );
     } else {
-      await createArchiveUniqueRule(selectedCategoryId.value, ruleForm);
+      await createArchiveUniqueConstraint(selectedCategoryId.value, constraintForm);
     }
     ElMessage.success("已保存");
-    ruleDialogVisible.value = false;
-    await loadUniqueRules();
+    constraintDialogVisible.value = false;
+    await loadUniqueConstraints();
   } finally {
     saving.value = false;
   }
 }
 
-async function removeRule(row: ArchiveUniqueRuleDto) {
+async function removeConstraint(row: ArchiveUniqueConstraintDto) {
   if (!selectedCategoryId.value) {
     return;
   }
-  await ElMessageBox.confirm(`确定删除唯一规则“${row.ruleName}”？`, "删除唯一规则", {
+  await ElMessageBox.confirm(`确定删除唯一约束“${row.constraintName}”？`, "删除唯一约束", {
     type: "warning",
   });
-  await deleteArchiveUniqueRule(selectedCategoryId.value, row.id);
+  await deleteArchiveUniqueConstraint(selectedCategoryId.value, row.id);
   ElMessage.success("已删除");
-  await loadUniqueRules();
+  await loadUniqueConstraints();
 }
 
-function ruleFieldNames(row: ArchiveUniqueRuleDto) {
+function constraintFieldNames(row: ArchiveUniqueConstraintDto) {
   return row.fields.map((field) => field.fieldName).join(" + ");
 }
 
@@ -465,6 +502,7 @@ async function loadLayout() {
       selectedCategoryId.value,
       activeLayoutSurface.value,
       activeLayoutScope.value,
+      activeArchiveLevel.value,
     );
     layoutItems.value = layout.items;
   } finally {
@@ -497,11 +535,13 @@ async function saveLayout() {
             selectedCategoryId.value,
             activeLayoutSurface.value,
             layoutCommand(),
+            activeArchiveLevel.value,
           )
         : await saveMyArchiveCategoryLayout(
             selectedCategoryId.value,
             activeLayoutSurface.value,
             layoutCommand(),
+            activeArchiveLevel.value,
           );
     layoutItems.value = layout.items;
     ElMessage.success("布局已保存");
@@ -527,7 +567,10 @@ async function buildTable() {
   }
   building.value = true;
   try {
-    const category = await buildArchiveCategoryTable(selectedCategoryId.value);
+    const category = await buildArchiveCategoryTable(
+      selectedCategoryId.value,
+      activeArchiveLevel.value,
+    );
     selectedCategoryId.value = category.id;
     ElMessage.success("建表完成");
     await loadCategories();
@@ -545,8 +588,20 @@ watch(
   },
 );
 
-watch([selectedCategoryId, activeConfigTab, activeLayoutSurface, activeLayoutScope], () => {
-  void loadLayout();
+watch(
+  [selectedCategoryId, activeConfigTab, activeArchiveLevel, activeLayoutSurface, activeLayoutScope],
+  () => {
+    void loadLayout();
+  },
+);
+
+watch(activeArchiveLevel, (archiveLevel) => {
+  if (!editingFieldId.value) {
+    fieldForm.archiveLevel = archiveLevel;
+  }
+  if (!editingConstraintId.value) {
+    constraintForm.archiveLevel = archiveLevel;
+  }
 });
 
 onMounted(loadCategories);
@@ -570,6 +625,11 @@ onMounted(loadCategories);
       >
         <el-table-column prop="categoryCode" label="分类编码" width="150" />
         <el-table-column prop="categoryName" label="分类名称" min-width="190" />
+        <el-table-column prop="managementMode" label="管理模式" width="130">
+          <template #default="{ row }">
+            {{ row.managementMode === "VOLUME_ITEM" ? "案卷/卷内" : "条目" }}
+          </template>
+        </el-table-column>
         <el-table-column prop="tableStatus" label="建表状态" width="110">
           <template #default="{ row }">
             <el-tag :type="row.tableStatus === 'BUILT' ? 'success' : 'info'">
@@ -590,10 +650,16 @@ onMounted(loadCategories);
       <header class="archive-categories-page__toolbar">
         <div class="archive-categories-page__selected">
           {{ selectedCategory?.categoryName ?? "未选择分类" }}
+          <span v-if="currentLevelTableName" class="archive-categories-page__table-name">
+            {{ currentLevelTableName }}
+          </span>
         </div>
         <div class="archive-categories-page__actions">
+          <el-segmented v-model="activeArchiveLevel" :options="archiveLevelOptions" />
           <el-button :disabled="!selectedCategoryId" @click="openCreateField">新增字段</el-button>
-          <el-button :disabled="!selectedCategoryId" @click="openCreateRule">新增规则</el-button>
+          <el-button :disabled="!selectedCategoryId" @click="openCreateConstraint"
+            >新增约束</el-button
+          >
           <el-button
             type="primary"
             :loading="building"
@@ -606,7 +672,12 @@ onMounted(loadCategories);
       </header>
       <el-tabs v-model="activeConfigTab" class="archive-categories-page__tabs">
         <el-tab-pane label="字段定义" name="fields">
-          <el-table v-loading="fieldsLoading" :data="fields" height="100%">
+          <el-table v-loading="fieldsLoading" :data="currentLevelFields" height="100%">
+            <el-table-column prop="archiveLevel" label="层级" width="80">
+              <template #default="{ row }">{{
+                row.archiveLevel === "VOLUME" ? "案卷" : "卷内"
+              }}</template>
+            </el-table-column>
             <el-table-column prop="fieldCode" label="字段编码" width="150" />
             <el-table-column prop="fieldName" label="字段名称" min-width="150" />
             <el-table-column prop="fieldType" label="类型" width="110" />
@@ -688,12 +759,17 @@ onMounted(loadCategories);
             </VueDraggable>
           </div>
         </el-tab-pane>
-        <el-tab-pane label="唯一规则" name="rules">
-          <el-table v-loading="rulesLoading" :data="uniqueRules" height="100%">
-            <el-table-column prop="ruleCode" label="规则编码" width="140" />
-            <el-table-column prop="ruleName" label="规则名称" min-width="150" />
+        <el-tab-pane label="唯一约束" name="rules">
+          <el-table v-loading="constraintsLoading" :data="currentLevelConstraints" height="100%">
+            <el-table-column prop="archiveLevel" label="层级" width="80">
+              <template #default="{ row }">{{
+                row.archiveLevel === "VOLUME" ? "案卷" : "卷内"
+              }}</template>
+            </el-table-column>
+            <el-table-column prop="constraintCode" label="约束编码" width="140" />
+            <el-table-column prop="constraintName" label="约束名称" min-width="150" />
             <el-table-column label="字段组合" min-width="180">
-              <template #default="{ row }">{{ ruleFieldNames(row) }}</template>
+              <template #default="{ row }">{{ constraintFieldNames(row) }}</template>
             </el-table-column>
             <el-table-column prop="includeFonds" label="全宗" width="80">
               <template #default="{ row }">{{ row.includeFonds ? "是" : "否" }}</template>
@@ -707,8 +783,8 @@ onMounted(loadCategories);
             </el-table-column>
             <el-table-column label="操作" width="150" fixed="right">
               <template #default="{ row }">
-                <el-button link type="primary" @click="openEditRule(row)">编辑</el-button>
-                <el-button link type="danger" @click="removeRule(row)">删除</el-button>
+                <el-button link type="primary" @click="openEditConstraint(row)">编辑</el-button>
+                <el-button link type="danger" @click="removeConstraint(row)">删除</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -738,6 +814,16 @@ onMounted(loadCategories);
             placeholder="无上级分类"
           />
         </el-form-item>
+        <el-form-item label="管理模式" required>
+          <el-select v-model="categoryForm.managementMode">
+            <el-option
+              v-for="item in managementModeOptions"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
+            />
+          </el-select>
+        </el-form-item>
         <el-form-item label="状态">
           <el-switch v-model="categoryForm.enabled" active-text="启用" inactive-text="停用" />
         </el-form-item>
@@ -757,6 +843,9 @@ onMounted(loadCategories);
       width="560px"
     >
       <el-form :model="fieldForm" label-width="104px">
+        <el-form-item label="适用层级" required>
+          <el-segmented v-model="fieldForm.archiveLevel" :options="archiveLevelOptions" />
+        </el-form-item>
         <el-form-item label="字段编码" required>
           <el-input v-model="fieldForm.fieldCode" />
         </el-form-item>
@@ -814,21 +903,26 @@ onMounted(loadCategories);
     </el-dialog>
 
     <el-dialog
-      v-model="ruleDialogVisible"
-      :title="editingRuleId ? '编辑唯一规则' : '新增唯一规则'"
+      v-model="constraintDialogVisible"
+      :title="editingConstraintId ? '编辑唯一约束' : '新增唯一约束'"
       width="560px"
     >
-      <el-form :model="ruleForm" label-width="104px">
-        <el-form-item label="规则编码" required>
-          <el-input v-model="ruleForm.ruleCode" />
+      <el-form :model="constraintForm" label-width="104px">
+        <el-form-item label="适用层级" required>
+          <el-segmented v-model="constraintForm.archiveLevel" :options="archiveLevelOptions" />
         </el-form-item>
-        <el-form-item label="规则名称" required>
-          <el-input v-model="ruleForm.ruleName" />
+        <el-form-item label="约束编码" required>
+          <el-input v-model="constraintForm.constraintCode" />
         </el-form-item>
-        <el-form-item label="规则字段" required>
-          <el-select v-model="ruleForm.fieldIds" multiple>
+        <el-form-item label="约束名称" required>
+          <el-input v-model="constraintForm.constraintName" />
+        </el-form-item>
+        <el-form-item label="约束字段" required>
+          <el-select v-model="constraintForm.fieldIds" multiple>
             <el-option
-              v-for="field in fields"
+              v-for="field in fields.filter(
+                (item) => item.archiveLevel === constraintForm.archiveLevel,
+              )"
               :key="field.id"
               :label="field.fieldName"
               :value="field.id"
@@ -836,15 +930,15 @@ onMounted(loadCategories);
           </el-select>
         </el-form-item>
         <el-form-item label="包含全宗">
-          <el-switch v-model="ruleForm.includeFonds" />
+          <el-switch v-model="constraintForm.includeFonds" />
         </el-form-item>
         <el-form-item label="状态">
-          <el-switch v-model="ruleForm.enabled" active-text="启用" inactive-text="停用" />
+          <el-switch v-model="constraintForm.enabled" active-text="启用" inactive-text="停用" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="ruleDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="submitRule">保存</el-button>
+        <el-button @click="constraintDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="saving" @click="submitConstraint">保存</el-button>
       </template>
     </el-dialog>
   </section>

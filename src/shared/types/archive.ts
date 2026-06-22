@@ -3,6 +3,15 @@ export type ArchiveFieldControl = "INPUT" | "TEXTAREA" | "NUMBER" | "DATE" | "DA
 export type ArchiveTableStatus = "NOT_BUILT" | "BUILT";
 export type ArchiveLayoutSurface = "TABLE" | "DETAIL" | "EDIT";
 export type ArchiveLayoutScope = "PUBLIC" | "MINE" | "EFFECTIVE";
+export type ArchiveLevel = "VOLUME" | "ITEM";
+export type ArchiveManagementMode = "ITEM_ONLY" | "VOLUME_ITEM";
+export type ArchiveElectronicStatus = "DRAFT" | "ARCHIVED" | "BORROWED";
+export type ArchivePhysicalStatus =
+  | "NONE"
+  | "REGISTERED"
+  | "TRANSFERRING"
+  | "IN_STORAGE"
+  | "BORROWED";
 
 export interface ArchiveFondsDto {
   id: number;
@@ -26,7 +35,9 @@ export interface ArchiveCategoryDto {
   parentId?: number;
   categoryCode: string;
   categoryName: string;
-  recordTableName?: string;
+  managementMode: ArchiveManagementMode;
+  volumeTableName?: string;
+  itemTableName?: string;
   tableStatus: ArchiveTableStatus;
   builtAt?: string;
   enabled: boolean;
@@ -39,6 +50,7 @@ export interface ArchiveCategoryCommand {
   categoryCode: string;
   categoryName: string;
   parentId?: number;
+  managementMode: ArchiveManagementMode;
   enabled: boolean;
   sortOrder: number;
 }
@@ -46,6 +58,7 @@ export interface ArchiveCategoryCommand {
 export interface ArchiveFieldDto {
   id: number;
   categoryId: number;
+  archiveLevel: ArchiveLevel;
   fieldCode: string;
   fieldName: string;
   fieldType: ArchiveFieldType;
@@ -72,6 +85,7 @@ export interface ArchiveFieldDto {
 }
 
 export interface ArchiveFieldCommand {
+  archiveLevel: ArchiveLevel;
   fieldCode: string;
   fieldName: string;
   fieldType: ArchiveFieldType;
@@ -126,30 +140,33 @@ export interface ArchiveFieldLayoutItemCommand {
   colOrder: number;
 }
 
-export interface ArchiveUniqueRuleFieldDto {
+export interface ArchiveUniqueConstraintFieldDto {
   fieldId: number;
   fieldOrder: number;
+  archiveLevel: ArchiveLevel;
   fieldCode: string;
   fieldName: string;
   columnName: string;
 }
 
-export interface ArchiveUniqueRuleDto {
+export interface ArchiveUniqueConstraintDto {
   id: number;
   categoryId: number;
-  ruleCode: string;
-  ruleName: string;
+  archiveLevel: ArchiveLevel;
+  constraintCode: string;
+  constraintName: string;
   includeFonds: boolean;
   indexName: string;
   enabled: boolean;
-  fields: ArchiveUniqueRuleFieldDto[];
+  fields: ArchiveUniqueConstraintFieldDto[];
   createdAt: string;
   updatedAt: string;
 }
 
-export interface ArchiveUniqueRuleCommand {
-  ruleCode: string;
-  ruleName: string;
+export interface ArchiveUniqueConstraintCommand {
+  archiveLevel: ArchiveLevel;
+  constraintCode: string;
+  constraintName: string;
   includeFonds: boolean;
   enabled: boolean;
   fieldIds: number[];
@@ -157,6 +174,7 @@ export interface ArchiveUniqueRuleCommand {
 
 export interface ArchiveRecordQuery {
   categoryId?: number;
+  archiveLevel?: ArchiveLevel;
   fondsCode?: string;
   keyword?: string;
   exactFilters?: Record<string, unknown>;
@@ -172,36 +190,59 @@ export interface ArchiveRecordFieldFilter {
 
 export interface ArchiveRecordCommand {
   categoryId: number;
+  archiveLevel?: ArchiveLevel;
+  parentId?: number;
   fondsCode: string;
   archiveNo?: string;
   archiveYear?: number;
-  archiveStatus?: string;
-  processStatus?: string;
+  electronicStatus?: ArchiveElectronicStatus;
+  physicalObject: ArchivePhysicalObjectCommand;
   dynamicFields: Record<string, unknown>;
 }
 
 export interface ArchiveRecordUpdateCommand {
+  parentId?: number;
   fondsCode: string;
   archiveNo?: string;
   archiveYear?: number;
-  archiveStatus?: string;
-  processStatus?: string;
+  electronicStatus?: ArchiveElectronicStatus;
+  physicalObject: ArchivePhysicalObjectCommand;
   dynamicFields: Record<string, unknown>;
+}
+
+export interface ArchivePhysicalObjectCommand {
+  physicalStatus: ArchivePhysicalStatus;
+  boxNo?: string;
+  locationNo?: string;
+  barcode?: string;
+  remark?: string;
 }
 
 export interface ArchiveRecordDto {
   id: number;
+  archiveLevel: ArchiveLevel;
+  parentId?: number;
   fondsCode: string;
+  fondsName: string;
   categoryCode: string;
   categoryName: string;
   archiveNo?: string;
-  archiveStatus: string;
-  processStatus: string;
+  electronicStatus: ArchiveElectronicStatus;
   archiveYear: number;
   lockedFlag: boolean;
   lockReason?: string;
   lockedBy?: number;
   lockedAt?: string;
+}
+
+export interface ArchivePhysicalObjectDto {
+  id: number;
+  archiveRecordId: number;
+  physicalStatus: ArchivePhysicalStatus;
+  boxNo?: string;
+  locationNo?: string;
+  barcode?: string;
+  remark?: string;
 }
 
 export interface ArchiveRecordListDto {
@@ -216,4 +257,5 @@ export interface ArchiveRecordDetailDto {
   category: ArchiveCategoryDto;
   fields: ArchiveFieldDto[];
   dynamicFields: Record<string, unknown>;
+  physicalObject?: ArchivePhysicalObjectDto;
 }

@@ -1,7 +1,5 @@
 package github.luckygc.am.module.archive;
 
-import java.util.Map;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,27 +23,24 @@ public class ArchiveVolumeService {
     @Transactional
     public void addRecordToVolume(Long volumeId, Long archiveRecordId, Integer displayOrder) {
         archiveRecordRoutingService.ensureRecordEditable(archiveRecordId);
-        VolumeScope volume = findVolume(volumeId);
+        ArchiveRecordDto volume = archiveRecordRoutingService.getRecord(volumeId);
+        archiveRecordRoutingService.ensureRecordEditable(volumeId);
+        if (volume.archiveLevel() != ArchiveLevel.VOLUME) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "目标记录不是案卷");
+        }
         ArchiveRecordDto record = archiveRecordRoutingService.getRecord(archiveRecordId);
-        if (!volume.fondsCode().equals(record.fondsCode())
-                || !volume.categoryCode().equals(record.categoryCode())) {
+        if (record.archiveLevel() != ArchiveLevel.ITEM) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "只能将卷内条目加入案卷");
+        }
+        if (!volume.fondsCode().equals(record.fondsCode()) || !volume.categoryCode().equals(record.categoryCode())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "案卷和档案记录不属于同一全宗和分类");
         }
-        archiveMapper.insertVolumeItem(
+        int updated = archiveMapper.moveRecordToVolume(
                 volumeId,
                 archiveRecordId,
-                record.fondsCode(),
-                record.categoryCode(),
                 displayOrder == null ? 0 : displayOrder);
-    }
-
-    private VolumeScope findVolume(Long volumeId) {
-        Map<String, Object> row = archiveMapper.findVolumeScope(volumeId);
-        if (row == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "案卷不存在");
+        if (updated == 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "卷内条目已锁定或不存在，不能加入案卷");
         }
-        return new VolumeScope(row.get("fondsCode").toString(), row.get("categoryCode").toString());
     }
-
-    private record VolumeScope(String fondsCode, String categoryCode) {}
 }

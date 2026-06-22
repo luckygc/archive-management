@@ -32,8 +32,9 @@ public class ArchiveRecordController {
     }
 
     @GetMapping("/api/v1/archive-records")
-    public ArchiveRecordListDto listRecords(Long categoryId, String fondsCode, Authentication authentication) {
-        return archiveRecordRoutingService.listRecords(categoryId, fondsCode, currentUserId(authentication));
+    public ArchiveRecordListDto listRecords(
+            Long categoryId, ArchiveLevel archiveLevel, String fondsCode, Authentication authentication) {
+        return archiveRecordRoutingService.listRecords(categoryId, archiveLevel, fondsCode, currentUserId(authentication));
     }
 
     @PostMapping("/api/v1/archive-records:search")

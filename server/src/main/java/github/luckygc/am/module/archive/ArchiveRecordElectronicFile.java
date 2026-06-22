@@ -15,8 +15,8 @@ import lombok.Data;
 
 @Data
 @Entity
-@Table(name = "am_archive_record_storage_object")
-public class ArchiveRecordStorageObject {
+@Table(name = "am_archive_record_electronic_file")
+public class ArchiveRecordElectronicFile {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -43,5 +43,4 @@ public class ArchiveRecordStorageObject {
     @Column(name = "created_at", nullable = false)
     @CreationTimestamp
     private LocalDateTime createdAt;
-
 }

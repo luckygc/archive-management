@@ -25,8 +25,8 @@ import github.luckygc.am.common.web.ApiBadRequestException;
 import github.luckygc.am.module.archive.ArchiveMetadataService.ArchiveCategoryDto;
 import github.luckygc.am.module.archive.ArchiveMetadataService.ArchiveFieldDto;
 import github.luckygc.am.module.archive.ArchiveMetadataService.ArchiveFondsDto;
-import github.luckygc.am.module.archive.ArchiveMetadataService.ArchiveUniqueRuleDto;
-import github.luckygc.am.module.archive.ArchiveMetadataService.ArchiveUniqueRuleFieldDto;
+import github.luckygc.am.module.archive.ArchiveMetadataService.ArchiveUniqueConstraintDto;
+import github.luckygc.am.module.archive.ArchiveMetadataService.ArchiveUniqueConstraintFieldDto;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.mapper.ArchiveSqlAssignment;
 import github.luckygc.am.module.archive.mapper.ArchiveSqlCondition;
@@ -55,11 +55,15 @@ public class ArchiveRecordRoutingService {
     }
 
     public ArchiveRecordListDto listRecords(Long categoryId, String fondsCode) {
-        return listRecords(categoryId, fondsCode, null);
+        return listRecords(categoryId, ArchiveLevel.ITEM, fondsCode, null);
     }
 
     public ArchiveRecordListDto listRecords(Long categoryId, String fondsCode, Long userId) {
-        return searchRecords(new ArchiveRecordQueryRequest(categoryId, fondsCode, null, null, null), userId);
+        return listRecords(categoryId, ArchiveLevel.ITEM, fondsCode, userId);
+    }
+
+    public ArchiveRecordListDto listRecords(Long categoryId, ArchiveLevel archiveLevel, String fondsCode, Long userId) {
+        return searchRecords(new ArchiveRecordQueryRequest(categoryId, archiveLevel, fondsCode, null, null, null), userId);
     }
 
     public ArchiveRecordListDto searchRecords(ArchiveRecordQueryRequest request) {
@@ -72,21 +76,23 @@ public class ArchiveRecordRoutingService {
         }
 
         ArchiveCategoryDto category = archiveMetadataService.getCategory(request.categoryId());
+        ArchiveLevel archiveLevel = normalizeArchiveLevel(request.archiveLevel());
+        ensureArchiveLevelAllowed(category, archiveLevel);
+        String tableName = dynamicTableName(category, archiveLevel);
         List<ArchiveFieldDto> fields = archiveMetadataService.listEffectiveFields(
-                request.categoryId(), ArchiveLayoutSurface.TABLE, userId);
+                request.categoryId(), archiveLevel, ArchiveLayoutSurface.TABLE, userId);
         List<ArchiveFieldDto> visibleFields = fields.stream()
                 .filter(ArchiveFieldDto::listVisible)
                 .sorted(java.util.Comparator
                         .comparingInt(ArchiveFieldDto::listSortOrder)
                         .thenComparing(ArchiveFieldDto::id))
                 .toList();
-        if (category.tableStatus() != ArchiveTableStatus.BUILT
-                || StringUtils.isBlank(category.recordTableName())) {
+        if (!isDynamicTableBuilt(category, archiveLevel)) {
             return new ArchiveRecordListDto(category, fields, false, List.of());
         }
 
         List<ArchiveSqlCondition> conditions =
-                buildSearchConditions(request.categoryId(), fields, request.exactFilters(), request.filters());
+                buildSearchConditions(request.categoryId(), archiveLevel, fields, request.exactFilters(), request.filters());
         List<Long> recordIds = null;
         if (StringUtils.isNotBlank(request.keyword())) {
             recordIds = archiveMapper.searchRecordIds(request.keyword().trim())
@@ -99,9 +105,9 @@ public class ArchiveRecordRoutingService {
         }
 
         List<Map<String, Object>> rows = archiveMapper.listDynamicRecords(
-                category.recordTableName(),
+                tableName,
                 selectColumns(visibleFields),
-                category.categoryCode(),
+                archiveLevel.name(),
                 StringUtils.trimToNull(request.fondsCode()),
                 conditions,
                 recordIds);
@@ -117,15 +123,22 @@ public class ArchiveRecordRoutingService {
             throw badRequest("档案分类不能为空", "categoryId", "档案分类不能为空");
         }
         ArchiveCategoryDto category = archiveMetadataService.getCategory(request.categoryId());
-        if (category.tableStatus() != ArchiveTableStatus.BUILT
-                || StringUtils.isBlank(category.recordTableName())) {
+        ArchiveLevel archiveLevel = normalizeArchiveLevel(request.archiveLevel());
+        ensureArchiveLevelAllowed(category, archiveLevel);
+        String tableName = dynamicTableName(category, archiveLevel);
+        if (!isDynamicTableBuilt(category, archiveLevel)) {
             throw badRequest("档案分类尚未建表");
         }
         if (StringUtils.isBlank(request.fondsCode())) {
             throw badRequest("全宗不能为空", "fondsCode", "全宗不能为空");
         }
         ArchiveFondsDto fonds = archiveMetadataService.getFondsByCode(request.fondsCode());
-        List<ArchiveFieldDto> fields = archiveMetadataService.listEnabledFields(request.categoryId());
+        Long parentId = validateParentForWrite(
+                archiveLevel,
+                request.parentId(),
+                category.categoryCode(),
+                fonds.fondsCode());
+        List<ArchiveFieldDto> fields = archiveMetadataService.listEnabledFields(request.categoryId(), archiveLevel);
         Map<String, Object> dynamicFields =
                 request.dynamicFields() == null ? Map.of() : request.dynamicFields();
         int archiveYear = request.archiveYear() == null ? Year.now().getValue() : request.archiveYear();
@@ -133,17 +146,21 @@ public class ArchiveRecordRoutingService {
         Map<String, Object> convertedDynamicFields = convertDynamicFields(fields, dynamicFields);
 
         Long recordId = archiveMapper.insertArchiveRecord(
+                archiveLevel.name(),
+                parentId,
+                fonds.fondsCode(),
+                fonds.fondsName(),
                 category.categoryCode(),
                 category.categoryName(),
                 StringUtils.trimToNull(request.archiveNo()),
-                StringUtils.defaultIfBlank(request.archiveStatus(), "DRAFT"),
-                StringUtils.defaultIfBlank(request.processStatus(), "NONE"),
+                StringUtils.defaultIfBlank(request.electronicStatus(), "DRAFT"),
                 archiveYear);
         try {
-            insertDynamicRecord(category.recordTableName(), recordId, fonds.fondsCode(), fields, convertedDynamicFields);
+            insertDynamicRecord(tableName, recordId, fonds.fondsCode(), fields, convertedDynamicFields);
         } catch (DuplicateKeyException | MyBatisSystemException exception) {
-            throw badRequest("档案记录违反唯一规则");
+            throw badRequest("档案记录违反唯一约束");
         }
+        upsertPhysicalObjectIfPresent(recordId, request.physicalObject(), userId);
         enqueueSearchProjection(recordId, SEARCH_EVENT_UPSERT);
         drainSearchProjectionOutbox();
         ArchiveRecordDto record = getRecord(recordId);
@@ -158,25 +175,30 @@ public class ArchiveRecordRoutingService {
     @Transactional
     public SearchProjectionRebuildResult rebuildSearchProjection(Long categoryId) {
         ArchiveCategoryDto category = archiveMetadataService.getCategory(categoryId);
-        if (category.tableStatus() != ArchiveTableStatus.BUILT
-                || StringUtils.isBlank(category.recordTableName())) {
-            throw badRequest("档案分类尚未建表");
-        }
-        List<ArchiveFieldDto> fields = archiveMetadataService.listEnabledFields(categoryId);
-        List<ArchiveFieldDto> fullTextFields = fields.stream()
-                .filter(ArchiveFieldDto::fullTextSearchable)
-                .toList();
-        if (fullTextFields.isEmpty()) {
-            return new SearchProjectionRebuildResult(categoryId, 0);
-        }
-        List<Map<String, Object>> rows = archiveMapper.listRecordsForSearchRebuild(
-                category.recordTableName(),
-                selectColumns(fullTextFields),
-                category.categoryCode());
         int rebuilt = 0;
-        for (Map<String, Object> row : rows) {
-            enqueueSearchProjection(number(row, "id").longValue(), SEARCH_EVENT_UPSERT);
-            rebuilt++;
+        for (ArchiveLevel archiveLevel : ArchiveLevel.values()) {
+            if (archiveLevel == ArchiveLevel.VOLUME && category.managementMode() != ArchiveManagementMode.VOLUME_ITEM) {
+                continue;
+            }
+            if (!isDynamicTableBuilt(category, archiveLevel)) {
+                continue;
+            }
+            String tableName = dynamicTableName(category, archiveLevel);
+            List<ArchiveFieldDto> fields = archiveMetadataService.listEnabledFields(categoryId, archiveLevel);
+            List<ArchiveFieldDto> fullTextFields = fields.stream()
+                    .filter(ArchiveFieldDto::fullTextSearchable)
+                    .toList();
+            if (fullTextFields.isEmpty()) {
+                continue;
+            }
+            List<Map<String, Object>> rows = archiveMapper.listRecordsForSearchRebuild(
+                    tableName,
+                    selectColumns(fullTextFields),
+                    archiveLevel.name());
+            for (Map<String, Object> row : rows) {
+                enqueueSearchProjection(number(row, "id").longValue(), SEARCH_EVENT_UPSERT);
+                rebuilt++;
+            }
         }
         drainSearchProjectionOutbox();
         return new SearchProjectionRebuildResult(categoryId, rebuilt);
@@ -190,9 +212,14 @@ public class ArchiveRecordRoutingService {
         ArchiveRecordDto record = getRecord(id);
         ArchiveCategoryDto category = getCategoryByCode(record.categoryCode());
         List<ArchiveFieldDto> fields = archiveMetadataService.listEffectiveFields(
-                category.id(), surface == null ? ArchiveLayoutSurface.DETAIL : surface, userId);
+                category.id(), record.archiveLevel(), surface == null ? ArchiveLayoutSurface.DETAIL : surface, userId);
         Map<String, Object> dynamicRecord = loadDynamicRecord(category, record.id());
-        return new ArchiveRecordDetailDto(record, category, fields, dynamicFieldsByCode(dynamicRecord, fields));
+        return new ArchiveRecordDetailDto(
+                record,
+                category,
+                fields,
+                dynamicFieldsByCode(dynamicRecord, fields),
+                getPhysicalObject(record.id()));
     }
 
     @Transactional
@@ -203,14 +230,19 @@ public class ArchiveRecordRoutingService {
         ArchiveRecordDetailDto before = getRecordDetail(id);
         ensureRecordEditable(before.record());
         ArchiveCategoryDto category = before.category();
-        if (category.tableStatus() != ArchiveTableStatus.BUILT
-                || StringUtils.isBlank(category.recordTableName())) {
+        String tableName = dynamicTableName(category, before.record().archiveLevel());
+        if (!isDynamicTableBuilt(category, before.record().archiveLevel())) {
             throw badRequest("档案分类尚未建表");
         }
         if (StringUtils.isBlank(request.fondsCode())) {
             throw badRequest("全宗不能为空", "fondsCode", "全宗不能为空");
         }
         ArchiveFondsDto fonds = archiveMetadataService.getFondsByCode(request.fondsCode());
+        Long parentId = validateParentForWrite(
+                before.record().archiveLevel(),
+                request.parentId() == null ? before.record().parentId() : request.parentId(),
+                before.record().categoryCode(),
+                fonds.fondsCode());
         int archiveYear = request.archiveYear() == null ? before.record().archiveYear() : request.archiveYear();
         validateArchiveYear(archiveYear);
         Map<String, Object> requestDynamicFields = request.dynamicFields() == null
@@ -219,21 +251,24 @@ public class ArchiveRecordRoutingService {
         Map<String, Object> convertedDynamicFields = convertDynamicFields(before.fields(), requestDynamicFields);
         int updated = archiveMapper.updateArchiveRecord(
                 id,
+                parentId,
+                fonds.fondsCode(),
+                fonds.fondsName(),
                 StringUtils.trimToNull(request.archiveNo()),
-                StringUtils.defaultIfBlank(request.archiveStatus(), before.record().archiveStatus()),
-                StringUtils.defaultIfBlank(request.processStatus(), before.record().processStatus()),
+                StringUtils.defaultIfBlank(request.electronicStatus(), before.record().electronicStatus()),
                 archiveYear);
         if (updated == 0) {
             throw badRequest("档案记录已锁定，不能修改");
         }
         try {
             archiveMapper.updateDynamicRecord(
-                    category.recordTableName(),
+                    tableName,
                     id,
                     dynamicAssignments(fonds.fondsCode(), before.fields(), convertedDynamicFields));
         } catch (DuplicateKeyException | MyBatisSystemException exception) {
-            throw badRequest("档案记录违反唯一规则");
+            throw badRequest("档案记录违反唯一约束");
         }
+        upsertPhysicalObjectIfPresent(id, request.physicalObject(), userId);
         enqueueSearchProjection(id, SEARCH_EVENT_UPSERT);
         drainSearchProjectionOutbox();
         ArchiveRecordDetailDto after = getRecordDetail(id, userId, ArchiveLayoutSurface.EDIT);
@@ -250,14 +285,14 @@ public class ArchiveRecordRoutingService {
         ArchiveRecordDto record = getRecord(id);
         ensureRecordEditable(record);
         ArchiveCategoryDto category = getCategoryByCode(record.categoryCode());
+        String tableName = dynamicTableName(category, record.archiveLevel());
         insertRecordAudit(
                 AUDIT_OPERATION_DELETE,
                 record,
                 request == null ? null : StringUtils.trimToNull(request.reason()),
                 userId);
-        if (category.tableStatus() == ArchiveTableStatus.BUILT
-                && StringUtils.isNotBlank(category.recordTableName())) {
-            archiveMapper.markDynamicRecordDeleted(category.recordTableName(), id);
+        if (isDynamicTableBuilt(category, record.archiveLevel())) {
+            archiveMapper.markDynamicRecordDeleted(tableName, id);
         }
         int updated = archiveMapper.markArchiveRecordDeleted(id);
         if (updated == 0) {
@@ -314,24 +349,16 @@ public class ArchiveRecordRoutingService {
         if (row == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "档案记录不存在");
         }
-        String categoryCode = string(row, "categoryCode");
-        ArchiveCategoryDto category = getCategoryByCode(categoryCode);
-        String fondsCode = null;
-        if (category.tableStatus() == ArchiveTableStatus.BUILT
-                && StringUtils.isNotBlank(category.recordTableName())) {
-            Map<String, Object> dynamicRecord = archiveMapper.loadDynamicRecord(category.recordTableName(), id);
-            if (dynamicRecord != null) {
-                fondsCode = string(dynamicRecord, "fonds_code");
-            }
-        }
         return new ArchiveRecordDto(
                 number(row, "id").longValue(),
-                fondsCode,
-                categoryCode,
+                ArchiveLevel.valueOf(string(row, "archiveLevel")),
+                longOrNull(row, "parentId"),
+                string(row, "fondsCode"),
+                string(row, "fondsName"),
+                string(row, "categoryCode"),
                 string(row, "categoryName"),
                 string(row, "archiveNo"),
-                string(row, "archiveStatus"),
-                string(row, "processStatus"),
+                string(row, "electronicStatus"),
                 number(row, "archiveYear").intValue(),
                 bool(row, "lockedFlag"),
                 string(row, "lockReason"),
@@ -339,12 +366,51 @@ public class ArchiveRecordRoutingService {
                 dateTime(row, "lockedAt"));
     }
 
+    private ArchivePhysicalObjectDto getPhysicalObject(Long recordId) {
+        Map<String, Object> row = archiveMapper.getPhysicalObjectByRecordId(recordId);
+        if (row == null) {
+            return null;
+        }
+        return new ArchivePhysicalObjectDto(
+                number(row, "id").longValue(),
+                number(row, "archiveRecordId").longValue(),
+                string(row, "physicalStatus"),
+                string(row, "boxNo"),
+                string(row, "locationNo"),
+                string(row, "barcode"),
+                string(row, "remark"));
+    }
+
+    private void upsertPhysicalObjectIfPresent(
+            Long recordId, ArchivePhysicalObjectRequest request, Long userId) {
+        if (request == null) {
+            return;
+        }
+        boolean hasPhysicalValue = StringUtils.isNotBlank(request.boxNo())
+                || StringUtils.isNotBlank(request.locationNo())
+                || StringUtils.isNotBlank(request.barcode())
+                || StringUtils.isNotBlank(request.remark())
+                || !StringUtils.equals(StringUtils.defaultIfBlank(request.physicalStatus(), "NONE"), "NONE");
+        if (!hasPhysicalValue && archiveMapper.getPhysicalObjectByRecordId(recordId) == null) {
+            return;
+        }
+        archiveMapper.upsertPhysicalObject(
+                recordId,
+                StringUtils.defaultIfBlank(request.physicalStatus(), "NONE"),
+                StringUtils.trimToNull(request.boxNo()),
+                StringUtils.trimToNull(request.locationNo()),
+                StringUtils.trimToNull(request.barcode()),
+                StringUtils.trimToNull(request.remark()),
+                userId);
+    }
+
     private Map<String, Object> loadDynamicRecord(ArchiveCategoryDto category, Long id) {
-        if (category.tableStatus() != ArchiveTableStatus.BUILT
-                || StringUtils.isBlank(category.recordTableName())) {
+        ArchiveRecordDto record = getRecord(id);
+        String tableName = dynamicTableName(category, record.archiveLevel());
+        if (!isDynamicTableBuilt(category, record.archiveLevel())) {
             return Map.of();
         }
-        Map<String, Object> dynamicRecord = archiveMapper.loadDynamicRecord(category.recordTableName(), id);
+        Map<String, Object> dynamicRecord = archiveMapper.loadDynamicRecord(tableName, id);
         return dynamicRecord == null ? Map.of() : dynamicRecord;
     }
 
@@ -357,6 +423,58 @@ public class ArchiveRecordRoutingService {
                     normalizeDynamicFieldValue(field, dynamicRecord.get(field.columnName())));
         }
         return dynamicFields;
+    }
+
+    private String dynamicTableName(ArchiveCategoryDto category, ArchiveLevel archiveLevel) {
+        ArchiveLevel normalizedLevel = normalizeArchiveLevel(archiveLevel);
+        String tableName = normalizedLevel == ArchiveLevel.VOLUME
+                ? category.volumeTableName()
+                : category.itemTableName();
+        if (StringUtils.isNotBlank(tableName)) {
+            return tableName;
+        }
+        return "am_archive_record_" + normalizedLevel.name().toLowerCase() + "_" + category.id();
+    }
+
+    private ArchiveLevel normalizeArchiveLevel(ArchiveLevel archiveLevel) {
+        return archiveLevel == null ? ArchiveLevel.ITEM : archiveLevel;
+    }
+
+    private void ensureArchiveLevelAllowed(ArchiveCategoryDto category, ArchiveLevel archiveLevel) {
+        ArchiveLevel normalizedLevel = normalizeArchiveLevel(archiveLevel);
+        if (normalizedLevel == ArchiveLevel.VOLUME
+                && category.managementMode() != ArchiveManagementMode.VOLUME_ITEM) {
+            throw badRequest("该分类未启用案卷管理");
+        }
+    }
+
+    private boolean isDynamicTableBuilt(ArchiveCategoryDto category, ArchiveLevel archiveLevel) {
+        String tableName = dynamicTableName(category, archiveLevel);
+        return StringUtils.isNotBlank(tableName) && archiveMapper.tableExists(tableName) > 0;
+    }
+
+    private Long validateParentForWrite(
+            ArchiveLevel archiveLevel, Long parentId, String categoryCode, String fondsCode) {
+        if (archiveLevel == ArchiveLevel.VOLUME) {
+            if (parentId != null) {
+                throw badRequest("案卷不能设置父记录");
+            }
+            return null;
+        }
+        if (parentId == null) {
+            return null;
+        }
+        ArchiveRecordDto parent = getRecord(parentId);
+        if (parent.archiveLevel() != ArchiveLevel.VOLUME) {
+            throw badRequest("卷内条目只能挂接到案卷");
+        }
+        if (parent.lockedFlag()) {
+            throw badRequest("案卷已锁定，不能调整卷内条目");
+        }
+        if (!parent.categoryCode().equals(categoryCode) || !parent.fondsCode().equals(fondsCode)) {
+            throw badRequest("卷内条目和案卷必须属于同一全宗和分类");
+        }
+        return parentId;
     }
 
     public void ensureRecordEditable(Long id) {
@@ -378,15 +496,17 @@ public class ArchiveRecordRoutingService {
 
     private List<ArchiveSqlCondition> buildSearchConditions(
             Long categoryId,
+            ArchiveLevel archiveLevel,
             List<ArchiveFieldDto> fields,
             Map<String, Object> exactFilters,
             List<ArchiveRecordFieldFilter> filters) {
         Map<String, ArchiveFieldDto> fieldsByCode = fields.stream()
                 .collect(java.util.stream.Collectors.toMap(ArchiveFieldDto::fieldCode, field -> field));
-        List<String> uniqueFieldCodes = archiveMetadataService.listUniqueRules(categoryId).stream()
-                .filter(ArchiveUniqueRuleDto::enabled)
-                .flatMap(rule -> rule.fields().stream())
-                .map(ArchiveUniqueRuleFieldDto::fieldCode)
+        List<String> uniqueFieldCodes = archiveMetadataService.listUniqueConstraints(categoryId).stream()
+                .filter(ArchiveUniqueConstraintDto::enabled)
+                .filter(constraint -> constraint.archiveLevel() == archiveLevel)
+                .flatMap(constraint -> constraint.fields().stream())
+                .map(ArchiveUniqueConstraintFieldDto::fieldCode)
                 .distinct()
                 .toList();
         List<ArchiveSqlCondition> conditions = new ArrayList<>();
@@ -565,13 +685,14 @@ public class ArchiveRecordRoutingService {
             return;
         }
         ArchiveCategoryDto category = getCategoryByCode(string(recordRow, "categoryCode"));
-        if (category.tableStatus() != ArchiveTableStatus.BUILT
-                || StringUtils.isBlank(category.recordTableName())) {
+        ArchiveLevel archiveLevel = ArchiveLevel.valueOf(string(recordRow, "archiveLevel"));
+        String tableName = dynamicTableName(category, archiveLevel);
+        if (!isDynamicTableBuilt(category, archiveLevel)) {
             archiveMapper.deleteSearchProjection(recordId);
             return;
         }
-        List<ArchiveFieldDto> fields = archiveMetadataService.listEnabledFields(category.id());
-        Map<String, Object> dynamicRecord = archiveMapper.loadDynamicRecord(category.recordTableName(), recordId);
+        List<ArchiveFieldDto> fields = archiveMetadataService.listEnabledFields(category.id(), archiveLevel);
+        Map<String, Object> dynamicRecord = archiveMapper.loadDynamicRecord(tableName, recordId);
         if (dynamicRecord == null) {
             archiveMapper.deleteSearchProjection(recordId);
             return;
@@ -728,6 +849,7 @@ public class ArchiveRecordRoutingService {
 
     public record ArchiveRecordQueryRequest(
             Long categoryId,
+            ArchiveLevel archiveLevel,
             String fondsCode,
             String keyword,
             Map<String, Object> exactFilters,
@@ -741,20 +863,30 @@ public class ArchiveRecordRoutingService {
 
     public record ArchiveRecordRequest(
             Long categoryId,
+            ArchiveLevel archiveLevel,
+            Long parentId,
             String fondsCode,
             String archiveNo,
             Integer archiveYear,
-            String archiveStatus,
-            String processStatus,
+            String electronicStatus,
+            ArchivePhysicalObjectRequest physicalObject,
             Map<String, Object> dynamicFields) {}
 
     public record ArchiveRecordUpdateRequest(
+            Long parentId,
             String fondsCode,
             String archiveNo,
             Integer archiveYear,
-            String archiveStatus,
-            String processStatus,
+            String electronicStatus,
+            ArchivePhysicalObjectRequest physicalObject,
             Map<String, Object> dynamicFields) {}
+
+    public record ArchivePhysicalObjectRequest(
+            String physicalStatus,
+            String boxNo,
+            String locationNo,
+            String barcode,
+            String remark) {}
 
     public record DeleteRecordRequest(String reason) {}
 
@@ -762,12 +894,14 @@ public class ArchiveRecordRoutingService {
 
     public record ArchiveRecordDto(
             Long id,
+            ArchiveLevel archiveLevel,
+            Long parentId,
             String fondsCode,
+            String fondsName,
             String categoryCode,
             String categoryName,
             String archiveNo,
-            String archiveStatus,
-            String processStatus,
+            String electronicStatus,
             int archiveYear,
             boolean lockedFlag,
             String lockReason,
@@ -784,7 +918,17 @@ public class ArchiveRecordRoutingService {
             ArchiveRecordDto record,
             ArchiveCategoryDto category,
             List<ArchiveFieldDto> fields,
-            Map<String, Object> dynamicFields) {}
+            Map<String, Object> dynamicFields,
+            ArchivePhysicalObjectDto physicalObject) {}
+
+    public record ArchivePhysicalObjectDto(
+            Long id,
+            Long archiveRecordId,
+            String physicalStatus,
+            String boxNo,
+            String locationNo,
+            String barcode,
+            String remark) {}
 
     public record SearchProjectionRebuildResult(Long categoryId, int rebuiltCount) {}
 }

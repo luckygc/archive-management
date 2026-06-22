@@ -23,6 +23,18 @@ public class ArchiveRecord {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "archive_level", nullable = false, length = 30)
+    private String archiveLevel;
+
+    @Column(name = "parent_id")
+    private Long parentId;
+
+    @Column(name = "fonds_code", nullable = false, length = 100)
+    private String fondsCode;
+
+    @Column(name = "fonds_name", nullable = false)
+    private String fondsName;
+
     @Column(name = "category_code", nullable = false, length = 100)
     private String categoryCode;
 
@@ -32,17 +44,17 @@ public class ArchiveRecord {
     @Column(name = "archive_no", length = 100)
     private String archiveNo;
 
-    @Column(name = "archive_status", nullable = false, length = 50)
-    private String archiveStatus;
-
-    @Column(name = "process_status", nullable = false, length = 50)
-    private String processStatus;
+    @Column(name = "electronic_status", nullable = false, length = 50)
+    private String electronicStatus;
 
     @Column(name = "security_level", length = 50)
     private String securityLevel;
 
     @Column(name = "sort_order", nullable = false)
     private int sortOrder;
+
+    @Column(name = "display_order", nullable = false)
+    private int displayOrder;
 
     @Column(name = "archived_at")
     private LocalDateTime archivedAt;
