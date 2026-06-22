@@ -1,0 +1,56 @@
+## 1. 数据模型和迁移
+
+- [x] 1.1 调整 `am_archive_record` 目标结构，移除全宗编码和全宗名称字段
+- [x] 1.2 调整字段定义表，使用 `exact_searchable` 和 `full_text_searchable` 替换单一 `searchable`
+- [x] 1.3 新增唯一规则表、唯一规则字段表和全文检索投影表
+- [x] 1.4 调整动态建表逻辑，固定创建 `fonds_code`、`deleted_flag`、`created_at`、`updated_at`
+- [x] 1.5 在迁移中启用 `pg_textsearch` 并为全文投影创建 BM25 索引
+- [x] 1.6 固定 `ArchiveRecord` 主表字段边界，禁止将 `archive_year` 等固定字段创建为动态字段
+
+## 2. MyBatis 动态 SQL 基座
+
+- [x] 2.1 新增 archive Mapper 接口和 XML 目录
+- [x] 2.2 将动态列表查询、动态插入、动态记录加载从 `JdbcClient` 迁移到 MyBatis
+- [x] 2.3 将元数据复杂查询、动态 DDL 和索引 DDL 从 `JdbcClient` 迁移到 MyBatis
+- [x] 2.4 补充动态表名、动态列名和动态索引名白名单校验
+- [x] 2.5 补充 Map 查询动态列为 `null` 时仍保留 key 的测试
+
+## 3. 档案记录搜索
+
+- [x] 3.1 调整档案记录查询请求模型，支持 `keyword` 和 `exactFilters`
+- [x] 3.2 实现固定全宗筛选和动态字段精确筛选
+- [x] 3.3 实现全文投影创建、删除标记和按分类重建入口
+- [x] 3.4 实现基于 `pg_textsearch` 的关键词查询和 score 排序
+
+## 4. 唯一规则
+
+- [x] 4.1 实现唯一规则创建、修改、删除、启用/禁用和查询接口
+- [x] 4.2 按规则字段顺序生成动态表部分唯一索引
+- [x] 4.3 支持 `include_fonds=true` 时在唯一索引列中前置 `fonds_code`
+- [x] 4.4 在档案记录保存时返回明确唯一冲突错误
+- [x] 4.5 在删除档案记录后通过动态表 `deleted_flag` 释放唯一值
+
+## 5. 档案记录操作审计
+
+- [x] 5.1 将删除审计表调整为档案记录操作审计表
+- [x] 5.2 在创建、删除、锁定、解锁档案记录时写入操作审计
+
+## 6. 前端界面
+
+- [x] 6.1 字段定义表格和表单改为精确搜索、全文检索两个开关
+- [x] 6.2 分类字段管理区域新增唯一规则列表和编辑入口
+- [x] 6.3 档案库工具栏新增全文关键词输入和精确筛选入口
+- [x] 6.4 更新前端 archive 类型和 API 封装
+- [x] 6.5 新增保存后清空筛选并刷新到新记录所属分类和全宗
+- [x] 6.6 新增表单使用分类全部启用字段编辑动态字段
+- [x] 6.7 Controller 方法使用完整 URL 映射，修复冒号动作 404
+- [x] 6.8 增加默认全宗、分类、字段和样例档案数据
+- [x] 6.9 动态字段列表返回按字段类型格式化，DATE 只返回日期字符串
+
+## 7. 验证
+
+- [x] 7.1 运行 `openspec validate add-archive-record-search-and-unique-rules --strict`
+- [x] 7.2 运行后端 Maven 测试或说明本地数据库依赖
+- [x] 7.3 运行 `vp check`
+- [x] 7.4 运行 `vp test run --passWithNoTests`
+- [x] 7.5 运行 `git diff --check`

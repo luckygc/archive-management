@@ -45,7 +45,7 @@ async function submitLogin() {
       password: form.password,
       powToken: powToken.value,
     });
-    const redirect = typeof route.query.redirect === "string" ? route.query.redirect : "/";
+    const redirect = normalizeRedirect(route.query.redirect);
     await router.push(redirect);
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : "登录失败";
@@ -78,6 +78,13 @@ function handleCapError(event: Event) {
   securityMessage.value = detail?.message
     ? `安全验证失败：${detail.message}`
     : "安全验证失败，请重试";
+}
+
+function normalizeRedirect(value: unknown) {
+  if (typeof value !== "string" || !value.startsWith("/") || value.startsWith("//")) {
+    return "/";
+  }
+  return value;
 }
 </script>
 

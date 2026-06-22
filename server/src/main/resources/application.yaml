@@ -27,16 +27,18 @@ spring:
     flyway:
         # 是否启用 Flyway 数据库迁移。
         enabled: true
-        # Flyway 迁移脚本位置。
-        locations: classpath:db/migration
+        # Flyway 迁移脚本位置。默认只执行结构迁移。
+        # 本地加载示例数据可设置：
+        # AM_FLYWAY_LOCATIONS=classpath:db/migration,classpath:db/sample
+        locations: ${AM_FLYWAY_LOCATIONS:classpath:db/migration}
         # 非空库首次接入迁移时是否自动建立基线。
         baseline-on-migrate: true
         # Flyway 基线版本。
         baseline-version: 0
         # 启动迁移前是否校验已执行脚本。
-        validate-on-migrate: true
-        # 禁用 clean，避免误删库表。
-        clean-disabled: true
+        validate-on-migrate: ${AM_FLYWAY_VALIDATE_ON_MIGRATE:true}
+        # 禁用 clean，避免误删库表；本地重置时可临时设置 AM_FLYWAY_CLEAN_DISABLED=false。
+        clean-disabled: ${AM_FLYWAY_CLEAN_DISABLED:true}
     session:
         # HTTP Session 过期时间。
         timeout: 30m
@@ -154,6 +156,9 @@ logging:
         root: INFO
 
 archive:
+    flyway:
+        # 启动迁移前是否先执行 Flyway clean。仅允许本地重建或演示环境临时开启。
+        clean-before-migrate: ${AM_FLYWAY_CLEAN_BEFORE_MIGRATE:false}
     auth:
         bootstrap-admin:
             # 是否在启动时初始化管理员账号；仅在本地初始化或部署初始化时显式开启。

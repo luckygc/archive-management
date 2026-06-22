@@ -30,6 +30,7 @@
 - 方法参数校验、请求参数校验这类纯校验操作不应该被事务包裹；只有确实需要原子写入、状态变更、消费令牌、扣减库存、锁定记录等场景才开启事务。
 - 数据库以 PostgreSQL 为唯一优先目标；项目自有 DDL、索引、约束、查询和执行计划可以围绕 PostgreSQL 能力优化，不为 MySQL、Oracle、SQL Server 等数据库做兼容性折中。
 - Flyway 迁移默认按 PostgreSQL 编写；除非明确新增其他数据库支持，不维护多数据库迁移分支，也不为了跨库兼容回避 PostgreSQL 的成熟能力。
+- Flyway 迁移，档案server的pom.xml里版本未达到1.0.0时，都按照目标结构修改，1.0.0之后使用增量迁移
 - 项目不会跨时区使用；项目自有表时间字段使用无时区 `timestamp`，不使用 `timestamptz`。
 - 项目自有数据库表必须使用 `am_模块_表名` 命名，例如 `am_auth_user`、`am_archive_file`、`am_storage_file`；不要只使用 `am_表名` 这类缺少模块语义的名称。
 - Flyway 迁移中新建业务表、平台表、审计表、中间表等项目自有表时，同样必须使用 `am_模块_表名`；索引、约束、序列等对象名称应跟随表名保持 `am_模块_` 语义。
@@ -41,13 +42,16 @@
 
 ## API 设计约定
 
-- API URL 设计参考 Google Cloud API Design Guide / AIP 的资源导向模型：先识别资源名词、层级和标准方法，再决定是否需要自定义方法；不要直接按数据库表、页面按钮或服务方法名暴露接口。
+- 项目自有 HTTP API 默认遵循 Google Cloud API Design Guide / AIP；除 gRPC、protobuf、HTTP/gRPC transcoding 等传输和 IDL 专属内容外，资源建模、URL、标准方法、自定义方法、分页、过滤、字段命名、错误模型和兼容性规则都按 AIP 口径执行。
+- API URL 设计使用 Google Cloud API Design Guide / AIP 的资源导向模型：先识别资源名词、层级和标准方法，再决定是否需要自定义方法；不要直接按数据库表、页面按钮或服务方法名暴露接口。
 - REST API 路径必须在 `/api` 后包含主版本号，例如 `/api/v1`；只暴露 `v1`、`v2` 这类主版本，不使用 `v1.0`、`v1.1`、`v1.4.2` 这类 minor/patch 版本。
 - 标准 CRUD 优先使用资源路径和 HTTP 方法表达：`GET /api/v1/books/{id}` 查询单个资源，`GET /api/v1/books` 查询集合，`POST /api/v1/books` 创建，`PATCH /api/v1/books/{id}` 局部更新，`DELETE /api/v1/books/{id}` 删除。
 - 只有标准方法无法自然表达的动作才使用自定义方法。自定义方法路径使用 AIP 风格冒号动作：`POST /api/v1/books/{id}:archive`、`POST /api/v1/auth:login`；动词使用 lower camelCase，不使用 `/archive`、`/_archive`、`/validate_token`、`/validateToken` 这类路径段承载项目自有动作。
 - 自定义方法如果只读取数据且请求参数适合 query string，可使用 `GET`；有副作用、消费令牌、改变服务端状态或提交复杂请求体时使用 `POST`。
 - 查询当前登录会话这类单例资源使用资源名表达，例如 `GET /api/v1/auth/session`；登录、退出等非 CRUD 动作使用 `POST /api/v1/auth:login`、`POST /api/v1/auth:logout`。
-- 响应包装、错误结构、分页结构不照搬 Google RPC 合同；在项目形成统一响应模型前，按当前 Spring MVC / Spring Security / 前端调用的实际合同保持最小一致。
+- Controller 方法上的 Spring MVC 映射必须写完整 URL，例如 `@GetMapping("/api/v1/books")`、`@PostMapping("/api/v1/books/{id}:archive")`；不要使用类级 `@RequestMapping` 叠加方法级相对路径。冒号动作尤其不能通过类级路径和 `@PostMapping(":action")` 拼接，避免实际映射路径与前端 API 合同不一致。
+- 错误响应使用 AIP-193 的 HTTP/JSON 形态：响应体为 `{"error": {"code": 400, "message": "...", "status": "INVALID_ARGUMENT", "details": [...]}}`；`code` 使用 HTTP 状态码，`status` 使用 `google.rpc.Code` 的枚举名，`details` 优先使用 `google.rpc.ErrorInfo`、`google.rpc.BadRequest`、`google.rpc.LocalizedMessage`、`google.rpc.Help` 等标准 detail 的 JSON 表示。字段级校验错误放在 `BadRequest.fieldViolations`，不要让前端解析纯文本、HTML 或异常栈。
+- 分页、过滤、排序、字段掩码、批量方法和长任务等 API 合同按 AIP 对应章节建模；只有第三方组件固定协议、框架回调或明确无法适配 AIP 的外部接口可以作为例外，例外必须限制在适配层，不得扩散为项目自有 API 风格。
 - 第三方组件或外部协议强制要求的回调路径可以作为适配例外保留，例如 CAP widget 固定使用的 `/api/v1/auth/cap/challenge`、`/api/v1/auth/cap/redeem`、`/api/v1/auth/cap/validateToken`；这类例外不得扩散为项目自有 API 命名风格。
 
 ## 文件存储约定

@@ -34,6 +34,9 @@ public class ArchiveRecordStorageObject {
     @Column(name = "display_order", nullable = false)
     private int displayOrder;
 
+    @Column(name = "deleted_flag", nullable = false)
+    private boolean deletedFlag;
+
     @Column(name = "created_by")
     private Long createdBy;
 
@@ -41,6 +44,4 @@ public class ArchiveRecordStorageObject {
     @CreationTimestamp
     private LocalDateTime createdAt;
 
-    @Column(name = "deleted_flag", nullable = false)
-    private boolean deletedFlag;
 }

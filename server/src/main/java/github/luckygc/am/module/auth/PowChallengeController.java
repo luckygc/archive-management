@@ -6,12 +6,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/v1/auth/cap")
 public class PowChallengeController {
 
     private final PowChallengeService powChallengeService;
@@ -20,17 +18,17 @@ public class PowChallengeController {
         this.powChallengeService = powChallengeService;
     }
 
-    @PostMapping("/challenge")
+    @PostMapping("/api/v1/auth/cap/challenge")
     public PowChallengeService.CapChallengeResponse challenge() {
         return powChallengeService.createChallenge();
     }
 
-    @PostMapping("/redeem")
+    @PostMapping("/api/v1/auth/cap/redeem")
     public Map<String, Object> redeem(@RequestBody PowChallengeService.CapRedeemCommand command) {
         return powChallengeService.redeemChallenge(command);
     }
 
-    @PostMapping("/validateToken")
+    @PostMapping("/api/v1/auth/cap/validateToken")
     public Map<String, Object> validateToken(
             @RequestBody PowChallengeService.CapValidateCommand command) {
         return powChallengeService.validateToken(

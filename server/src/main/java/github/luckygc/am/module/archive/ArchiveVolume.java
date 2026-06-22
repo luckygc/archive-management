@@ -26,8 +26,14 @@ public class ArchiveVolume {
     @Column(name = "fonds_code", nullable = false, length = 100)
     private String fondsCode;
 
+    @Column(name = "fonds_name", nullable = false)
+    private String fondsName;
+
     @Column(name = "category_code", nullable = false, length = 100)
     private String categoryCode;
+
+    @Column(name = "category_name", nullable = false)
+    private String categoryName;
 
     @Column(name = "volume_no", nullable = false, length = 100)
     private String volumeNo;
@@ -51,4 +57,5 @@ public class ArchiveVolume {
     @Column(name = "updated_at", nullable = false)
     @UpdateTimestamp
     private LocalDateTime updatedAt;
+
 }

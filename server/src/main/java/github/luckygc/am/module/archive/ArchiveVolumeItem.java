@@ -28,8 +28,17 @@ public class ArchiveVolumeItem {
     @Column(name = "archive_record_id", nullable = false)
     private Long archiveRecordId;
 
+    @Column(name = "fonds_code", nullable = false, length = 100)
+    private String fondsCode;
+
+    @Column(name = "category_code", nullable = false, length = 100)
+    private String categoryCode;
+
     @Column(name = "display_order", nullable = false)
     private int displayOrder;
+
+    @Column(name = "deleted_flag", nullable = false)
+    private boolean deletedFlag;
 
     @Column(name = "created_by")
     private Long createdBy;
@@ -38,6 +47,4 @@ public class ArchiveVolumeItem {
     @CreationTimestamp
     private LocalDateTime createdAt;
 
-    @Column(name = "deleted_flag", nullable = false)
-    private boolean deletedFlag;
 }

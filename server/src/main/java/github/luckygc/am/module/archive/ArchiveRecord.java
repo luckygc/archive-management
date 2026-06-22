@@ -23,17 +23,14 @@ public class ArchiveRecord {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "fonds_code", nullable = false, length = 100)
-    private String fondsCode;
-
-    @Column(name = "category_group_code", length = 100)
-    private String categoryGroupCode;
-
     @Column(name = "category_code", nullable = false, length = 100)
     private String categoryCode;
 
-    @Column(name = "category_name")
+    @Column(name = "category_name", nullable = false)
     private String categoryName;
+
+    @Column(name = "archive_no", length = 100)
+    private String archiveNo;
 
     @Column(name = "archive_status", nullable = false, length = 50)
     private String archiveStatus;
@@ -50,11 +47,23 @@ public class ArchiveRecord {
     @Column(name = "archived_at")
     private LocalDateTime archivedAt;
 
-    @Column(name = "deleted_flag", nullable = false)
-    private boolean deletedFlag;
-
     @Column(name = "archive_year", nullable = false)
     private int archiveYear;
+
+    @Column(name = "locked_flag", nullable = false)
+    private boolean lockedFlag;
+
+    @Column(name = "lock_reason", length = 500)
+    private String lockReason;
+
+    @Column(name = "locked_by")
+    private Long lockedBy;
+
+    @Column(name = "locked_at")
+    private LocalDateTime lockedAt;
+
+    @Column(name = "deleted_flag", nullable = false)
+    private boolean deletedFlag;
 
     @Column(name = "created_by")
     private Long createdBy;
@@ -69,4 +78,5 @@ public class ArchiveRecord {
     @Column(name = "updated_at", nullable = false)
     @UpdateTimestamp
     private LocalDateTime updatedAt;
+
 }

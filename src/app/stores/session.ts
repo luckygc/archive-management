@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
 import { getCurrentUser, login, logout } from "../../shared/api/auth";
+import { HttpClientError } from "../../shared/api/client";
 import type { CurrentUserDto, LoginCommand } from "../../shared/types/auth";
 import { usePageTabsStore } from "./pageTabs";
 
@@ -11,7 +12,10 @@ export const useSessionStore = defineStore("session", () => {
   async function fetchCurrentUser() {
     try {
       currentUser.value = await getCurrentUser();
-    } catch {
+    } catch (error) {
+      if (error instanceof HttpClientError && error.status !== 401) {
+        throw error;
+      }
       currentUser.value = null;
     } finally {
       initialized.value = true;
@@ -25,6 +29,10 @@ export const useSessionStore = defineStore("session", () => {
 
   async function logoutCurrentUser() {
     await logout();
+    clearSession();
+  }
+
+  function clearSession() {
     const pageTabsStore = usePageTabsStore();
     pageTabsStore.reset();
     currentUser.value = null;
@@ -37,5 +45,6 @@ export const useSessionStore = defineStore("session", () => {
     fetchCurrentUser,
     loginWithPassword,
     logoutCurrentUser,
+    clearSession,
   };
 });

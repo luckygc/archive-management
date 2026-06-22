@@ -49,6 +49,26 @@ export const routes: RouteRecordRaw[] = [
             },
           },
           {
+            path: "library/:id/edit",
+            name: "ArchiveRecordEdit",
+            component: () => import("../../pages/archive-library/ArchiveRecordEditPage.vue"),
+            meta: {
+              title: "编辑档案",
+              keepAlive: true,
+              cacheName: "ArchiveRecordEditPage",
+            },
+          },
+          {
+            path: "library/:id",
+            name: "ArchiveRecordDetail",
+            component: () => import("../../pages/archive-library/ArchiveRecordDetailPage.vue"),
+            meta: {
+              title: "档案详情",
+              keepAlive: true,
+              cacheName: "ArchiveRecordDetailPage",
+            },
+          },
+          {
             path: "catalog",
             name: "ArchiveCatalog",
             meta: {
@@ -60,19 +80,23 @@ export const routes: RouteRecordRaw[] = [
               {
                 path: "fonds",
                 name: "ArchiveFonds",
-                component: () => import("../../pages/placeholder/PlaceholderPage.vue"),
+                component: () => import("../../pages/archive-fonds/ArchiveFondsPage.vue"),
                 meta: {
                   title: "全宗管理",
                   isMenu: true,
+                  keepAlive: true,
+                  cacheName: "ArchiveFondsPage",
                 },
               },
               {
                 path: "categories",
                 name: "ArchiveCategories",
-                component: () => import("../../pages/placeholder/PlaceholderPage.vue"),
+                component: () => import("../../pages/archive-categories/ArchiveCategoriesPage.vue"),
                 meta: {
                   title: "档案分类",
                   isMenu: true,
+                  keepAlive: true,
+                  cacheName: "ArchiveCategoriesPage",
                 },
               },
             ],
