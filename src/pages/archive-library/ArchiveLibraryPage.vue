@@ -25,7 +25,7 @@ import ArchiveRecordDynamicFields from "./ArchiveRecordDynamicFields.vue";
 defineOptions({ name: "ArchiveLibraryPage" });
 
 interface CategorySelectNode {
-  value: number;
+  value: string;
   label: string;
   disabled?: boolean;
   children?: CategorySelectNode[];
@@ -47,14 +47,14 @@ const fonds = ref<ArchiveFondsDto[]>([]);
 const fields = ref<ArchiveFieldDto[]>([]);
 const formFields = ref<ArchiveFieldDto[]>([]);
 const rows = ref<Record<string, unknown>[]>([]);
-const selectedCategoryId = ref<number>();
+const selectedCategoryId = ref<string>();
 const selectedFondsCode = ref("");
 const keyword = ref("");
 const tableBuilt = ref(true);
 const advancedFilters = ref<Record<string, AdvancedFilterValue>>({});
 
 const form = reactive<ArchiveRecordCommand>({
-  categoryId: 0,
+  categoryId: "",
   fondsCode: "",
   archiveNo: "",
   archiveYear: new Date().getFullYear(),
@@ -80,13 +80,16 @@ const searchFields = computed(() => fields.value.filter((field) => field.exactSe
 const listFields = computed(() =>
   [...fields.value]
     .filter((field) => field.listVisible)
-    .sort((current, next) => current.listSortOrder - next.listSortOrder || current.id - next.id),
+    .sort(
+      (current, next) =>
+        current.listSortOrder - next.listSortOrder || current.id.localeCompare(next.id),
+    ),
 );
 
 const activeAdvancedFilterCount = computed(() => buildAdvancedFilters().length);
 
 function buildCategoryOptions(rows: ArchiveCategoryDto[]) {
-  const nodeMap = new Map<number, CategorySelectNode>();
+  const nodeMap = new Map<string, CategorySelectNode>();
   const roots: CategorySelectNode[] = [];
   for (const row of rows.filter((item) => item.enabled)) {
     nodeMap.set(row.id, {
@@ -111,7 +114,7 @@ function buildCategoryOptions(rows: ArchiveCategoryDto[]) {
   return roots;
 }
 
-function firstBuiltCategoryId(nodes: CategorySelectNode[]): number | undefined {
+function firstBuiltCategoryId(nodes: CategorySelectNode[]): string | undefined {
   for (const node of nodes) {
     if (!node.disabled) {
       return node.value;
@@ -142,7 +145,7 @@ function isLocked(row: Record<string, unknown>) {
 }
 
 function rowId(row: Record<string, unknown>) {
-  return Number(fixedRowValue(row, "id"));
+  return String(fixedRowValue(row, "id"));
 }
 
 function fieldFilter(field: ArchiveFieldDto) {
@@ -204,7 +207,7 @@ function toCamelCase(value: string) {
 }
 
 function resetForm() {
-  form.categoryId = selectedCategoryId.value ?? 0;
+  form.categoryId = selectedCategoryId.value ?? "";
   form.fondsCode = selectedFondsCode.value || fonds.value[0]?.fondsCode || "";
   form.archiveNo = "";
   form.archiveYear = new Date().getFullYear();

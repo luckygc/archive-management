@@ -9,113 +9,9 @@ import org.apache.ibatis.annotations.Param;
 @Mapper
 public interface ArchiveMapper {
 
-    List<Map<String, Object>> listFonds(@Param("enabled") Boolean enabled);
-
-    Long insertFonds(
-            @Param("fondsCode") String fondsCode,
-            @Param("fondsName") String fondsName,
-            @Param("enabled") boolean enabled,
-            @Param("sortOrder") int sortOrder);
-
-    int updateFonds(
-            @Param("id") Long id,
-            @Param("fondsCode") String fondsCode,
-            @Param("fondsName") String fondsName,
-            @Param("enabled") boolean enabled,
-            @Param("sortOrder") int sortOrder);
-
-    int deleteFonds(@Param("id") Long id);
-
-    Map<String, Object> getFonds(@Param("id") Long id);
-
-    Map<String, Object> getFondsByCode(@Param("fondsCode") String fondsCode);
-
-    List<Map<String, Object>> listCategories(@Param("enabled") Boolean enabled);
-
-    Long insertCategory(
-            @Param("parentId") Long parentId,
-            @Param("categoryCode") String categoryCode,
-            @Param("categoryName") String categoryName,
-            @Param("managementMode") String managementMode,
-            @Param("enabled") boolean enabled,
-            @Param("sortOrder") int sortOrder);
-
-    int updateCategory(
-            @Param("id") Long id,
-            @Param("parentId") Long parentId,
-            @Param("categoryCode") String categoryCode,
-            @Param("categoryName") String categoryName,
-            @Param("managementMode") String managementMode,
-            @Param("enabled") boolean enabled,
-            @Param("sortOrder") int sortOrder);
-
-    int deleteCategory(@Param("id") Long id);
-
-    Map<String, Object> getCategory(@Param("id") Long id);
-
     Long findParentId(@Param("id") Long id);
 
     int countChildCategories(@Param("categoryId") Long categoryId);
-
-    List<Map<String, Object>> listFields(
-            @Param("categoryId") Long categoryId,
-            @Param("archiveLevel") String archiveLevel,
-            @Param("enabled") Boolean enabled);
-
-    Long insertField(
-            @Param("categoryId") Long categoryId,
-            @Param("archiveLevel") String archiveLevel,
-            @Param("fieldCode") String fieldCode,
-            @Param("fieldName") String fieldName,
-            @Param("fieldType") String fieldType,
-            @Param("columnName") String columnName,
-            @Param("textLength") Integer textLength,
-            @Param("decimalPrecision") Integer decimalPrecision,
-            @Param("decimalScale") Integer decimalScale,
-            @Param("editControl") String editControl,
-            @Param("listVisible") boolean listVisible,
-            @Param("listWidth") Integer listWidth,
-            @Param("listSortOrder") int listSortOrder,
-            @Param("detailVisible") boolean detailVisible,
-            @Param("detailColSpan") int detailColSpan,
-            @Param("detailSortOrder") int detailSortOrder,
-            @Param("editVisible") boolean editVisible,
-            @Param("editColSpan") int editColSpan,
-            @Param("editSortOrder") int editSortOrder,
-            @Param("exactSearchable") boolean exactSearchable,
-            @Param("fullTextSearchable") boolean fullTextSearchable,
-            @Param("enabled") boolean enabled,
-            @Param("sortOrder") int sortOrder);
-
-    int updateField(
-            @Param("id") Long id,
-            @Param("categoryId") Long categoryId,
-            @Param("archiveLevel") String archiveLevel,
-            @Param("fieldCode") String fieldCode,
-            @Param("fieldName") String fieldName,
-            @Param("fieldType") String fieldType,
-            @Param("columnName") String columnName,
-            @Param("textLength") Integer textLength,
-            @Param("decimalPrecision") Integer decimalPrecision,
-            @Param("decimalScale") Integer decimalScale,
-            @Param("editControl") String editControl,
-            @Param("listVisible") boolean listVisible,
-            @Param("listWidth") Integer listWidth,
-            @Param("listSortOrder") int listSortOrder,
-            @Param("detailVisible") boolean detailVisible,
-            @Param("detailColSpan") int detailColSpan,
-            @Param("detailSortOrder") int detailSortOrder,
-            @Param("editVisible") boolean editVisible,
-            @Param("editColSpan") int editColSpan,
-            @Param("editSortOrder") int editSortOrder,
-            @Param("exactSearchable") boolean exactSearchable,
-            @Param("fullTextSearchable") boolean fullTextSearchable,
-            @Param("enabled") boolean enabled,
-            @Param("sortOrder") int sortOrder);
-
-    int deleteField(@Param("id") Long id, @Param("categoryId") Long categoryId);
-
-    Map<String, Object> getField(@Param("id") Long id);
 
     int tableExists(@Param("tableName") String tableName);
 
@@ -129,7 +25,8 @@ public interface ArchiveMapper {
             @Param("id") Long id,
             @Param("archiveLevel") String archiveLevel,
             @Param("tableName") String tableName,
-            @Param("tableStatus") String tableStatus);
+            @Param("tableStatus") String tableStatus,
+            @Param("userId") Long userId);
 
     List<Map<String, Object>> listRecordOverview();
 
@@ -155,7 +52,8 @@ public interface ArchiveMapper {
             @Param("categoryName") String categoryName,
             @Param("archiveNo") String archiveNo,
             @Param("electronicStatus") String electronicStatus,
-            @Param("archiveYear") int archiveYear);
+            @Param("archiveYear") int archiveYear,
+            @Param("userId") Long userId);
 
     int insertDynamicRecord(
             @Param("tableName") String tableName,
@@ -169,7 +67,8 @@ public interface ArchiveMapper {
             @Param("fondsName") String fondsName,
             @Param("archiveNo") String archiveNo,
             @Param("electronicStatus") String electronicStatus,
-            @Param("archiveYear") int archiveYear);
+            @Param("archiveYear") int archiveYear,
+            @Param("userId") Long userId);
 
     int updateDynamicRecord(
             @Param("tableName") String tableName,
@@ -204,14 +103,14 @@ public interface ArchiveMapper {
             @Param("operationReason") String operationReason,
             @Param("operatedBy") Long operatedBy);
 
-    int markArchiveRecordDeleted(@Param("id") Long id);
+    int markArchiveRecordDeleted(@Param("id") Long id, @Param("userId") Long userId);
 
     int lockArchiveRecord(
             @Param("id") Long id,
             @Param("lockReason") String lockReason,
             @Param("lockedBy") Long lockedBy);
 
-    int unlockArchiveRecord(@Param("id") Long id);
+    int unlockArchiveRecord(@Param("id") Long id, @Param("userId") Long userId);
 
     int insertSearchProjection(
             @Param("archiveRecordId") Long archiveRecordId,
@@ -242,7 +141,8 @@ public interface ArchiveMapper {
             @Param("constraintName") String constraintName,
             @Param("includeFonds") boolean includeFonds,
             @Param("indexName") String indexName,
-            @Param("enabled") boolean enabled);
+            @Param("enabled") boolean enabled,
+            @Param("userId") Long userId);
 
     int updateUniqueConstraint(
             @Param("id") Long id,
@@ -252,9 +152,13 @@ public interface ArchiveMapper {
             @Param("constraintName") String constraintName,
             @Param("includeFonds") boolean includeFonds,
             @Param("indexName") String indexName,
-            @Param("enabled") boolean enabled);
+            @Param("enabled") boolean enabled,
+            @Param("userId") Long userId);
 
-    int deleteUniqueConstraint(@Param("id") Long id, @Param("categoryId") Long categoryId);
+    int deleteUniqueConstraint(
+            @Param("id") Long id,
+            @Param("categoryId") Long categoryId,
+            @Param("userId") Long userId);
 
     int deleteUniqueConstraintFields(@Param("constraintId") Long constraintId);
 
@@ -266,35 +170,13 @@ public interface ArchiveMapper {
     List<Map<String, Object>> listUniqueConstraintFields(@Param("constraintId") Long constraintId);
 
     int markFieldsExactSearchable(
-            @Param("categoryId") Long categoryId, @Param("fieldIds") List<Long> fieldIds);
-
-    List<Map<String, Object>> listFieldLayouts(
             @Param("categoryId") Long categoryId,
-            @Param("archiveLevel") String archiveLevel,
-            @Param("surface") String surface,
-            @Param("ownerUserId") Long ownerUserId,
-            @Param("publicLayout") boolean publicLayout);
-
-    int deleteFieldLayouts(
-            @Param("categoryId") Long categoryId,
-            @Param("archiveLevel") String archiveLevel,
-            @Param("surface") String surface,
-            @Param("ownerUserId") Long ownerUserId,
-            @Param("publicLayout") boolean publicLayout);
-
-    int insertFieldLayout(
-            @Param("categoryId") Long categoryId,
-            @Param("surface") String surface,
-            @Param("ownerUserId") Long ownerUserId,
-            @Param("fieldId") Long fieldId,
-            @Param("visible") boolean visible,
-            @Param("listWidth") Integer listWidth,
-            @Param("colSpan") int colSpan,
-            @Param("rowOrder") int rowOrder,
-            @Param("colOrder") int colOrder);
+            @Param("fieldIds") List<Long> fieldIds,
+            @Param("userId") Long userId);
 
     int moveRecordToVolume(
             @Param("volumeId") Long volumeId,
             @Param("archiveRecordId") Long archiveRecordId,
-            @Param("displayOrder") int displayOrder);
+            @Param("displayOrder") int displayOrder,
+            @Param("userId") Long userId);
 }

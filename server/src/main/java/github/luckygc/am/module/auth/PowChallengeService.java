@@ -47,7 +47,7 @@ public class PowChallengeService {
         challenge.setChallengeSize(DEFAULT_CHALLENGE_SIZE);
         challenge.setDifficulty(DEFAULT_CHALLENGE_DIFFICULTY);
         challenge.setExpiresAt(toLocalDateTime(expires));
-        challengeRepository.save(challenge);
+        challengeRepository.insert(challenge);
 
         return new CapChallengeResponse(
                 new CapChallenge(
@@ -71,16 +71,17 @@ public class PowChallengeService {
 
         AuthCapChallenge challenge = challengeRepository.findById(command.token()).orElse(null);
 
-        deleteChallenge(command.token());
-
         if (challenge == null
                 || toEpochMillis(challenge.getExpiresAt()) < System.currentTimeMillis()) {
             return redeemFailure("Challenge invalid or expired");
         }
 
         if (!validSolutions(challenge, command.solutions())) {
+            deleteChallenge(command.token());
             return redeemFailure("Invalid solution");
         }
+
+        deleteChallenge(command.token());
 
         String vertoken = randomHex(15);
         long expires = System.currentTimeMillis() + TOKEN_EXPIRES_MS;
@@ -90,7 +91,7 @@ public class PowChallengeService {
         AuthCapToken capToken = new AuthCapToken();
         capToken.setTokenKey(tokenKey);
         capToken.setExpiresAt(toLocalDateTime(expires));
-        tokenRepository.save(capToken);
+        tokenRepository.insert(capToken);
 
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("success", true);

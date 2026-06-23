@@ -24,6 +24,7 @@
         <flowable.version>7.1.0</flowable.version>
         <spring-ai.version>2.0.0</spring-ai.version>
         <spotless.version>3.7.0</spotless.version>
+        <testcontainers.version>2.0.3</testcontainers.version>
     </properties>
 
     <dependencies>
@@ -173,6 +174,18 @@
             <groupId>org.mybatis.spring.boot</groupId>
             <artifactId>mybatis-spring-boot-starter-test</artifactId>
             <version>4.0.1</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-junit-jupiter</artifactId>
+            <version>${testcontainers.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-postgresql</artifactId>
+            <version>${testcontainers.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>

@@ -19,7 +19,6 @@ create or replace function seed_archive_field(
     input_sort_order integer,
     input_list_visible boolean,
     input_exact_searchable boolean,
-    input_full_text_searchable boolean,
     input_edit_control varchar default null,
     input_list_width integer default null,
     input_detail_visible boolean default true,
@@ -36,7 +35,7 @@ $$
 begin
     insert into am_archive_field
         (category_id, archive_level, field_code, field_name, field_type, column_name, list_visible,
-         exact_searchable, full_text_searchable, edit_control, list_width, list_sort_order,
+         exact_searchable, edit_control, list_width, list_sort_order,
          detail_visible, detail_col_span, detail_sort_order, edit_visible, edit_col_span,
          edit_sort_order, enabled, sort_order)
     select input_category_id,
@@ -47,7 +46,6 @@ begin
            input_column_name,
            input_list_visible,
            input_exact_searchable,
-           input_full_text_searchable,
            coalesce(input_edit_control, case
                when input_field_type in ('integer', 'decimal') then 'number'
                when input_field_type = 'date' then 'date'
@@ -290,45 +288,45 @@ begin
     perform seed_archive_assert_identifier(xm_table);
     perform seed_archive_assert_identifier(zp_table);
 
-    perform seed_archive_field(gw_category_id, 'item', 'title', '题名', 'text', 'f_title', 10, true, true, true, 'input', 280, true, 2, 2);
-    perform seed_archive_field(gw_category_id, 'item', 'doc_no', '文号', 'text', 'f_doc_no', 20, true, true, true, 'input', 180, true, 1, 1);
-    perform seed_archive_field(gw_category_id, 'item', 'responsible_org', '责任机构', 'text', 'f_responsible_org', 30, true, true, true, 'input', 160, true, 1, 1);
-    perform seed_archive_field(gw_category_id, 'item', 'formed_date', '成文日期', 'date', 'f_formed_date', 40, true, true, false, 'date', 120, true, 1, 1);
-    perform seed_archive_field(gw_category_id, 'item', 'secret_level', '密级', 'text', 'f_secret_level', 50, true, true, false, 'input', 100, true, 1, 1);
-    perform seed_archive_field(gw_category_id, 'item', 'summary', '内容摘要', 'text', 'f_summary', 60, false, false, true, 'textarea', null, true, 2, 2);
-    perform seed_archive_field(gw_category_id, 'volume', 'volume_no', '案卷号', 'text', 'f_volume_no', 10, true, true, true, 'input', 150, true, 1, 1);
-    perform seed_archive_field(gw_category_id, 'volume', 'volume_title', '案卷题名', 'text', 'f_volume_title', 20, true, true, true, 'input', 280, true, 2, 2);
-    perform seed_archive_field(gw_category_id, 'volume', 'start_date', '起始日期', 'date', 'f_start_date', 30, true, true, false, 'date', 120, true, 1, 1);
-    perform seed_archive_field(gw_category_id, 'volume', 'end_date', '终止日期', 'date', 'f_end_date', 40, true, true, false, 'date', 120, true, 1, 1);
-    perform seed_archive_field(gw_category_id, 'volume', 'retention_period', '保管期限', 'text', 'f_retention_period', 50, true, true, false, 'input', 120, true, 1, 1);
+    perform seed_archive_field(gw_category_id, 'item', 'title', '题名', 'text', 'f_title', 10, true, true, 'input', 280, true, 2, 2);
+    perform seed_archive_field(gw_category_id, 'item', 'doc_no', '文号', 'text', 'f_doc_no', 20, true, true, 'input', 180, true, 1, 1);
+    perform seed_archive_field(gw_category_id, 'item', 'responsible_org', '责任机构', 'text', 'f_responsible_org', 30, true, true, 'input', 160, true, 1, 1);
+    perform seed_archive_field(gw_category_id, 'item', 'formed_date', '成文日期', 'date', 'f_formed_date', 40, true, true, 'date', 120, true, 1, 1);
+    perform seed_archive_field(gw_category_id, 'item', 'secret_level', '密级', 'text', 'f_secret_level', 50, true, true, 'input', 100, true, 1, 1);
+    perform seed_archive_field(gw_category_id, 'item', 'summary', '内容摘要', 'text', 'f_summary', 60, false, false, 'textarea', null, true, 2, 2);
+    perform seed_archive_field(gw_category_id, 'volume', 'volume_no', '案卷号', 'text', 'f_volume_no', 10, true, true, 'input', 150, true, 1, 1);
+    perform seed_archive_field(gw_category_id, 'volume', 'volume_title', '案卷题名', 'text', 'f_volume_title', 20, true, true, 'input', 280, true, 2, 2);
+    perform seed_archive_field(gw_category_id, 'volume', 'start_date', '起始日期', 'date', 'f_start_date', 30, true, true, 'date', 120, true, 1, 1);
+    perform seed_archive_field(gw_category_id, 'volume', 'end_date', '终止日期', 'date', 'f_end_date', 40, true, true, 'date', 120, true, 1, 1);
+    perform seed_archive_field(gw_category_id, 'volume', 'retention_period', '保管期限', 'text', 'f_retention_period', 50, true, true, 'input', 120, true, 1, 1);
 
-    perform seed_archive_field(ht_category_id, 'item', 'contract_no', '合同编号', 'text', 'f_contract_no', 10, true, true, true, 'input', 170, true, 1, 1);
-    perform seed_archive_field(ht_category_id, 'item', 'counterparty', '相对方', 'text', 'f_counterparty', 20, true, true, true, 'input', 240, true, 2, 2);
-    perform seed_archive_field(ht_category_id, 'item', 'amount', '合同金额', 'decimal', 'f_amount', 30, true, true, false, 'number', 140, true, 1, 1);
-    perform seed_archive_field(ht_category_id, 'item', 'sign_date', '签订日期', 'date', 'f_sign_date', 40, true, true, false, 'date', 120, true, 1, 1);
-    perform seed_archive_field(ht_category_id, 'item', 'owner_dept', '承办部门', 'text', 'f_owner_dept', 50, true, true, false, 'input', 160, true, 1, 1);
-    perform seed_archive_field(ht_category_id, 'item', 'contract_scope', '合同范围', 'text', 'f_contract_scope', 60, false, false, true, 'textarea', null, true, 2, 2);
+    perform seed_archive_field(ht_category_id, 'item', 'contract_no', '合同编号', 'text', 'f_contract_no', 10, true, true, 'input', 170, true, 1, 1);
+    perform seed_archive_field(ht_category_id, 'item', 'counterparty', '相对方', 'text', 'f_counterparty', 20, true, true, 'input', 240, true, 2, 2);
+    perform seed_archive_field(ht_category_id, 'item', 'amount', '合同金额', 'decimal', 'f_amount', 30, true, true, 'number', 140, true, 1, 1);
+    perform seed_archive_field(ht_category_id, 'item', 'sign_date', '签订日期', 'date', 'f_sign_date', 40, true, true, 'date', 120, true, 1, 1);
+    perform seed_archive_field(ht_category_id, 'item', 'owner_dept', '承办部门', 'text', 'f_owner_dept', 50, true, true, 'input', 160, true, 1, 1);
+    perform seed_archive_field(ht_category_id, 'item', 'contract_scope', '合同范围', 'text', 'f_contract_scope', 60, false, false, 'textarea', null, true, 2, 2);
 
-    perform seed_archive_field(kj_category_id, 'item', 'voucher_no', '凭证号', 'text', 'f_voucher_no', 10, true, true, true, 'input', 150, true, 1, 1);
-    perform seed_archive_field(kj_category_id, 'item', 'accounting_period', '会计期间', 'text', 'f_accounting_period', 20, true, true, true, 'input', 120, true, 1, 1);
-    perform seed_archive_field(kj_category_id, 'item', 'summary', '摘要', 'text', 'f_summary', 30, true, true, true, 'textarea', 280, true, 2, 2);
-    perform seed_archive_field(kj_category_id, 'item', 'amount', '金额', 'decimal', 'f_amount', 40, true, true, false, 'number', 120, true, 1, 1);
-    perform seed_archive_field(kj_category_id, 'item', 'attachment_count', '附件张数', 'integer', 'f_attachment_count', 50, true, true, false, 'number', 100, true, 1, 1);
-    perform seed_archive_field(kj_category_id, 'item', 'remark', '备注', 'text', 'f_remark', 60, false, false, true, 'textarea', null, true, 2, 2);
+    perform seed_archive_field(kj_category_id, 'item', 'voucher_no', '凭证号', 'text', 'f_voucher_no', 10, true, true, 'input', 150, true, 1, 1);
+    perform seed_archive_field(kj_category_id, 'item', 'accounting_period', '会计期间', 'text', 'f_accounting_period', 20, true, true, 'input', 120, true, 1, 1);
+    perform seed_archive_field(kj_category_id, 'item', 'summary', '摘要', 'text', 'f_summary', 30, true, true, 'textarea', 280, true, 2, 2);
+    perform seed_archive_field(kj_category_id, 'item', 'amount', '金额', 'decimal', 'f_amount', 40, true, true, 'number', 120, true, 1, 1);
+    perform seed_archive_field(kj_category_id, 'item', 'attachment_count', '附件张数', 'integer', 'f_attachment_count', 50, true, true, 'number', 100, true, 1, 1);
+    perform seed_archive_field(kj_category_id, 'item', 'remark', '备注', 'text', 'f_remark', 60, false, false, 'textarea', null, true, 2, 2);
 
-    perform seed_archive_field(xm_category_id, 'item', 'project_code', '项目编号', 'text', 'f_project_code', 10, true, true, true, 'input', 150, true, 1, 1);
-    perform seed_archive_field(xm_category_id, 'item', 'project_name', '项目名称', 'text', 'f_project_name', 20, true, true, true, 'input', 260, true, 2, 2);
-    perform seed_archive_field(xm_category_id, 'item', 'manager', '负责人', 'text', 'f_manager', 30, true, true, true, 'input', 120, true, 1, 1);
-    perform seed_archive_field(xm_category_id, 'item', 'start_date', '启动日期', 'date', 'f_start_date', 40, true, true, false, 'date', 120, true, 1, 1);
-    perform seed_archive_field(xm_category_id, 'item', 'budget', '预算金额', 'decimal', 'f_budget', 50, true, true, false, 'number', 140, true, 1, 1);
-    perform seed_archive_field(xm_category_id, 'item', 'milestone', '关键节点', 'text', 'f_milestone', 60, false, false, true, 'textarea', null, true, 2, 2);
+    perform seed_archive_field(xm_category_id, 'item', 'project_code', '项目编号', 'text', 'f_project_code', 10, true, true, 'input', 150, true, 1, 1);
+    perform seed_archive_field(xm_category_id, 'item', 'project_name', '项目名称', 'text', 'f_project_name', 20, true, true, 'input', 260, true, 2, 2);
+    perform seed_archive_field(xm_category_id, 'item', 'manager', '负责人', 'text', 'f_manager', 30, true, true, 'input', 120, true, 1, 1);
+    perform seed_archive_field(xm_category_id, 'item', 'start_date', '启动日期', 'date', 'f_start_date', 40, true, true, 'date', 120, true, 1, 1);
+    perform seed_archive_field(xm_category_id, 'item', 'budget', '预算金额', 'decimal', 'f_budget', 50, true, true, 'number', 140, true, 1, 1);
+    perform seed_archive_field(xm_category_id, 'item', 'milestone', '关键节点', 'text', 'f_milestone', 60, false, false, 'textarea', null, true, 2, 2);
 
-    perform seed_archive_field(zp_category_id, 'item', 'photo_title', '照片题名', 'text', 'f_photo_title', 10, true, true, true, 'input', 260, true, 2, 2);
-    perform seed_archive_field(zp_category_id, 'item', 'shoot_time', '拍摄时间', 'datetime', 'f_shoot_time', 20, true, true, false, 'datetime', 170, true, 1, 1);
-    perform seed_archive_field(zp_category_id, 'item', 'location', '拍摄地点', 'text', 'f_location', 30, true, true, true, 'input', 180, true, 1, 1);
-    perform seed_archive_field(zp_category_id, 'item', 'photographer', '摄影者', 'text', 'f_photographer', 40, true, true, true, 'input', 120, true, 1, 1);
-    perform seed_archive_field(zp_category_id, 'item', 'people_count', '人数', 'integer', 'f_people_count', 50, true, true, false, 'number', 90, true, 1, 1);
-    perform seed_archive_field(zp_category_id, 'item', 'scene_description', '场景说明', 'text', 'f_scene_description', 60, false, false, true, 'textarea', null, true, 2, 2);
+    perform seed_archive_field(zp_category_id, 'item', 'photo_title', '照片题名', 'text', 'f_photo_title', 10, true, true, 'input', 260, true, 2, 2);
+    perform seed_archive_field(zp_category_id, 'item', 'shoot_time', '拍摄时间', 'datetime', 'f_shoot_time', 20, true, true, 'datetime', 170, true, 1, 1);
+    perform seed_archive_field(zp_category_id, 'item', 'location', '拍摄地点', 'text', 'f_location', 30, true, true, 'input', 180, true, 1, 1);
+    perform seed_archive_field(zp_category_id, 'item', 'photographer', '摄影者', 'text', 'f_photographer', 40, true, true, 'input', 120, true, 1, 1);
+    perform seed_archive_field(zp_category_id, 'item', 'people_count', '人数', 'integer', 'f_people_count', 50, true, true, 'number', 90, true, 1, 1);
+    perform seed_archive_field(zp_category_id, 'item', 'scene_description', '场景说明', 'text', 'f_scene_description', 60, false, false, 'textarea', null, true, 2, 2);
 
     update am_archive_category
     set volume_table_name = gw_volume_table,
@@ -530,7 +528,7 @@ begin
 end
 $$;
 
-drop function seed_archive_field(bigint, varchar, varchar, varchar, varchar, varchar, integer, boolean, boolean, boolean, varchar, integer, boolean, integer, integer, integer, integer, boolean, integer);
+drop function seed_archive_field(bigint, varchar, varchar, varchar, varchar, varchar, integer, boolean, boolean, varchar, integer, boolean, integer, integer, integer, integer, boolean, integer);
 drop function seed_archive_unique_constraint(bigint, varchar, text, varchar, varchar, boolean, varchar[]);
 drop function seed_archive_category(varchar, varchar, varchar, varchar, boolean, integer);
 drop function seed_archive_search(bigint, text);

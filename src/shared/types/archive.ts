@@ -2,7 +2,7 @@ export type ArchiveFieldType = "text" | "integer" | "decimal" | "date" | "dateti
 export type ArchiveFieldControl = "input" | "textarea" | "number" | "date" | "datetime";
 export type ArchiveTableStatus = "not_built" | "built";
 export type ArchiveLayoutSurface = "table" | "detail" | "edit";
-export type ArchiveLayoutScope = "public" | "mine" | "effective";
+export type ArchiveLayoutScope = "public" | "effective";
 export type ArchiveLevel = "volume" | "item";
 export type ArchiveManagementMode = "item_only" | "volume_item";
 export type ArchiveElectronicStatus = "DRAFT" | "ARCHIVED" | "BORROWED";
@@ -14,7 +14,7 @@ export type ArchivePhysicalStatus =
   | "BORROWED";
 
 export interface ArchiveFondsDto {
-  id: number;
+  id: string;
   fondsCode: string;
   fondsName: string;
   enabled: boolean;
@@ -31,8 +31,8 @@ export interface ArchiveFondsCommand {
 }
 
 export interface ArchiveCategoryDto {
-  id: number;
-  parentId?: number;
+  id: string;
+  parentId?: string;
   categoryCode: string;
   categoryName: string;
   managementMode: ArchiveManagementMode;
@@ -49,15 +49,15 @@ export interface ArchiveCategoryDto {
 export interface ArchiveCategoryCommand {
   categoryCode: string;
   categoryName: string;
-  parentId?: number;
+  parentId?: string;
   managementMode: ArchiveManagementMode;
   enabled: boolean;
   sortOrder: number;
 }
 
 export interface ArchiveFieldDto {
-  id: number;
-  categoryId: number;
+  id: string;
+  categoryId: string;
   archiveLevel: ArchiveLevel;
   fieldCode: string;
   fieldName: string;
@@ -77,7 +77,6 @@ export interface ArchiveFieldDto {
   editColSpan: number;
   editSortOrder: number;
   exactSearchable: boolean;
-  fullTextSearchable: boolean;
   enabled: boolean;
   sortOrder: number;
   createdAt: string;
@@ -103,7 +102,6 @@ export interface ArchiveFieldCommand {
   editColSpan: number;
   editSortOrder: number;
   exactSearchable: boolean;
-  fullTextSearchable: boolean;
   enabled: boolean;
   sortOrder: number;
 }
@@ -115,7 +113,7 @@ export interface ArchiveFieldLayoutDto {
 }
 
 export interface ArchiveFieldLayoutItemDto {
-  fieldId: number;
+  fieldId: string;
   fieldCode: string;
   fieldName: string;
   fieldType: ArchiveFieldType;
@@ -132,7 +130,7 @@ export interface ArchiveFieldLayoutCommand {
 }
 
 export interface ArchiveFieldLayoutItemCommand {
-  fieldId: number;
+  fieldId: string;
   visible: boolean;
   listWidth?: number;
   colSpan: number;
@@ -141,7 +139,7 @@ export interface ArchiveFieldLayoutItemCommand {
 }
 
 export interface ArchiveUniqueConstraintFieldDto {
-  fieldId: number;
+  fieldId: string;
   fieldOrder: number;
   archiveLevel: ArchiveLevel;
   fieldCode: string;
@@ -150,8 +148,8 @@ export interface ArchiveUniqueConstraintFieldDto {
 }
 
 export interface ArchiveUniqueConstraintDto {
-  id: number;
-  categoryId: number;
+  id: string;
+  categoryId: string;
   archiveLevel: ArchiveLevel;
   constraintCode: string;
   constraintName: string;
@@ -169,11 +167,11 @@ export interface ArchiveUniqueConstraintCommand {
   constraintName: string;
   includeFonds: boolean;
   enabled: boolean;
-  fieldIds: number[];
+  fieldIds: string[];
 }
 
 export interface ArchiveRecordQuery {
-  categoryId?: number;
+  categoryId?: string;
   archiveLevel?: ArchiveLevel;
   fondsCode?: string;
   keyword?: string;
@@ -189,9 +187,9 @@ export interface ArchiveRecordFieldFilter {
 }
 
 export interface ArchiveRecordCommand {
-  categoryId: number;
+  categoryId: string;
   archiveLevel?: ArchiveLevel;
-  parentId?: number;
+  parentId?: string;
   fondsCode: string;
   archiveNo?: string;
   archiveYear?: number;
@@ -201,7 +199,7 @@ export interface ArchiveRecordCommand {
 }
 
 export interface ArchiveRecordUpdateCommand {
-  parentId?: number;
+  parentId?: string;
   fondsCode: string;
   archiveNo?: string;
   archiveYear?: number;
@@ -219,9 +217,9 @@ export interface ArchivePhysicalObjectCommand {
 }
 
 export interface ArchiveRecordDto {
-  id: number;
+  id: string;
   archiveLevel: ArchiveLevel;
-  parentId?: number;
+  parentId?: string;
   fondsCode: string;
   fondsName: string;
   categoryCode: string;
@@ -231,13 +229,13 @@ export interface ArchiveRecordDto {
   archiveYear: number;
   lockedFlag: boolean;
   lockReason?: string;
-  lockedBy?: number;
+  lockedBy?: string;
   lockedAt?: string;
 }
 
 export interface ArchivePhysicalObjectDto {
-  id: number;
-  archiveRecordId: number;
+  id: string;
+  archiveRecordId: string;
   physicalStatus: ArchivePhysicalStatus;
   boxNo?: string;
   locationNo?: string;

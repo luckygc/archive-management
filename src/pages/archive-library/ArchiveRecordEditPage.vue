@@ -35,7 +35,7 @@ const form = reactive<ArchiveRecordUpdateCommand>({
   dynamicFields: {},
 });
 
-const recordId = computed(() => Number(route.params.id));
+const recordId = computed(() => String(route.params.id));
 const disabled = computed(() => detail.value?.record.lockedFlag === true || saving.value);
 
 function resetForm(recordDetail: ArchiveRecordDetailDto) {

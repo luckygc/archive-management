@@ -20,24 +20,22 @@
 - **AND** 系统 SHALL NOT 要求 `fonds_code` 在字段定义表中存在
 
 ### Requirement: 档案记录全文投影
-系统 SHALL 为全文检索维护独立投影表，并通过 outbox 驱动投影更新。
+系统 SHALL 为全文检索维护独立投影表，并以所有启用动态字段生成投影文本。
 
 #### Scenario: 创建档案记录后维护投影
-- **WHEN** 客户端创建档案记录且分类存在 `full_text_searchable=true` 的字段
-- **THEN** 系统 SHALL 写入全文投影 outbox
-- **AND** outbox 消费 SHALL 回读主表、分类动态表和字段定义后将全文字段值拼接为 `search_text`
+- **WHEN** 客户端创建档案记录且分类存在启用的动态字段
+- **THEN** 系统 SHALL 将所有启用动态字段的字段名称和值拼接为 `search_text`
 - **AND** 全文投影表 SHALL 只保存记录 ID、`search_text`、索引版本和投影维护时间
 
 #### Scenario: 删除档案记录后删除投影
 - **WHEN** 客户端删除档案记录
-- **THEN** 系统 SHALL 写入删除类型的全文投影 outbox
-- **AND** outbox 消费 SHALL 删除该记录对应的全文投影行
+- **THEN** 系统 SHALL 删除该记录对应的全文投影行
 - **AND** 系统 SHALL NOT 依赖全文投影表保存删除状态
 
-#### Scenario: 字段定义改为全文字段
-- **WHEN** 客户端将字段定义改为 `full_text_searchable=true`
+#### Scenario: 动态字段定义变更
+- **WHEN** 客户端新增、启用或重命名动态字段定义
 - **THEN** 系统 SHALL NOT 阻塞字段定义保存来同步重建历史投影
-- **AND** 系统 SHALL 允许通过单独重建流程写入 outbox 补齐历史投影
+- **AND** 系统 SHALL 允许通过单独重建流程补齐历史投影
 
 ### Requirement: pg_textsearch 关键词检索
 系统 SHALL 使用 PostgreSQL `pg_textsearch` 扩展和 BM25 索引执行关键词检索。

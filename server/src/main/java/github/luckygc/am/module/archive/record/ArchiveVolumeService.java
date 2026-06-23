@@ -22,7 +22,8 @@ public class ArchiveVolumeService {
     }
 
     @Transactional
-    public void addRecordToVolume(Long volumeId, Long archiveRecordId, Integer displayOrder) {
+    public void addRecordToVolume(
+            Long volumeId, Long archiveRecordId, Integer displayOrder, Long userId) {
         archiveRecordRoutingService.ensureRecordEditable(archiveRecordId);
         ArchiveRecordDto volume = archiveRecordRoutingService.getRecord(volumeId);
         archiveRecordRoutingService.ensureRecordEditable(volumeId);
@@ -39,7 +40,7 @@ public class ArchiveVolumeService {
         }
         int updated =
                 archiveMapper.moveRecordToVolume(
-                        volumeId, archiveRecordId, displayOrder == null ? 0 : displayOrder);
+                        volumeId, archiveRecordId, displayOrder == null ? 0 : displayOrder, userId);
         if (updated == 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "卷内条目已锁定或不存在，不能加入案卷");
         }

@@ -39,12 +39,15 @@
 - 实体枚举字段默认按文本持久化：Java enum 常量名直接使用对外和入库的小写 snake_case 值，实体属性标注 `@Enumerated(EnumType.STRING)`；不要依赖 `enum.ordinal()`，也不要为简单枚举手写 `AttributeConverter` 或额外注册 Jackson/MVC 枚举转换器。DDL 的 `comment on column` 必须列出每个枚举值及其含义。
 - 带逻辑删除字段的项目自有表不允许使用覆盖已删除数据的唯一约束；唯一性必须使用 `where deleted_at is null` 的部分唯一索引，只约束未删除记录。
 - 第三方框架原生表不属于项目自有表，例如 Spring Session 的 `SPRING_SESSION`、Quartz 的 `QRTZ_*`。除非明确改为项目自维护表，否则保留框架默认命名，避免偏离上游脚本。
-- 当前持久化入口是 Jakarta Data 和 MyBatis：固定 CRUD 表优先使用 Jakarta Data Repository；动态表、复杂 SQL、批处理、报表和认证适配查询统一使用 MyBatis；不要在项目代码里使用 JdbcClient 作为持久化入口，不要引入 Spring Data JPA。业务代码不得直接使用 Hibernate 有状态 `Session`、Hibernate `Query` 或其他依赖 Session 生命周期的对象；如确需 Hibernate 底层适配，只能封装在基础设施层，不能外泄为业务模块合同。Repository 对外不得返回 `Stream`、游标等依赖会话生命周期的对象，必须在 `@Transactional` 方法内消费完查询结果。
+- 当前持久化入口是 Jakarta Data 和 MyBatis：固定 CRUD 表优先使用 Jakarta Data Repository；动态表、复杂 SQL、批处理、报表和认证适配查询统一使用 MyBatis；不要在项目代码里使用 JdbcClient 作为持久化入口，不要引入 Spring Data JPA。当前 Jakarta Data Repository 必须通过 Hibernate `StatelessSession` / `EntityAgent` 执行，不允许切换为普通有状态 `Session` 或引入依赖一级缓存、脏检查、延迟会话生命周期的写法。业务代码不得直接使用 Hibernate 有状态 `Session`、Hibernate `Query` 或其他依赖 Session 生命周期的对象；如确需 Hibernate 底层适配，只能封装在基础设施层，不能外泄为业务模块合同。Repository 对外不得返回 `Stream`、游标等依赖会话生命周期的对象，必须在 `@Transactional` 方法内消费完查询结果。
+- 固定实体写入不要默认调用 Repository `save` 或定义 `@Save` 方法；新增、修改、删除应优先使用语义明确的 `insert` / `update` / `delete` 生命周期方法，Service 层先判断业务分支再调用对应方法。只有明确需要 upsert 语义且已说明并发、审计和唯一约束影响时，才允许使用 `save`。
+- 固定实体的 `created_at`、`updated_at`、`created_by`、`updated_by` 应通过基础设施层无状态会话审计拦截器统一填充；其中操作人字段从 Spring Security 上下文读取当前 `AuthenticatedUser`。`@CreationTimestamp`、`@UpdateTimestamp` 可以保留为 Hibernate 实体写入路径的辅助生成注解，但不要把它们当成 `save`/upsert 或 MyBatis 写入路径的审计真相源。无状态会话 `onUpsert` 只能维护 `updated_at`、`updated_by`，不得覆盖 `created_at`、`created_by`；需要创建语义时必须走显式 `insert`。需要保留业务语义的操作流水继续写业务审计表。MyBatis 写入路径不会触发该拦截器，必须在 SQL 或调用方显式维护审计字段。
 - StringUtils.removeStart已过时，替换为Strings.CS.removeStart
 
 ## API 设计约定
 
 - 项目自有 HTTP API 默认遵循 Google Cloud API Design Guide / AIP；除 gRPC、protobuf、HTTP/gRPC transcoding 等传输和 IDL 专属内容外，资源建模、URL、标准方法、自定义方法、分页、过滤、字段命名、错误模型和兼容性规则都按 AIP 口径执行。
+- 项目 API 设计任务优先使用 `.agents/skills/archive-api-design-strategy`；持久化入口、实体和 Mapper 边界任务优先使用 `.agents/skills/archive-persistence-strategy`。
 - API URL 设计使用 Google Cloud API Design Guide / AIP 的资源导向模型：先识别资源名词、层级和标准方法，再决定是否需要自定义方法；不要直接按数据库表、页面按钮或服务方法名暴露接口。
 - REST API 路径必须在 `/api` 后包含主版本号，例如 `/api/v1`；只暴露 `v1`、`v2` 这类主版本，不使用 `v1.0`、`v1.1`、`v1.4.2` 这类 minor/patch 版本。
 - 标准 CRUD 优先使用资源路径和 HTTP 方法表达：`GET /api/v1/books/{id}` 查询单个资源，`GET /api/v1/books` 查询集合，`POST /api/v1/books` 创建，`PATCH /api/v1/books/{id}` 局部更新，`DELETE /api/v1/books/{id}` 删除。
@@ -54,6 +57,7 @@
 - Controller 方法上的 Spring MVC 映射必须写完整 URL，例如 `@GetMapping("/api/v1/books")`、`@PostMapping("/api/v1/books/{id}:archive")`；不要使用类级 `@RequestMapping` 叠加方法级相对路径。冒号动作尤其不能通过类级路径和 `@PostMapping(":action")` 拼接，避免实际映射路径与前端 API 合同不一致。
 - 错误响应使用 AIP-193 的 HTTP/JSON 形态：响应体为 `{"error": {"code": 400, "message": "...", "status": "INVALID_ARGUMENT", "details": [...]}}`；`code` 使用 HTTP 状态码，`status` 使用 `google.rpc.Code` 的枚举名，`details` 优先使用 `google.rpc.ErrorInfo`、`google.rpc.BadRequest`、`google.rpc.LocalizedMessage`、`google.rpc.Help` 等标准 detail 的 JSON 表示。字段级校验错误放在 `BadRequest.fieldViolations`，不要让前端解析纯文本、HTML 或异常栈。
 - 分页、过滤、排序、字段掩码、批量方法和长任务等 API 合同按 AIP 对应章节建模；只有第三方组件固定协议、框架回调或明确无法适配 AIP 的外部接口可以作为例外，例外必须限制在适配层，不得扩散为项目自有 API 风格。
+- 资源表示优先使用 AIP-122/AIP-148 的字符串 `name` 作为资源主标识；短期保留 `id`、`categoryId`、`createdBy` 等字段时，所有返回给前端的数据库 `Long`/`BigInt` ID 都必须输出为字符串，避免 JavaScript number 精度问题。实体、Mapper 和 Service 内部可以继续使用 `Long`；路径参数可以接收字符串并在 Service 层解析校验。
 - 第三方组件或外部协议强制要求的回调路径可以作为适配例外保留，例如 CAP widget 固定使用的 `/api/v1/auth/cap/challenge`、`/api/v1/auth/cap/redeem`、`/api/v1/auth/cap/validateToken`；这类例外不得扩散为项目自有 API 命名风格。
 
 ## 文件存储约定

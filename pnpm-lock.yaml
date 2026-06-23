@@ -6,6 +6,12 @@ settings:
 
 catalogs:
   default:
+    '@atlaskit/pragmatic-drag-and-drop':
+      specifier: ^2.0.1
+      version: 2.0.1
+    '@atlaskit/pragmatic-drag-and-drop-hitbox':
+      specifier: ^2.0.0
+      version: 2.0.0
     '@cap.js/widget':
       specifier: ^0.1.56
       version: 0.1.56
@@ -30,9 +36,6 @@ catalogs:
     vue:
       specifier: ^3.5.38
       version: 3.5.38
-    vue-draggable-plus:
-      specifier: ^0.6.1
-      version: 0.6.1
 
 overrides:
   vite: npm:@voidzero-dev/vite-plus-core@latest
@@ -41,6 +44,12 @@ importers:
 
   .:
     dependencies:
+      '@atlaskit/pragmatic-drag-and-drop':
+        specifier: 'catalog:'
+        version: 2.0.1
+      '@atlaskit/pragmatic-drag-and-drop-hitbox':
+        specifier: 'catalog:'
+        version: 2.0.0
       '@cap.js/wasm':
         specifier: ^0.0.7
         version: 0.0.7
@@ -68,9 +77,6 @@ importers:
       vue:
         specifier: 'catalog:'
         version: 3.5.38(typescript@6.0.3)
-      vue-draggable-plus:
-        specifier: 'catalog:'
-        version: 0.6.1(@types/sortablejs@1.15.9)
       vue-router:
         specifier: ^5.1.0
         version: 5.1.0(@vue/compiler-sfc@3.5.38)(pinia@3.0.4(typescript@6.0.3)(vue@3.5.38(typescript@6.0.3)))(vite@8.0.16(@types/node@25.9.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.100.0)(yaml@2.9.0))(vue@3.5.38(typescript@6.0.3))
@@ -92,6 +98,12 @@ importers:
         version: 0.2.1(@types/node@25.9.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.100.0)(typescript@6.0.3)(vite@8.0.16(@types/node@25.9.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.100.0)(yaml@2.9.0))(yaml@2.9.0)
 
 packages:
+
+  '@atlaskit/pragmatic-drag-and-drop-hitbox@2.0.0':
+    resolution: {integrity: sha512-vkXCB/23pT8YgYU8biGmR9uu0fr9oWoaq2GMSKyiNPk3reA12XVrCdgB2SLBoB24Ic1FOm9PdaQJ9ZSUQdCVpw==}
+
+  '@atlaskit/pragmatic-drag-and-drop@2.0.1':
+    resolution: {integrity: sha512-5iSbCveKuWYh0HijDxfSsYKD2VE0UPObI9jO1pqq+RBk9LzaoOYeKyW0Fobv/6db8HAPcyT3vhRy8bmk5TMcMw==}
 
   '@babel/code-frame@7.29.7':
     resolution: {integrity: sha512-Aup7aUOfpbAUg2ROOJN6Iw5f9DMBlzu0mIkm/malLQFN/YQgO48wCj0Kxa3sEHJvPVFg7siR+qRInwXd2qhQKw==}
@@ -869,9 +881,6 @@ packages:
   '@types/node@25.9.1':
     resolution: {integrity: sha512-xfrlY7UD5rMJk3ZVJP8BNzS28J36YJg+xp+LPXV1TdWxr8uMH5A860QNxYDGQe/ylDSgjxE52Q9VnO7p75tJxg==}
 
-  '@types/sortablejs@1.15.9':
-    resolution: {integrity: sha512-7HP+rZGE2p886PKV9c9OJzLBI6BBJu1O7lJGYnPyG3fS4/duUCcngkNCjsLwIMV+WMqANe3tt4irrXHSIe68OQ==}
-
   '@types/web-bluetooth@0.0.21':
     resolution: {integrity: sha512-oIQLCGWtcFZy2JW77j9k8nHzAOpqMHLQejDA48XXMWH6tjCQHz5RCFz1bzsmROyL6PUm+LLnUiI4BCn221inxA==}
 
@@ -1171,6 +1180,9 @@ packages:
     resolution: {integrity: sha512-lVq/Df7LXlO79MVaaUHztSwWiG9oXoWHlgvNS51v8Dpd4+G4/VIy6qYePTw31nAVls33nUtnfezYeLkYAak9dg==}
     engines: {node: '>=6.0.0'}
     hasBin: true
+
+  bind-event-listener@3.0.0:
+    resolution: {integrity: sha512-PJvH288AWQhKs2v9zyfYdPzlPqf5bXbGMmhmUIY9x4dAUGIWgomO771oBQNwJnMQSnUIXhKu6sgzpBRXTlvb8Q==}
 
   birpc@2.9.0:
     resolution: {integrity: sha512-KrayHS5pBi69Xi9JmvoqrIgYGDkD6mcSe/i6YKi3w5kekCLzrX4+nawcXqrj2tIp50Kw/mT/s3p+GVK0A0sKxw==}
@@ -1599,6 +1611,9 @@ packages:
   quansync@0.2.11:
     resolution: {integrity: sha512-AifT7QEbW9Nri4tAwR5M/uzpBuqfZf+zwaEM/QkzEjj7NBuFD2rBuy0K3dE+8wltbezDV7JMA0WfnCPYRSYbXA==}
 
+  raf-schd@4.0.3:
+    resolution: {integrity: sha512-tQkJl2GRWh83ui2DiPTJz9wEiMN20syf+5oKfB03yYP7ioZcJwsIK8FjrtLwH1m7C7e+Tt2yYBlrOpdT+dyeIQ==}
+
   react-is@17.0.2:
     resolution: {integrity: sha512-w2GsyukL62IJnlaff/nRegPQR94C/XXamvMWmSHRJ4y7Ts/4ocGRmTHvOs8PSE6pB3dWOrD/nueuU5sduBsQ4w==}
 
@@ -1983,15 +1998,6 @@ packages:
       '@vue/composition-api':
         optional: true
 
-  vue-draggable-plus@0.6.1:
-    resolution: {integrity: sha512-FbtQ/fuoixiOfTZzG3yoPl4JAo9HJXRHmBQZFB9x2NYCh6pq0TomHf7g5MUmpaDYv+LU2n6BPq2YN9sBO+FbIg==}
-    peerDependencies:
-      '@types/sortablejs': ^1.15.0
-      '@vue/composition-api': '*'
-    peerDependenciesMeta:
-      '@vue/composition-api':
-        optional: true
-
   vue-router@5.1.0:
     resolution: {integrity: sha512-HAbiLzLEHQwxPgvsbOJDAwtavszEgLwri6XfyrsPECIFez8+59xc9LofWVdc/HEaSRT822lJ8H9Ns38VVond5g==}
     peerDependencies:
@@ -2051,6 +2057,17 @@ packages:
     hasBin: true
 
 snapshots:
+
+  '@atlaskit/pragmatic-drag-and-drop-hitbox@2.0.0':
+    dependencies:
+      '@atlaskit/pragmatic-drag-and-drop': 2.0.1
+      '@babel/runtime': 7.29.7
+
+  '@atlaskit/pragmatic-drag-and-drop@2.0.1':
+    dependencies:
+      '@babel/runtime': 7.29.7
+      bind-event-listener: 3.0.0
+      raf-schd: 4.0.3
 
   '@babel/code-frame@7.29.7':
     dependencies:
@@ -2663,8 +2680,6 @@ snapshots:
       undici-types: 7.24.6
     optional: true
 
-  '@types/sortablejs@1.15.9': {}
-
   '@types/web-bluetooth@0.0.21': {}
 
   '@vitejs/plugin-vue@6.0.7(vite@8.0.16(@types/node@25.9.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.100.0)(yaml@2.9.0))(vue@3.5.38(typescript@6.0.3))':
@@ -2962,6 +2977,8 @@ snapshots:
   async-validator@4.2.5: {}
 
   baseline-browser-mapping@2.10.36: {}
+
+  bind-event-listener@3.0.0: {}
 
   birpc@2.9.0: {}
 
@@ -3334,6 +3351,8 @@ snapshots:
 
   quansync@0.2.11: {}
 
+  raf-schd@4.0.3: {}
+
   react-is@17.0.2: {}
 
   readdirp@5.0.0: {}
@@ -3700,10 +3719,6 @@ snapshots:
   vue-demi@0.14.10(vue@3.5.38(typescript@6.0.3)):
     dependencies:
       vue: 3.5.38(typescript@6.0.3)
-
-  vue-draggable-plus@0.6.1(@types/sortablejs@1.15.9):
-    dependencies:
-      '@types/sortablejs': 1.15.9
 
   vue-router@5.1.0(@vue/compiler-sfc@3.5.38)(pinia@3.0.4(typescript@6.0.3)(vue@3.5.38(typescript@6.0.3)))(vite@8.0.16(@types/node@25.9.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.100.0)(yaml@2.9.0))(vue@3.5.38(typescript@6.0.3)):
     dependencies:

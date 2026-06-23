@@ -6,10 +6,10 @@
 
 - 动态档案查询改用 MyBatis，动态结果使用 `Map<String, Object>` 接收。
 - 项目已配置 `mybatis.configuration.call-setters-on-nulls: true`，动态列值为 `null` 时也应保留 Map key；实现时补测试锁定这个行为。
-- 精确搜索字段、全文检索字段、唯一规则都作为字段元数据和规则元数据管理，不把检索能力硬编码在业务查询里。
-- 全宗编码从 `am_archive_record` 移到各分类动态表，作为固定精确搜索字段；分类动态表固定包含 `fonds_code` 和 `deleted_flag`。
+- 精确搜索字段和唯一规则作为字段元数据和规则元数据管理；全文检索不配置字段开关，固定拼接所有启用动态字段。
+- `am_archive_record` 保留全宗编码和全宗名称作为冗余快照；全宗编码同时保存到各分类动态表，作为固定精确搜索字段和唯一规则范围字段；分类动态表固定包含 `fonds_code` 和 `deleted_flag`。
 - 唯一规则不使用 `key_text`、`key_hash` 或唯一键投影表，而是通过动态 DDL 在分类动态表上创建部分唯一索引。
-- 全文检索采用“所有全文字段拼接成一个搜索文本”的投影模型，先建全文投影表和索引；历史索引重建单独处理。
+- 全文检索采用“所有启用动态字段拼接成一个搜索文本”的投影模型，先建全文投影表和索引；历史索引重建单独处理。
 - 首版全文检索直接使用已安装的 PostgreSQL `pg_textsearch` 扩展和 BM25 投影表模型。
 
 ## 数据模型调整
@@ -19,13 +19,11 @@
 在 `am_archive_field` 增加：
 
 - `exact_searchable boolean not null default false`
-- `full_text_searchable boolean not null default false`
 
 含义：
 
 - `exact_searchable`：字段允许作为精确筛选条件，并可为该字段生成普通索引。
-- `full_text_searchable`：字段进入全文拼接投影。
-- 两者可以同时为 true。
+- 全文检索不暴露字段级配置，投影维护时拼接所有启用动态字段。
 - 枚举仍然是运行时动态选项，不新增物理字段类型。
 
 ### 唯一规则表
@@ -69,6 +67,8 @@ am_archive_unique_rule_field
 
 ```sql
 id
+fonds_code
+fonds_name
 category_code
 category_name
 archive_no
@@ -91,7 +91,8 @@ updated_at
 
 说明：
 
-- `archive_year`、`archive_no`、`archive_status`、`process_status` 等固定字段不进入 `am_archive_field`。
+- `fonds_code`、`fonds_name`、`archive_year`、`archive_no`、`archive_status`、`process_status` 等固定字段不进入 `am_archive_field`。
+- 主表全宗字段是记录创建或更新时固化的冗余快照，用于跨分类概览、审计和详情基础信息。
 - 前端新增和编辑表单必须在固定字段区域编辑这些字段，动态字段区域只渲染分类字段定义表中的字段。
 - 后端字段定义接口必须拒绝使用固定字段编码创建动态字段。
 
@@ -111,7 +112,7 @@ updated_at timestamp not null default localtimestamp
 
 - `fonds_code` 是每张分类动态表的固定列，固定支持精确筛选。
 - `deleted_flag` 用于动态表部分唯一索引释放逻辑删除记录占用的唯一值。
-- `am_archive_record` 不再保存 `fonds_code` 和 `fonds_name`。
+- `am_archive_record` 同步保存 `fonds_code` 和 `fonds_name` 冗余快照；分类动态表 `fonds_code` 是分类内筛选和唯一索引执行字段。
 
 唯一规则对应的索引示例：
 
@@ -148,10 +149,10 @@ am_archive_record_search
 
 说明：
 
-- `search_text` 是该记录所有 `full_text_searchable=true` 字段值拼接后的文本。
+- `search_text` 是该记录所有启用动态字段的字段名称和值拼接后的文本。
 - 分类、全宗、删除、锁定、档案状态和流程状态都以主表和分类动态表为准，不复制到搜索投影表。
-- 新增、修改、删除和历史重建先写入全文投影 outbox，由消费端回读主表、分类动态表和字段定义后维护投影。
-- 删除档案记录时通过 outbox 删除对应搜索投影行，不在搜索投影表保存删除状态。
+- 新增、修改、删除和历史重建维护全文投影；编辑和重建路径回读主表、分类动态表和字段定义后维护投影。
+- 删除档案记录时删除对应搜索投影行，不在搜索投影表保存删除状态。
 
 ### 全文检索投影 outbox
 
@@ -200,9 +201,9 @@ am_archive_record_audit
 
 ### 1. OpenSpec
 
-- 更新 `archive-metadata` 规格：字段定义支持精确搜索和全文检索标记。
+- 更新 `archive-metadata` 规格：字段定义只支持精确搜索标记，全文检索不暴露字段级开关。
 - 新增唯一规则和全文投影要求。
-- 更新 `archive-record-routing` 规格：查询支持精确筛选和全文关键词。
+- 更新 `archive-record-routing` 规格：主表保留全宗冗余快照，查询支持精确筛选和全文关键词。
 - 明确历史全文索引重建不阻塞字段定义保存。
 
 ### 2. 迁移脚本
@@ -210,7 +211,7 @@ am_archive_record_audit
 在当前版本未到 `1.0.0` 的前提下，继续直接调整目标结构：
 
 - 修改 `V20260622_0100__create_archive_tables.sql`。
-- 从 `am_archive_record` 移除全宗字段。
+- 保留 `am_archive_record` 的全宗编码和全宗名称快照字段。
 - 动态分类表固定增加 `fonds_code` 和 `deleted_flag`。
 - 增加字段定义检索标记。
 - 增加唯一规则、唯一规则字段、全文搜索投影表。
@@ -289,9 +290,9 @@ keyword: string
 
 投影维护：
 
-- 创建记录后，从动态字段里取 `full_text_searchable=true` 字段值拼接 `search_text`。
+- 创建记录后，从所有启用动态字段取字段名称和值拼接 `search_text`。
 - 删除记录时标记投影删除。
-- 字段定义改为全文字段后，不同步重建历史数据，只记录需要重建。
+- 字段定义变更后，不同步重建历史数据，只记录需要重建。
 
 历史重建：
 

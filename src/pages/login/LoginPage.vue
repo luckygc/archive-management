@@ -73,6 +73,9 @@ function handleCapReset() {
 }
 
 function handleCapError(event: Event) {
+  if (powToken.value) {
+    return;
+  }
   const detail = (event as CapErrorEvent).detail;
   powToken.value = "";
   securityMessage.value = detail?.message

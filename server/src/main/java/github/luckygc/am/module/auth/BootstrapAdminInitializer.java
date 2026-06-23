@@ -57,7 +57,7 @@ public class BootstrapAdminInitializer implements ApplicationRunner {
         user.setUsername(username);
         user.setPassword(passwordEncoder.encode(password));
         user.setDisplayName(displayName);
-        user = userRepository.save(user);
+        user = userRepository.insert(user);
 
         for (String roleName : properties.getRoleNames()) {
             grantRole(user.getId(), roleName);
@@ -72,7 +72,7 @@ public class BootstrapAdminInitializer implements ApplicationRunner {
         AuthUserRoleRelation relation = new AuthUserRoleRelation();
         relation.setUserId(userId);
         relation.setRoleId(role.getId());
-        userRoleRelationRepository.save(relation);
+        userRoleRelationRepository.insert(relation);
     }
 
     private static String requireText(String value, String propertyName) {

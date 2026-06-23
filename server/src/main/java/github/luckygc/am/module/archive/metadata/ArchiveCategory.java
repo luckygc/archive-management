@@ -10,16 +10,20 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+
+import github.luckygc.am.common.audit.CreationAuditable;
+import github.luckygc.am.common.audit.UpdateAuditable;
 
 import lombok.Data;
 
 @Data
 @Entity
 @Table(name = "am_archive_category")
-public class ArchiveCategory {
+public class ArchiveCategory implements CreationAuditable, UpdateAuditable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -59,6 +63,10 @@ public class ArchiveCategory {
 
     @Column(name = "deleted_flag", nullable = false)
     private boolean deletedFlag;
+
+    @Version
+    @Column(nullable = false)
+    private int version;
 
     @Column(name = "created_by")
     private Long createdBy;

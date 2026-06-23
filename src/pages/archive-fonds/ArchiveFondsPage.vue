@@ -14,7 +14,7 @@ defineOptions({ name: "ArchiveFondsPage" });
 const loading = ref(false);
 const saving = ref(false);
 const dialogVisible = ref(false);
-const editingId = ref<number>();
+const editingId = ref<string>();
 const rows = ref<ArchiveFondsDto[]>([]);
 const form = reactive<ArchiveFondsCommand>({
   fondsCode: "",

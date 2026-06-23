@@ -13,6 +13,7 @@ import jakarta.persistence.Table;
 
 import org.hibernate.annotations.CreationTimestamp;
 
+import github.luckygc.am.common.audit.CreationAuditable;
 import github.luckygc.am.common.storage.StorageType;
 
 import lombok.Data;
@@ -20,7 +21,7 @@ import lombok.Data;
 @Data
 @Entity
 @Table(name = "am_storage_object")
-public class StorageObject {
+public class StorageObject implements CreationAuditable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

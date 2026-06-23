@@ -3,7 +3,6 @@ package github.luckygc.am.module.archive.metadata;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -48,112 +47,126 @@ public class ArchiveMetadataService {
     private static final int DEFAULT_DECIMAL_SCALE = 2;
 
     private final ArchiveMapper archiveMapper;
+    private final ArchiveFondsDataRepository fondsRepository;
+    private final ArchiveCategoryDataRepository categoryRepository;
+    private final ArchiveFieldDataRepository fieldRepository;
+    private final ArchiveFieldLayoutDataRepository fieldLayoutRepository;
 
-    public ArchiveMetadataService(ArchiveMapper archiveMapper) {
+    public ArchiveMetadataService(
+            ArchiveMapper archiveMapper,
+            ArchiveFondsDataRepository fondsRepository,
+            ArchiveCategoryDataRepository categoryRepository,
+            ArchiveFieldDataRepository fieldRepository,
+            ArchiveFieldLayoutDataRepository fieldLayoutRepository) {
         this.archiveMapper = archiveMapper;
+        this.fondsRepository = fondsRepository;
+        this.categoryRepository = categoryRepository;
+        this.fieldRepository = fieldRepository;
+        this.fieldLayoutRepository = fieldLayoutRepository;
     }
 
     public List<ArchiveFondsDto> listFonds(Boolean enabled) {
-        return archiveMapper.listFonds(enabled).stream().map(this::mapFonds).toList();
+        List<ArchiveFonds> fonds =
+                enabled == null
+                        ? fondsRepository.list(false)
+                        : fondsRepository.list(false, enabled);
+        return fonds.stream().map(this::mapFonds).toList();
     }
 
     @Transactional
-    public ArchiveFondsDto createFonds(ArchiveFondsRequest request) {
+    public ArchiveFondsDto createFonds(ArchiveFondsRequest request, Long userId) {
         validateRequired(request.fondsCode(), "全宗编码不能为空");
         validateRequired(request.fondsName(), "全宗名称不能为空");
-        Long id =
-                archiveMapper.insertFonds(
-                        request.fondsCode().trim(),
-                        request.fondsName().trim(),
-                        request.enabled() == null || request.enabled(),
-                        request.sortOrder() == null ? 0 : request.sortOrder());
-        return getFonds(id);
+        ArchiveFonds fonds = new ArchiveFonds();
+        fonds.setFondsCode(request.fondsCode().trim());
+        fonds.setFondsName(request.fondsName().trim());
+        fonds.setEnabled(request.enabled() == null || request.enabled());
+        fonds.setSortOrder(request.sortOrder() == null ? 0 : request.sortOrder());
+        fonds.setCreatedBy(userId);
+        fonds.setUpdatedBy(userId);
+        return mapFonds(fondsRepository.insert(fonds));
     }
 
     @Transactional
-    public ArchiveFondsDto updateFonds(Long id, ArchiveFondsRequest request) {
+    public ArchiveFondsDto updateFonds(Long id, ArchiveFondsRequest request, Long userId) {
         requireId(id);
         validateRequired(request.fondsCode(), "全宗编码不能为空");
         validateRequired(request.fondsName(), "全宗名称不能为空");
-        int updated =
-                archiveMapper.updateFonds(
-                        id,
-                        request.fondsCode().trim(),
-                        request.fondsName().trim(),
-                        request.enabled() == null || request.enabled(),
-                        request.sortOrder() == null ? 0 : request.sortOrder());
-        if (updated == 0) {
-            throw notFound("全宗不存在");
-        }
-        return getFonds(id);
+        ArchiveFonds fonds = fondsRepository.find(id, false).orElseThrow(() -> notFound("全宗不存在"));
+        fonds.setFondsCode(request.fondsCode().trim());
+        fonds.setFondsName(request.fondsName().trim());
+        fonds.setEnabled(request.enabled() == null || request.enabled());
+        fonds.setSortOrder(request.sortOrder() == null ? 0 : request.sortOrder());
+        fonds.setUpdatedBy(userId);
+        return mapFonds(fondsRepository.update(fonds));
     }
 
     @Transactional
     public void deleteFonds(Long id, Long userId) {
         requireId(id);
-        int updated = archiveMapper.deleteFonds(id);
-        if (updated == 0) {
-            throw notFound("全宗不存在");
-        }
+        ArchiveFonds fonds = fondsRepository.find(id, false).orElseThrow(() -> notFound("全宗不存在"));
+        fonds.setDeletedFlag(true);
+        fonds.setUpdatedBy(userId);
+        fondsRepository.update(fonds);
     }
 
     public ArchiveFondsDto getFonds(Long id) {
         requireId(id);
-        Map<String, Object> row = archiveMapper.getFonds(id);
-        if (row == null) {
-            throw notFound("全宗不存在");
-        }
-        return mapFonds(row);
+        return fondsRepository
+                .find(id, false)
+                .map(this::mapFonds)
+                .orElseThrow(() -> notFound("全宗不存在"));
     }
 
     public ArchiveFondsDto getFondsByCode(String fondsCode) {
         validateRequired(fondsCode, "全宗编码不能为空");
-        Map<String, Object> row = archiveMapper.getFondsByCode(fondsCode.trim());
-        if (row == null) {
-            throw notFound("全宗不存在");
-        }
-        return mapFonds(row);
+        return fondsRepository
+                .find(fondsCode.trim(), false)
+                .map(this::mapFonds)
+                .orElseThrow(() -> notFound("全宗不存在"));
     }
 
     public List<ArchiveCategoryDto> listCategories(Boolean enabled) {
-        return archiveMapper.listCategories(enabled).stream().map(this::mapCategory).toList();
+        List<ArchiveCategory> categories =
+                enabled == null
+                        ? categoryRepository.list(false)
+                        : categoryRepository.list(false, enabled);
+        return categories.stream().map(this::mapCategory).toList();
     }
 
     @Transactional
-    public ArchiveCategoryDto createCategory(ArchiveCategoryRequest request) {
+    public ArchiveCategoryDto createCategory(ArchiveCategoryRequest request, Long userId) {
         validateRequired(request.categoryCode(), "分类编码不能为空");
         validateRequired(request.categoryName(), "分类名称不能为空");
         validateParentCategory(null, request.parentId());
-        Long id =
-                archiveMapper.insertCategory(
-                        request.parentId(),
-                        request.categoryCode().trim(),
-                        request.categoryName().trim(),
-                        normalizeManagementMode(request.managementMode()).value(),
-                        request.enabled() == null || request.enabled(),
-                        request.sortOrder() == null ? 0 : request.sortOrder());
-        return getCategory(id);
+        ArchiveCategory category = new ArchiveCategory();
+        category.setParentId(request.parentId());
+        category.setCategoryCode(request.categoryCode().trim());
+        category.setCategoryName(request.categoryName().trim());
+        category.setManagementMode(normalizeManagementMode(request.managementMode()));
+        category.setEnabled(request.enabled() == null || request.enabled());
+        category.setSortOrder(request.sortOrder() == null ? 0 : request.sortOrder());
+        category.setCreatedBy(userId);
+        category.setUpdatedBy(userId);
+        return mapCategory(categoryRepository.insert(category));
     }
 
     @Transactional
-    public ArchiveCategoryDto updateCategory(Long id, ArchiveCategoryRequest request) {
+    public ArchiveCategoryDto updateCategory(Long id, ArchiveCategoryRequest request, Long userId) {
         requireId(id);
         validateRequired(request.categoryCode(), "分类编码不能为空");
         validateRequired(request.categoryName(), "分类名称不能为空");
         validateParentCategory(id, request.parentId());
-        int updated =
-                archiveMapper.updateCategory(
-                        id,
-                        request.parentId(),
-                        request.categoryCode().trim(),
-                        request.categoryName().trim(),
-                        normalizeManagementMode(request.managementMode()).value(),
-                        request.enabled() == null || request.enabled(),
-                        request.sortOrder() == null ? 0 : request.sortOrder());
-        if (updated == 0) {
-            throw notFound("档案分类不存在");
-        }
-        return getCategory(id);
+        ArchiveCategory category =
+                categoryRepository.find(id, false).orElseThrow(() -> notFound("档案分类不存在"));
+        category.setParentId(request.parentId());
+        category.setCategoryCode(request.categoryCode().trim());
+        category.setCategoryName(request.categoryName().trim());
+        category.setManagementMode(normalizeManagementMode(request.managementMode()));
+        category.setEnabled(request.enabled() == null || request.enabled());
+        category.setSortOrder(request.sortOrder() == null ? 0 : request.sortOrder());
+        category.setUpdatedBy(userId);
+        return mapCategory(categoryRepository.update(category));
     }
 
     @Transactional
@@ -162,26 +175,24 @@ public class ArchiveMetadataService {
         if (archiveMapper.countChildCategories(id) > 0) {
             throw badRequest("存在子分类，不能删除");
         }
-        int updated = archiveMapper.deleteCategory(id);
-        if (updated == 0) {
-            throw notFound("档案分类不存在");
-        }
+        ArchiveCategory category =
+                categoryRepository.find(id, false).orElseThrow(() -> notFound("档案分类不存在"));
+        category.setDeletedFlag(true);
+        category.setUpdatedBy(userId);
+        categoryRepository.update(category);
     }
 
     public ArchiveCategoryDto getCategory(Long id) {
         requireId(id);
-        Map<String, Object> row = archiveMapper.getCategory(id);
-        if (row == null) {
-            throw notFound("档案分类不存在");
-        }
-        return mapCategory(row);
+        return categoryRepository
+                .find(id, false)
+                .map(this::mapCategory)
+                .orElseThrow(() -> notFound("档案分类不存在"));
     }
 
     public List<ArchiveFieldDto> listFields(Long categoryId) {
         requireId(categoryId);
-        return archiveMapper.listFields(categoryId, null, null).stream()
-                .map(this::mapField)
-                .toList();
+        return fieldRepository.list(categoryId, false).stream().map(this::mapField).toList();
     }
 
     public List<ArchiveFieldDto> listEnabledFields(Long categoryId) {
@@ -190,8 +201,8 @@ public class ArchiveMetadataService {
 
     public List<ArchiveFieldDto> listEnabledFields(Long categoryId, ArchiveLevel archiveLevel) {
         requireId(categoryId);
-        return archiveMapper
-                .listFields(categoryId, normalizeArchiveLevel(archiveLevel).value(), true)
+        return fieldRepository
+                .list(categoryId, normalizeArchiveLevel(archiveLevel), false, true)
                 .stream()
                 .map(this::mapField)
                 .toList();
@@ -205,41 +216,23 @@ public class ArchiveMetadataService {
     public List<ArchiveFieldDto> listEffectiveFields(
             Long categoryId, ArchiveLevel archiveLevel, ArchiveLayoutSurface surface, Long userId) {
         List<ArchiveFieldDto> fields = listEnabledFields(categoryId, archiveLevel);
-        return applyEffectiveLayout(categoryId, surface, userId, fields);
+        return applyEffectiveLayout(categoryId, surface, fields);
     }
 
     public ArchiveFieldLayoutDto getFieldLayout(
-            Long categoryId, ArchiveLayoutSurface surface, String scope, Long userId) {
-        return getFieldLayout(categoryId, ArchiveLevel.item, surface, scope, userId);
-    }
-
-    public ArchiveFieldLayoutDto getFieldLayout(
-            Long categoryId,
-            ArchiveLevel archiveLevel,
-            ArchiveLayoutSurface surface,
-            String scope,
-            Long userId) {
+            Long categoryId, ArchiveLevel archiveLevel, ArchiveLayoutSurface surface) {
         requireId(categoryId);
         getCategory(categoryId);
         ArchiveLevel normalizedLevel = normalizeArchiveLevel(archiveLevel);
-        ArchiveLayoutScope layoutScope = ArchiveLayoutScope.from(scope);
-        if (layoutScope == ArchiveLayoutScope.mine) {
-            requireUser(userId);
-        }
         List<ArchiveFieldDto> fields = listEnabledFields(categoryId, normalizedLevel);
-        List<ArchiveFieldLayoutItemDto> items =
-                switch (layoutScope) {
-                    case public_ -> publicLayoutItems(categoryId, surface, fields);
-                    case mine -> effectiveLayoutItems(categoryId, surface, userId, fields);
-                    case effective -> effectiveLayoutItems(categoryId, surface, userId, fields);
-                };
-        return new ArchiveFieldLayoutDto(surface, layoutScope.value(), items);
+        return new ArchiveFieldLayoutDto(
+                surface, "public", publicLayoutItems(categoryId, surface, fields));
     }
 
     @Transactional
     public ArchiveFieldLayoutDto savePublicFieldLayout(
             Long categoryId, ArchiveLayoutSurface surface, ArchiveFieldLayoutRequest request) {
-        return savePublicFieldLayout(categoryId, ArchiveLevel.item, surface, request);
+        return savePublicFieldLayout(categoryId, ArchiveLevel.item, surface, request, null);
     }
 
     @Transactional
@@ -247,70 +240,28 @@ public class ArchiveMetadataService {
             Long categoryId,
             ArchiveLevel archiveLevel,
             ArchiveLayoutSurface surface,
-            ArchiveFieldLayoutRequest request) {
-        saveFieldLayout(categoryId, archiveLevel, surface, null, true, request);
-        return getFieldLayout(
-                categoryId, archiveLevel, surface, ArchiveLayoutScope.public_.value(), null);
-    }
-
-    @Transactional
-    public ArchiveFieldLayoutDto saveMyFieldLayout(
-            Long categoryId,
-            ArchiveLayoutSurface surface,
             ArchiveFieldLayoutRequest request,
             Long userId) {
-        return saveMyFieldLayout(categoryId, ArchiveLevel.item, surface, request, userId);
+        saveFieldLayout(categoryId, archiveLevel, surface, request, userId);
+        return getFieldLayout(categoryId, archiveLevel, surface);
     }
 
     @Transactional
-    public ArchiveFieldLayoutDto saveMyFieldLayout(
-            Long categoryId,
-            ArchiveLevel archiveLevel,
-            ArchiveLayoutSurface surface,
-            ArchiveFieldLayoutRequest request,
-            Long userId) {
-        requireUser(userId);
-        saveFieldLayout(categoryId, archiveLevel, surface, userId, false, request);
-        return getFieldLayout(
-                categoryId, archiveLevel, surface, ArchiveLayoutScope.mine.value(), userId);
-    }
-
-    @Transactional
-    public ArchiveFieldDto createField(Long categoryId, ArchiveFieldRequest request) {
+    public ArchiveFieldDto createField(Long categoryId, ArchiveFieldRequest request, Long userId) {
         requireId(categoryId);
         ArchiveCategoryDto category = getCategory(categoryId);
         FieldValues values = validateFieldRequest(request);
         ensureArchiveLevelAllowed(category, values.archiveLevel());
-        Long id =
-                archiveMapper.insertField(
-                        categoryId,
-                        values.archiveLevel().value(),
-                        values.fieldCode(),
-                        values.fieldName(),
-                        values.fieldType().value(),
-                        toColumnName(values.fieldCode()),
-                        values.textLength(),
-                        values.decimalPrecision(),
-                        values.decimalScale(),
-                        values.editControl().value(),
-                        values.listVisible(),
-                        values.listWidth(),
-                        values.listSortOrder(),
-                        values.detailVisible(),
-                        values.detailColSpan(),
-                        values.detailSortOrder(),
-                        values.editVisible(),
-                        values.editColSpan(),
-                        values.editSortOrder(),
-                        values.exactSearchable(),
-                        values.fullTextSearchable(),
-                        values.enabled(),
-                        values.sortOrder());
-        return getField(id);
+        ArchiveField field = new ArchiveField();
+        applyFieldValues(field, categoryId, values);
+        field.setCreatedBy(userId);
+        field.setUpdatedBy(userId);
+        return mapField(fieldRepository.insert(field));
     }
 
     @Transactional
-    public ArchiveFieldDto updateField(Long categoryId, Long fieldId, ArchiveFieldRequest request) {
+    public ArchiveFieldDto updateField(
+            Long categoryId, Long fieldId, ArchiveFieldRequest request, Long userId) {
         requireId(categoryId);
         requireId(fieldId);
         FieldValues values = validateFieldRequest(request);
@@ -327,36 +278,11 @@ public class ArchiveMetadataService {
                 && isDynamicTableBuilt(category, current.archiveLevel())) {
             throw badRequest("已建字段不允许修改适用层级");
         }
-        int updated =
-                archiveMapper.updateField(
-                        fieldId,
-                        categoryId,
-                        values.archiveLevel().value(),
-                        values.fieldCode(),
-                        values.fieldName(),
-                        values.fieldType().value(),
-                        toColumnName(values.fieldCode()),
-                        values.textLength(),
-                        values.decimalPrecision(),
-                        values.decimalScale(),
-                        values.editControl().value(),
-                        values.listVisible(),
-                        values.listWidth(),
-                        values.listSortOrder(),
-                        values.detailVisible(),
-                        values.detailColSpan(),
-                        values.detailSortOrder(),
-                        values.editVisible(),
-                        values.editColSpan(),
-                        values.editSortOrder(),
-                        values.exactSearchable(),
-                        values.fullTextSearchable(),
-                        values.enabled(),
-                        values.sortOrder());
-        if (updated == 0) {
-            throw notFound("字段定义不存在");
-        }
-        ArchiveFieldDto updatedField = getField(fieldId);
+        ArchiveField field =
+                fieldRepository.find(fieldId, false).orElseThrow(() -> notFound("字段定义不存在"));
+        applyFieldValues(field, categoryId, values);
+        field.setUpdatedBy(userId);
+        ArchiveFieldDto updatedField = mapField(fieldRepository.update(field));
         syncDynamicColumnAfterFieldUpdate(category, current, updatedField);
         return updatedField;
     }
@@ -365,28 +291,37 @@ public class ArchiveMetadataService {
     public void deleteField(Long categoryId, Long fieldId, Long userId) {
         requireId(categoryId);
         requireId(fieldId);
-        int updated = archiveMapper.deleteField(fieldId, categoryId);
-        if (updated == 0) {
+        ArchiveField field =
+                fieldRepository.find(fieldId, false).orElseThrow(() -> notFound("字段定义不存在"));
+        if (!field.getCategoryId().equals(categoryId)) {
             throw notFound("字段定义不存在");
         }
+        field.setDeletedFlag(true);
+        field.setUpdatedBy(userId);
+        fieldRepository.update(field);
     }
 
     public ArchiveFieldDto getField(Long id) {
         requireId(id);
-        Map<String, Object> row = archiveMapper.getField(id);
-        if (row == null) {
-            throw notFound("字段定义不存在");
-        }
-        return mapField(row);
+        return fieldRepository
+                .find(id, false)
+                .map(this::mapField)
+                .orElseThrow(() -> notFound("字段定义不存在"));
     }
 
     @Transactional
     public ArchiveCategoryDto buildTable(Long categoryId) {
-        return buildTable(categoryId, ArchiveLevel.item);
+        return buildTable(categoryId, ArchiveLevel.item, null);
     }
 
     @Transactional
     public ArchiveCategoryDto buildTable(Long categoryId, ArchiveLevel requestedLevel) {
+        return buildTable(categoryId, requestedLevel, null);
+    }
+
+    @Transactional
+    public ArchiveCategoryDto buildTable(
+            Long categoryId, ArchiveLevel requestedLevel, Long userId) {
         ArchiveCategoryDto category = getCategory(categoryId);
         ArchiveLevel archiveLevel = normalizeArchiveLevel(requestedLevel);
         ensureArchiveLevelAllowed(category, archiveLevel);
@@ -436,7 +371,11 @@ public class ArchiveMetadataService {
             }
         }
         archiveMapper.updateCategoryTableStatus(
-                categoryId, archiveLevel.value(), tableName, ArchiveTableStatus.built.value());
+                categoryId,
+                archiveLevel.value(),
+                tableName,
+                ArchiveTableStatus.built.value(),
+                userId);
         for (ArchiveUniqueConstraintDto constraint : listUniqueConstraints(categoryId)) {
             if (constraint.enabled() && constraint.archiveLevel() == archiveLevel) {
                 createUniqueIndex(categoryId, tableName, constraint);
@@ -458,7 +397,7 @@ public class ArchiveMetadataService {
 
     @Transactional
     public ArchiveUniqueConstraintDto createUniqueConstraint(
-            Long categoryId, ArchiveUniqueConstraintRequest request) {
+            Long categoryId, ArchiveUniqueConstraintRequest request, Long userId) {
         requireId(categoryId);
         ArchiveCategoryDto category = getCategory(categoryId);
         UniqueConstraintValues values = validateUniqueConstraintRequest(categoryId, request);
@@ -473,9 +412,10 @@ public class ArchiveMetadataService {
                         values.constraintName(),
                         values.includeFonds(),
                         indexName,
-                        values.enabled());
+                        values.enabled(),
+                        userId);
         replaceUniqueConstraintFields(id, values.fieldIds());
-        markUniqueConstraintFieldsSearchable(category, values.fieldIds());
+        markUniqueConstraintFieldsSearchable(category, values.fieldIds(), userId);
         ArchiveUniqueConstraintDto constraint = getUniqueConstraint(id);
         if (constraint.enabled() && isDynamicTableBuilt(category, constraint.archiveLevel())) {
             createUniqueIndex(
@@ -486,7 +426,10 @@ public class ArchiveMetadataService {
 
     @Transactional
     public ArchiveUniqueConstraintDto updateUniqueConstraint(
-            Long categoryId, Long constraintId, ArchiveUniqueConstraintRequest request) {
+            Long categoryId,
+            Long constraintId,
+            ArchiveUniqueConstraintRequest request,
+            Long userId) {
         requireId(categoryId);
         requireId(constraintId);
         ArchiveCategoryDto category = getCategory(categoryId);
@@ -508,12 +451,13 @@ public class ArchiveMetadataService {
                         values.constraintName(),
                         values.includeFonds(),
                         indexName,
-                        values.enabled());
+                        values.enabled(),
+                        userId);
         if (updated == 0) {
             throw notFound("唯一约束不存在");
         }
         replaceUniqueConstraintFields(constraintId, values.fieldIds());
-        markUniqueConstraintFieldsSearchable(category, values.fieldIds());
+        markUniqueConstraintFieldsSearchable(category, values.fieldIds(), userId);
         ArchiveUniqueConstraintDto constraint = getUniqueConstraint(constraintId);
         if (constraint.enabled() && isDynamicTableBuilt(category, constraint.archiveLevel())) {
             createUniqueIndex(
@@ -523,7 +467,7 @@ public class ArchiveMetadataService {
     }
 
     @Transactional
-    public void deleteUniqueConstraint(Long categoryId, Long constraintId) {
+    public void deleteUniqueConstraint(Long categoryId, Long constraintId, Long userId) {
         requireId(categoryId);
         requireId(constraintId);
         ArchiveUniqueConstraintDto constraint = getUniqueConstraint(constraintId);
@@ -531,7 +475,7 @@ public class ArchiveMetadataService {
             throw notFound("唯一约束不存在");
         }
         dropIndexIfExists(constraint.indexName());
-        int updated = archiveMapper.deleteUniqueConstraint(constraintId, categoryId);
+        int updated = archiveMapper.deleteUniqueConstraint(constraintId, categoryId, userId);
         if (updated == 0) {
             throw notFound("唯一约束不存在");
         }
@@ -560,11 +504,11 @@ public class ArchiveMetadataService {
     }
 
     private void markUniqueConstraintFieldsSearchable(
-            ArchiveCategoryDto category, List<Long> fieldIds) {
+            ArchiveCategoryDto category, List<Long> fieldIds, Long userId) {
         if (fieldIds.isEmpty()) {
             return;
         }
-        archiveMapper.markFieldsExactSearchable(category.id(), fieldIds);
+        archiveMapper.markFieldsExactSearchable(category.id(), fieldIds, userId);
         listFields(category.id()).stream()
                 .filter(field -> fieldIds.contains(field.id()))
                 .filter(field -> isDynamicTableBuilt(category, field.archiveLevel()))
@@ -739,7 +683,6 @@ public class ArchiveMetadataService {
                         ? layoutOrder(request.sortOrder())
                         : request.editSortOrder(),
                 request.exactSearchable() != null && request.exactSearchable(),
-                request.fullTextSearchable() != null && request.fullTextSearchable(),
                 request.enabled() == null || request.enabled(),
                 request.sortOrder() == null ? 0 : request.sortOrder());
     }
@@ -763,6 +706,31 @@ public class ArchiveMetadataService {
 
     private ArchiveManagementMode normalizeManagementMode(ArchiveManagementMode managementMode) {
         return managementMode == null ? ArchiveManagementMode.item_only : managementMode;
+    }
+
+    private void applyFieldValues(ArchiveField field, Long categoryId, FieldValues values) {
+        field.setCategoryId(categoryId);
+        field.setArchiveLevel(values.archiveLevel());
+        field.setFieldCode(values.fieldCode());
+        field.setFieldName(values.fieldName());
+        field.setFieldType(values.fieldType());
+        field.setColumnName(toColumnName(values.fieldCode()));
+        field.setTextLength(values.textLength());
+        field.setDecimalPrecision(values.decimalPrecision());
+        field.setDecimalScale(values.decimalScale());
+        field.setEditControl(values.editControl());
+        field.setListVisible(values.listVisible());
+        field.setListWidth(values.listWidth());
+        field.setListSortOrder(values.listSortOrder());
+        field.setDetailVisible(values.detailVisible());
+        field.setDetailColSpan(values.detailColSpan());
+        field.setDetailSortOrder(values.detailSortOrder());
+        field.setEditVisible(values.editVisible());
+        field.setEditColSpan(values.editColSpan());
+        field.setEditSortOrder(values.editSortOrder());
+        field.setExactSearchable(values.exactSearchable());
+        field.setEnabled(values.enabled());
+        field.setSortOrder(values.sortOrder());
     }
 
     private ArchiveFieldControl defaultEditControl(
@@ -818,12 +786,9 @@ public class ArchiveMetadataService {
     }
 
     private List<ArchiveFieldDto> applyEffectiveLayout(
-            Long categoryId,
-            ArchiveLayoutSurface surface,
-            Long userId,
-            List<ArchiveFieldDto> fields) {
+            Long categoryId, ArchiveLayoutSurface surface, List<ArchiveFieldDto> fields) {
         Map<Long, ArchiveFieldLayoutItemDto> layoutsByFieldId =
-                effectiveLayoutItems(categoryId, surface, userId, fields).stream()
+                publicLayoutItems(categoryId, surface, fields).stream()
                         .collect(
                                 java.util.stream.Collectors.toMap(
                                         ArchiveFieldLayoutItemDto::fieldId, item -> item));
@@ -836,36 +801,14 @@ public class ArchiveMetadataService {
                 .toList();
     }
 
-    private List<ArchiveFieldLayoutItemDto> effectiveLayoutItems(
-            Long categoryId,
-            ArchiveLayoutSurface surface,
-            Long userId,
-            List<ArchiveFieldDto> fields) {
-        if (userId != null) {
-            List<ArchiveFieldLayoutItemDto> personalItems =
-                    layoutItems(categoryId, surface, userId, false, fields);
-            if (!personalItems.isEmpty()) {
-                return personalItems;
-            }
-        }
-        List<ArchiveFieldLayoutItemDto> publicItems =
-                layoutItems(categoryId, surface, null, true, fields);
-        return publicItems.isEmpty() ? defaultLayoutItems(surface, fields) : publicItems;
-    }
-
     private List<ArchiveFieldLayoutItemDto> publicLayoutItems(
             Long categoryId, ArchiveLayoutSurface surface, List<ArchiveFieldDto> fields) {
-        List<ArchiveFieldLayoutItemDto> publicItems =
-                layoutItems(categoryId, surface, null, true, fields);
+        List<ArchiveFieldLayoutItemDto> publicItems = layoutItems(categoryId, surface, fields);
         return publicItems.isEmpty() ? defaultLayoutItems(surface, fields) : publicItems;
     }
 
     private List<ArchiveFieldLayoutItemDto> layoutItems(
-            Long categoryId,
-            ArchiveLayoutSurface surface,
-            Long userId,
-            boolean publicLayout,
-            List<ArchiveFieldDto> fields) {
+            Long categoryId, ArchiveLayoutSurface surface, List<ArchiveFieldDto> fields) {
         Map<Long, ArchiveFieldDto> fieldsById =
                 fields.stream()
                         .collect(
@@ -873,15 +816,12 @@ public class ArchiveMetadataService {
                                         ArchiveFieldDto::id, field -> field));
         ArchiveLevel archiveLevel =
                 fields.isEmpty() ? ArchiveLevel.item : fields.get(0).archiveLevel();
-        return archiveMapper
-                .listFieldLayouts(
-                        categoryId, archiveLevel.value(), surface.value(), userId, publicLayout)
-                .stream()
-                .filter(row -> fieldsById.containsKey(number(row, "fieldId").longValue()))
-                .map(
-                        row ->
-                                mapFieldLayoutItem(
-                                        row, fieldsById.get(number(row, "fieldId").longValue())))
+        return fieldLayoutRepository.list(categoryId, surface, false).stream()
+                .filter(layout -> fieldsById.containsKey(layout.getFieldId()))
+                .filter(
+                        layout ->
+                                fieldsById.get(layout.getFieldId()).archiveLevel() == archiveLevel)
+                .map(layout -> mapFieldLayoutItem(layout, fieldsById.get(layout.getFieldId())))
                 .toList();
     }
 
@@ -913,9 +853,8 @@ public class ArchiveMetadataService {
             Long categoryId,
             ArchiveLevel archiveLevel,
             ArchiveLayoutSurface surface,
-            Long userId,
-            boolean publicLayout,
-            ArchiveFieldLayoutRequest request) {
+            ArchiveFieldLayoutRequest request,
+            Long userId) {
         requireId(categoryId);
         ArchiveCategoryDto category = getCategory(categoryId);
         ArchiveLevel normalizedLevel = normalizeArchiveLevel(archiveLevel);
@@ -928,8 +867,14 @@ public class ArchiveMetadataService {
                                 java.util.stream.Collectors.toMap(
                                         ArchiveFieldDto::id, field -> field));
         Set<Long> seenFieldIds = new HashSet<>();
-        archiveMapper.deleteFieldLayouts(
-                categoryId, normalizedLevel.value(), surface.value(), userId, publicLayout);
+        fieldLayoutRepository.list(categoryId, surface, false).stream()
+                .filter(layout -> fieldsById.containsKey(layout.getFieldId()))
+                .forEach(
+                        layout -> {
+                            layout.setDeletedFlag(true);
+                            layout.setUpdatedBy(userId);
+                            fieldLayoutRepository.update(layout);
+                        });
         for (ArchiveFieldLayoutItemRequest item : items) {
             if (item == null || item.fieldId() == null || !fieldsById.containsKey(item.fieldId())) {
                 throw badRequest("布局字段只能选择当前分类字段");
@@ -937,18 +882,21 @@ public class ArchiveMetadataService {
             if (!seenFieldIds.add(item.fieldId())) {
                 throw badRequest("布局字段不能重复");
             }
-            archiveMapper.insertFieldLayout(
-                    categoryId,
-                    surface.value(),
-                    userId,
-                    item.fieldId(),
-                    item.visible() == null || item.visible(),
+            ArchiveFieldLayout layout = new ArchiveFieldLayout();
+            layout.setCategoryId(categoryId);
+            layout.setSurface(surface);
+            layout.setFieldId(item.fieldId());
+            layout.setVisible(item.visible() == null || item.visible());
+            layout.setListWidth(
                     surface == ArchiveLayoutSurface.table
                             ? normalizeListWidth(item.listWidth())
-                            : null,
-                    normalizeColSpan(item.colSpan()),
-                    item.rowOrder() == null ? 0 : item.rowOrder(),
-                    item.colOrder() == null ? 0 : item.colOrder());
+                            : null);
+            layout.setColSpan(normalizeColSpan(item.colSpan()));
+            layout.setRowOrder(item.rowOrder() == null ? 0 : item.rowOrder());
+            layout.setColOrder(item.colOrder() == null ? 0 : item.colOrder());
+            layout.setCreatedBy(userId);
+            layout.setUpdatedBy(userId);
+            fieldLayoutRepository.insert(layout);
         }
     }
 
@@ -1030,7 +978,6 @@ public class ArchiveMetadataService {
                 editColSpan,
                 editSortOrder,
                 field.exactSearchable(),
-                field.fullTextSearchable(),
                 field.enabled(),
                 field.sortOrder(),
                 field.createdAt(),
@@ -1166,12 +1113,6 @@ public class ArchiveMetadataService {
         }
     }
 
-    private void requireUser(Long userId) {
-        if (userId == null || userId <= 0) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "未登录");
-        }
-    }
-
     private ResponseStatusException notFound(String message) {
         return new ResponseStatusException(HttpStatus.NOT_FOUND, message);
     }
@@ -1189,6 +1130,17 @@ public class ArchiveMetadataService {
                 number(row, "sortOrder").intValue(),
                 dateTime(row, "createdAt"),
                 dateTime(row, "updatedAt"));
+    }
+
+    private ArchiveFondsDto mapFonds(ArchiveFonds fonds) {
+        return new ArchiveFondsDto(
+                fonds.getId(),
+                fonds.getFondsCode(),
+                fonds.getFondsName(),
+                fonds.isEnabled(),
+                fonds.getSortOrder(),
+                fonds.getCreatedAt(),
+                fonds.getUpdatedAt());
     }
 
     private ArchiveCategoryDto mapCategory(Map<String, Object> row) {
@@ -1209,49 +1161,65 @@ public class ArchiveMetadataService {
                 dateTime(row, "updatedAt"));
     }
 
-    private ArchiveFieldDto mapField(Map<String, Object> row) {
+    private ArchiveCategoryDto mapCategory(ArchiveCategory category) {
+        return new ArchiveCategoryDto(
+                category.getId(),
+                category.getParentId(),
+                category.getCategoryCode(),
+                category.getCategoryName(),
+                category.getManagementMode(),
+                category.getVolumeTableName(),
+                category.getItemTableName(),
+                category.getTableStatus(),
+                category.getBuiltAt(),
+                category.isEnabled(),
+                category.getSortOrder(),
+                category.getCreatedAt(),
+                category.getUpdatedAt());
+    }
+
+    private ArchiveFieldDto mapField(ArchiveField field) {
         return new ArchiveFieldDto(
-                number(row, "id").longValue(),
-                number(row, "categoryId").longValue(),
-                ArchiveLevel.fromValue(string(row, "archiveLevel")),
-                string(row, "fieldCode"),
-                string(row, "fieldName"),
-                ArchiveFieldType.fromValue(string(row, "fieldType")),
-                string(row, "columnName"),
-                integerOrNull(row, "textLength"),
-                integerOrNull(row, "decimalPrecision"),
-                integerOrNull(row, "decimalScale"),
-                ArchiveFieldControl.fromValue(string(row, "editControl")),
-                bool(row, "listVisible"),
-                integerOrNull(row, "listWidth"),
-                number(row, "listSortOrder").intValue(),
-                bool(row, "detailVisible"),
-                number(row, "detailColSpan").intValue(),
-                number(row, "detailSortOrder").intValue(),
-                bool(row, "editVisible"),
-                number(row, "editColSpan").intValue(),
-                number(row, "editSortOrder").intValue(),
-                bool(row, "exactSearchable"),
-                bool(row, "fullTextSearchable"),
-                bool(row, "enabled"),
-                number(row, "sortOrder").intValue(),
-                dateTime(row, "createdAt"),
-                dateTime(row, "updatedAt"));
+                field.getId(),
+                field.getCategoryId(),
+                field.getArchiveLevel(),
+                field.getFieldCode(),
+                field.getFieldName(),
+                field.getFieldType(),
+                field.getColumnName(),
+                field.getTextLength(),
+                field.getDecimalPrecision(),
+                field.getDecimalScale(),
+                field.getEditControl(),
+                field.isListVisible(),
+                field.getListWidth(),
+                field.getListSortOrder(),
+                field.isDetailVisible(),
+                field.getDetailColSpan(),
+                field.getDetailSortOrder(),
+                field.isEditVisible(),
+                field.getEditColSpan(),
+                field.getEditSortOrder(),
+                field.isExactSearchable(),
+                field.isEnabled(),
+                field.getSortOrder(),
+                field.getCreatedAt(),
+                field.getUpdatedAt());
     }
 
     private ArchiveFieldLayoutItemDto mapFieldLayoutItem(
-            Map<String, Object> row, ArchiveFieldDto field) {
+            ArchiveFieldLayout layout, ArchiveFieldDto field) {
         return new ArchiveFieldLayoutItemDto(
-                number(row, "fieldId").longValue(),
+                layout.getFieldId(),
                 field.fieldCode(),
                 field.fieldName(),
                 field.fieldType(),
                 field.editControl(),
-                bool(row, "visible"),
-                integerOrNull(row, "listWidth"),
-                number(row, "colSpan").intValue(),
-                number(row, "rowOrder").intValue(),
-                number(row, "colOrder").intValue());
+                layout.isVisible(),
+                layout.getListWidth() == null ? field.listWidth() : layout.getListWidth(),
+                layout.getColSpan(),
+                layout.getRowOrder(),
+                layout.getColOrder());
     }
 
     private ArchiveUniqueConstraintDto mapUniqueConstraint(
@@ -1387,7 +1355,6 @@ public class ArchiveMetadataService {
             Integer editColSpan,
             Integer editSortOrder,
             Boolean exactSearchable,
-            Boolean fullTextSearchable,
             Boolean enabled,
             Integer sortOrder) {}
 
@@ -1413,7 +1380,6 @@ public class ArchiveMetadataService {
             int editColSpan,
             int editSortOrder,
             boolean exactSearchable,
-            boolean fullTextSearchable,
             boolean enabled,
             int sortOrder,
             LocalDateTime createdAt,
@@ -1443,30 +1409,6 @@ public class ArchiveMetadataService {
             Integer colSpan,
             Integer rowOrder,
             Integer colOrder) {}
-
-    private enum ArchiveLayoutScope {
-        public_,
-        mine,
-        effective;
-
-        private String value() {
-            return this == public_ ? "public" : name();
-        }
-
-        private static ArchiveLayoutScope from(String value) {
-            if (StringUtils.isBlank(value)) {
-                return effective;
-            }
-            String normalizedValue = value.trim().toLowerCase(Locale.ROOT);
-            try {
-                return "public".equals(normalizedValue)
-                        ? public_
-                        : ArchiveLayoutScope.valueOf(normalizedValue);
-            } catch (IllegalArgumentException exception) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "布局范围不合法");
-            }
-        }
-    }
 
     public record ArchiveUniqueConstraintRequest(
             ArchiveLevel archiveLevel,
@@ -1516,7 +1458,6 @@ public class ArchiveMetadataService {
             int editColSpan,
             int editSortOrder,
             boolean exactSearchable,
-            boolean fullTextSearchable,
             boolean enabled,
             int sortOrder) {}
 

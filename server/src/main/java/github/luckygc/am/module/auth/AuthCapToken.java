@@ -25,5 +25,5 @@ public class AuthCapToken {
 
     @Column(name = "created_at", nullable = false)
     @CreationTimestamp
-    private LocalDateTime createdAt;
+    private LocalDateTime createdAt = LocalDateTime.now();
 }

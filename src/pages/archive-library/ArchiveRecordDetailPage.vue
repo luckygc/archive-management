@@ -20,7 +20,7 @@ const loading = ref(false);
 const detail = ref<ArchiveRecordDetailDto>();
 const fonds = ref<ArchiveFondsDto[]>([]);
 
-const recordId = computed(() => Number(route.params.id));
+const recordId = computed(() => String(route.params.id));
 
 const fondsName = computed(() => {
   const fondsCode = detail.value?.record.fondsCode;

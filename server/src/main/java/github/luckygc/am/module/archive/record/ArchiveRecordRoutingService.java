@@ -177,7 +177,8 @@ public class ArchiveRecordRoutingService {
                         category.categoryName(),
                         StringUtils.trimToNull(request.archiveNo()),
                         StringUtils.defaultIfBlank(request.electronicStatus(), "DRAFT"),
-                        archiveYear);
+                        archiveYear,
+                        userId);
         try {
             insertDynamicRecord(
                     tableName, recordId, fonds.fondsCode(), fields, convertedDynamicFields);
@@ -185,8 +186,7 @@ public class ArchiveRecordRoutingService {
             throw badRequest("档案记录违反唯一约束");
         }
         upsertPhysicalObjectIfPresent(recordId, request.physicalObject(), userId);
-        enqueueSearchProjection(recordId, SEARCH_EVENT_UPSERT);
-        drainSearchProjectionOutbox();
+        upsertSearchProjection(recordId, fields, convertedDynamicFields);
         ArchiveRecordDto record = getRecord(recordId);
         insertRecordAudit(AUDIT_OPERATION_CREATE, record, null, userId);
         return record;
@@ -207,14 +207,12 @@ public class ArchiveRecordRoutingService {
             String tableName = dynamicTableName(category, archiveLevel);
             List<ArchiveFieldDto> fields =
                     archiveMetadataService.listEnabledFields(categoryId, archiveLevel);
-            List<ArchiveFieldDto> fullTextFields =
-                    fields.stream().filter(ArchiveFieldDto::fullTextSearchable).toList();
-            if (fullTextFields.isEmpty()) {
+            if (fields.isEmpty()) {
                 continue;
             }
             List<Map<String, Object>> rows =
                     archiveMapper.listRecordsForSearchRebuild(
-                            tableName, selectColumns(fullTextFields), archiveLevel.value());
+                            tableName, selectColumns(List.of()), archiveLevel.value());
             for (Map<String, Object> row : rows) {
                 enqueueSearchProjection(number(row, "id").longValue(), SEARCH_EVENT_UPSERT);
                 rebuilt++;
@@ -290,7 +288,8 @@ public class ArchiveRecordRoutingService {
                         StringUtils.trimToNull(request.archiveNo()),
                         StringUtils.defaultIfBlank(
                                 request.electronicStatus(), before.record().electronicStatus()),
-                        archiveYear);
+                        archiveYear,
+                        userId);
         if (updated == 0) {
             throw badRequest("档案记录已锁定，不能修改");
         }
@@ -303,8 +302,7 @@ public class ArchiveRecordRoutingService {
             throw badRequest("档案记录违反唯一约束");
         }
         upsertPhysicalObjectIfPresent(id, request.physicalObject(), userId);
-        enqueueSearchProjection(id, SEARCH_EVENT_UPSERT);
-        drainSearchProjectionOutbox();
+        refreshSearchProjectionFromDynamicRecord(id, category, before.record().archiveLevel());
         ArchiveRecordDetailDto after = getRecordDetail(id, userId, ArchiveLayoutSurface.edit);
         insertRecordAudit(AUDIT_OPERATION_UPDATE, after.record(), null, userId);
         return after;
@@ -324,12 +322,11 @@ public class ArchiveRecordRoutingService {
         if (isDynamicTableBuilt(category, record.archiveLevel())) {
             archiveMapper.markDynamicRecordDeleted(tableName, id);
         }
-        int updated = archiveMapper.markArchiveRecordDeleted(id);
+        int updated = archiveMapper.markArchiveRecordDeleted(id, userId);
         if (updated == 0) {
             throw badRequest("档案记录已锁定，不能删除");
         }
-        enqueueSearchProjection(id, SEARCH_EVENT_DELETE);
-        drainSearchProjectionOutbox();
+        archiveMapper.deleteSearchProjection(id);
     }
 
     @Transactional
@@ -359,7 +356,7 @@ public class ArchiveRecordRoutingService {
         if (id == null || id <= 0) {
             throw badRequest("档案记录 ID 不合法");
         }
-        int updated = archiveMapper.unlockArchiveRecord(id);
+        int updated = archiveMapper.unlockArchiveRecord(id, userId);
         if (updated == 0) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "档案记录不存在");
         }
@@ -725,11 +722,16 @@ public class ArchiveRecordRoutingService {
         }
         ArchiveCategoryDto category = getCategoryByCode(string(recordRow, "categoryCode"));
         ArchiveLevel archiveLevel = ArchiveLevel.fromValue(string(recordRow, "archiveLevel"));
-        String tableName = dynamicTableName(category, archiveLevel);
         if (!isDynamicTableBuilt(category, archiveLevel)) {
             archiveMapper.deleteSearchProjection(recordId);
             return;
         }
+        refreshSearchProjectionFromDynamicRecord(recordId, category, archiveLevel);
+    }
+
+    private void refreshSearchProjectionFromDynamicRecord(
+            Long recordId, ArchiveCategoryDto category, ArchiveLevel archiveLevel) {
+        String tableName = dynamicTableName(category, archiveLevel);
         List<ArchiveFieldDto> fields =
                 archiveMetadataService.listEnabledFields(category.id(), archiveLevel);
         Map<String, Object> dynamicRecord = archiveMapper.loadDynamicRecord(tableName, recordId);
@@ -742,22 +744,21 @@ public class ArchiveRecordRoutingService {
 
     private void upsertSearchProjection(
             Long recordId, List<ArchiveFieldDto> fields, Map<String, Object> dynamicFields) {
-        boolean hasFullTextField = false;
         StringBuilder searchText = new StringBuilder();
         for (ArchiveFieldDto field : fields) {
-            if (!field.fullTextSearchable()) {
+            Object value = normalizeDynamicFieldValue(field, dynamicFields.get(field.fieldCode()));
+            if (value == null || StringUtils.isBlank(value.toString())) {
                 continue;
             }
-            hasFullTextField = true;
-            Object value = dynamicFields.get(field.fieldCode());
-            if (value != null && StringUtils.isNotBlank(value.toString())) {
-                if (!searchText.isEmpty()) {
-                    searchText.append('\n');
-                }
-                searchText.append(value);
+            if (!searchText.isEmpty()) {
+                searchText.append('\n');
             }
+            if (StringUtils.isNotBlank(field.fieldName())) {
+                searchText.append(field.fieldName().trim()).append(' ');
+            }
+            searchText.append(value);
         }
-        if (!hasFullTextField) {
+        if (searchText.isEmpty()) {
             archiveMapper.deleteSearchProjection(recordId);
             return;
         }

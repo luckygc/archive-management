@@ -11,12 +11,14 @@ import jakarta.persistence.Table;
 
 import org.hibernate.annotations.CreationTimestamp;
 
+import github.luckygc.am.common.audit.CreationAuditable;
+
 import lombok.Data;
 
 @Data
 @Entity
 @Table(name = "am_archive_record_electronic_file")
-public class ArchiveRecordElectronicFile {
+public class ArchiveRecordElectronicFile implements CreationAuditable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

@@ -20,6 +20,8 @@
     "prepare": "vp config"
   },
   "dependencies": {
+    "@atlaskit/pragmatic-drag-and-drop": "catalog:",
+    "@atlaskit/pragmatic-drag-and-drop-hitbox": "catalog:",
     "@cap.js/wasm": "^0.0.7",
     "@cap.js/widget": "catalog:",
     "@element-plus/icons-vue": "^2.3.2",
@@ -29,7 +31,6 @@
     "element-plus": "catalog:",
     "pinia": "^3.0.4",
     "vue": "catalog:",
-    "vue-draggable-plus": "catalog:",
     "vue-router": "^5.1.0"
   },
   "devDependencies": {

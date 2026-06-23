@@ -16,18 +16,19 @@
 - **AND** 系统 SHALL 将该记录对应分类动态表行的 `deleted_flag` 标记为 `true`
 - **AND** 系统 SHALL 允许动态表部分唯一索引释放该记录占用的唯一值
 
-### Requirement: 字段检索标记拆分
-系统 SHALL 将字段定义的搜索配置拆分为精确筛选标记和全文检索标记。
+### Requirement: 字段检索标记
+系统 SHALL 在字段定义中只暴露精确筛选标记，全文检索不暴露字段级开关。
 
 #### Scenario: 创建字段定义
 - **WHEN** 客户端为档案分类新增字段
 - **THEN** 系统 SHALL 保存该字段是否允许精确筛选
-- **AND** 系统 SHALL 保存该字段是否进入全文检索投影
+- **AND** 系统 SHALL NOT 保存该字段是否进入全文检索投影的字段级配置
 - **AND** 系统 SHALL NOT 使用单一 `searchable` 字段同时表达精确筛选和全文检索
 
-#### Scenario: 字段同时支持两类检索
-- **WHEN** 客户端将某个字段同时设置为精确筛选和全文检索字段
-- **THEN** 系统 SHALL 允许该字段同时参与动态表精确筛选和全文投影拼接
+#### Scenario: 全文投影字段来源
+- **WHEN** 系统维护全文检索投影
+- **THEN** 系统 SHALL 固定读取该分类下所有启用动态字段
+- **AND** 系统 SHALL NOT 要求客户端为字段配置全文检索开关
 
 #### Scenario: 使用固定记录字段编码创建动态字段
 - **WHEN** 客户端使用 `archive_no`、`archive_year`、`archive_status`、`process_status` 等统一档案记录主表字段编码创建分类字段

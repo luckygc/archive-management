@@ -4,133 +4,6 @@
         "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="github.luckygc.am.module.archive.mapper.ArchiveMapper">
 
-    <select id="listFonds" resultType="map">
-        select id,
-               fonds_code,
-               fonds_name,
-               enabled,
-               sort_order,
-               created_at,
-               updated_at
-        from am_archive_fonds
-        where deleted_flag = false
-        <if test="enabled != null">
-            and enabled = #{enabled}
-        </if>
-        order by sort_order, id
-    </select>
-
-    <select id="insertFonds" resultType="long">
-        insert into am_archive_fonds (fonds_code, fonds_name, enabled, sort_order)
-        values (#{fondsCode}, #{fondsName}, #{enabled}, #{sortOrder})
-        returning id
-    </select>
-
-    <update id="updateFonds">
-        update am_archive_fonds
-        set fonds_code = #{fondsCode},
-            fonds_name = #{fondsName},
-            enabled = #{enabled},
-            sort_order = #{sortOrder},
-            updated_at = localtimestamp
-        where id = #{id} and deleted_flag = false
-    </update>
-
-    <update id="deleteFonds">
-        update am_archive_fonds
-        set deleted_flag = true, updated_at = localtimestamp
-        where id = #{id} and deleted_flag = false
-    </update>
-
-    <select id="getFonds" resultType="map">
-        select id,
-               fonds_code,
-               fonds_name,
-               enabled,
-               sort_order,
-               created_at,
-               updated_at
-        from am_archive_fonds
-        where id = #{id} and deleted_flag = false
-    </select>
-
-    <select id="getFondsByCode" resultType="map">
-        select id,
-               fonds_code,
-               fonds_name,
-               enabled,
-               sort_order,
-               created_at,
-               updated_at
-        from am_archive_fonds
-        where fonds_code = #{fondsCode} and deleted_flag = false
-    </select>
-
-    <select id="listCategories" resultType="map">
-        select id,
-               parent_id,
-               category_code,
-               category_name,
-               management_mode,
-               volume_table_name,
-               item_table_name,
-               table_status,
-               built_at,
-               enabled,
-               sort_order,
-               created_at,
-               updated_at
-        from am_archive_category
-        where deleted_flag = false
-        <if test="enabled != null">
-            and enabled = #{enabled}
-        </if>
-        order by parent_id nulls first, sort_order, id
-    </select>
-
-    <select id="insertCategory" resultType="long">
-        insert into am_archive_category
-            (parent_id, category_code, category_name, management_mode, enabled, sort_order)
-        values (#{parentId}, #{categoryCode}, #{categoryName}, #{managementMode}, #{enabled}, #{sortOrder})
-        returning id
-    </select>
-
-    <update id="updateCategory">
-        update am_archive_category
-        set parent_id = #{parentId},
-            category_code = #{categoryCode},
-            category_name = #{categoryName},
-            management_mode = #{managementMode},
-            enabled = #{enabled},
-            sort_order = #{sortOrder},
-            updated_at = localtimestamp
-        where id = #{id} and deleted_flag = false
-    </update>
-
-    <update id="deleteCategory">
-        update am_archive_category
-        set deleted_flag = true, updated_at = localtimestamp
-        where id = #{id} and deleted_flag = false
-    </update>
-
-    <select id="getCategory" resultType="map">
-        select id,
-               parent_id,
-               category_code,
-               category_name,
-               management_mode,
-               volume_table_name,
-               item_table_name,
-               table_status,
-               built_at,
-               enabled,
-               sort_order,
-               created_at,
-               updated_at
-        from am_archive_category
-        where id = #{id} and deleted_flag = false
-    </select>
-
     <select id="findParentId" resultType="long">
         select parent_id
         from am_archive_category
@@ -141,124 +14,6 @@
         select count(*)
         from am_archive_category
         where parent_id = #{categoryId} and deleted_flag = false
-    </select>
-
-    <select id="listFields" resultType="map">
-        select id,
-               category_id,
-               archive_level,
-               field_code,
-               field_name,
-               field_type,
-               column_name,
-               text_length,
-               decimal_precision,
-               decimal_scale,
-               edit_control,
-               list_visible,
-               list_width,
-               list_sort_order,
-               detail_visible,
-               detail_col_span,
-               detail_sort_order,
-               edit_visible,
-               edit_col_span,
-               edit_sort_order,
-               exact_searchable,
-               full_text_searchable,
-               enabled,
-               sort_order,
-               created_at,
-               updated_at
-        from am_archive_field
-        where category_id = #{categoryId} and deleted_flag = false
-        <if test="archiveLevel != null">
-            and archive_level = #{archiveLevel}
-        </if>
-        <if test="enabled != null">
-            and enabled = #{enabled}
-        </if>
-        order by archive_level, sort_order, id
-    </select>
-
-    <select id="insertField" resultType="long">
-        insert into am_archive_field
-            (category_id, archive_level, field_code, field_name, field_type, column_name,
-             text_length, decimal_precision, decimal_scale, edit_control, list_visible,
-             list_width, list_sort_order, detail_visible, detail_col_span, detail_sort_order,
-             edit_visible, edit_col_span, edit_sort_order,
-             exact_searchable, full_text_searchable, enabled, sort_order)
-        values
-            (#{categoryId}, #{archiveLevel}, #{fieldCode}, #{fieldName}, #{fieldType}, #{columnName},
-             #{textLength}, #{decimalPrecision}, #{decimalScale}, #{editControl}, #{listVisible},
-             #{listWidth}, #{listSortOrder}, #{detailVisible}, #{detailColSpan}, #{detailSortOrder},
-             #{editVisible}, #{editColSpan}, #{editSortOrder},
-             #{exactSearchable}, #{fullTextSearchable}, #{enabled}, #{sortOrder})
-        returning id
-    </select>
-
-    <update id="updateField">
-        update am_archive_field
-        set archive_level = #{archiveLevel},
-            field_code = #{fieldCode},
-            field_name = #{fieldName},
-            column_name = #{columnName},
-            text_length = #{textLength},
-            decimal_precision = #{decimalPrecision},
-            decimal_scale = #{decimalScale},
-            edit_control = #{editControl},
-            list_visible = #{listVisible},
-            list_width = #{listWidth},
-            list_sort_order = #{listSortOrder},
-            detail_visible = #{detailVisible},
-            detail_col_span = #{detailColSpan},
-            detail_sort_order = #{detailSortOrder},
-            edit_visible = #{editVisible},
-            edit_col_span = #{editColSpan},
-            edit_sort_order = #{editSortOrder},
-            exact_searchable = #{exactSearchable},
-            full_text_searchable = #{fullTextSearchable},
-            enabled = #{enabled},
-            sort_order = #{sortOrder},
-            updated_at = localtimestamp
-        where id = #{id} and category_id = #{categoryId} and deleted_flag = false
-    </update>
-
-    <update id="deleteField">
-        update am_archive_field
-        set deleted_flag = true, updated_at = localtimestamp
-        where id = #{id} and category_id = #{categoryId} and deleted_flag = false
-    </update>
-
-    <select id="getField" resultType="map">
-        select id,
-               category_id,
-               archive_level,
-               field_code,
-               field_name,
-               field_type,
-               column_name,
-               text_length,
-               decimal_precision,
-               decimal_scale,
-               edit_control,
-               list_visible,
-               list_width,
-               list_sort_order,
-               detail_visible,
-               detail_col_span,
-               detail_sort_order,
-               edit_visible,
-               edit_col_span,
-               edit_sort_order,
-               exact_searchable,
-               full_text_searchable,
-               enabled,
-               sort_order,
-               created_at,
-               updated_at
-        from am_archive_field
-        where id = #{id} and deleted_flag = false
     </select>
 
     <select id="tableExists" resultType="int">
@@ -291,6 +46,8 @@
             volume_table_name = case when #{archiveLevel} = 'volume' then #{tableName} else volume_table_name end,
             table_status = #{tableStatus},
             built_at = localtimestamp,
+            updated_by = #{userId},
+            version = version + 1,
             updated_at = localtimestamp
         where id = #{id} and deleted_flag = false
     </update>
@@ -392,10 +149,10 @@
     <select id="insertArchiveRecord" resultType="long">
         insert into am_archive_record
             (archive_level, parent_id, fonds_code, fonds_name, category_code, category_name,
-             archive_no, electronic_status, archive_year)
+             archive_no, electronic_status, archive_year, created_by, updated_by)
         values
             (#{archiveLevel}, #{parentId}, #{fondsCode}, #{fondsName}, #{categoryCode}, #{categoryName},
-             #{archiveNo}, #{electronicStatus}, #{archiveYear})
+             #{archiveNo}, #{electronicStatus}, #{archiveYear}, #{userId}, #{userId})
         returning id
     </select>
 
@@ -415,6 +172,8 @@
             fonds_name = #{fondsName},
             electronic_status = #{electronicStatus},
             archive_year = #{archiveYear},
+            updated_by = #{userId},
+            version = version + 1,
             updated_at = localtimestamp
         where id = #{id} and deleted_flag = false and locked_flag = false
     </update>
@@ -487,6 +246,7 @@
                       barcode = excluded.barcode,
                       remark = excluded.remark,
                       updated_by = excluded.updated_by,
+                      version = am_archive_physical_object.version + 1,
                       updated_at = localtimestamp
     </insert>
 
@@ -501,7 +261,10 @@
 
     <update id="markArchiveRecordDeleted">
         update am_archive_record
-        set deleted_flag = true, updated_at = localtimestamp
+        set deleted_flag = true,
+            updated_by = #{userId},
+            version = version + 1,
+            updated_at = localtimestamp
         where id = #{id} and deleted_flag = false and locked_flag = false
     </update>
 
@@ -511,6 +274,8 @@
             lock_reason = #{lockReason},
             locked_by = #{lockedBy},
             locked_at = localtimestamp,
+            updated_by = #{lockedBy},
+            version = version + 1,
             updated_at = localtimestamp
         where id = #{id} and deleted_flag = false
     </update>
@@ -521,6 +286,8 @@
             lock_reason = null,
             locked_by = null,
             locked_at = null,
+            updated_by = #{userId},
+            version = version + 1,
             updated_at = localtimestamp
         where id = #{id} and deleted_flag = false
     </update>
@@ -616,9 +383,9 @@
 
     <select id="insertUniqueConstraint" resultType="long">
         insert into am_archive_unique_constraint
-            (category_id, archive_level, constraint_code, constraint_name, include_fonds, index_name, enabled)
+            (category_id, archive_level, constraint_code, constraint_name, include_fonds, index_name, enabled, created_by, updated_by)
         values
-            (#{categoryId}, #{archiveLevel}, #{constraintCode}, #{constraintName}, #{includeFonds}, #{indexName}, #{enabled})
+            (#{categoryId}, #{archiveLevel}, #{constraintCode}, #{constraintName}, #{includeFonds}, #{indexName}, #{enabled}, #{userId}, #{userId})
         returning id
     </select>
 
@@ -630,13 +397,18 @@
             include_fonds = #{includeFonds},
             index_name = #{indexName},
             enabled = #{enabled},
+            updated_by = #{userId},
+            version = version + 1,
             updated_at = localtimestamp
         where id = #{id} and category_id = #{categoryId} and deleted_flag = false
     </update>
 
     <update id="deleteUniqueConstraint">
         update am_archive_unique_constraint
-        set deleted_flag = true, updated_at = localtimestamp
+        set deleted_flag = true,
+            updated_by = #{userId},
+            version = version + 1,
+            updated_at = localtimestamp
         where id = #{id} and category_id = #{categoryId} and deleted_flag = false
     </update>
 
@@ -667,6 +439,8 @@
     <update id="markFieldsExactSearchable">
         update am_archive_field
         set exact_searchable = true,
+            updated_by = #{userId},
+            version = version + 1,
             updated_at = localtimestamp
         where category_id = #{categoryId}
           and deleted_flag = false
@@ -676,74 +450,12 @@
           </foreach>
     </update>
 
-    <select id="listFieldLayouts" resultType="map">
-        select layout.id,
-               layout.category_id,
-               layout.surface,
-               layout.owner_user_id,
-               layout.field_id,
-               field.field_code,
-               field.field_name,
-               field.field_type,
-               field.edit_control,
-               layout.visible,
-               layout.list_width,
-               layout.col_span,
-               layout.row_order,
-               layout.col_order
-        from am_archive_field_layout layout
-        join am_archive_field field on field.id = layout.field_id
-        where layout.category_id = #{categoryId}
-          and layout.surface = #{surface}
-          and layout.deleted_flag = false
-          and field.deleted_flag = false
-          and field.archive_level = #{archiveLevel}
-        <choose>
-            <when test="publicLayout">
-                and layout.owner_user_id is null
-            </when>
-            <otherwise>
-                and layout.owner_user_id = #{ownerUserId}
-            </otherwise>
-        </choose>
-        order by layout.row_order, layout.col_order, layout.id
-    </select>
-
-    <update id="deleteFieldLayouts">
-        update am_archive_field_layout
-        set deleted_flag = true,
-            updated_at = localtimestamp
-        where category_id = #{categoryId}
-          and surface = #{surface}
-          and deleted_flag = false
-          and field_id in (
-              select id
-              from am_archive_field
-              where category_id = #{categoryId}
-                and archive_level = #{archiveLevel}
-                and deleted_flag = false
-          )
-        <choose>
-            <when test="publicLayout">
-                and owner_user_id is null
-            </when>
-            <otherwise>
-                and owner_user_id = #{ownerUserId}
-            </otherwise>
-        </choose>
-    </update>
-
-    <insert id="insertFieldLayout">
-        insert into am_archive_field_layout
-            (category_id, surface, owner_user_id, field_id, visible, list_width, col_span, row_order, col_order)
-        values
-            (#{categoryId}, #{surface}, #{ownerUserId}, #{fieldId}, #{visible}, #{listWidth}, #{colSpan}, #{rowOrder}, #{colOrder})
-    </insert>
-
     <update id="moveRecordToVolume">
         update am_archive_record
         set parent_id = #{volumeId},
             display_order = #{displayOrder},
+            updated_by = #{userId},
+            version = version + 1,
             updated_at = localtimestamp
         where id = #{archiveRecordId}
           and archive_level = 'item'

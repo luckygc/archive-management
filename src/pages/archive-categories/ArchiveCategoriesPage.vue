@@ -1,8 +1,18 @@
 <script setup lang="ts">
+import { combine } from "@atlaskit/pragmatic-drag-and-drop/combine";
+import {
+  draggable,
+  dropTargetForElements,
+} from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
+import type { CleanupFn } from "@atlaskit/pragmatic-drag-and-drop/types";
+import {
+  attachInstruction,
+  extractInstruction,
+} from "@atlaskit/pragmatic-drag-and-drop-hitbox/list-item";
 import { Rank } from "@element-plus/icons-vue";
 import { ElMessage, ElMessageBox } from "element-plus";
+import type { ObjectDirective } from "vue";
 import { computed, onMounted, reactive, ref, watch } from "vue";
-import { VueDraggable } from "vue-draggable-plus";
 import {
   buildArchiveCategoryTable,
   createArchiveCategory,
@@ -15,7 +25,6 @@ import {
   listArchiveCategories,
   listArchiveFields,
   listArchiveUniqueConstraints,
-  saveMyArchiveCategoryLayout,
   savePublicArchiveCategoryLayout,
   updateArchiveCategory,
   updateArchiveField,
@@ -29,7 +38,6 @@ import type {
   ArchiveFieldDto,
   ArchiveFieldLayoutItemDto,
   ArchiveLevel,
-  ArchiveLayoutScope,
   ArchiveLayoutSurface,
   ArchiveFieldType,
   ArchiveManagementMode,
@@ -44,7 +52,7 @@ interface CategoryTreeNode extends ArchiveCategoryDto {
 }
 
 interface CategorySelectNode {
-  value: number;
+  value: string;
   label: string;
   children?: CategorySelectNode[];
 }
@@ -71,11 +79,6 @@ const layoutSurfaceOptions: Array<{ label: string; value: ArchiveLayoutSurface }
   { label: "编辑", value: "edit" },
 ];
 
-const layoutScopeOptions: Array<{ label: string; value: ArchiveLayoutScope }> = [
-  { label: "公共布局", value: "public" },
-  { label: "我的布局", value: "mine" },
-];
-
 const archiveLevelOptions: Array<{ label: string; value: ArchiveLevel }> = [
   { label: "卷内", value: "item" },
   { label: "案卷", value: "volume" },
@@ -97,12 +100,12 @@ const constraintDialogVisible = ref(false);
 const activeConfigTab = ref("fields");
 const activeArchiveLevel = ref<ArchiveLevel>("item");
 const activeLayoutSurface = ref<ArchiveLayoutSurface>("table");
-const activeLayoutScope = ref<ArchiveLayoutScope>("mine");
 const layoutLoading = ref(false);
-const editingCategoryId = ref<number>();
-const editingFieldId = ref<number>();
-const editingConstraintId = ref<number>();
-const selectedCategoryId = ref<number>();
+const editingCategoryId = ref<string>();
+const editingFieldId = ref<string>();
+const editingConstraintId = ref<string>();
+const selectedCategoryId = ref<string>();
+const draggingLayoutFieldId = ref<string>();
 const categories = ref<ArchiveCategoryDto[]>([]);
 const fields = ref<ArchiveFieldDto[]>([]);
 const layoutItems = ref<ArchiveFieldLayoutItemDto[]>([]);
@@ -136,7 +139,6 @@ const fieldForm = reactive<ArchiveFieldCommand>({
   editColSpan: 1,
   editSortOrder: 0,
   exactSearchable: false,
-  fullTextSearchable: false,
   enabled: true,
   sortOrder: 0,
 });
@@ -202,8 +204,109 @@ function defaultFieldControl(fieldType: ArchiveFieldType): ArchiveFieldControl {
   return fieldControlOptions(fieldType)[0];
 }
 
+interface LayoutDragData {
+  type: "archive-layout-item";
+  fieldId: string;
+}
+
+const layoutDragCleanupKey = Symbol("layoutDragCleanup");
+
+type LayoutDragElement = HTMLElement & {
+  [layoutDragCleanupKey]?: CleanupFn;
+};
+
+const vLayoutDrag: ObjectDirective<LayoutDragElement, ArchiveFieldLayoutItemDto> = {
+  mounted(element, binding) {
+    bindLayoutDrag(element, binding.value);
+  },
+  updated(element, binding) {
+    if (binding.oldValue?.fieldId !== binding.value.fieldId) {
+      cleanupLayoutDrag(element);
+      bindLayoutDrag(element, binding.value);
+    }
+  },
+  beforeUnmount(element) {
+    cleanupLayoutDrag(element);
+  },
+};
+
+function isLayoutDragData(data: Record<string | symbol, unknown>): data is LayoutDragData {
+  return data.type === "archive-layout-item" && typeof data.fieldId === "string";
+}
+
+function bindLayoutDrag(element: LayoutDragElement, item: ArchiveFieldLayoutItemDto) {
+  const dragHandle = element.querySelector(".archive-layout-config__drag");
+  const getData = (): LayoutDragData => ({
+    type: "archive-layout-item",
+    fieldId: item.fieldId,
+  });
+  element[layoutDragCleanupKey] = combine(
+    draggable({
+      element,
+      dragHandle: dragHandle ?? undefined,
+      getInitialData: getData,
+      onDragStart: () => {
+        draggingLayoutFieldId.value = item.fieldId;
+      },
+      onDrop: () => {
+        draggingLayoutFieldId.value = undefined;
+      },
+    }),
+    dropTargetForElements({
+      element,
+      canDrop: ({ source }) =>
+        isLayoutDragData(source.data) && source.data.fieldId !== item.fieldId,
+      getData: ({ input, element: target }) =>
+        attachInstruction(getData(), {
+          input,
+          element: target,
+          operations: {
+            "reorder-before": "available",
+            "reorder-after": "available",
+          },
+          axis: activeLayoutSurface.value === "table" ? "horizontal" : "vertical",
+        }),
+      onDrop: ({ source, self }) => {
+        if (!isLayoutDragData(source.data)) {
+          return;
+        }
+        const instruction = extractInstruction(self.data);
+        if (!instruction || instruction.operation === "combine") {
+          return;
+        }
+        reorderLayoutItem(source.data.fieldId, item.fieldId, instruction.operation);
+      },
+    }),
+  );
+}
+
+function cleanupLayoutDrag(element: LayoutDragElement) {
+  element[layoutDragCleanupKey]?.();
+  element[layoutDragCleanupKey] = undefined;
+}
+
+function reorderLayoutItem(
+  sourceFieldId: string,
+  targetFieldId: string,
+  operation: "reorder-before" | "reorder-after",
+) {
+  const nextItems = [...layoutItems.value];
+  const sourceIndex = nextItems.findIndex((item) => item.fieldId === sourceFieldId);
+  if (sourceIndex < 0) {
+    return;
+  }
+  const [movedItem] = nextItems.splice(sourceIndex, 1);
+  const targetIndex = nextItems.findIndex((item) => item.fieldId === targetFieldId);
+  if (!movedItem || targetIndex < 0) {
+    return;
+  }
+  const insertIndex = operation === "reorder-after" ? targetIndex + 1 : targetIndex;
+  nextItems.splice(insertIndex, 0, movedItem);
+  layoutItems.value = nextItems;
+}
+
 function buildCategoryTree(rows: ArchiveCategoryDto[]) {
-  const nodeMap = new Map<number, CategoryTreeNode>();
+  const nodeMap = new Map<string, CategoryTreeNode>();
   const roots: CategoryTreeNode[] = [];
   for (const row of rows) {
     nodeMap.set(row.id, { ...row, children: [] });
@@ -223,21 +326,21 @@ function buildCategoryTree(rows: ArchiveCategoryDto[]) {
   return roots;
 }
 
-function buildCategorySelectTree(rows: ArchiveCategoryDto[], editingId?: number) {
-  const excludedIds = editingId ? collectDescendantIds(rows, editingId) : new Set<number>();
+function buildCategorySelectTree(rows: ArchiveCategoryDto[], editingId?: string) {
+  const excludedIds = editingId ? collectDescendantIds(rows, editingId) : new Set<string>();
   const availableRows = rows.filter((row) => !excludedIds.has(row.id));
   return buildCategoryTree(availableRows).map(toSelectNode);
 }
 
-function collectDescendantIds(rows: ArchiveCategoryDto[], parentId: number) {
-  const childrenByParent = new Map<number, ArchiveCategoryDto[]>();
+function collectDescendantIds(rows: ArchiveCategoryDto[], parentId: string) {
+  const childrenByParent = new Map<string, ArchiveCategoryDto[]>();
   for (const row of rows) {
     if (!row.parentId) {
       continue;
     }
     childrenByParent.set(row.parentId, [...(childrenByParent.get(row.parentId) ?? []), row]);
   }
-  const ids = new Set<number>();
+  const ids = new Set<string>();
   const stack = [...(childrenByParent.get(parentId) ?? [])];
   while (stack.length > 0) {
     const current = stack.pop();
@@ -288,7 +391,6 @@ function resetFieldForm(row?: ArchiveFieldDto) {
   fieldForm.editColSpan = row?.editColSpan ?? 1;
   fieldForm.editSortOrder = row?.editSortOrder ?? row?.sortOrder ?? 0;
   fieldForm.exactSearchable = row?.exactSearchable ?? false;
-  fieldForm.fullTextSearchable = row?.fullTextSearchable ?? false;
   fieldForm.enabled = row?.enabled ?? true;
   fieldForm.sortOrder = row?.sortOrder ?? 0;
 }
@@ -501,7 +603,6 @@ async function loadLayout() {
     const layout = await getArchiveCategoryLayout(
       selectedCategoryId.value,
       activeLayoutSurface.value,
-      activeLayoutScope.value,
       activeArchiveLevel.value,
     );
     layoutItems.value = layout.items;
@@ -529,20 +630,12 @@ async function saveLayout() {
   }
   saving.value = true;
   try {
-    const layout =
-      activeLayoutScope.value === "public"
-        ? await savePublicArchiveCategoryLayout(
-            selectedCategoryId.value,
-            activeLayoutSurface.value,
-            layoutCommand(),
-            activeArchiveLevel.value,
-          )
-        : await saveMyArchiveCategoryLayout(
-            selectedCategoryId.value,
-            activeLayoutSurface.value,
-            layoutCommand(),
-            activeArchiveLevel.value,
-          );
+    const layout = await savePublicArchiveCategoryLayout(
+      selectedCategoryId.value,
+      activeLayoutSurface.value,
+      layoutCommand(),
+      activeArchiveLevel.value,
+    );
     layoutItems.value = layout.items;
     ElMessage.success("布局已保存");
   } finally {
@@ -588,12 +681,9 @@ watch(
   },
 );
 
-watch(
-  [selectedCategoryId, activeConfigTab, activeArchiveLevel, activeLayoutSurface, activeLayoutScope],
-  () => {
-    void loadLayout();
-  },
-);
+watch([selectedCategoryId, activeConfigTab, activeArchiveLevel, activeLayoutSurface], () => {
+  void loadLayout();
+});
 
 watch(activeArchiveLevel, (archiveLevel) => {
   if (!editingFieldId.value) {
@@ -688,9 +778,6 @@ onMounted(loadCategories);
             <el-table-column prop="exactSearchable" label="精确" width="80">
               <template #default="{ row }">{{ row.exactSearchable ? "是" : "否" }}</template>
             </el-table-column>
-            <el-table-column prop="fullTextSearchable" label="全文" width="80">
-              <template #default="{ row }">{{ row.fullTextSearchable ? "是" : "否" }}</template>
-            </el-table-column>
             <el-table-column prop="enabled" label="状态" width="90">
               <template #default="{ row }">
                 <el-tag :type="row.enabled ? 'success' : 'info'">
@@ -710,28 +797,27 @@ onMounted(loadCategories);
           <div class="archive-layout-config">
             <div class="archive-layout-config__toolbar">
               <el-segmented v-model="activeLayoutSurface" :options="layoutSurfaceOptions" />
-              <el-segmented v-model="activeLayoutScope" :options="layoutScopeOptions" />
               <el-button type="primary" :loading="saving" @click="saveLayout">保存布局</el-button>
             </div>
             <el-empty
               v-if="layoutItems.length === 0 && !layoutLoading"
               description="当前分类没有字段"
             />
-            <VueDraggable
+            <div
               v-else
-              v-model="layoutItems"
               v-loading="layoutLoading || saving"
               class="archive-layout-config__list"
               :class="{ 'is-table': activeLayoutSurface === 'table' }"
-              handle=".archive-layout-config__drag"
-              :animation="120"
-              ghost-class="archive-layout-config__ghost"
             >
               <div
                 v-for="item in layoutItems"
                 :key="item.fieldId"
+                v-layout-drag="item"
                 class="archive-layout-config__item"
-                :class="{ 'is-hidden': !item.visible }"
+                :class="{
+                  'is-hidden': !item.visible,
+                  'is-dragging': draggingLayoutFieldId === item.fieldId,
+                }"
                 :style="layoutItemStyle(item)"
               >
                 <el-icon class="archive-layout-config__drag"><Rank /></el-icon>
@@ -756,7 +842,7 @@ onMounted(loadCategories);
                   <el-radio-button :value="2">2列</el-radio-button>
                 </el-radio-group>
               </div>
-            </VueDraggable>
+            </div>
           </div>
         </el-tab-pane>
         <el-tab-pane label="唯一约束" name="rules">
@@ -885,9 +971,6 @@ onMounted(loadCategories);
         </el-form-item>
         <el-form-item label="精确搜索">
           <el-switch v-model="fieldForm.exactSearchable" />
-        </el-form-item>
-        <el-form-item label="全文检索">
-          <el-switch v-model="fieldForm.fullTextSearchable" />
         </el-form-item>
         <el-form-item label="状态">
           <el-switch v-model="fieldForm.enabled" active-text="启用" inactive-text="停用" />
@@ -1055,7 +1138,7 @@ onMounted(loadCategories);
   opacity: 0.56;
 }
 
-.archive-layout-config__ghost {
+.archive-layout-config__item.is-dragging {
   opacity: 0.42;
 }
 

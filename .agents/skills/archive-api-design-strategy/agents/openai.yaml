@@ -1,0 +1,4 @@
+interface:
+  display_name: "档案 API 设计策略"
+  short_description: "按 Google AIP 设计 archive-management HTTP API"
+  default_prompt: "Use $archive-api-design-strategy to design or review archive-management HTTP APIs, DTO IDs, errors, and pagination."

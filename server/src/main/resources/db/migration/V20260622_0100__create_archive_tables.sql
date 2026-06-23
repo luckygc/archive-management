@@ -6,6 +6,7 @@ create table am_archive_fonds
     enabled     boolean      not null default true,
     sort_order  integer      not null default 0,
     deleted_flag boolean     not null default false,
+    version      integer     not null default 0,
     created_by  bigint,
     created_at  timestamp    not null default localtimestamp,
     updated_by  bigint,
@@ -28,6 +29,7 @@ comment on column am_archive_fonds.fonds_name is '全宗名称';
 comment on column am_archive_fonds.enabled is '是否启用';
 comment on column am_archive_fonds.sort_order is '排序字段';
 comment on column am_archive_fonds.deleted_flag is '删除标记';
+comment on column am_archive_fonds.version is '乐观锁版本号';
 comment on column am_archive_fonds.created_by is '创建人用户 ID';
 comment on column am_archive_fonds.created_at is '创建时间';
 comment on column am_archive_fonds.updated_by is '更新人用户 ID';
@@ -47,6 +49,7 @@ create table am_archive_category
     enabled           boolean      not null default true,
     sort_order        integer      not null default 0,
     deleted_flag      boolean      not null default false,
+    version           integer      not null default 0,
     created_by        bigint,
     created_at        timestamp    not null default localtimestamp,
     updated_by        bigint,
@@ -73,6 +76,7 @@ comment on column am_archive_category.built_at is '最近建表时间';
 comment on column am_archive_category.enabled is '是否启用';
 comment on column am_archive_category.sort_order is '排序字段';
 comment on column am_archive_category.deleted_flag is '删除标记';
+comment on column am_archive_category.version is '乐观锁版本号';
 comment on column am_archive_category.created_by is '创建人用户 ID';
 comment on column am_archive_category.created_at is '创建时间';
 comment on column am_archive_category.updated_by is '更新人用户 ID';
@@ -101,10 +105,10 @@ create table am_archive_field
     edit_col_span     integer      not null default 1,
     edit_sort_order   integer      not null default 0,
     exact_searchable  boolean      not null default false,
-    full_text_searchable boolean   not null default false,
     enabled           boolean      not null default true,
     sort_order        integer      not null default 0,
     deleted_flag      boolean      not null default false,
+    version           integer      not null default 0,
     created_by        bigint,
     created_at        timestamp    not null default localtimestamp,
     updated_by        bigint,
@@ -140,10 +144,10 @@ comment on column am_archive_field.edit_visible is '是否编辑显示';
 comment on column am_archive_field.edit_col_span is '编辑表单跨列数';
 comment on column am_archive_field.edit_sort_order is '编辑布局排序';
 comment on column am_archive_field.exact_searchable is '是否允许精确搜索';
-comment on column am_archive_field.full_text_searchable is '是否进入全文检索投影';
 comment on column am_archive_field.enabled is '是否启用';
 comment on column am_archive_field.sort_order is '排序字段';
 comment on column am_archive_field.deleted_flag is '删除标记';
+comment on column am_archive_field.version is '乐观锁版本号';
 comment on column am_archive_field.created_by is '创建人用户 ID';
 comment on column am_archive_field.created_at is '创建时间';
 comment on column am_archive_field.updated_by is '更新人用户 ID';
@@ -170,6 +174,7 @@ create table am_archive_record
     locked_by      bigint,
     locked_at      timestamp,
     deleted_flag   boolean      not null default false,
+    version        integer      not null default 0,
     created_by     bigint,
     created_at     timestamp    not null default localtimestamp,
     updated_by     bigint,
@@ -213,6 +218,7 @@ comment on column am_archive_record.lock_reason is '锁定原因';
 comment on column am_archive_record.locked_by is '锁定人用户 ID';
 comment on column am_archive_record.locked_at is '锁定时间';
 comment on column am_archive_record.deleted_flag is '删除标记';
+comment on column am_archive_record.version is '乐观锁版本号';
 comment on column am_archive_record.created_by is '创建人用户 ID';
 comment on column am_archive_record.created_at is '创建时间';
 comment on column am_archive_record.updated_by is '更新人用户 ID';
@@ -257,6 +263,7 @@ create table am_archive_physical_object
     barcode           varchar(100),
     remark            varchar(500),
     deleted_flag      boolean     not null default false,
+    version           integer     not null default 0,
     created_by        bigint,
     created_at        timestamp   not null default localtimestamp,
     updated_by        bigint,
@@ -285,6 +292,7 @@ comment on column am_archive_physical_object.location_no is '库位号';
 comment on column am_archive_physical_object.barcode is '条码';
 comment on column am_archive_physical_object.remark is '备注';
 comment on column am_archive_physical_object.deleted_flag is '删除标记';
+comment on column am_archive_physical_object.version is '乐观锁版本号';
 comment on column am_archive_physical_object.created_by is '创建人用户 ID';
 comment on column am_archive_physical_object.created_at is '创建时间';
 comment on column am_archive_physical_object.updated_by is '更新人用户 ID';
@@ -301,6 +309,7 @@ create table am_archive_unique_constraint
     index_name    varchar(100) not null,
     enabled       boolean      not null default true,
     deleted_flag  boolean      not null default false,
+    version       integer      not null default 0,
     created_by    bigint,
     created_at    timestamp    not null default localtimestamp,
     updated_by    bigint,
@@ -327,6 +336,7 @@ comment on column am_archive_unique_constraint.include_fonds is '是否按全宗
 comment on column am_archive_unique_constraint.index_name is '动态表唯一索引名';
 comment on column am_archive_unique_constraint.enabled is '是否启用';
 comment on column am_archive_unique_constraint.deleted_flag is '删除标记';
+comment on column am_archive_unique_constraint.version is '乐观锁版本号';
 comment on column am_archive_unique_constraint.created_by is '创建人用户 ID';
 comment on column am_archive_unique_constraint.created_at is '创建时间';
 comment on column am_archive_unique_constraint.updated_by is '更新人用户 ID';
@@ -356,7 +366,6 @@ create table am_archive_field_layout
     id            bigserial primary key,
     category_id   bigint      not null references am_archive_category (id),
     surface       varchar(20) not null,
-    owner_user_id bigint references am_auth_user (id),
     field_id      bigint      not null references am_archive_field (id),
     visible       boolean     not null default true,
     list_width    integer,
@@ -364,25 +373,24 @@ create table am_archive_field_layout
     row_order     integer     not null default 0,
     col_order     integer     not null default 0,
     deleted_flag  boolean     not null default false,
+    version       integer     not null default 0,
+    created_by    bigint,
     created_at    timestamp   not null default localtimestamp,
+    updated_by    bigint,
     updated_at    timestamp   not null default localtimestamp
 );
 
 create unique index uk_am_archive_field_layout_public_active
     on am_archive_field_layout (category_id, surface, field_id)
-    where owner_user_id is null and deleted_flag = false;
-create unique index uk_am_archive_field_layout_user_active
-    on am_archive_field_layout (category_id, surface, owner_user_id, field_id)
-    where owner_user_id is not null and deleted_flag = false;
+    where deleted_flag = false;
 create index idx_am_archive_field_layout_order_active
-    on am_archive_field_layout (category_id, surface, owner_user_id, row_order, col_order, id)
+    on am_archive_field_layout (category_id, surface, row_order, col_order, id)
     where deleted_flag = false;
 
 comment on table am_archive_field_layout is '档案分类字段布局配置表';
 comment on column am_archive_field_layout.id is '主键';
 comment on column am_archive_field_layout.category_id is '档案分类 ID';
 comment on column am_archive_field_layout.surface is '布局场景：table 表格，detail 详情，edit 编辑';
-comment on column am_archive_field_layout.owner_user_id is '个人布局所属用户 ID；为空表示公共布局';
 comment on column am_archive_field_layout.field_id is '字段定义 ID';
 comment on column am_archive_field_layout.visible is '该布局是否显示字段';
 comment on column am_archive_field_layout.list_width is '表格列宽';
@@ -390,7 +398,10 @@ comment on column am_archive_field_layout.col_span is '详情或编辑布局跨�
 comment on column am_archive_field_layout.row_order is '布局行顺序';
 comment on column am_archive_field_layout.col_order is '布局列顺序';
 comment on column am_archive_field_layout.deleted_flag is '删除标记';
+comment on column am_archive_field_layout.version is '乐观锁版本号';
+comment on column am_archive_field_layout.created_by is '创建人用户 ID';
 comment on column am_archive_field_layout.created_at is '创建时间';
+comment on column am_archive_field_layout.updated_by is '更新人用户 ID';
 comment on column am_archive_field_layout.updated_at is '更新时间';
 
 create table am_archive_record_search

@@ -13,18 +13,25 @@ import org.flowable.task.api.Task;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.annotation.DirtiesContext;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
+import github.luckygc.am.test.PostgreSqlContainerTest;
+
+@Testcontainers(disabledWithoutDocker = true)
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @SpringBootTest(
         properties = {
             "spring.ai.deepseek.chat.enabled=false",
-            "spring.flyway.enabled=false",
             "spring.autoconfigure.exclude="
                     + "org.springframework.ai.model.deepseek.autoconfigure.DeepSeekChatAutoConfiguration",
+            "spring.quartz.auto-startup=false",
+            "spring.session.jdbc.cleanup-cron=-",
             "flowable.async-executor-activate=false",
             "flowable.check-process-definitions=false",
             "flowable.process.definition-cache-limit=16"
         })
-class FlowableCompatibilityTests {
+class FlowableCompatibilityTests extends PostgreSqlContainerTest {
 
     @Autowired private RepositoryService repositoryService;
 
@@ -35,6 +42,8 @@ class FlowableCompatibilityTests {
     @Test
     void deployStartAndQueryUserTask() {
         Deployment deployment = null;
+        String deploymentId = null;
+        String processInstanceId = null;
         try {
             deployment =
                     repositoryService
@@ -42,27 +51,39 @@ class FlowableCompatibilityTests {
                             .name("flowable-compatibility")
                             .addClasspathResource("processes/flowable-compatibility.bpmn20.xml")
                             .deploy();
+            deploymentId = deployment.getId();
 
             ProcessInstance instance =
                     runtimeService.startProcessInstanceByKey(
                             "flowableCompatibilityProcess",
                             Map.of("businessKey", "compatibility-business"));
+            processInstanceId = instance.getId();
 
             Task task =
                     taskService
                             .createTaskQuery()
-                            .processInstanceId(instance.getId())
+                            .processInstanceId(processInstanceId)
                             .taskCandidateUser("compatibility-user")
                             .singleResult();
 
-            assertThat(deployment.getId()).isNotBlank();
+            assertThat(deploymentId).isNotBlank();
             assertThat(instance.getProcessDefinitionId()).isNotBlank();
             assertThat(task).isNotNull();
             assertThat(task.getName()).isEqualTo("Review");
         } finally {
-            if (deployment != null) {
-                repositoryService.deleteDeployment(deployment.getId(), true);
+            if (deploymentId != null) {
+                repositoryService.deleteDeployment(deploymentId, true);
             }
         }
+        assertThat(repositoryService.createDeploymentQuery().deploymentId(deploymentId).count())
+                .isZero();
+        assertThat(
+                        runtimeService
+                                .createProcessInstanceQuery()
+                                .processInstanceId(processInstanceId)
+                                .count())
+                .isZero();
+        assertThat(taskService.createTaskQuery().processInstanceId(processInstanceId).count())
+                .isZero();
     }
 }

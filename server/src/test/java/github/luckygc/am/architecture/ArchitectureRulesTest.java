@@ -17,7 +17,8 @@ class ArchitectureRulesTest {
                     .resideInAPackage("..common..")
                     .should()
                     .dependOnClassesThat()
-                    .resideInAnyPackage("..module..", "..infrastructure..");
+                    .resideInAnyPackage(
+                            "github.luckygc.am.module..", "github.luckygc.am.infrastructure..");
 
     @ArchTest
     static final ArchRule common_should_not_depend_on_web_frameworks =
@@ -35,7 +36,7 @@ class ArchitectureRulesTest {
                     .resideInAPackage("..module..")
                     .should()
                     .dependOnClassesThat()
-                    .resideInAnyPackage("..infrastructure..");
+                    .resideInAnyPackage("github.luckygc.am.infrastructure..");
 
     @ArchTest
     static final ArchRule infrastructure_should_not_depend_on_business_ =
@@ -44,5 +45,5 @@ class ArchitectureRulesTest {
                     .resideInAPackage("..infrastructure..")
                     .should()
                     .dependOnClassesThat()
-                    .resideInAnyPackage("..module..");
+                    .resideInAnyPackage("github.luckygc.am.module..");
 }

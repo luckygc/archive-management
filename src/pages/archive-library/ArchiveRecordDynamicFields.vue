@@ -27,7 +27,7 @@ const layoutFields = computed(() =>
       const currentOrder =
         props.mode === "detail" ? current.detailSortOrder : current.editSortOrder;
       const nextOrder = props.mode === "detail" ? next.detailSortOrder : next.editSortOrder;
-      return currentOrder - nextOrder || current.id - next.id;
+      return currentOrder - nextOrder || current.id.localeCompare(next.id);
     }),
 );
 
