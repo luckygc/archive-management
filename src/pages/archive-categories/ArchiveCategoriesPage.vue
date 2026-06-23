@@ -52,7 +52,7 @@ interface CategoryTreeNode extends ArchiveCategoryDto {
 }
 
 interface CategorySelectNode {
-  value: string;
+  value: number;
   label: string;
   children?: CategorySelectNode[];
 }
@@ -101,11 +101,11 @@ const activeConfigTab = ref("fields");
 const activeArchiveLevel = ref<ArchiveLevel>("item");
 const activeLayoutSurface = ref<ArchiveLayoutSurface>("table");
 const layoutLoading = ref(false);
-const editingCategoryId = ref<string>();
-const editingFieldId = ref<string>();
-const editingConstraintId = ref<string>();
-const selectedCategoryId = ref<string>();
-const draggingLayoutFieldId = ref<string>();
+const editingCategoryId = ref<number>();
+const editingFieldId = ref<number>();
+const editingConstraintId = ref<number>();
+const selectedCategoryId = ref<number>();
+const draggingLayoutFieldId = ref<number>();
 const categories = ref<ArchiveCategoryDto[]>([]);
 const fields = ref<ArchiveFieldDto[]>([]);
 const layoutItems = ref<ArchiveFieldLayoutItemDto[]>([]);
@@ -206,7 +206,7 @@ function defaultFieldControl(fieldType: ArchiveFieldType): ArchiveFieldControl {
 
 interface LayoutDragData {
   type: "archive-layout-item";
-  fieldId: string;
+  fieldId: number;
 }
 
 const layoutDragCleanupKey = Symbol("layoutDragCleanup");
@@ -231,7 +231,7 @@ const vLayoutDrag: ObjectDirective<LayoutDragElement, ArchiveFieldLayoutItemDto>
 };
 
 function isLayoutDragData(data: Record<string | symbol, unknown>): data is LayoutDragData {
-  return data.type === "archive-layout-item" && typeof data.fieldId === "string";
+  return data.type === "archive-layout-item" && typeof data.fieldId === "number";
 }
 
 function bindLayoutDrag(element: LayoutDragElement, item: ArchiveFieldLayoutItemDto) {
@@ -286,8 +286,8 @@ function cleanupLayoutDrag(element: LayoutDragElement) {
 }
 
 function reorderLayoutItem(
-  sourceFieldId: string,
-  targetFieldId: string,
+  sourceFieldId: number,
+  targetFieldId: number,
   operation: "reorder-before" | "reorder-after",
 ) {
   const nextItems = [...layoutItems.value];
@@ -306,7 +306,7 @@ function reorderLayoutItem(
 }
 
 function buildCategoryTree(rows: ArchiveCategoryDto[]) {
-  const nodeMap = new Map<string, CategoryTreeNode>();
+  const nodeMap = new Map<number, CategoryTreeNode>();
   const roots: CategoryTreeNode[] = [];
   for (const row of rows) {
     nodeMap.set(row.id, { ...row, children: [] });
@@ -326,21 +326,21 @@ function buildCategoryTree(rows: ArchiveCategoryDto[]) {
   return roots;
 }
 
-function buildCategorySelectTree(rows: ArchiveCategoryDto[], editingId?: string) {
-  const excludedIds = editingId ? collectDescendantIds(rows, editingId) : new Set<string>();
+function buildCategorySelectTree(rows: ArchiveCategoryDto[], editingId?: number) {
+  const excludedIds = editingId ? collectDescendantIds(rows, editingId) : new Set<number>();
   const availableRows = rows.filter((row) => !excludedIds.has(row.id));
   return buildCategoryTree(availableRows).map(toSelectNode);
 }
 
-function collectDescendantIds(rows: ArchiveCategoryDto[], parentId: string) {
-  const childrenByParent = new Map<string, ArchiveCategoryDto[]>();
+function collectDescendantIds(rows: ArchiveCategoryDto[], parentId: number) {
+  const childrenByParent = new Map<number, ArchiveCategoryDto[]>();
   for (const row of rows) {
     if (!row.parentId) {
       continue;
     }
     childrenByParent.set(row.parentId, [...(childrenByParent.get(row.parentId) ?? []), row]);
   }
-  const ids = new Set<string>();
+  const ids = new Set<number>();
   const stack = [...(childrenByParent.get(parentId) ?? [])];
   while (stack.length > 0) {
     const current = stack.pop();

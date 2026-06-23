@@ -12,9 +12,6 @@ catalogs:
     '@atlaskit/pragmatic-drag-and-drop-hitbox':
       specifier: ^2.0.0
       version: 2.0.0
-    '@cap.js/widget':
-      specifier: ^0.1.56
-      version: 0.1.56
     '@tanstack/table-core':
       specifier: 9.0.0-beta.9
       version: 9.0.0-beta.9
@@ -24,6 +21,9 @@ catalogs:
     '@tanstack/vue-virtual':
       specifier: 3.13.29
       version: 3.13.29
+    cap-widget:
+      specifier: ^0.1.56
+      version: 0.1.56
     element-plus:
       specifier: ^2.14.2
       version: 2.14.2
@@ -53,9 +53,6 @@ importers:
       '@cap.js/wasm':
         specifier: ^0.0.7
         version: 0.0.7
-      '@cap.js/widget':
-        specifier: 'catalog:'
-        version: 0.1.56
       '@element-plus/icons-vue':
         specifier: ^2.3.2
         version: 2.3.2(vue@3.5.38(typescript@6.0.3))
@@ -68,6 +65,9 @@ importers:
       '@tanstack/vue-virtual':
         specifier: 'catalog:'
         version: 3.13.29(vue@3.5.38(typescript@6.0.3))
+      cap-widget:
+        specifier: 'catalog:'
+        version: 0.1.56
       element-plus:
         specifier: 'catalog:'
         version: 2.14.2(vue@3.5.38(typescript@6.0.3))
@@ -278,9 +278,6 @@ packages:
 
   '@cap.js/wasm@0.0.7':
     resolution: {integrity: sha512-IgUjrPOUBaOjTp+BkrhfEBBeQ4An7fQiSWWezDy9Uvd+OdTYm4+h3AJU0j/CpHYayp7FltZU+UePC6p28oGQaw==}
-
-  '@cap.js/widget@0.1.56':
-    resolution: {integrity: sha512-j640dNNNIF8IWmwqmSx0ihgU8sz/6Jm9mHveeDWUk8aXVqFm+2TSsp5bawtMtgf0aa7rFkmT9p76jrqO1uSEpQ==}
 
   '@ctrl/tinycolor@4.2.0':
     resolution: {integrity: sha512-kzyuwOAQnXJNLS9PSyrk0CWk35nWJW/zl/6KvnTBMFK65gm7U1/Z5BqjxeapjZCIhQcM/DsrEmcbRwDyXyXK4A==}
@@ -1201,6 +1198,9 @@ packages:
 
   caniuse-lite@1.0.30001799:
     resolution: {integrity: sha512-hG1bReV+OUU+MOqK4t/ZWI0tZOyz3rqS9XuhOUz1cIcbwBKjOyJEJuw9ER5JuNyqxNk8u/JUVbGibBOL1yrjFw==}
+
+  cap-widget@0.1.56:
+    resolution: {integrity: sha512-mAoFWzouxCjvi0B0Y0s7cRGGaLvJxifMVeNIHiFCkZme/9BOASWliN0aqz9wTUdlrt3Awm0UEA8h8DV1IDUuug==}
 
   chai@6.2.2:
     resolution: {integrity: sha512-NUPRluOfOiTKBKvWPtSD4PhFvWCqOi0BGStNWs57X9js7XGTprSmFoz5F0tWhR4WPjNeR9jXqdC7/UpSJTnlRg==}
@@ -2290,8 +2290,6 @@ snapshots:
 
   '@cap.js/wasm@0.0.7': {}
 
-  '@cap.js/widget@0.1.56': {}
-
   '@ctrl/tinycolor@4.2.0': {}
 
   '@element-plus/icons-vue@2.3.2(vue@3.5.38(typescript@6.0.3))':
@@ -2997,6 +2995,8 @@ snapshots:
       run-applescript: 7.1.0
 
   caniuse-lite@1.0.30001799: {}
+
+  cap-widget@0.1.56: {}
 
   chai@6.2.2: {}
 

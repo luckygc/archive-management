@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { Lock, User } from "@element-plus/icons-vue";
-import { reactive, ref } from "vue";
+import { reactive, ref, useTemplateRef } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import type { CapErrorEvent, CapWidget } from "@cap.js/widget";
+import type { CapWidget } from "cap-widget";
 import { useSessionStore } from "../../app/stores/session";
+import { useCapVerification } from "./capVerification";
 
 const route = useRoute();
 const router = useRouter();
@@ -15,15 +16,15 @@ const form = reactive({
 });
 const submitting = ref(false);
 const errorMessage = ref("");
-const powToken = ref("");
-const securityMessage = ref("请完成安全验证");
-const capWidget = ref<CapWidget | null>(null);
-
-interface CapSolveEvent extends CustomEvent {
-  detail: {
-    token: string;
-  };
-}
+const capWidgetRef = useTemplateRef<CapWidget>("capWidgetRef");
+const {
+  powToken,
+  securityMessage,
+  resetCapWidget,
+  handleCapReset,
+  handleCapError,
+  handleCapSolve: commitCapSolve,
+} = useCapVerification(capWidgetRef);
 
 async function submitLogin() {
   if (!form.username.trim() || !form.password) {
@@ -33,6 +34,7 @@ async function submitLogin() {
 
   if (!powToken.value) {
     errorMessage.value = "请先完成安全验证";
+    securityMessage.value = "请完成安全验证";
     return;
   }
 
@@ -49,38 +51,15 @@ async function submitLogin() {
     await router.push(redirect);
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : "登录失败";
-    resetCapWidget();
-    securityMessage.value = "请重新完成安全验证";
+    resetCapWidget("请重新完成安全验证");
   } finally {
     submitting.value = false;
   }
 }
 
-function resetCapWidget() {
-  powToken.value = "";
-  capWidget.value?.reset();
-}
-
 function handleCapSolve(event: Event) {
-  powToken.value = (event as CapSolveEvent).detail.token;
-  securityMessage.value = "安全验证已完成";
+  commitCapSolve(event);
   errorMessage.value = "";
-}
-
-function handleCapReset() {
-  powToken.value = "";
-  securityMessage.value = "请完成安全验证";
-}
-
-function handleCapError(event: Event) {
-  if (powToken.value) {
-    return;
-  }
-  const detail = (event as CapErrorEvent).detail;
-  powToken.value = "";
-  securityMessage.value = detail?.message
-    ? `安全验证失败：${detail.message}`
-    : "安全验证失败，请重试";
 }
 
 function normalizeRedirect(value: unknown) {
@@ -126,8 +105,10 @@ function normalizeRedirect(value: unknown) {
         </el-form-item>
         <div class="login-page__pow">
           <cap-widget
-            ref="capWidget"
+            ref="capWidgetRef"
+            required
             data-cap-api-endpoint="/api/v1/auth/cap/"
+            data-cap-hidden-field-name="powToken"
             data-cap-worker-count="2"
             data-cap-i18n-initial-state="点击完成安全验证"
             data-cap-i18n-verifying-label="正在验证..."
@@ -148,6 +129,7 @@ function normalizeRedirect(value: unknown) {
           class="login-page__submit"
           type="primary"
           size="large"
+          native-type="button"
           :loading="submitting"
           @click="submitLogin"
         >

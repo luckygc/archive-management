@@ -1,6 +1,6 @@
 create table am_storage_object
 (
-    id                bigserial primary key,
+    id                bigint primary key,
     storage_type      varchar(20)   not null,
     bucket_name       varchar(255)  not null,
     object_key        varchar(1024) not null,

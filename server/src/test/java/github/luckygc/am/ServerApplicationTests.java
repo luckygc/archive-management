@@ -24,12 +24,17 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.annotation.DirtiesContext;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import github.luckygc.am.common.api.LongStringSerializer;
 import github.luckygc.am.infrastructure.hibernate.SecurityAuditingInterceptor;
 import github.luckygc.am.module.archive.metadata.ArchiveFonds;
 import github.luckygc.am.module.archive.metadata.ArchiveFondsDataRepository;
 import github.luckygc.am.module.auth.ArchiveUserDetails;
 import github.luckygc.am.module.auth.PowChallengeService;
 import github.luckygc.am.test.PostgreSqlContainerTest;
+
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.annotation.JsonSerialize;
+import tools.jackson.databind.json.JsonMapper;
 
 @Testcontainers(disabledWithoutDocker = true)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
@@ -47,6 +52,7 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
     @Autowired private JdbcTemplate jdbcTemplate;
     @Autowired private PowChallengeService powChallengeService;
     @Autowired private ArchiveFondsDataRepository archiveFondsDataRepository;
+    @Autowired private JsonMapper jsonMapper;
 
     @Test
     void contextLoads() {
@@ -106,6 +112,41 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
                         "select created_at from am_auth_cap_challenge where token = ?",
                         java.time.LocalDateTime.class,
                         response.token()));
+    }
+
+    @Test
+    void capChallengeAndRedeemResponsesMatchWidgetFormat() throws Exception {
+        PowChallengeService.CapChallengeResponse response = powChallengeService.createChallenge();
+
+        JsonNode challengeJson = jsonMapper.readTree(jsonMapper.writeValueAsString(response));
+        Assertions.assertTrue(challengeJson.get("challenge").isObject());
+        Assertions.assertTrue(challengeJson.get("challenge").get("c").isInt());
+        Assertions.assertTrue(challengeJson.get("challenge").get("s").isInt());
+        Assertions.assertTrue(challengeJson.get("challenge").get("d").isInt());
+        Assertions.assertTrue(challengeJson.get("token").isTextual());
+        Assertions.assertTrue(challengeJson.get("expires").isNumber());
+
+        var redeemResult =
+                powChallengeService.redeemChallenge(
+                        new PowChallengeService.CapRedeemCommand(
+                                response.token(), solveCapChallenge(response)));
+
+        JsonNode redeemJson = jsonMapper.readTree(jsonMapper.writeValueAsString(redeemResult));
+        Assertions.assertEquals(true, redeemJson.get("success").booleanValue());
+        Assertions.assertTrue(redeemJson.get("token").isTextual());
+        Assertions.assertTrue(redeemJson.get("expires").isNumber());
+    }
+
+    @Test
+    void jsonLongStringSerializationAppliesOnlyToAnnotatedFields() throws Exception {
+        JsonNode json =
+                jsonMapper.readTree(
+                        jsonMapper.writeValueAsString(
+                                new LongFieldResponse(1L, 2L, 1_782_192_922_952L)));
+
+        Assertions.assertTrue(json.get("id").isTextual());
+        Assertions.assertTrue(json.get("categoryId").isNumber());
+        Assertions.assertTrue(json.get("expires").isNumber());
     }
 
     @Test
@@ -302,4 +343,9 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
         }
         return hash;
     }
+
+    private record LongFieldResponse(
+            @JsonSerialize(using = LongStringSerializer.class) Long id,
+            Long categoryId,
+            long expires) {}
 }

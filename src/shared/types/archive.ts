@@ -14,7 +14,7 @@ export type ArchivePhysicalStatus =
   | "BORROWED";
 
 export interface ArchiveFondsDto {
-  id: string;
+  id: number;
   fondsCode: string;
   fondsName: string;
   enabled: boolean;
@@ -31,8 +31,8 @@ export interface ArchiveFondsCommand {
 }
 
 export interface ArchiveCategoryDto {
-  id: string;
-  parentId?: string;
+  id: number;
+  parentId?: number;
   categoryCode: string;
   categoryName: string;
   managementMode: ArchiveManagementMode;
@@ -49,15 +49,15 @@ export interface ArchiveCategoryDto {
 export interface ArchiveCategoryCommand {
   categoryCode: string;
   categoryName: string;
-  parentId?: string;
+  parentId?: number;
   managementMode: ArchiveManagementMode;
   enabled: boolean;
   sortOrder: number;
 }
 
 export interface ArchiveFieldDto {
-  id: string;
-  categoryId: string;
+  id: number;
+  categoryId: number;
   archiveLevel: ArchiveLevel;
   fieldCode: string;
   fieldName: string;
@@ -113,7 +113,7 @@ export interface ArchiveFieldLayoutDto {
 }
 
 export interface ArchiveFieldLayoutItemDto {
-  fieldId: string;
+  fieldId: number;
   fieldCode: string;
   fieldName: string;
   fieldType: ArchiveFieldType;
@@ -130,7 +130,7 @@ export interface ArchiveFieldLayoutCommand {
 }
 
 export interface ArchiveFieldLayoutItemCommand {
-  fieldId: string;
+  fieldId: number;
   visible: boolean;
   listWidth?: number;
   colSpan: number;
@@ -139,7 +139,7 @@ export interface ArchiveFieldLayoutItemCommand {
 }
 
 export interface ArchiveUniqueConstraintFieldDto {
-  fieldId: string;
+  fieldId: number;
   fieldOrder: number;
   archiveLevel: ArchiveLevel;
   fieldCode: string;
@@ -148,8 +148,8 @@ export interface ArchiveUniqueConstraintFieldDto {
 }
 
 export interface ArchiveUniqueConstraintDto {
-  id: string;
-  categoryId: string;
+  id: number;
+  categoryId: number;
   archiveLevel: ArchiveLevel;
   constraintCode: string;
   constraintName: string;
@@ -167,11 +167,11 @@ export interface ArchiveUniqueConstraintCommand {
   constraintName: string;
   includeFonds: boolean;
   enabled: boolean;
-  fieldIds: string[];
+  fieldIds: number[];
 }
 
 export interface ArchiveRecordQuery {
-  categoryId?: string;
+  categoryId?: number;
   archiveLevel?: ArchiveLevel;
   fondsCode?: string;
   keyword?: string;
@@ -187,7 +187,7 @@ export interface ArchiveRecordFieldFilter {
 }
 
 export interface ArchiveRecordCommand {
-  categoryId: string;
+  categoryId: number;
   archiveLevel?: ArchiveLevel;
   parentId?: string;
   fondsCode: string;
@@ -256,4 +256,9 @@ export interface ArchiveRecordDetailDto {
   fields: ArchiveFieldDto[];
   dynamicFields: Record<string, unknown>;
   physicalObject?: ArchivePhysicalObjectDto;
+}
+
+export interface SearchProjectionRebuildResult {
+  categoryId: number;
+  rebuiltCount: number;
 }

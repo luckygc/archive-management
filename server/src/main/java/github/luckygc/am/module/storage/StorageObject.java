@@ -6,14 +6,13 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 import org.hibernate.annotations.CreationTimestamp;
 
 import github.luckygc.am.common.audit.CreationAuditable;
+import github.luckygc.am.common.persistence.CosIdGeneratedValue;
 import github.luckygc.am.common.storage.StorageType;
 
 import lombok.Data;
@@ -23,9 +22,7 @@ import lombok.Data;
 @Table(name = "am_storage_object")
 public class StorageObject implements CreationAuditable {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Id @CosIdGeneratedValue private Long id;
 
     @Column(name = "storage_type", nullable = false, length = 20)
     @Enumerated(EnumType.STRING)

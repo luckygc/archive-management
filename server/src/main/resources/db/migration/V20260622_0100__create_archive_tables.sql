@@ -155,7 +155,7 @@ comment on column am_archive_field.updated_at is '更新时间';
 
 create table am_archive_record
 (
-    id             bigserial primary key,
+    id             bigint primary key,
     archive_level  varchar(30)  not null default 'item',
     parent_id      bigint references am_archive_record (id),
     fonds_code     varchar(100) not null,
@@ -226,7 +226,7 @@ comment on column am_archive_record.updated_at is '更新时间';
 
 create table am_archive_record_electronic_file
 (
-    id                bigserial primary key,
+    id                bigint primary key,
     archive_record_id bigint      not null references am_archive_record (id),
     storage_object_id bigint      not null references am_storage_object (id),
     usage_type        varchar(50) not null default 'DEFAULT',
@@ -255,7 +255,7 @@ comment on column am_archive_record_electronic_file.created_at is '创建时间'
 
 create table am_archive_physical_object
 (
-    id                bigserial primary key,
+    id                bigint primary key,
     archive_record_id bigint      not null references am_archive_record (id),
     physical_status   varchar(50) not null default 'NONE',
     box_no            varchar(100),

@@ -10,7 +10,7 @@ import router from "./app/router";
 
 window.CAP_CUSTOM_WASM_URL = capWasmUrl;
 
-await import("@cap.js/widget");
+await import("cap-widget");
 
 const app = createApp(App);
 

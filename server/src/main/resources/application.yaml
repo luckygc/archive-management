@@ -94,8 +94,28 @@ spring:
         time-zone: Asia/Shanghai
         # Date 类型默认格式。
         date-format: yyyy-MM-dd HH:mm:ss
-        # JSON 输出时不包含 null 字段。
+        # JSON 输出时包含 null 字段。
         default-property-inclusion: always
+
+cosid:
+    # 启用 CosId，为高数据量档案记录和文件实体提供插入前 Long ID。
+    enabled: true
+    namespace: archive-management
+    machine:
+        # 机器号通过业务库 cosid_machine 表分配。
+        enabled: true
+        stable: true
+        machine-bit: 10
+        instance-id: ${AM_COSID_INSTANCE_ID:${spring.application.name}-${server.port}}
+        distributor:
+            type: jdbc
+    snowflake:
+        # 共享 Snowflake 生成器供 Hibernate 标识生成器使用。
+        enabled: true
+        share:
+            enabled: true
+            namespace: archive-management
+            machine-bit: 10
 
 server:
     # HTTP 服务端口。

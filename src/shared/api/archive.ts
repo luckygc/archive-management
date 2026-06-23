@@ -42,14 +42,14 @@ export function createArchiveFonds(command: ArchiveFondsCommand) {
   });
 }
 
-export function updateArchiveFonds(id: string, command: ArchiveFondsCommand) {
+export function updateArchiveFonds(id: number, command: ArchiveFondsCommand) {
   return request<ArchiveFondsDto>(`/api/v1/archive-fonds/${id}`, {
     method: "PATCH",
     body: JSON.stringify(command),
   });
 }
 
-export function deleteArchiveFonds(id: string) {
+export function deleteArchiveFonds(id: number) {
   return request<void>(`/api/v1/archive-fonds/${id}`, {
     method: "DELETE",
   });
@@ -66,24 +66,24 @@ export function createArchiveCategory(command: ArchiveCategoryCommand) {
   });
 }
 
-export function updateArchiveCategory(id: string, command: ArchiveCategoryCommand) {
+export function updateArchiveCategory(id: number, command: ArchiveCategoryCommand) {
   return request<ArchiveCategoryDto>(`/api/v1/archive-categories/${id}`, {
     method: "PATCH",
     body: JSON.stringify(command),
   });
 }
 
-export function deleteArchiveCategory(id: string) {
+export function deleteArchiveCategory(id: number) {
   return request<void>(`/api/v1/archive-categories/${id}`, {
     method: "DELETE",
   });
 }
 
-export function listArchiveFields(categoryId: string) {
+export function listArchiveFields(categoryId: number) {
   return request<ArchiveFieldDto[]>(`/api/v1/archive-categories/${categoryId}/fields`);
 }
 
-export function createArchiveField(categoryId: string, command: ArchiveFieldCommand) {
+export function createArchiveField(categoryId: number, command: ArchiveFieldCommand) {
   return request<ArchiveFieldDto>(`/api/v1/archive-categories/${categoryId}/fields`, {
     method: "POST",
     body: JSON.stringify(command),
@@ -91,8 +91,8 @@ export function createArchiveField(categoryId: string, command: ArchiveFieldComm
 }
 
 export function updateArchiveField(
-  categoryId: string,
-  fieldId: string,
+  categoryId: number,
+  fieldId: number,
   command: ArchiveFieldCommand,
 ) {
   return request<ArchiveFieldDto>(`/api/v1/archive-categories/${categoryId}/fields/${fieldId}`, {
@@ -101,14 +101,14 @@ export function updateArchiveField(
   });
 }
 
-export function deleteArchiveField(categoryId: string, fieldId: string) {
+export function deleteArchiveField(categoryId: number, fieldId: number) {
   return request<void>(`/api/v1/archive-categories/${categoryId}/fields/${fieldId}`, {
     method: "DELETE",
   });
 }
 
 export function getArchiveCategoryLayout(
-  categoryId: string,
+  categoryId: number,
   surface: ArchiveLayoutSurface,
   archiveLevel?: ArchiveLevel,
 ) {
@@ -118,7 +118,7 @@ export function getArchiveCategoryLayout(
 }
 
 export function savePublicArchiveCategoryLayout(
-  categoryId: string,
+  categoryId: number,
   surface: ArchiveLayoutSurface,
   command: ArchiveFieldLayoutCommand,
   archiveLevel?: ArchiveLevel,
@@ -132,7 +132,7 @@ export function savePublicArchiveCategoryLayout(
   );
 }
 
-export function buildArchiveCategoryTable(categoryId: string, archiveLevel?: ArchiveLevel) {
+export function buildArchiveCategoryTable(categoryId: number, archiveLevel?: ArchiveLevel) {
   return request<ArchiveCategoryDto>(
     `/api/v1/archive-categories/${categoryId}:buildTable${queryString({ archiveLevel })}`,
     {
@@ -141,14 +141,14 @@ export function buildArchiveCategoryTable(categoryId: string, archiveLevel?: Arc
   );
 }
 
-export function listArchiveUniqueConstraints(categoryId: string) {
+export function listArchiveUniqueConstraints(categoryId: number) {
   return request<ArchiveUniqueConstraintDto[]>(
     `/api/v1/archive-categories/${categoryId}/unique-constraints`,
   );
 }
 
 export function createArchiveUniqueConstraint(
-  categoryId: string,
+  categoryId: number,
   command: ArchiveUniqueConstraintCommand,
 ) {
   return request<ArchiveUniqueConstraintDto>(
@@ -161,8 +161,8 @@ export function createArchiveUniqueConstraint(
 }
 
 export function updateArchiveUniqueConstraint(
-  categoryId: string,
-  constraintId: string,
+  categoryId: number,
+  constraintId: number,
   command: ArchiveUniqueConstraintCommand,
 ) {
   return request<ArchiveUniqueConstraintDto>(
@@ -174,7 +174,7 @@ export function updateArchiveUniqueConstraint(
   );
 }
 
-export function deleteArchiveUniqueConstraint(categoryId: string, constraintId: string) {
+export function deleteArchiveUniqueConstraint(categoryId: number, constraintId: number) {
   return request<void>(
     `/api/v1/archive-categories/${categoryId}/unique-constraints/${constraintId}`,
     {
@@ -184,7 +184,7 @@ export function deleteArchiveUniqueConstraint(categoryId: string, constraintId: 
 }
 
 export function listArchiveRecords(params: {
-  categoryId?: string;
+  categoryId?: number;
   archiveLevel?: ArchiveLevel;
   fondsCode?: string;
 }) {

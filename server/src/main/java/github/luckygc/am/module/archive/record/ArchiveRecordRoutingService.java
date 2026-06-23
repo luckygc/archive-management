@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import github.luckygc.am.common.api.LongStringSerializer;
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
@@ -35,6 +36,8 @@ import github.luckygc.am.module.archive.metadata.ArchiveMetadataService.ArchiveF
 import github.luckygc.am.module.archive.metadata.ArchiveMetadataService.ArchiveFondsDto;
 import github.luckygc.am.module.archive.metadata.ArchiveMetadataService.ArchiveUniqueConstraintDto;
 import github.luckygc.am.module.archive.metadata.ArchiveMetadataService.ArchiveUniqueConstraintFieldDto;
+
+import tools.jackson.databind.annotation.JsonSerialize;
 
 @Service
 public class ArchiveRecordRoutingService {
@@ -82,7 +85,10 @@ public class ArchiveRecordRoutingService {
     public ArchiveRecordListDto searchRecords(ArchiveRecordQueryRequest request, Long userId) {
         if (request == null || request.categoryId() == null) {
             return new ArchiveRecordListDto(
-                    null, List.of(), true, archiveMapper.listRecordOverview());
+                    null,
+                    List.of(),
+                    true,
+                    normalizeRecordRowIds(archiveMapper.listRecordOverview()));
         }
 
         ArchiveCategoryDto category = archiveMetadataService.getCategory(request.categoryId());
@@ -614,13 +620,13 @@ public class ArchiveRecordRoutingService {
 
     private List<Map<String, Object>> normalizeDynamicFieldValues(
             List<Map<String, Object>> rows, List<ArchiveFieldDto> fields) {
-        if (rows.isEmpty() || fields.isEmpty()) {
+        if (rows.isEmpty()) {
             return rows;
         }
         return rows.stream()
                 .map(
                         row -> {
-                            Map<String, Object> normalized = new LinkedHashMap<>(row);
+                            Map<String, Object> normalized = normalizeRecordRowIds(row);
                             for (ArchiveFieldDto field : fields) {
                                 Object value = normalized.get(field.columnName());
                                 normalized.put(
@@ -630,6 +636,25 @@ public class ArchiveRecordRoutingService {
                             return normalized;
                         })
                 .toList();
+    }
+
+    private List<Map<String, Object>> normalizeRecordRowIds(List<Map<String, Object>> rows) {
+        return rows.stream().map(this::normalizeRecordRowIds).toList();
+    }
+
+    private Map<String, Object> normalizeRecordRowIds(Map<String, Object> row) {
+        Map<String, Object> normalized = new LinkedHashMap<>(row);
+        stringifyIdValue(normalized, "id");
+        stringifyIdValue(normalized, "parentId");
+        stringifyIdValue(normalized, "lockedBy");
+        return normalized;
+    }
+
+    private void stringifyIdValue(Map<String, Object> row, String key) {
+        Object value = row.get(key);
+        if (value instanceof Number number) {
+            row.put(key, number.toString());
+        }
     }
 
     private Object normalizeDynamicFieldValue(ArchiveFieldDto field, Object value) {
@@ -954,9 +979,9 @@ public class ArchiveRecordRoutingService {
     public record LockRecordRequest(String reason) {}
 
     public record ArchiveRecordDto(
-            Long id,
+            @JsonSerialize(using = LongStringSerializer.class) Long id,
             ArchiveLevel archiveLevel,
-            Long parentId,
+            @JsonSerialize(using = LongStringSerializer.class) Long parentId,
             String fondsCode,
             String fondsName,
             String categoryCode,
@@ -966,7 +991,7 @@ public class ArchiveRecordRoutingService {
             int archiveYear,
             boolean lockedFlag,
             String lockReason,
-            Long lockedBy,
+            @JsonSerialize(using = LongStringSerializer.class) Long lockedBy,
             LocalDateTime lockedAt) {}
 
     public record ArchiveRecordListDto(
@@ -983,8 +1008,8 @@ public class ArchiveRecordRoutingService {
             ArchivePhysicalObjectDto physicalObject) {}
 
     public record ArchivePhysicalObjectDto(
-            Long id,
-            Long archiveRecordId,
+            @JsonSerialize(using = LongStringSerializer.class) Long id,
+            @JsonSerialize(using = LongStringSerializer.class) Long archiveRecordId,
             String physicalStatus,
             String boxNo,
             String locationNo,
