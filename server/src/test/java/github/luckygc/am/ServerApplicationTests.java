@@ -13,17 +13,23 @@ import org.apache.ibatis.session.Configuration;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.apache.ibatis.transaction.jdbc.JdbcTransactionFactory;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.support.NoOpCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.session.SessionRepository;
+import org.springframework.session.jdbc.JdbcIndexedSessionRepository;
 import org.springframework.test.annotation.DirtiesContext;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import github.luckygc.am.app.ArchiveManagementApplication;
 import github.luckygc.am.common.api.LongStringSerializer;
 import github.luckygc.am.infrastructure.hibernate.SecurityAuditingInterceptor;
 import github.luckygc.am.module.archive.metadata.ArchiveFonds;
@@ -39,6 +45,7 @@ import tools.jackson.databind.json.JsonMapper;
 @Testcontainers(disabledWithoutDocker = true)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @SpringBootTest(
+        classes = ArchiveManagementApplication.class,
         properties = {
             "spring.autoconfigure.exclude=org.springframework.ai.model.deepseek.autoconfigure.DeepSeekChatAutoConfiguration",
             "spring.quartz.auto-startup=false",
@@ -47,27 +54,36 @@ import tools.jackson.databind.json.JsonMapper;
             "flowable.check-process-definitions=false",
             "flowable.eventregistry.enabled=false"
         })
+@DisplayName("服务端应用启动与基础合同")
 class ServerApplicationTests extends PostgreSqlContainerTest {
 
     @Autowired private JdbcTemplate jdbcTemplate;
     @Autowired private PowChallengeService powChallengeService;
     @Autowired private ArchiveFondsDataRepository archiveFondsDataRepository;
     @Autowired private JsonMapper jsonMapper;
+    @Autowired private SessionRepository<?> sessionRepository;
+    @Autowired private CacheManager cacheManager;
 
     @Test
+    @DisplayName("应用上下文启动后使用 JDBC 会话和 Quartz JDBC 调度")
     void contextLoads() {
         Assertions.assertTrue(POSTGRES.isRunning());
+        Assertions.assertInstanceOf(JdbcIndexedSessionRepository.class, sessionRepository);
+        Assertions.assertInstanceOf(NoOpCacheManager.class, cacheManager);
     }
 
     @Test
+    @DisplayName("Flyway 迁移后的 PostgreSQL 资源可用")
     void migratedPostgreSqlResourcesAreAvailable() {
         Assertions.assertEquals(
                 "archive_management_test",
                 jdbcTemplate.queryForObject("select current_database()", String.class));
         Assertions.assertEquals(
+                TEST_SCHEMA, jdbcTemplate.queryForObject("select current_schema()", String.class));
+        Assertions.assertEquals(
                 1,
                 jdbcTemplate.queryForObject(
-                        "select count(*) from pg_extension where extname = 'pg_textsearch'",
+                        "select count(*) from pg_extension where extname = 'pg_trgm'",
                         Integer.class));
         Assertions.assertEquals(
                 1,
@@ -78,32 +94,67 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
         Assertions.assertEquals(
                 "am_archive_record_search",
                 jdbcTemplate.queryForObject(
-                        "select to_regclass('public.am_archive_record_search')::text",
-                        String.class));
+                        "select to_regclass('am_archive_record_search')::text", String.class));
         Assertions.assertEquals(
-                "idx_am_archive_record_search_bm25",
+                "idx_am_archive_record_search_trgm",
                 jdbcTemplate.queryForObject(
-                        "select to_regclass('public.idx_am_archive_record_search_bm25')::text",
+                        "select to_regclass('idx_am_archive_record_search_trgm')::text",
                         String.class));
         Assertions.assertEquals(
                 1,
                 jdbcTemplate.queryForObject(
                         "select count(*) from information_schema.columns "
-                                + "where table_schema = 'public' "
+                                + "where table_schema = current_schema() "
                                 + "and table_name = 'am_archive_field' "
                                 + "and column_name = 'exact_searchable'",
+                        Integer.class));
+        Assertions.assertEquals(
+                "am_runtime_job",
+                jdbcTemplate.queryForObject(
+                        "select to_regclass('am_runtime_job')::text", String.class));
+        Assertions.assertEquals(true, relationExistsInCurrentSchema("spring_session"));
+        Assertions.assertEquals(true, relationExistsInCurrentSchema("spring_session_attributes"));
+        Assertions.assertEquals(true, relationExistsInCurrentSchema("qrtz_locks"));
+        Assertions.assertEquals(true, relationExistsInCurrentSchema("qrtz_job_details"));
+        Assertions.assertEquals(true, relationExistsInCurrentSchema("qrtz_triggers"));
+        Assertions.assertEquals(true, relationExistsInCurrentSchema("qrtz_scheduler_state"));
+        Assertions.assertEquals(
+                "am_runtime_lock",
+                jdbcTemplate.queryForObject(
+                        "select to_regclass('am_runtime_lock')::text", String.class));
+        Assertions.assertEquals(
+                1,
+                jdbcTemplate.queryForObject(
+                        "select count(*) from information_schema.columns "
+                                + "where table_schema = current_schema() "
+                                + "and table_name = 'am_runtime_job' "
+                                + "and column_name = 'message_id'",
                         Integer.class));
         Assertions.assertEquals(
                 0,
                 jdbcTemplate.queryForObject(
                         "select count(*) from information_schema.columns "
-                                + "where table_schema = 'public' "
+                                + "where table_schema = current_schema() "
                                 + "and table_name = 'am_archive_field' "
                                 + "and column_name = 'full_text_searchable'",
                         Integer.class));
     }
 
+    private boolean relationExistsInCurrentSchema(String relationName) {
+        return Boolean.TRUE.equals(
+                jdbcTemplate.queryForObject(
+                        "select exists ("
+                                + "select 1 from pg_class c "
+                                + "join pg_namespace n on n.oid = c.relnamespace "
+                                + "where n.nspname = current_schema() "
+                                + "and c.relname = ?"
+                                + ")",
+                        Boolean.class,
+                        relationName));
+    }
+
     @Test
+    @DisplayName("CAP 挑战创建时持久化创建时间")
     void capChallengeCreationPersistsCreatedAt() {
         PowChallengeService.CapChallengeResponse response = powChallengeService.createChallenge();
 
@@ -115,6 +166,7 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
     }
 
     @Test
+    @DisplayName("CAP challenge 和 redeem 响应符合前端组件格式")
     void capChallengeAndRedeemResponsesMatchWidgetFormat() throws Exception {
         PowChallengeService.CapChallengeResponse response = powChallengeService.createChallenge();
 
@@ -138,6 +190,7 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
     }
 
     @Test
+    @DisplayName("LongStringSerializer 只作用于显式标注字段")
     void jsonLongStringSerializationAppliesOnlyToAnnotatedFields() throws Exception {
         JsonNode json =
                 jsonMapper.readTree(
@@ -150,6 +203,7 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
     }
 
     @Test
+    @DisplayName("CAP 挑战解答只能兑换一次登录 token")
     void capChallengeRedeemAcceptsGeneratedChallengeOnce() {
         PowChallengeService.CapChallengeResponse response = powChallengeService.createChallenge();
 
@@ -163,6 +217,7 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
     }
 
     @Test
+    @DisplayName("无状态 Repository 从安全上下文填充审计字段")
     void statelessRepositoryFillsAuditFieldsFromSecurityContext() {
         SecurityContextHolder.getContext()
                 .setAuthentication(
@@ -248,6 +303,7 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
     }
 
     @Test
+    @DisplayName("无状态 upsert 不覆盖创建审计字段")
     void statelessUpsertDoesNotOverwriteCreationAuditFields() {
         SecurityContextHolder.getContext()
                 .setAuthentication(

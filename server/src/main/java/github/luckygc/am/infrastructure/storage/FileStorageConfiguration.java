@@ -16,6 +16,7 @@ class FileStorageConfiguration {
     @Bean
     @ConditionalOnMissingBean
     FileStorageService fileStorageService(FileStorageProperties properties) {
+        StorageType defaultStorageType = defaultStorageType(properties);
         List<FileStorageBackend> backends = new ArrayList<>();
         for (FileStorageProperties.Local local : properties.getLocal()) {
             if (isLocalStorageConfigured(local)) {
@@ -38,15 +39,31 @@ class FileStorageConfiguration {
         if (backends.isEmpty()) {
             throw new StorageException("至少需要配置一种文件存储后端");
         }
-        StorageType defaultStorageType =
-                objectStorageConfigured ? StorageType.s3 : StorageType.local;
+        if (defaultStorageType != StorageType.local && !objectStorageConfigured) {
+            throw new StorageException(
+                    "已选择文件存储 adapter "
+                            + defaultStorageType
+                            + "，但对象存储配置不完整；请补齐 archive.storage.object 配置");
+        }
         String defaultBucketName =
-                objectStorageConfigured
-                        ? properties.getObject().getBucket().trim()
-                        : requireText(
+                defaultStorageType == StorageType.local
+                        ? requireText(
                                 properties.getActiveLocalBucket(),
-                                "archive.storage.active-local-bucket");
+                                "archive.storage.active-local-bucket")
+                        : properties.getObject().getBucket().trim();
         return new DelegatingFileStorageService(defaultStorageType, defaultBucketName, backends);
+    }
+
+    private static StorageType defaultStorageType(FileStorageProperties properties) {
+        try {
+            return StorageType.fromValue(
+                    requireText(properties.getAdapter(), "archive.storage.adapter"));
+        } catch (IllegalArgumentException exception) {
+            throw new StorageException(
+                    "文件存储 adapter 不支持: "
+                            + properties.getAdapter()
+                            + "，支持 local、s3、minio、cos、oss、obs");
+        }
     }
 
     private static boolean isLocalStorageConfigured(FileStorageProperties.Local properties) {

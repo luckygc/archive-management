@@ -1,92 +1,92 @@
 <script setup lang="ts">
 import { combine } from "@atlaskit/pragmatic-drag-and-drop/combine";
 import {
-  draggable,
-  dropTargetForElements,
+    draggable,
+    dropTargetForElements,
 } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
 import type { CleanupFn } from "@atlaskit/pragmatic-drag-and-drop/types";
 import {
-  attachInstruction,
-  extractInstruction,
+    attachInstruction,
+    extractInstruction,
 } from "@atlaskit/pragmatic-drag-and-drop-hitbox/list-item";
 import { Rank } from "@element-plus/icons-vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import type { ObjectDirective } from "vue";
 import { computed, onMounted, reactive, ref, watch } from "vue";
 import {
-  buildArchiveCategoryTable,
-  createArchiveCategory,
-  createArchiveField,
-  createArchiveUniqueConstraint,
-  deleteArchiveCategory,
-  deleteArchiveField,
-  deleteArchiveUniqueConstraint,
-  getArchiveCategoryLayout,
-  listArchiveCategories,
-  listArchiveFields,
-  listArchiveUniqueConstraints,
-  savePublicArchiveCategoryLayout,
-  updateArchiveCategory,
-  updateArchiveField,
-  updateArchiveUniqueConstraint,
+    buildArchiveCategoryTable,
+    createArchiveCategory,
+    createArchiveField,
+    createArchiveUniqueConstraint,
+    deleteArchiveCategory,
+    deleteArchiveField,
+    deleteArchiveUniqueConstraint,
+    getArchiveCategoryLayout,
+    listArchiveCategories,
+    listArchiveFields,
+    listArchiveUniqueConstraints,
+    savePublicArchiveCategoryLayout,
+    updateArchiveCategory,
+    updateArchiveField,
+    updateArchiveUniqueConstraint,
 } from "../../shared/api/archive";
 import type {
-  ArchiveCategoryCommand,
-  ArchiveCategoryDto,
-  ArchiveFieldControl,
-  ArchiveFieldCommand,
-  ArchiveFieldDto,
-  ArchiveFieldLayoutItemDto,
-  ArchiveLevel,
-  ArchiveLayoutSurface,
-  ArchiveFieldType,
-  ArchiveManagementMode,
-  ArchiveUniqueConstraintCommand,
-  ArchiveUniqueConstraintDto,
+    ArchiveCategoryCommand,
+    ArchiveCategoryDto,
+    ArchiveFieldControl,
+    ArchiveFieldCommand,
+    ArchiveFieldDto,
+    ArchiveFieldLayoutItemDto,
+    ArchiveLevel,
+    ArchiveLayoutSurface,
+    ArchiveFieldType,
+    ArchiveManagementMode,
+    ArchiveUniqueConstraintCommand,
+    ArchiveUniqueConstraintDto,
 } from "../../shared/types/archive";
 
 defineOptions({ name: "ArchiveCategoriesPage" });
 
 interface CategoryTreeNode extends ArchiveCategoryDto {
-  children?: CategoryTreeNode[];
+    children?: CategoryTreeNode[];
 }
 
 interface CategorySelectNode {
-  value: number;
-  label: string;
-  children?: CategorySelectNode[];
+    value: number;
+    label: string;
+    children?: CategorySelectNode[];
 }
 
 const fieldTypeOptions: Array<{ label: string; value: ArchiveFieldType }> = [
-  { label: "文本", value: "text" },
-  { label: "整数", value: "integer" },
-  { label: "小数", value: "decimal" },
-  { label: "日期", value: "date" },
-  { label: "日期时间", value: "datetime" },
+    { label: "文本", value: "text" },
+    { label: "整数", value: "integer" },
+    { label: "小数", value: "decimal" },
+    { label: "日期", value: "date" },
+    { label: "日期时间", value: "datetime" },
 ];
 
 const fieldControlLabels: Record<ArchiveFieldControl, string> = {
-  input: "单行输入",
-  textarea: "多行文本",
-  number: "数字输入",
-  date: "日期选择",
-  datetime: "日期时间",
+    input: "单行输入",
+    textarea: "多行文本",
+    number: "数字输入",
+    date: "日期选择",
+    datetime: "日期时间",
 };
 
 const layoutSurfaceOptions: Array<{ label: string; value: ArchiveLayoutSurface }> = [
-  { label: "表格", value: "table" },
-  { label: "详情", value: "detail" },
-  { label: "编辑", value: "edit" },
+    { label: "表格", value: "table" },
+    { label: "详情", value: "detail" },
+    { label: "编辑", value: "edit" },
 ];
 
 const archiveLevelOptions: Array<{ label: string; value: ArchiveLevel }> = [
-  { label: "卷内", value: "item" },
-  { label: "案卷", value: "volume" },
+    { label: "卷内", value: "item" },
+    { label: "案卷", value: "volume" },
 ];
 
 const managementModeOptions: Array<{ label: string; value: ArchiveManagementMode }> = [
-  { label: "按条目管理", value: "item_only" },
-  { label: "按案卷/卷内管理", value: "volume_item" },
+    { label: "按条目管理", value: "item_only" },
+    { label: "按案卷/卷内管理", value: "volume_item" },
 ];
 
 const categoriesLoading = ref(false);
@@ -112,1068 +112,1106 @@ const layoutItems = ref<ArchiveFieldLayoutItemDto[]>([]);
 const uniqueConstraints = ref<ArchiveUniqueConstraintDto[]>([]);
 
 const categoryForm = reactive<ArchiveCategoryCommand>({
-  categoryCode: "",
-  categoryName: "",
-  parentId: undefined,
-  managementMode: "item_only",
-  enabled: true,
-  sortOrder: 0,
+    categoryCode: "",
+    categoryName: "",
+    parentId: undefined,
+    managementMode: "item_only",
+    enabled: true,
+    sortOrder: 0,
 });
 
 const fieldForm = reactive<ArchiveFieldCommand>({
-  archiveLevel: "item",
-  fieldCode: "",
-  fieldName: "",
-  fieldType: "text",
-  textLength: 500,
-  decimalPrecision: 18,
-  decimalScale: 2,
-  editControl: "input",
-  listVisible: true,
-  listWidth: undefined,
-  listSortOrder: 0,
-  detailVisible: true,
-  detailColSpan: 1,
-  detailSortOrder: 0,
-  editVisible: true,
-  editColSpan: 1,
-  editSortOrder: 0,
-  exactSearchable: false,
-  enabled: true,
-  sortOrder: 0,
+    archiveLevel: "item",
+    fieldCode: "",
+    fieldName: "",
+    fieldType: "text",
+    textLength: 500,
+    decimalPrecision: 18,
+    decimalScale: 2,
+    editControl: "input",
+    listVisible: true,
+    listWidth: undefined,
+    listSortOrder: 0,
+    detailVisible: true,
+    detailColSpan: 1,
+    detailSortOrder: 0,
+    editVisible: true,
+    editColSpan: 1,
+    editSortOrder: 0,
+    exactSearchable: false,
+    enabled: true,
+    sortOrder: 0,
 });
 
 const constraintForm = reactive<ArchiveUniqueConstraintCommand>({
-  archiveLevel: "item",
-  constraintCode: "",
-  constraintName: "",
-  includeFonds: true,
-  enabled: true,
-  fieldIds: [],
+    archiveLevel: "item",
+    constraintCode: "",
+    constraintName: "",
+    enabled: true,
+    fieldIds: [],
 });
 
 const selectedCategory = computed(() =>
-  categories.value.find((item) => item.id === selectedCategoryId.value),
+    categories.value.find((item) => item.id === selectedCategoryId.value),
 );
 
 const categoryTree = computed(() => buildCategoryTree(categories.value));
 
 const parentOptions = computed(() =>
-  buildCategorySelectTree(
-    categories.value.filter((item) => item.id !== editingCategoryId.value),
-    editingCategoryId.value,
-  ),
+    buildCategorySelectTree(
+        categories.value.filter((item) => item.id !== editingCategoryId.value),
+        editingCategoryId.value,
+    ),
 );
 
 const currentLevelFields = computed(() =>
-  fields.value.filter((field) => field.archiveLevel === activeArchiveLevel.value),
+    fields.value.filter((field) => field.archiveLevel === activeArchiveLevel.value),
 );
 
 const currentLevelConstraints = computed(() =>
-  uniqueConstraints.value.filter((item) => item.archiveLevel === activeArchiveLevel.value),
+    uniqueConstraints.value.filter((item) => item.archiveLevel === activeArchiveLevel.value),
 );
 
 const currentLevelTableName = computed(() =>
-  activeArchiveLevel.value === "volume"
-    ? selectedCategory.value?.volumeTableName
-    : selectedCategory.value?.itemTableName,
+    activeArchiveLevel.value === "volume"
+        ? selectedCategory.value?.volumeTableName
+        : selectedCategory.value?.itemTableName,
 );
 
 function tableStatusText(row: ArchiveCategoryDto) {
-  return row.tableStatus === "built" ? "已建表" : "未建表";
+    return row.tableStatus === "built" ? "已建表" : "未建表";
 }
 
 function fieldControlText(value: ArchiveFieldControl) {
-  return fieldControlLabels[value];
+    return fieldControlLabels[value];
 }
 
 function fieldControlOptions(fieldType: ArchiveFieldType) {
-  if (fieldType === "text") {
-    return ["input", "textarea"] satisfies ArchiveFieldControl[];
-  }
-  if (fieldType === "integer" || fieldType === "decimal") {
-    return ["number"] satisfies ArchiveFieldControl[];
-  }
-  if (fieldType === "date") {
-    return ["date"] satisfies ArchiveFieldControl[];
-  }
-  return ["datetime"] satisfies ArchiveFieldControl[];
+    if (fieldType === "text") {
+        return ["input", "textarea"] satisfies ArchiveFieldControl[];
+    }
+    if (fieldType === "integer" || fieldType === "decimal") {
+        return ["number"] satisfies ArchiveFieldControl[];
+    }
+    if (fieldType === "date") {
+        return ["date"] satisfies ArchiveFieldControl[];
+    }
+    return ["datetime"] satisfies ArchiveFieldControl[];
 }
 
 function defaultFieldControl(fieldType: ArchiveFieldType): ArchiveFieldControl {
-  return fieldControlOptions(fieldType)[0];
+    return fieldControlOptions(fieldType)[0];
 }
 
 interface LayoutDragData {
-  type: "archive-layout-item";
-  fieldId: number;
+    type: "archive-layout-item";
+    fieldId: number;
 }
 
 const layoutDragCleanupKey = Symbol("layoutDragCleanup");
 
 type LayoutDragElement = HTMLElement & {
-  [layoutDragCleanupKey]?: CleanupFn;
+    [layoutDragCleanupKey]?: CleanupFn;
 };
 
 const vLayoutDrag: ObjectDirective<LayoutDragElement, ArchiveFieldLayoutItemDto> = {
-  mounted(element, binding) {
-    bindLayoutDrag(element, binding.value);
-  },
-  updated(element, binding) {
-    if (binding.oldValue?.fieldId !== binding.value.fieldId) {
-      cleanupLayoutDrag(element);
-      bindLayoutDrag(element, binding.value);
-    }
-  },
-  beforeUnmount(element) {
-    cleanupLayoutDrag(element);
-  },
+    mounted(element, binding) {
+        bindLayoutDrag(element, binding.value);
+    },
+    updated(element, binding) {
+        if (binding.oldValue?.fieldId !== binding.value.fieldId) {
+            cleanupLayoutDrag(element);
+            bindLayoutDrag(element, binding.value);
+        }
+    },
+    beforeUnmount(element) {
+        cleanupLayoutDrag(element);
+    },
 };
 
 function isLayoutDragData(data: Record<string | symbol, unknown>): data is LayoutDragData {
-  return data.type === "archive-layout-item" && typeof data.fieldId === "number";
+    return data.type === "archive-layout-item" && typeof data.fieldId === "number";
 }
 
 function bindLayoutDrag(element: LayoutDragElement, item: ArchiveFieldLayoutItemDto) {
-  const dragHandle = element.querySelector(".archive-layout-config__drag");
-  const getData = (): LayoutDragData => ({
-    type: "archive-layout-item",
-    fieldId: item.fieldId,
-  });
-  element[layoutDragCleanupKey] = combine(
-    draggable({
-      element,
-      dragHandle: dragHandle ?? undefined,
-      getInitialData: getData,
-      onDragStart: () => {
-        draggingLayoutFieldId.value = item.fieldId;
-      },
-      onDrop: () => {
-        draggingLayoutFieldId.value = undefined;
-      },
-    }),
-    dropTargetForElements({
-      element,
-      canDrop: ({ source }) =>
-        isLayoutDragData(source.data) && source.data.fieldId !== item.fieldId,
-      getData: ({ input, element: target }) =>
-        attachInstruction(getData(), {
-          input,
-          element: target,
-          operations: {
-            "reorder-before": "available",
-            "reorder-after": "available",
-          },
-          axis: activeLayoutSurface.value === "table" ? "horizontal" : "vertical",
+    const dragHandle = element.querySelector(".archive-layout-config__drag");
+    const getData = (): LayoutDragData => ({
+        type: "archive-layout-item",
+        fieldId: item.fieldId,
+    });
+    element[layoutDragCleanupKey] = combine(
+        draggable({
+            element,
+            dragHandle: dragHandle ?? undefined,
+            getInitialData: getData,
+            onDragStart: () => {
+                draggingLayoutFieldId.value = item.fieldId;
+            },
+            onDrop: () => {
+                draggingLayoutFieldId.value = undefined;
+            },
         }),
-      onDrop: ({ source, self }) => {
-        if (!isLayoutDragData(source.data)) {
-          return;
-        }
-        const instruction = extractInstruction(self.data);
-        if (!instruction || instruction.operation === "combine") {
-          return;
-        }
-        reorderLayoutItem(source.data.fieldId, item.fieldId, instruction.operation);
-      },
-    }),
-  );
+        dropTargetForElements({
+            element,
+            canDrop: ({ source }) =>
+                isLayoutDragData(source.data) && source.data.fieldId !== item.fieldId,
+            getData: ({ input, element: target }) =>
+                attachInstruction(getData(), {
+                    input,
+                    element: target,
+                    operations: {
+                        "reorder-before": "available",
+                        "reorder-after": "available",
+                    },
+                    axis: activeLayoutSurface.value === "table" ? "horizontal" : "vertical",
+                }),
+            onDrop: ({ source, self }) => {
+                if (!isLayoutDragData(source.data)) {
+                    return;
+                }
+                const instruction = extractInstruction(self.data);
+                if (!instruction || instruction.operation === "combine") {
+                    return;
+                }
+                reorderLayoutItem(source.data.fieldId, item.fieldId, instruction.operation);
+            },
+        }),
+    );
 }
 
 function cleanupLayoutDrag(element: LayoutDragElement) {
-  element[layoutDragCleanupKey]?.();
-  element[layoutDragCleanupKey] = undefined;
+    element[layoutDragCleanupKey]?.();
+    element[layoutDragCleanupKey] = undefined;
 }
 
 function reorderLayoutItem(
-  sourceFieldId: number,
-  targetFieldId: number,
-  operation: "reorder-before" | "reorder-after",
+    sourceFieldId: number,
+    targetFieldId: number,
+    operation: "reorder-before" | "reorder-after",
 ) {
-  const nextItems = [...layoutItems.value];
-  const sourceIndex = nextItems.findIndex((item) => item.fieldId === sourceFieldId);
-  if (sourceIndex < 0) {
-    return;
-  }
-  const [movedItem] = nextItems.splice(sourceIndex, 1);
-  const targetIndex = nextItems.findIndex((item) => item.fieldId === targetFieldId);
-  if (!movedItem || targetIndex < 0) {
-    return;
-  }
-  const insertIndex = operation === "reorder-after" ? targetIndex + 1 : targetIndex;
-  nextItems.splice(insertIndex, 0, movedItem);
-  layoutItems.value = nextItems;
+    const nextItems = [...layoutItems.value];
+    const sourceIndex = nextItems.findIndex((item) => item.fieldId === sourceFieldId);
+    if (sourceIndex < 0) {
+        return;
+    }
+    const [movedItem] = nextItems.splice(sourceIndex, 1);
+    const targetIndex = nextItems.findIndex((item) => item.fieldId === targetFieldId);
+    if (!movedItem || targetIndex < 0) {
+        return;
+    }
+    const insertIndex = operation === "reorder-after" ? targetIndex + 1 : targetIndex;
+    nextItems.splice(insertIndex, 0, movedItem);
+    layoutItems.value = nextItems;
 }
 
 function buildCategoryTree(rows: ArchiveCategoryDto[]) {
-  const nodeMap = new Map<number, CategoryTreeNode>();
-  const roots: CategoryTreeNode[] = [];
-  for (const row of rows) {
-    nodeMap.set(row.id, { ...row, children: [] });
-  }
-  for (const row of rows) {
-    const node = nodeMap.get(row.id);
-    if (!node) {
-      continue;
+    const nodeMap = new Map<number, CategoryTreeNode>();
+    const roots: CategoryTreeNode[] = [];
+    for (const row of rows) {
+        nodeMap.set(row.id, { ...row, children: [] });
     }
-    const parent = row.parentId ? nodeMap.get(row.parentId) : undefined;
-    if (parent) {
-      parent.children?.push(node);
-    } else {
-      roots.push(node);
+    for (const row of rows) {
+        const node = nodeMap.get(row.id);
+        if (!node) {
+            continue;
+        }
+        const parent = row.parentId ? nodeMap.get(row.parentId) : undefined;
+        if (parent) {
+            parent.children?.push(node);
+        } else {
+            roots.push(node);
+        }
     }
-  }
-  return roots;
+    return roots;
 }
 
 function buildCategorySelectTree(rows: ArchiveCategoryDto[], editingId?: number) {
-  const excludedIds = editingId ? collectDescendantIds(rows, editingId) : new Set<number>();
-  const availableRows = rows.filter((row) => !excludedIds.has(row.id));
-  return buildCategoryTree(availableRows).map(toSelectNode);
+    const excludedIds = editingId ? collectDescendantIds(rows, editingId) : new Set<number>();
+    const availableRows = rows.filter((row) => !excludedIds.has(row.id));
+    return buildCategoryTree(availableRows).map(toSelectNode);
 }
 
 function collectDescendantIds(rows: ArchiveCategoryDto[], parentId: number) {
-  const childrenByParent = new Map<number, ArchiveCategoryDto[]>();
-  for (const row of rows) {
-    if (!row.parentId) {
-      continue;
+    const childrenByParent = new Map<number, ArchiveCategoryDto[]>();
+    for (const row of rows) {
+        if (!row.parentId) {
+            continue;
+        }
+        childrenByParent.set(row.parentId, [...(childrenByParent.get(row.parentId) ?? []), row]);
     }
-    childrenByParent.set(row.parentId, [...(childrenByParent.get(row.parentId) ?? []), row]);
-  }
-  const ids = new Set<number>();
-  const stack = [...(childrenByParent.get(parentId) ?? [])];
-  while (stack.length > 0) {
-    const current = stack.pop();
-    if (!current) {
-      continue;
+    const ids = new Set<number>();
+    const stack = [...(childrenByParent.get(parentId) ?? [])];
+    while (stack.length > 0) {
+        const current = stack.pop();
+        if (!current) {
+            continue;
+        }
+        ids.add(current.id);
+        stack.push(...(childrenByParent.get(current.id) ?? []));
     }
-    ids.add(current.id);
-    stack.push(...(childrenByParent.get(current.id) ?? []));
-  }
-  return ids;
+    return ids;
 }
 
 function toSelectNode(row: CategoryTreeNode): CategorySelectNode {
-  return {
-    value: row.id,
-    label: row.categoryName,
-    children: row.children?.length ? row.children.map(toSelectNode) : undefined,
-  };
+    return {
+        value: row.id,
+        label: row.categoryName,
+        children: row.children?.length ? row.children.map(toSelectNode) : undefined,
+    };
 }
 
 function resetCategoryForm(row?: ArchiveCategoryDto) {
-  editingCategoryId.value = row?.id;
-  categoryForm.categoryCode = row?.categoryCode ?? "";
-  categoryForm.categoryName = row?.categoryName ?? "";
-  categoryForm.parentId = row?.parentId;
-  categoryForm.managementMode = row?.managementMode ?? "item_only";
-  categoryForm.enabled = row?.enabled ?? true;
-  categoryForm.sortOrder = row?.sortOrder ?? 0;
+    editingCategoryId.value = row?.id;
+    categoryForm.categoryCode = row?.categoryCode ?? "";
+    categoryForm.categoryName = row?.categoryName ?? "";
+    categoryForm.parentId = row?.parentId;
+    categoryForm.managementMode = row?.managementMode ?? "item_only";
+    categoryForm.enabled = row?.enabled ?? true;
+    categoryForm.sortOrder = row?.sortOrder ?? 0;
 }
 
 function resetFieldForm(row?: ArchiveFieldDto) {
-  editingFieldId.value = row?.id;
-  fieldForm.archiveLevel = row?.archiveLevel ?? activeArchiveLevel.value;
-  fieldForm.fieldCode = row?.fieldCode ?? "";
-  fieldForm.fieldName = row?.fieldName ?? "";
-  fieldForm.fieldType = row?.fieldType ?? "text";
-  fieldForm.textLength = row?.textLength ?? 500;
-  fieldForm.decimalPrecision = row?.decimalPrecision ?? 18;
-  fieldForm.decimalScale = row?.decimalScale ?? 2;
-  fieldForm.editControl = row?.editControl ?? defaultFieldControl(fieldForm.fieldType);
-  fieldForm.listVisible = row?.listVisible ?? true;
-  fieldForm.listWidth = row?.listWidth;
-  fieldForm.listSortOrder = row?.listSortOrder ?? row?.sortOrder ?? 0;
-  fieldForm.detailVisible = row?.detailVisible ?? true;
-  fieldForm.detailColSpan = row?.detailColSpan ?? 1;
-  fieldForm.detailSortOrder = row?.detailSortOrder ?? row?.sortOrder ?? 0;
-  fieldForm.editVisible = row?.editVisible ?? true;
-  fieldForm.editColSpan = row?.editColSpan ?? 1;
-  fieldForm.editSortOrder = row?.editSortOrder ?? row?.sortOrder ?? 0;
-  fieldForm.exactSearchable = row?.exactSearchable ?? false;
-  fieldForm.enabled = row?.enabled ?? true;
-  fieldForm.sortOrder = row?.sortOrder ?? 0;
+    editingFieldId.value = row?.id;
+    fieldForm.archiveLevel = row?.archiveLevel ?? activeArchiveLevel.value;
+    fieldForm.fieldCode = row?.fieldCode ?? "";
+    fieldForm.fieldName = row?.fieldName ?? "";
+    fieldForm.fieldType = row?.fieldType ?? "text";
+    fieldForm.textLength = row?.textLength ?? 500;
+    fieldForm.decimalPrecision = row?.decimalPrecision ?? 18;
+    fieldForm.decimalScale = row?.decimalScale ?? 2;
+    fieldForm.editControl = row?.editControl ?? defaultFieldControl(fieldForm.fieldType);
+    fieldForm.listVisible = row?.listVisible ?? true;
+    fieldForm.listWidth = row?.listWidth;
+    fieldForm.listSortOrder = row?.listSortOrder ?? row?.sortOrder ?? 0;
+    fieldForm.detailVisible = row?.detailVisible ?? true;
+    fieldForm.detailColSpan = row?.detailColSpan ?? 1;
+    fieldForm.detailSortOrder = row?.detailSortOrder ?? row?.sortOrder ?? 0;
+    fieldForm.editVisible = row?.editVisible ?? true;
+    fieldForm.editColSpan = row?.editColSpan ?? 1;
+    fieldForm.editSortOrder = row?.editSortOrder ?? row?.sortOrder ?? 0;
+    fieldForm.exactSearchable = row?.exactSearchable ?? false;
+    fieldForm.enabled = row?.enabled ?? true;
+    fieldForm.sortOrder = row?.sortOrder ?? 0;
 }
 
 function resetConstraintForm(row?: ArchiveUniqueConstraintDto) {
-  editingConstraintId.value = row?.id;
-  constraintForm.archiveLevel = row?.archiveLevel ?? activeArchiveLevel.value;
-  constraintForm.constraintCode = row?.constraintCode ?? "";
-  constraintForm.constraintName = row?.constraintName ?? "";
-  constraintForm.includeFonds = row?.includeFonds ?? true;
-  constraintForm.enabled = row?.enabled ?? true;
-  constraintForm.fieldIds = row?.fields.map((field) => field.fieldId) ?? [];
+    editingConstraintId.value = row?.id;
+    constraintForm.archiveLevel = row?.archiveLevel ?? activeArchiveLevel.value;
+    constraintForm.constraintCode = row?.constraintCode ?? "";
+    constraintForm.constraintName = row?.constraintName ?? "";
+    constraintForm.enabled = row?.enabled ?? true;
+    constraintForm.fieldIds = row?.fields.map((field) => field.fieldId) ?? [];
 }
 
 async function loadCategories() {
-  categoriesLoading.value = true;
-  try {
-    categories.value = await listArchiveCategories();
-    if (!selectedCategoryId.value && categories.value.length > 0) {
-      selectedCategoryId.value = categories.value[0].id;
-      await loadFields();
-      await loadUniqueConstraints();
+    categoriesLoading.value = true;
+    try {
+        categories.value = await listArchiveCategories();
+        if (!selectedCategoryId.value && categories.value.length > 0) {
+            selectedCategoryId.value = categories.value[0].id;
+            await loadFields();
+            await loadUniqueConstraints();
+        }
+    } finally {
+        categoriesLoading.value = false;
     }
-  } finally {
-    categoriesLoading.value = false;
-  }
 }
 
 async function loadFields() {
-  if (!selectedCategoryId.value) {
-    fields.value = [];
-    uniqueConstraints.value = [];
-    return;
-  }
-  fieldsLoading.value = true;
-  try {
-    fields.value = await listArchiveFields(selectedCategoryId.value);
-  } finally {
-    fieldsLoading.value = false;
-  }
+    if (!selectedCategoryId.value) {
+        fields.value = [];
+        uniqueConstraints.value = [];
+        return;
+    }
+    fieldsLoading.value = true;
+    try {
+        fields.value = await listArchiveFields(selectedCategoryId.value);
+    } finally {
+        fieldsLoading.value = false;
+    }
 }
 
 async function loadUniqueConstraints() {
-  if (!selectedCategoryId.value) {
-    uniqueConstraints.value = [];
-    return;
-  }
-  constraintsLoading.value = true;
-  try {
-    uniqueConstraints.value = await listArchiveUniqueConstraints(selectedCategoryId.value);
-  } finally {
-    constraintsLoading.value = false;
-  }
+    if (!selectedCategoryId.value) {
+        uniqueConstraints.value = [];
+        return;
+    }
+    constraintsLoading.value = true;
+    try {
+        uniqueConstraints.value = await listArchiveUniqueConstraints(selectedCategoryId.value);
+    } finally {
+        constraintsLoading.value = false;
+    }
 }
 
 async function selectCategory(row: ArchiveCategoryDto) {
-  selectedCategoryId.value = row.id;
-  await loadFields();
-  await loadUniqueConstraints();
+    selectedCategoryId.value = row.id;
+    await loadFields();
+    await loadUniqueConstraints();
 }
 
 function openCreateCategory() {
-  resetCategoryForm();
-  categoryDialogVisible.value = true;
+    resetCategoryForm();
+    categoryDialogVisible.value = true;
 }
 
 function openEditCategory(row: ArchiveCategoryDto) {
-  resetCategoryForm(row);
-  categoryDialogVisible.value = true;
+    resetCategoryForm(row);
+    categoryDialogVisible.value = true;
 }
 
 async function submitCategory() {
-  saving.value = true;
-  try {
-    const saved = editingCategoryId.value
-      ? await updateArchiveCategory(editingCategoryId.value, categoryForm)
-      : await createArchiveCategory(categoryForm);
-    selectedCategoryId.value = saved.id;
-    ElMessage.success("已保存");
-    categoryDialogVisible.value = false;
-    await loadCategories();
-    await loadFields();
-  } finally {
-    saving.value = false;
-  }
+    saving.value = true;
+    try {
+        const saved = editingCategoryId.value
+            ? await updateArchiveCategory(editingCategoryId.value, categoryForm)
+            : await createArchiveCategory(categoryForm);
+        selectedCategoryId.value = saved.id;
+        ElMessage.success("已保存");
+        categoryDialogVisible.value = false;
+        await loadCategories();
+        await loadFields();
+    } finally {
+        saving.value = false;
+    }
 }
 
 async function removeCategory(row: ArchiveCategoryDto) {
-  await ElMessageBox.confirm(`确定删除分类“${row.categoryName}”？`, "删除分类", {
-    type: "warning",
-  });
-  await deleteArchiveCategory(row.id);
-  ElMessage.success("已删除");
-  if (selectedCategoryId.value === row.id) {
-    selectedCategoryId.value = undefined;
-    fields.value = [];
-  }
-  await loadCategories();
+    await ElMessageBox.confirm(`确定删除分类“${row.categoryName}”？`, "删除分类", {
+        type: "warning",
+    });
+    await deleteArchiveCategory(row.id);
+    ElMessage.success("已删除");
+    if (selectedCategoryId.value === row.id) {
+        selectedCategoryId.value = undefined;
+        fields.value = [];
+    }
+    await loadCategories();
 }
 
 function openCreateField() {
-  if (!selectedCategoryId.value) {
-    ElMessage.warning("请先选择档案分类");
-    return;
-  }
-  resetFieldForm();
-  fieldDialogVisible.value = true;
+    if (!selectedCategoryId.value) {
+        ElMessage.warning("请先选择档案分类");
+        return;
+    }
+    resetFieldForm();
+    fieldDialogVisible.value = true;
 }
 
 function openEditField(row: ArchiveFieldDto) {
-  resetFieldForm(row);
-  fieldDialogVisible.value = true;
+    resetFieldForm(row);
+    fieldDialogVisible.value = true;
 }
 
 async function submitField() {
-  if (!selectedCategoryId.value) {
-    return;
-  }
-  saving.value = true;
-  try {
-    if (editingFieldId.value) {
-      await updateArchiveField(selectedCategoryId.value, editingFieldId.value, fieldForm);
-    } else {
-      await createArchiveField(selectedCategoryId.value, fieldForm);
+    if (!selectedCategoryId.value) {
+        return;
     }
-    ElMessage.success("已保存");
-    fieldDialogVisible.value = false;
-    await loadFields();
-  } finally {
-    saving.value = false;
-  }
+    saving.value = true;
+    try {
+        if (editingFieldId.value) {
+            await updateArchiveField(selectedCategoryId.value, editingFieldId.value, fieldForm);
+        } else {
+            await createArchiveField(selectedCategoryId.value, fieldForm);
+        }
+        ElMessage.success("已保存");
+        fieldDialogVisible.value = false;
+        await loadFields();
+    } finally {
+        saving.value = false;
+    }
 }
 
 async function removeField(row: ArchiveFieldDto) {
-  if (!selectedCategoryId.value) {
-    return;
-  }
-  await ElMessageBox.confirm(`确定删除字段“${row.fieldName}”？`, "删除字段", {
-    type: "warning",
-  });
-  await deleteArchiveField(selectedCategoryId.value, row.id);
-  ElMessage.success("已删除");
-  await loadFields();
+    if (!selectedCategoryId.value) {
+        return;
+    }
+    await ElMessageBox.confirm(`确定删除字段“${row.fieldName}”？`, "删除字段", {
+        type: "warning",
+    });
+    await deleteArchiveField(selectedCategoryId.value, row.id);
+    ElMessage.success("已删除");
+    await loadFields();
 }
 
 function openCreateConstraint() {
-  if (!selectedCategoryId.value) {
-    ElMessage.warning("请先选择档案分类");
-    return;
-  }
-  resetConstraintForm();
-  constraintDialogVisible.value = true;
+    if (!selectedCategoryId.value) {
+        ElMessage.warning("请先选择档案分类");
+        return;
+    }
+    resetConstraintForm();
+    constraintDialogVisible.value = true;
 }
 
 function openEditConstraint(row: ArchiveUniqueConstraintDto) {
-  resetConstraintForm(row);
-  constraintDialogVisible.value = true;
+    resetConstraintForm(row);
+    constraintDialogVisible.value = true;
 }
 
 async function submitConstraint() {
-  if (!selectedCategoryId.value) {
-    return;
-  }
-  if (constraintForm.fieldIds.length === 0) {
-    ElMessage.warning("请选择唯一约束字段");
-    return;
-  }
-  saving.value = true;
-  try {
-    if (editingConstraintId.value) {
-      await updateArchiveUniqueConstraint(
-        selectedCategoryId.value,
-        editingConstraintId.value,
-        constraintForm,
-      );
-    } else {
-      await createArchiveUniqueConstraint(selectedCategoryId.value, constraintForm);
+    if (!selectedCategoryId.value) {
+        return;
     }
-    ElMessage.success("已保存");
-    constraintDialogVisible.value = false;
-    await loadUniqueConstraints();
-  } finally {
-    saving.value = false;
-  }
+    if (constraintForm.fieldIds.length === 0) {
+        ElMessage.warning("请选择唯一约束字段");
+        return;
+    }
+    saving.value = true;
+    try {
+        if (editingConstraintId.value) {
+            await updateArchiveUniqueConstraint(
+                selectedCategoryId.value,
+                editingConstraintId.value,
+                constraintForm,
+            );
+        } else {
+            await createArchiveUniqueConstraint(selectedCategoryId.value, constraintForm);
+        }
+        ElMessage.success("已保存");
+        constraintDialogVisible.value = false;
+        await loadUniqueConstraints();
+    } finally {
+        saving.value = false;
+    }
 }
 
 async function removeConstraint(row: ArchiveUniqueConstraintDto) {
-  if (!selectedCategoryId.value) {
-    return;
-  }
-  await ElMessageBox.confirm(`确定删除唯一约束“${row.constraintName}”？`, "删除唯一约束", {
-    type: "warning",
-  });
-  await deleteArchiveUniqueConstraint(selectedCategoryId.value, row.id);
-  ElMessage.success("已删除");
-  await loadUniqueConstraints();
+    if (!selectedCategoryId.value) {
+        return;
+    }
+    await ElMessageBox.confirm(`确定删除唯一约束“${row.constraintName}”？`, "删除唯一约束", {
+        type: "warning",
+    });
+    await deleteArchiveUniqueConstraint(selectedCategoryId.value, row.id);
+    ElMessage.success("已删除");
+    await loadUniqueConstraints();
 }
 
 function constraintFieldNames(row: ArchiveUniqueConstraintDto) {
-  return row.fields.map((field) => field.fieldName).join(" + ");
+    return row.fields.map((field) => field.fieldName).join(" + ");
 }
 
 async function loadLayout() {
-  if (!selectedCategoryId.value || activeConfigTab.value !== "layout") {
-    layoutItems.value = [];
-    return;
-  }
-  layoutLoading.value = true;
-  try {
-    const layout = await getArchiveCategoryLayout(
-      selectedCategoryId.value,
-      activeLayoutSurface.value,
-      activeArchiveLevel.value,
-    );
-    layoutItems.value = layout.items;
-  } finally {
-    layoutLoading.value = false;
-  }
+    if (!selectedCategoryId.value || activeConfigTab.value !== "layout") {
+        layoutItems.value = [];
+        return;
+    }
+    layoutLoading.value = true;
+    try {
+        const layout = await getArchiveCategoryLayout(
+            selectedCategoryId.value,
+            activeLayoutSurface.value,
+            activeArchiveLevel.value,
+        );
+        layoutItems.value = layout.items;
+    } finally {
+        layoutLoading.value = false;
+    }
 }
 
 function layoutCommand() {
-  return {
-    items: layoutItems.value.map((item, index) => ({
-      fieldId: item.fieldId,
-      visible: item.visible,
-      listWidth: activeLayoutSurface.value === "table" ? item.listWidth : undefined,
-      colSpan: item.colSpan,
-      rowOrder: index * 10,
-      colOrder: 0,
-    })),
-  };
+    return {
+        items: layoutItems.value.map((item, index) => ({
+            fieldId: item.fieldId,
+            visible: item.visible,
+            listWidth: activeLayoutSurface.value === "table" ? item.listWidth : undefined,
+            colSpan: item.colSpan,
+            rowOrder: index * 10,
+            colOrder: 0,
+        })),
+    };
 }
 
 async function saveLayout() {
-  if (!selectedCategoryId.value) {
-    return;
-  }
-  saving.value = true;
-  try {
-    const layout = await savePublicArchiveCategoryLayout(
-      selectedCategoryId.value,
-      activeLayoutSurface.value,
-      layoutCommand(),
-      activeArchiveLevel.value,
-    );
-    layoutItems.value = layout.items;
-    ElMessage.success("布局已保存");
-  } finally {
-    saving.value = false;
-  }
+    if (!selectedCategoryId.value) {
+        return;
+    }
+    saving.value = true;
+    try {
+        const layout = await savePublicArchiveCategoryLayout(
+            selectedCategoryId.value,
+            activeLayoutSurface.value,
+            layoutCommand(),
+            activeArchiveLevel.value,
+        );
+        layoutItems.value = layout.items;
+        ElMessage.success("布局已保存");
+    } finally {
+        saving.value = false;
+    }
 }
 
 function layoutItemStyle(item: ArchiveFieldLayoutItemDto) {
-  return activeLayoutSurface.value === "table"
-    ? undefined
-    : { gridColumn: `span ${Math.min(Math.max(item.colSpan || 1, 1), 2)}` };
+    return activeLayoutSurface.value === "table"
+        ? undefined
+        : { gridColumn: `span ${Math.min(Math.max(item.colSpan || 1, 1), 2)}` };
 }
 
 function layoutControlText(item: ArchiveFieldLayoutItemDto) {
-  return fieldControlLabels[item.editControl];
+    return fieldControlLabels[item.editControl];
 }
 
 async function buildTable() {
-  if (!selectedCategoryId.value) {
-    ElMessage.warning("请先选择档案分类");
-    return;
-  }
-  building.value = true;
-  try {
-    const category = await buildArchiveCategoryTable(
-      selectedCategoryId.value,
-      activeArchiveLevel.value,
-    );
-    selectedCategoryId.value = category.id;
-    ElMessage.success("建表完成");
-    await loadCategories();
-  } finally {
-    building.value = false;
-  }
+    if (!selectedCategoryId.value) {
+        ElMessage.warning("请先选择档案分类");
+        return;
+    }
+    building.value = true;
+    try {
+        const category = await buildArchiveCategoryTable(
+            selectedCategoryId.value,
+            activeArchiveLevel.value,
+        );
+        selectedCategoryId.value = category.id;
+        ElMessage.success("建表完成");
+        await loadCategories();
+    } finally {
+        building.value = false;
+    }
 }
 
 watch(
-  () => fieldForm.fieldType,
-  (fieldType) => {
-    if (!fieldControlOptions(fieldType).includes(fieldForm.editControl ?? "input")) {
-      fieldForm.editControl = defaultFieldControl(fieldType);
-    }
-  },
+    () => fieldForm.fieldType,
+    (fieldType) => {
+        if (!fieldControlOptions(fieldType).includes(fieldForm.editControl ?? "input")) {
+            fieldForm.editControl = defaultFieldControl(fieldType);
+        }
+    },
 );
 
 watch([selectedCategoryId, activeConfigTab, activeArchiveLevel, activeLayoutSurface], () => {
-  void loadLayout();
+    void loadLayout();
 });
 
 watch(activeArchiveLevel, (archiveLevel) => {
-  if (!editingFieldId.value) {
-    fieldForm.archiveLevel = archiveLevel;
-  }
-  if (!editingConstraintId.value) {
-    constraintForm.archiveLevel = archiveLevel;
-  }
+    if (!editingFieldId.value) {
+        fieldForm.archiveLevel = archiveLevel;
+    }
+    if (!editingConstraintId.value) {
+        constraintForm.archiveLevel = archiveLevel;
+    }
 });
 
 onMounted(loadCategories);
 </script>
 
 <template>
-  <section class="archive-categories-page">
-    <section class="archive-categories-page__categories">
-      <header class="archive-categories-page__toolbar">
-        <el-button type="primary" @click="openCreateCategory">新增分类</el-button>
-      </header>
-      <el-table
-        v-loading="categoriesLoading"
-        :data="categoryTree"
-        height="100%"
-        default-expand-all
-        highlight-current-row
-        :current-row-key="selectedCategoryId"
-        row-key="id"
-        @row-click="selectCategory"
-      >
-        <el-table-column prop="categoryCode" label="分类编码" width="150" />
-        <el-table-column prop="categoryName" label="分类名称" min-width="190" />
-        <el-table-column prop="managementMode" label="管理模式" width="130">
-          <template #default="{ row }">
-            {{ row.managementMode === "volume_item" ? "案卷/卷内" : "条目" }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="tableStatus" label="建表状态" width="110">
-          <template #default="{ row }">
-            <el-tag :type="row.tableStatus === 'built' ? 'success' : 'info'">
-              {{ tableStatusText(row) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="150" fixed="right">
-          <template #default="{ row }">
-            <el-button link type="primary" @click.stop="openEditCategory(row)">编辑</el-button>
-            <el-button link type="danger" @click.stop="removeCategory(row)">删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-    </section>
-
-    <section class="archive-categories-page__fields">
-      <header class="archive-categories-page__toolbar">
-        <div class="archive-categories-page__selected">
-          {{ selectedCategory?.categoryName ?? "未选择分类" }}
-          <span v-if="currentLevelTableName" class="archive-categories-page__table-name">
-            {{ currentLevelTableName }}
-          </span>
-        </div>
-        <div class="archive-categories-page__actions">
-          <el-segmented v-model="activeArchiveLevel" :options="archiveLevelOptions" />
-          <el-button :disabled="!selectedCategoryId" @click="openCreateField">新增字段</el-button>
-          <el-button :disabled="!selectedCategoryId" @click="openCreateConstraint"
-            >新增约束</el-button
-          >
-          <el-button
-            type="primary"
-            :loading="building"
-            :disabled="!selectedCategoryId"
-            @click="buildTable"
-          >
-            生成/更新表
-          </el-button>
-        </div>
-      </header>
-      <el-tabs v-model="activeConfigTab" class="archive-categories-page__tabs">
-        <el-tab-pane label="字段定义" name="fields">
-          <el-table v-loading="fieldsLoading" :data="currentLevelFields" height="100%">
-            <el-table-column prop="archiveLevel" label="层级" width="80">
-              <template #default="{ row }">{{
-                row.archiveLevel === "volume" ? "案卷" : "卷内"
-              }}</template>
-            </el-table-column>
-            <el-table-column prop="fieldCode" label="字段编码" width="150" />
-            <el-table-column prop="fieldName" label="字段名称" min-width="150" />
-            <el-table-column prop="fieldType" label="类型" width="110" />
-            <el-table-column prop="editControl" label="控件" width="110">
-              <template #default="{ row }">{{ fieldControlText(row.editControl) }}</template>
-            </el-table-column>
-            <el-table-column prop="columnName" label="物理列" width="140" />
-            <el-table-column prop="exactSearchable" label="精确" width="80">
-              <template #default="{ row }">{{ row.exactSearchable ? "是" : "否" }}</template>
-            </el-table-column>
-            <el-table-column prop="enabled" label="状态" width="90">
-              <template #default="{ row }">
-                <el-tag :type="row.enabled ? 'success' : 'info'">
-                  {{ row.enabled ? "启用" : "停用" }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column label="操作" width="150" fixed="right">
-              <template #default="{ row }">
-                <el-button link type="primary" @click="openEditField(row)">编辑</el-button>
-                <el-button link type="danger" @click="removeField(row)">删除</el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-        </el-tab-pane>
-        <el-tab-pane label="布局配置" name="layout">
-          <div class="archive-layout-config">
-            <div class="archive-layout-config__toolbar">
-              <el-segmented v-model="activeLayoutSurface" :options="layoutSurfaceOptions" />
-              <el-button type="primary" :loading="saving" @click="saveLayout">保存布局</el-button>
-            </div>
-            <el-empty
-              v-if="layoutItems.length === 0 && !layoutLoading"
-              description="当前分类没有字段"
-            />
-            <div
-              v-else
-              v-loading="layoutLoading || saving"
-              class="archive-layout-config__list"
-              :class="{ 'is-table': activeLayoutSurface === 'table' }"
+    <section class="archive-categories-page">
+        <section class="archive-categories-page__categories">
+            <header class="archive-categories-page__toolbar">
+                <el-button type="primary" @click="openCreateCategory">新增分类</el-button>
+            </header>
+            <el-table
+                v-loading="categoriesLoading"
+                :data="categoryTree"
+                height="100%"
+                default-expand-all
+                highlight-current-row
+                :current-row-key="selectedCategoryId"
+                row-key="id"
+                @row-click="selectCategory"
             >
-              <div
-                v-for="item in layoutItems"
-                :key="item.fieldId"
-                v-layout-drag="item"
-                class="archive-layout-config__item"
-                :class="{
-                  'is-hidden': !item.visible,
-                  'is-dragging': draggingLayoutFieldId === item.fieldId,
-                }"
-                :style="layoutItemStyle(item)"
-              >
-                <el-icon class="archive-layout-config__drag"><Rank /></el-icon>
-                <div class="archive-layout-config__field">
-                  <span class="archive-layout-config__name">{{ item.fieldName }}</span>
-                  <span class="archive-layout-config__code">
-                    {{ item.fieldCode }} · {{ layoutControlText(item) }}
-                  </span>
+                <el-table-column prop="categoryCode" label="分类编码" width="150" />
+                <el-table-column prop="categoryName" label="分类名称" min-width="190" />
+                <el-table-column prop="managementMode" label="管理模式" width="130">
+                    <template #default="{ row }">
+                        {{ row.managementMode === "volume_item" ? "案卷/卷内" : "条目" }}
+                    </template>
+                </el-table-column>
+                <el-table-column prop="tableStatus" label="建表状态" width="110">
+                    <template #default="{ row }">
+                        <el-tag :type="row.tableStatus === 'built' ? 'success' : 'info'">
+                            {{ tableStatusText(row) }}
+                        </el-tag>
+                    </template>
+                </el-table-column>
+                <el-table-column label="操作" width="150" fixed="right">
+                    <template #default="{ row }">
+                        <el-button link type="primary" @click.stop="openEditCategory(row)"
+                            >编辑</el-button
+                        >
+                        <el-button link type="danger" @click.stop="removeCategory(row)"
+                            >删除</el-button
+                        >
+                    </template>
+                </el-table-column>
+            </el-table>
+        </section>
+
+        <section class="archive-categories-page__fields">
+            <header class="archive-categories-page__toolbar">
+                <div class="archive-categories-page__selected">
+                    {{ selectedCategory?.categoryName ?? "未选择分类" }}
+                    <span v-if="currentLevelTableName" class="archive-categories-page__table-name">
+                        {{ currentLevelTableName }}
+                    </span>
                 </div>
-                <el-switch v-model="item.visible" />
-                <el-input-number
-                  v-if="activeLayoutSurface === 'table'"
-                  v-model="item.listWidth"
-                  :min="80"
-                  :max="600"
-                  :step="10"
-                  controls-position="right"
-                  placeholder="列宽"
-                />
-                <el-radio-group v-else v-model="item.colSpan">
-                  <el-radio-button :value="1">1列</el-radio-button>
-                  <el-radio-button :value="2">2列</el-radio-button>
-                </el-radio-group>
-              </div>
-            </div>
-          </div>
-        </el-tab-pane>
-        <el-tab-pane label="唯一约束" name="rules">
-          <el-table v-loading="constraintsLoading" :data="currentLevelConstraints" height="100%">
-            <el-table-column prop="archiveLevel" label="层级" width="80">
-              <template #default="{ row }">{{
-                row.archiveLevel === "volume" ? "案卷" : "卷内"
-              }}</template>
-            </el-table-column>
-            <el-table-column prop="constraintCode" label="约束编码" width="140" />
-            <el-table-column prop="constraintName" label="约束名称" min-width="150" />
-            <el-table-column label="字段组合" min-width="180">
-              <template #default="{ row }">{{ constraintFieldNames(row) }}</template>
-            </el-table-column>
-            <el-table-column prop="includeFonds" label="全宗" width="80">
-              <template #default="{ row }">{{ row.includeFonds ? "是" : "否" }}</template>
-            </el-table-column>
-            <el-table-column prop="enabled" label="状态" width="90">
-              <template #default="{ row }">
-                <el-tag :type="row.enabled ? 'success' : 'info'">
-                  {{ row.enabled ? "启用" : "停用" }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column label="操作" width="150" fixed="right">
-              <template #default="{ row }">
-                <el-button link type="primary" @click="openEditConstraint(row)">编辑</el-button>
-                <el-button link type="danger" @click="removeConstraint(row)">删除</el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-        </el-tab-pane>
-      </el-tabs>
+                <div class="archive-categories-page__actions">
+                    <el-segmented v-model="activeArchiveLevel" :options="archiveLevelOptions" />
+                    <el-button :disabled="!selectedCategoryId" @click="openCreateField"
+                        >新增字段</el-button
+                    >
+                    <el-button :disabled="!selectedCategoryId" @click="openCreateConstraint"
+                        >新增约束</el-button
+                    >
+                    <el-button
+                        type="primary"
+                        :loading="building"
+                        :disabled="!selectedCategoryId"
+                        @click="buildTable"
+                    >
+                        生成/更新表
+                    </el-button>
+                </div>
+            </header>
+            <el-tabs v-model="activeConfigTab" class="archive-categories-page__tabs">
+                <el-tab-pane label="字段定义" name="fields">
+                    <el-table v-loading="fieldsLoading" :data="currentLevelFields" height="100%">
+                        <el-table-column prop="archiveLevel" label="层级" width="80">
+                            <template #default="{ row }">{{
+                                row.archiveLevel === "volume" ? "案卷" : "卷内"
+                            }}</template>
+                        </el-table-column>
+                        <el-table-column prop="fieldCode" label="字段编码" width="150" />
+                        <el-table-column prop="fieldName" label="字段名称" min-width="150" />
+                        <el-table-column prop="fieldType" label="类型" width="110" />
+                        <el-table-column prop="editControl" label="控件" width="110">
+                            <template #default="{ row }">{{
+                                fieldControlText(row.editControl)
+                            }}</template>
+                        </el-table-column>
+                        <el-table-column prop="columnName" label="物理列" width="140" />
+                        <el-table-column prop="exactSearchable" label="精确" width="80">
+                            <template #default="{ row }">{{
+                                row.exactSearchable ? "是" : "否"
+                            }}</template>
+                        </el-table-column>
+                        <el-table-column prop="enabled" label="状态" width="90">
+                            <template #default="{ row }">
+                                <el-tag :type="row.enabled ? 'success' : 'info'">
+                                    {{ row.enabled ? "启用" : "停用" }}
+                                </el-tag>
+                            </template>
+                        </el-table-column>
+                        <el-table-column label="操作" width="150" fixed="right">
+                            <template #default="{ row }">
+                                <el-button link type="primary" @click="openEditField(row)"
+                                    >编辑</el-button
+                                >
+                                <el-button link type="danger" @click="removeField(row)"
+                                    >删除</el-button
+                                >
+                            </template>
+                        </el-table-column>
+                    </el-table>
+                </el-tab-pane>
+                <el-tab-pane label="布局配置" name="layout">
+                    <div class="archive-layout-config">
+                        <div class="archive-layout-config__toolbar">
+                            <el-segmented
+                                v-model="activeLayoutSurface"
+                                :options="layoutSurfaceOptions"
+                            />
+                            <el-button type="primary" :loading="saving" @click="saveLayout"
+                                >保存布局</el-button
+                            >
+                        </div>
+                        <el-empty
+                            v-if="layoutItems.length === 0 && !layoutLoading"
+                            description="当前分类没有字段"
+                        />
+                        <div
+                            v-else
+                            v-loading="layoutLoading || saving"
+                            class="archive-layout-config__list"
+                            :class="{ 'is-table': activeLayoutSurface === 'table' }"
+                        >
+                            <div
+                                v-for="item in layoutItems"
+                                :key="item.fieldId"
+                                v-layout-drag="item"
+                                class="archive-layout-config__item"
+                                :class="{
+                                    'is-hidden': !item.visible,
+                                    'is-dragging': draggingLayoutFieldId === item.fieldId,
+                                }"
+                                :style="layoutItemStyle(item)"
+                            >
+                                <el-icon class="archive-layout-config__drag"><Rank /></el-icon>
+                                <div class="archive-layout-config__field">
+                                    <span class="archive-layout-config__name">{{
+                                        item.fieldName
+                                    }}</span>
+                                    <span class="archive-layout-config__code">
+                                        {{ item.fieldCode }} · {{ layoutControlText(item) }}
+                                    </span>
+                                </div>
+                                <el-switch v-model="item.visible" />
+                                <el-input-number
+                                    v-if="activeLayoutSurface === 'table'"
+                                    v-model="item.listWidth"
+                                    :min="80"
+                                    :max="600"
+                                    :step="10"
+                                    controls-position="right"
+                                    placeholder="列宽"
+                                />
+                                <el-radio-group v-else v-model="item.colSpan">
+                                    <el-radio-button :value="1">1列</el-radio-button>
+                                    <el-radio-button :value="2">2列</el-radio-button>
+                                </el-radio-group>
+                            </div>
+                        </div>
+                    </div>
+                </el-tab-pane>
+                <el-tab-pane label="唯一约束" name="rules">
+                    <el-table
+                        v-loading="constraintsLoading"
+                        :data="currentLevelConstraints"
+                        height="100%"
+                    >
+                        <el-table-column prop="archiveLevel" label="层级" width="80">
+                            <template #default="{ row }">{{
+                                row.archiveLevel === "volume" ? "案卷" : "卷内"
+                            }}</template>
+                        </el-table-column>
+                        <el-table-column prop="constraintCode" label="约束编码" width="140" />
+                        <el-table-column prop="constraintName" label="约束名称" min-width="150" />
+                        <el-table-column label="字段组合" min-width="180">
+                            <template #default="{ row }">{{ constraintFieldNames(row) }}</template>
+                        </el-table-column>
+                        <el-table-column prop="enabled" label="状态" width="90">
+                            <template #default="{ row }">
+                                <el-tag :type="row.enabled ? 'success' : 'info'">
+                                    {{ row.enabled ? "启用" : "停用" }}
+                                </el-tag>
+                            </template>
+                        </el-table-column>
+                        <el-table-column label="操作" width="150" fixed="right">
+                            <template #default="{ row }">
+                                <el-button link type="primary" @click="openEditConstraint(row)"
+                                    >编辑</el-button
+                                >
+                                <el-button link type="danger" @click="removeConstraint(row)"
+                                    >删除</el-button
+                                >
+                            </template>
+                        </el-table-column>
+                    </el-table>
+                </el-tab-pane>
+            </el-tabs>
+        </section>
+
+        <el-dialog
+            v-model="categoryDialogVisible"
+            :title="editingCategoryId ? '编辑分类' : '新增分类'"
+            width="540px"
+        >
+            <el-form :model="categoryForm" label-width="92px">
+                <el-form-item label="分类编码" required>
+                    <el-input v-model="categoryForm.categoryCode" />
+                </el-form-item>
+                <el-form-item label="分类名称" required>
+                    <el-input v-model="categoryForm.categoryName" />
+                </el-form-item>
+                <el-form-item label="上级分类">
+                    <el-tree-select
+                        v-model="categoryForm.parentId"
+                        :data="parentOptions"
+                        clearable
+                        check-strictly
+                        default-expand-all
+                        placeholder="无上级分类"
+                    />
+                </el-form-item>
+                <el-form-item label="管理模式" required>
+                    <el-select v-model="categoryForm.managementMode">
+                        <el-option
+                            v-for="item in managementModeOptions"
+                            :key="item.value"
+                            :label="item.label"
+                            :value="item.value"
+                        />
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="状态">
+                    <el-switch
+                        v-model="categoryForm.enabled"
+                        active-text="启用"
+                        inactive-text="停用"
+                    />
+                </el-form-item>
+                <el-form-item label="排序">
+                    <el-input-number v-model="categoryForm.sortOrder" :min="0" />
+                </el-form-item>
+            </el-form>
+            <template #footer>
+                <el-button @click="categoryDialogVisible = false">取消</el-button>
+                <el-button type="primary" :loading="saving" @click="submitCategory">保存</el-button>
+            </template>
+        </el-dialog>
+
+        <el-dialog
+            v-model="fieldDialogVisible"
+            :title="editingFieldId ? '编辑字段' : '新增字段'"
+            width="560px"
+        >
+            <el-form :model="fieldForm" label-width="104px">
+                <el-form-item label="适用层级" required>
+                    <el-segmented v-model="fieldForm.archiveLevel" :options="archiveLevelOptions" />
+                </el-form-item>
+                <el-form-item label="字段编码" required>
+                    <el-input v-model="fieldForm.fieldCode" />
+                </el-form-item>
+                <el-form-item label="字段名称" required>
+                    <el-input v-model="fieldForm.fieldName" />
+                </el-form-item>
+                <el-form-item label="字段类型" required>
+                    <el-select v-model="fieldForm.fieldType">
+                        <el-option
+                            v-for="item in fieldTypeOptions"
+                            :key="item.value"
+                            :label="item.label"
+                            :value="item.value"
+                        />
+                    </el-select>
+                </el-form-item>
+                <el-form-item v-if="fieldForm.fieldType === 'text'" label="文本长度">
+                    <el-input-number v-model="fieldForm.textLength" :min="1" />
+                </el-form-item>
+                <template v-if="fieldForm.fieldType === 'decimal'">
+                    <el-form-item label="总位数">
+                        <el-input-number v-model="fieldForm.decimalPrecision" :min="1" />
+                    </el-form-item>
+                    <el-form-item label="小数位数">
+                        <el-input-number v-model="fieldForm.decimalScale" :min="0" />
+                    </el-form-item>
+                </template>
+                <el-form-item label="编辑控件">
+                    <el-select v-model="fieldForm.editControl">
+                        <el-option
+                            v-for="item in fieldControlOptions(fieldForm.fieldType)"
+                            :key="item"
+                            :label="fieldControlText(item)"
+                            :value="item"
+                        />
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="精确搜索">
+                    <el-switch v-model="fieldForm.exactSearchable" />
+                </el-form-item>
+                <el-form-item label="状态">
+                    <el-switch
+                        v-model="fieldForm.enabled"
+                        active-text="启用"
+                        inactive-text="停用"
+                    />
+                </el-form-item>
+                <el-form-item label="排序">
+                    <el-input-number v-model="fieldForm.sortOrder" :min="0" />
+                </el-form-item>
+            </el-form>
+            <template #footer>
+                <el-button @click="fieldDialogVisible = false">取消</el-button>
+                <el-button type="primary" :loading="saving" @click="submitField">保存</el-button>
+            </template>
+        </el-dialog>
+
+        <el-dialog
+            v-model="constraintDialogVisible"
+            :title="editingConstraintId ? '编辑唯一约束' : '新增唯一约束'"
+            width="560px"
+        >
+            <el-form :model="constraintForm" label-width="104px">
+                <el-form-item label="适用层级" required>
+                    <el-segmented
+                        v-model="constraintForm.archiveLevel"
+                        :options="archiveLevelOptions"
+                    />
+                </el-form-item>
+                <el-form-item label="约束编码" required>
+                    <el-input v-model="constraintForm.constraintCode" />
+                </el-form-item>
+                <el-form-item label="约束名称" required>
+                    <el-input v-model="constraintForm.constraintName" />
+                </el-form-item>
+                <el-form-item label="约束字段" required>
+                    <el-select v-model="constraintForm.fieldIds" multiple>
+                        <el-option
+                            v-for="field in fields.filter(
+                                (item) => item.archiveLevel === constraintForm.archiveLevel,
+                            )"
+                            :key="field.id"
+                            :label="field.fieldName"
+                            :value="field.id"
+                        />
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="状态">
+                    <el-switch
+                        v-model="constraintForm.enabled"
+                        active-text="启用"
+                        inactive-text="停用"
+                    />
+                </el-form-item>
+            </el-form>
+            <template #footer>
+                <el-button @click="constraintDialogVisible = false">取消</el-button>
+                <el-button type="primary" :loading="saving" @click="submitConstraint"
+                    >保存</el-button
+                >
+            </template>
+        </el-dialog>
     </section>
-
-    <el-dialog
-      v-model="categoryDialogVisible"
-      :title="editingCategoryId ? '编辑分类' : '新增分类'"
-      width="540px"
-    >
-      <el-form :model="categoryForm" label-width="92px">
-        <el-form-item label="分类编码" required>
-          <el-input v-model="categoryForm.categoryCode" />
-        </el-form-item>
-        <el-form-item label="分类名称" required>
-          <el-input v-model="categoryForm.categoryName" />
-        </el-form-item>
-        <el-form-item label="上级分类">
-          <el-tree-select
-            v-model="categoryForm.parentId"
-            :data="parentOptions"
-            clearable
-            check-strictly
-            default-expand-all
-            placeholder="无上级分类"
-          />
-        </el-form-item>
-        <el-form-item label="管理模式" required>
-          <el-select v-model="categoryForm.managementMode">
-            <el-option
-              v-for="item in managementModeOptions"
-              :key="item.value"
-              :label="item.label"
-              :value="item.value"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="状态">
-          <el-switch v-model="categoryForm.enabled" active-text="启用" inactive-text="停用" />
-        </el-form-item>
-        <el-form-item label="排序">
-          <el-input-number v-model="categoryForm.sortOrder" :min="0" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="categoryDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="submitCategory">保存</el-button>
-      </template>
-    </el-dialog>
-
-    <el-dialog
-      v-model="fieldDialogVisible"
-      :title="editingFieldId ? '编辑字段' : '新增字段'"
-      width="560px"
-    >
-      <el-form :model="fieldForm" label-width="104px">
-        <el-form-item label="适用层级" required>
-          <el-segmented v-model="fieldForm.archiveLevel" :options="archiveLevelOptions" />
-        </el-form-item>
-        <el-form-item label="字段编码" required>
-          <el-input v-model="fieldForm.fieldCode" />
-        </el-form-item>
-        <el-form-item label="字段名称" required>
-          <el-input v-model="fieldForm.fieldName" />
-        </el-form-item>
-        <el-form-item label="字段类型" required>
-          <el-select v-model="fieldForm.fieldType">
-            <el-option
-              v-for="item in fieldTypeOptions"
-              :key="item.value"
-              :label="item.label"
-              :value="item.value"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item v-if="fieldForm.fieldType === 'text'" label="文本长度">
-          <el-input-number v-model="fieldForm.textLength" :min="1" />
-        </el-form-item>
-        <template v-if="fieldForm.fieldType === 'decimal'">
-          <el-form-item label="总位数">
-            <el-input-number v-model="fieldForm.decimalPrecision" :min="1" />
-          </el-form-item>
-          <el-form-item label="小数位数">
-            <el-input-number v-model="fieldForm.decimalScale" :min="0" />
-          </el-form-item>
-        </template>
-        <el-form-item label="编辑控件">
-          <el-select v-model="fieldForm.editControl">
-            <el-option
-              v-for="item in fieldControlOptions(fieldForm.fieldType)"
-              :key="item"
-              :label="fieldControlText(item)"
-              :value="item"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="精确搜索">
-          <el-switch v-model="fieldForm.exactSearchable" />
-        </el-form-item>
-        <el-form-item label="状态">
-          <el-switch v-model="fieldForm.enabled" active-text="启用" inactive-text="停用" />
-        </el-form-item>
-        <el-form-item label="排序">
-          <el-input-number v-model="fieldForm.sortOrder" :min="0" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="fieldDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="submitField">保存</el-button>
-      </template>
-    </el-dialog>
-
-    <el-dialog
-      v-model="constraintDialogVisible"
-      :title="editingConstraintId ? '编辑唯一约束' : '新增唯一约束'"
-      width="560px"
-    >
-      <el-form :model="constraintForm" label-width="104px">
-        <el-form-item label="适用层级" required>
-          <el-segmented v-model="constraintForm.archiveLevel" :options="archiveLevelOptions" />
-        </el-form-item>
-        <el-form-item label="约束编码" required>
-          <el-input v-model="constraintForm.constraintCode" />
-        </el-form-item>
-        <el-form-item label="约束名称" required>
-          <el-input v-model="constraintForm.constraintName" />
-        </el-form-item>
-        <el-form-item label="约束字段" required>
-          <el-select v-model="constraintForm.fieldIds" multiple>
-            <el-option
-              v-for="field in fields.filter(
-                (item) => item.archiveLevel === constraintForm.archiveLevel,
-              )"
-              :key="field.id"
-              :label="field.fieldName"
-              :value="field.id"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="包含全宗">
-          <el-switch v-model="constraintForm.includeFonds" />
-        </el-form-item>
-        <el-form-item label="状态">
-          <el-switch v-model="constraintForm.enabled" active-text="启用" inactive-text="停用" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="constraintDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="submitConstraint">保存</el-button>
-      </template>
-    </el-dialog>
-  </section>
 </template>
 
 <style scoped lang="scss">
 .archive-categories-page {
-  display: grid;
-  height: 100%;
-  min-height: 0;
-  overflow: hidden;
-  gap: 16px;
-  grid-template-columns: minmax(420px, 0.9fr) minmax(520px, 1.1fr);
-  padding: 20px;
+    display: grid;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    gap: 16px;
+    grid-template-columns: minmax(420px, 0.9fr) minmax(520px, 1.1fr);
+    padding: 20px;
 }
 
 .archive-categories-page__categories,
 .archive-categories-page__fields {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  min-width: 0;
-  min-height: 0;
-  border: 1px solid var(--am-border);
-  border-radius: 8px;
-  padding: 12px;
-  background: var(--am-bg-surface);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+    min-height: 0;
+    border: 1px solid var(--am-border);
+    border-radius: 8px;
+    padding: 12px;
+    background: var(--am-bg-surface);
 }
 
 .archive-categories-page__toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
 }
 
 .archive-categories-page__selected {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--am-text);
-  font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+    min-width: 0;
+    overflow: hidden;
+    color: var(--am-text);
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .archive-categories-page__actions {
-  display: flex;
-  flex: none;
-  gap: 8px;
+    display: flex;
+    flex: none;
+    gap: 8px;
 }
 
 .archive-categories-page__tabs {
-  display: flex;
-  flex: 1;
-  min-height: 0;
-  flex-direction: column;
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    flex-direction: column;
 }
 
 :deep(.archive-categories-page__tabs > .el-tabs__content) {
-  flex: 1;
-  min-height: 0;
+    flex: 1;
+    min-height: 0;
 }
 
 :deep(.archive-categories-page__tabs > .el-tabs__content > .el-tab-pane) {
-  height: 100%;
-  min-height: 0;
+    height: 100%;
+    min-height: 0;
 }
 
 .archive-layout-config {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
 
 .archive-layout-config__toolbar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
 }
 
 .archive-layout-config__list {
-  display: grid;
-  max-height: 420px;
-  gap: 8px;
-  align-content: start;
-  overflow: auto;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: grid;
+    max-height: 420px;
+    gap: 8px;
+    align-content: start;
+    overflow: auto;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .archive-layout-config__list.is-table {
-  display: flex;
-  align-items: stretch;
-  overflow-x: auto;
+    display: flex;
+    align-items: stretch;
+    overflow-x: auto;
 }
 
 .archive-layout-config__item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-  border: 1px solid var(--am-border);
-  border-radius: 6px;
-  padding: 10px 12px;
-  background: var(--am-bg-surface);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    border: 1px solid var(--am-border);
+    border-radius: 6px;
+    padding: 10px 12px;
+    background: var(--am-bg-surface);
 }
 
 .archive-layout-config__list.is-table .archive-layout-config__item {
-  min-width: 180px;
+    min-width: 180px;
 }
 
 .archive-layout-config__item.is-hidden {
-  opacity: 0.56;
+    opacity: 0.56;
 }
 
 .archive-layout-config__item.is-dragging {
-  opacity: 0.42;
+    opacity: 0.42;
 }
 
 .archive-layout-config__drag {
-  flex: none;
-  color: var(--am-text-muted);
-  cursor: grab;
+    flex: none;
+    color: var(--am-text-muted);
+    cursor: grab;
 }
 
 .archive-layout-config__field {
-  display: flex;
-  min-width: 0;
-  flex: 1;
-  flex-direction: column;
-  gap: 2px;
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
 }
 
 .archive-layout-config__name,
 .archive-layout-config__code {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .archive-layout-config__name {
-  color: var(--am-text);
-  font-weight: 500;
+    color: var(--am-text);
+    font-weight: 500;
 }
 
 .archive-layout-config__code {
-  color: var(--am-text-muted);
-  font-size: 12px;
+    color: var(--am-text-muted);
+    font-size: 12px;
 }
 
 .archive-layout-config__item :deep(.el-input-number) {
-  width: 132px;
+    width: 132px;
 }
 </style>

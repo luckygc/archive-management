@@ -1,14 +1,13 @@
 ## ADDED Requirements
 
-### Requirement: 动态表固定全宗字段和删除标记
-系统 SHALL 在每张分类动态数据表中固定保存全宗编码和动态表删除标记。
+### Requirement: 动态表固定删除标记和维护时间
+系统 SHALL 在每张分类动态数据表中固定保存动态表删除标记和动态行维护时间。
 
 #### Scenario: 首次创建分类动态表
 - **WHEN** 客户端对有启用字段的档案分类执行建表动作
 - **THEN** 系统 SHALL 创建该分类对应的动态数据表
-- **AND** 动态表 SHALL 固定包含 `id`、`fonds_code`、`deleted_flag`、`created_at` 和 `updated_at`
+- **AND** 动态表 SHALL 固定包含 `id`、`deleted_flag`、`created_at` 和 `updated_at`
 - **AND** 动态表 SHALL 使用 `id` 作为主键并引用统一档案记录主表 ID
-- **AND** 动态表 SHALL 将 `fonds_code` 作为固定精确筛选字段
 
 #### Scenario: 逻辑删除释放唯一值
 - **WHEN** 客户端删除档案记录
@@ -31,7 +30,7 @@
 - **AND** 系统 SHALL NOT 要求客户端为字段配置全文检索开关
 
 #### Scenario: 使用固定记录字段编码创建动态字段
-- **WHEN** 客户端使用 `archive_no`、`archive_year`、`archive_status`、`process_status` 等统一档案记录主表字段编码创建分类字段
+- **WHEN** 客户端使用 `fonds_code`、`fonds_name`、`archive_no`、`archive_year`、`archive_status`、`process_status` 等统一档案记录主表字段编码创建分类字段
 - **THEN** 系统 SHALL 拒绝保存
 - **AND** 响应 SHALL 说明该字段编码属于档案记录固定字段，不能作为动态字段
 

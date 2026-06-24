@@ -13,7 +13,7 @@ create table am_archive_fonds
     updated_at  timestamp    not null default localtimestamp
 );
 
-create extension if not exists pg_textsearch;
+create extension if not exists pg_trgm;
 
 create unique index uk_am_archive_fonds_code_active
     on am_archive_fonds (fonds_code)
@@ -305,7 +305,6 @@ create table am_archive_unique_constraint
     archive_level varchar(30)  not null default 'item',
     constraint_code     varchar(80)  not null,
     constraint_name     varchar(255) not null,
-    include_fonds boolean      not null default false,
     index_name    varchar(100) not null,
     enabled       boolean      not null default true,
     deleted_flag  boolean      not null default false,
@@ -332,7 +331,6 @@ comment on column am_archive_unique_constraint.category_id is '档案分类 ID';
 comment on column am_archive_unique_constraint.archive_level is '约束适用层级：volume 案卷，item 卷内条目';
 comment on column am_archive_unique_constraint.constraint_code is '约束编码';
 comment on column am_archive_unique_constraint.constraint_name is '约束名称';
-comment on column am_archive_unique_constraint.include_fonds is '是否按全宗范围唯一';
 comment on column am_archive_unique_constraint.index_name is '动态表唯一索引名';
 comment on column am_archive_unique_constraint.enabled is '是否启用';
 comment on column am_archive_unique_constraint.deleted_flag is '删除标记';
@@ -416,10 +414,8 @@ create table am_archive_record_search
 
 create unique index uk_am_archive_record_search_record
     on am_archive_record_search (archive_record_id);
-create index idx_am_archive_record_search_bm25
-    on am_archive_record_search
-    using bm25 (search_text)
-    with (text_config = 'simple');
+create index idx_am_archive_record_search_trgm
+    on am_archive_record_search using gin (search_text gin_trgm_ops);
 
 comment on table am_archive_record_search is '档案记录全文检索投影表';
 comment on column am_archive_record_search.id is '主键';

@@ -36,7 +36,9 @@ public interface ArchiveMapper {
             @Param("archiveLevel") String archiveLevel,
             @Param("fondsCode") String fondsCode,
             @Param("conditions") List<ArchiveSqlCondition> conditions,
-            @Param("recordIds") List<Long> recordIds);
+            @Param("fullTextKeyword") String fullTextKeyword,
+            @Param("userId") Long userId,
+            @Param("requireAuthenticatedUser") boolean requireAuthenticatedUser);
 
     List<Map<String, Object>> listRecordsForSearchRebuild(
             @Param("tableName") String tableName,
@@ -128,7 +130,7 @@ public interface ArchiveMapper {
 
     int markSearchOutboxFailed(@Param("id") Long id, @Param("lastError") String lastError);
 
-    List<Map<String, Object>> searchRecordIds(@Param("keyword") String keyword);
+    boolean databaseFullTextSearchAvailable();
 
     List<Map<String, Object>> listUniqueConstraints(@Param("categoryId") Long categoryId);
 
@@ -139,7 +141,6 @@ public interface ArchiveMapper {
             @Param("archiveLevel") String archiveLevel,
             @Param("constraintCode") String constraintCode,
             @Param("constraintName") String constraintName,
-            @Param("includeFonds") boolean includeFonds,
             @Param("indexName") String indexName,
             @Param("enabled") boolean enabled,
             @Param("userId") Long userId);
@@ -150,7 +151,6 @@ public interface ArchiveMapper {
             @Param("archiveLevel") String archiveLevel,
             @Param("constraintCode") String constraintCode,
             @Param("constraintName") String constraintName,
-            @Param("includeFonds") boolean includeFonds,
             @Param("indexName") String indexName,
             @Param("enabled") boolean enabled,
             @Param("userId") Long userId);

@@ -49,6 +49,12 @@ public class ArchiveRecordController {
         return archiveRecordRoutingService.searchRecords(request, currentUserId(authentication));
     }
 
+    @PostMapping("/api/v1/archive-records:discover")
+    public ArchiveRecordListDto discoverRecords(
+            @RequestBody ArchiveRecordQueryRequest request, Authentication authentication) {
+        return archiveRecordRoutingService.discoverRecords(request, currentUserId(authentication));
+    }
+
     @PostMapping("/api/v1/archive-records")
     @ResponseStatus(HttpStatus.CREATED)
     public ArchiveRecordDto createRecord(

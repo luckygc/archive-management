@@ -10,17 +10,20 @@ import org.flowable.engine.TaskService;
 import org.flowable.engine.repository.Deployment;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.task.api.Task;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.annotation.DirtiesContext;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import github.luckygc.am.app.ArchiveManagementApplication;
 import github.luckygc.am.test.PostgreSqlContainerTest;
 
 @Testcontainers(disabledWithoutDocker = true)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @SpringBootTest(
+        classes = ArchiveManagementApplication.class,
         properties = {
             "spring.ai.deepseek.chat.enabled=false",
             "spring.autoconfigure.exclude="
@@ -31,6 +34,7 @@ import github.luckygc.am.test.PostgreSqlContainerTest;
             "flowable.check-process-definitions=false",
             "flowable.process.definition-cache-limit=16"
         })
+@DisplayName("Flowable 引擎兼容性")
 class FlowableCompatibilityTests extends PostgreSqlContainerTest {
 
     @Autowired private RepositoryService repositoryService;
@@ -40,6 +44,7 @@ class FlowableCompatibilityTests extends PostgreSqlContainerTest {
     @Autowired private TaskService taskService;
 
     @Test
+    @DisplayName("流程定义可以部署、启动并查询候选用户任务")
     void deployStartAndQueryUserTask() {
         Deployment deployment = null;
         String deploymentId = null;

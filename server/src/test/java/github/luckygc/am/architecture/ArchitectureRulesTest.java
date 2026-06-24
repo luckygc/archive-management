@@ -2,12 +2,15 @@ package github.luckygc.am.architecture;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
+import org.junit.jupiter.api.DisplayName;
+
 import com.tngtech.archunit.core.importer.ImportOption.DoNotIncludeTests;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 
 @AnalyzeClasses(packages = "github.luckygc.am", importOptions = DoNotIncludeTests.class)
+@DisplayName("架构边界规则")
 class ArchitectureRulesTest {
 
     @ArchTest

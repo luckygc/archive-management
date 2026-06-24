@@ -7,14 +7,17 @@ import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+@DisplayName("本地文件存储服务")
 class LocalFileStorageServiceTests {
 
     @TempDir Path tempDir;
 
     @Test
+    @DisplayName("本地对象支持写入、读取、存在判断和删除")
     void putGetExistsAndDeleteObject() throws Exception {
         FileStorageProperties.Local properties = new FileStorageProperties.Local();
         properties.setRoot(tempDir);
@@ -43,6 +46,7 @@ class LocalFileStorageServiceTests {
     }
 
     @Test
+    @DisplayName("路径穿越 object key 会被拒绝")
     void rejectTraversalObjectKey() {
         assertThatThrownBy(() -> ObjectKeys.normalize("../demo.txt"))
                 .isInstanceOf(IllegalArgumentException.class);

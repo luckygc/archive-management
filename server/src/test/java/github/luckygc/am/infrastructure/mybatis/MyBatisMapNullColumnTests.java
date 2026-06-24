@@ -19,11 +19,14 @@ import org.apache.ibatis.session.SqlSession;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.apache.ibatis.session.SqlSessionFactoryBuilder;
 import org.apache.ibatis.transaction.jdbc.JdbcTransactionFactory;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+@DisplayName("MyBatis Map 空列处理")
 class MyBatisMapNullColumnTests {
 
     @Test
+    @DisplayName("开启 callSettersOnNulls 后 Map 结果保留 null 列 key")
     void mapResultKeepsNullColumnKeyWhenCallSettersOnNullsEnabled() {
         Configuration configuration = new Configuration();
         configuration.setCallSettersOnNulls(true);

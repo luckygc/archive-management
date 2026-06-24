@@ -16,7 +16,7 @@
 
 #### Scenario: 按全宗固定字段过滤
 - **WHEN** 客户端提交全宗编码筛选条件
-- **THEN** 系统 SHALL 通过分类动态表固定字段 `fonds_code` 过滤记录
+- **THEN** 系统 SHALL 通过统一档案记录主表固定字段 `fonds_code` 过滤记录
 - **AND** 系统 SHALL NOT 要求 `fonds_code` 在字段定义表中存在
 
 ### Requirement: 档案记录全文投影
@@ -37,16 +37,38 @@
 - **THEN** 系统 SHALL NOT 阻塞字段定义保存来同步重建历史投影
 - **AND** 系统 SHALL 允许通过单独重建流程补齐历史投影
 
-### Requirement: pg_textsearch 关键词检索
-系统 SHALL 使用 PostgreSQL `pg_textsearch` 扩展和 BM25 索引执行关键词检索。
+### Requirement: 管理查询与全文检索边界
+系统 SHALL 区分管理数据查询和普通用户全文发现能力。
 
-#### Scenario: 使用关键词查询档案记录
+#### Scenario: 管理查询拒绝全文关键词
 - **WHEN** 客户端提交 `keyword`
-- **THEN** 系统 SHALL 先查询全文投影表获得匹配档案记录 ID 和相关性分数
-- **AND** 系统 SHALL 再回连统一档案记录主表和分类动态表过滤分类、全宗、删除状态并返回记录详情
-- **AND** 系统 SHALL 优先按全文相关性分数排序
+- **THEN** 系统 SHALL 拒绝档案管理列表查询
+- **AND** 响应 SHALL 说明管理查询只支持数据库字段筛选
 
-#### Scenario: 未提交关键词查询档案记录
-- **WHEN** 客户端未提交 `keyword`
-- **THEN** 系统 SHALL 直接按主表和分类动态表执行常规动态查询
+#### Scenario: 管理查询不依赖全文检索中间件
+- **WHEN** 客户端按分类、全宗、精确字段或范围字段查询档案管理列表
+- **THEN** 系统 SHALL 使用数据库主表和分类动态表执行筛选
+- **AND** 系统 SHALL NOT 访问 Elasticsearch、OpenSearch、Solr、Meilisearch 或其他全文检索 adapter 作为必要步骤
+
+#### Scenario: 普通用户全文发现能力可选
+- **WHEN** 查档、借阅或利用服务类入口需要全文发现能力
+- **THEN** 系统 SHALL 在普通用户搜索查询中同时执行全文条件、结构化筛选、权限判断和逻辑删除判断
+- **AND** 全文检索 SHALL 通过 `archive.search.full-text.adapter` 支持 `disabled`、`postgresql` 或已注册 adapter 配置
+- **AND** 核心业务代码 SHALL NOT 绑定某一个全文检索中间件产品
+
+#### Scenario: 普通用户搜索直接合并过滤条件
+- **WHEN** 客户端提交 `keyword`、全宗和字段筛选条件
+- **THEN** 系统 SHALL 在同一搜索执行路径中合并全文条件、结构化筛选、全宗筛选、权限判断和逻辑删除判断
+- **AND** 系统 SHALL NOT 先从全文检索 adapter 召回裸 ID 再由业务代码二次过滤
+- **AND** 系统 SHALL 在最终查询阶段排除已逻辑删除记录和当前用户不可见记录
+
+#### Scenario: 未启用全文检索时执行管理查询
+- **WHEN** 全文检索 adapter 为 `disabled`
+- **THEN** 系统 SHALL 允许管理列表按数据库字段筛选
 - **AND** 系统 SHALL NOT 访问全文投影表作为必要步骤
+
+#### Scenario: 启用全文检索但依赖缺失
+- **WHEN** 全文检索 adapter 为 `postgresql` 且数据库缺少 `pg_trgm` 扩展或全文检索索引
+- **THEN** 系统 SHALL 在启动阶段 fail-fast
+- **WHEN** 全文检索 adapter 不是 `disabled` 且未注册
+- **THEN** 系统 SHALL 在启动阶段 fail-fast

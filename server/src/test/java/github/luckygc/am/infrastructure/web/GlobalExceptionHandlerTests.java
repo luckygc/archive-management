@@ -2,6 +2,7 @@ package github.luckygc.am.infrastructure.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
@@ -10,11 +11,13 @@ import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.exception.BadRequestException;
 
+@DisplayName("全局异常处理器")
 class GlobalExceptionHandlerTests {
 
     private final GlobalExceptionHandler handler = new GlobalExceptionHandler();
 
     @Test
+    @DisplayName("ResponseStatusException 转为 Google API 错误结构")
     void responseStatusExceptionUsesGoogleApiErrorShape() {
         MockHttpServletRequest request =
                 new MockHttpServletRequest("GET", "/api/v1/archive-records/1");
@@ -49,6 +52,7 @@ class GlobalExceptionHandlerTests {
     }
 
     @Test
+    @DisplayName("BadRequestException 输出字段级错误明细")
     void badRequestExceptionIncludesFieldViolations() {
         MockHttpServletRequest request =
                 new MockHttpServletRequest("POST", "/api/v1/archive-records");

@@ -41,7 +41,8 @@ public class ArchiveMetadataService {
                     "created_at",
                     "updated_by",
                     "updated_at",
-                    "fonds_code");
+                    "fonds_code",
+                    "fonds_name");
     private static final int DEFAULT_TEXT_LENGTH = 500;
     private static final int DEFAULT_DECIMAL_PRECISION = 18;
     private static final int DEFAULT_DECIMAL_SCALE = 2;
@@ -342,7 +343,6 @@ public class ArchiveMetadataService {
                     create table %s
                     (
                         id bigint primary key references am_archive_record (id),
-                        fonds_code varchar(100) not null,
                         deleted_flag boolean not null default false,
                         created_at timestamp not null default localtimestamp,
                         updated_at timestamp not null default localtimestamp%s
@@ -350,7 +350,6 @@ public class ArchiveMetadataService {
                     """
                             .formatted(tableName, columns));
         } else {
-            ensureColumn(tableName, "fonds_code", "varchar(100) not null default ''");
             ensureColumn(tableName, "deleted_flag", "boolean not null default false");
             for (ArchiveFieldDto field : fields) {
                 validateIdentifier(field.columnName(), "字段列名非法");
@@ -410,7 +409,6 @@ public class ArchiveMetadataService {
                         values.archiveLevel().value(),
                         values.constraintCode(),
                         values.constraintName(),
-                        values.includeFonds(),
                         indexName,
                         values.enabled(),
                         userId);
@@ -449,7 +447,6 @@ public class ArchiveMetadataService {
                         values.archiveLevel().value(),
                         values.constraintCode(),
                         values.constraintName(),
-                        values.includeFonds(),
                         indexName,
                         values.enabled(),
                         userId);
@@ -604,10 +601,7 @@ public class ArchiveMetadataService {
         for (String column : columns) {
             validateIdentifier(column, "唯一约束字段列名非法");
         }
-        String indexColumns =
-                constraint.includeFonds()
-                        ? "fonds_code, " + String.join(", ", columns)
-                        : String.join(", ", columns);
+        String indexColumns = String.join(", ", columns);
         dropIndexIfExists(constraint.indexName());
         archiveMapper.executeSql(
                 "create unique index %s on %s (%s) where deleted_flag = false"
@@ -1042,7 +1036,6 @@ public class ArchiveMetadataService {
                 archiveLevel,
                 constraintCode,
                 request.constraintName().trim(),
-                request.includeFonds() != null && request.includeFonds(),
                 request.enabled() == null || request.enabled(),
                 fieldIds);
     }
@@ -1230,7 +1223,6 @@ public class ArchiveMetadataService {
                 ArchiveLevel.fromValue(string(row, "archiveLevel")),
                 string(row, "constraintCode"),
                 string(row, "constraintName"),
-                bool(row, "includeFonds"),
                 string(row, "indexName"),
                 bool(row, "enabled"),
                 fields,
@@ -1414,7 +1406,6 @@ public class ArchiveMetadataService {
             ArchiveLevel archiveLevel,
             String constraintCode,
             String constraintName,
-            Boolean includeFonds,
             Boolean enabled,
             List<Long> fieldIds) {}
 
@@ -1424,7 +1415,6 @@ public class ArchiveMetadataService {
             ArchiveLevel archiveLevel,
             String constraintCode,
             String constraintName,
-            boolean includeFonds,
             String indexName,
             boolean enabled,
             List<ArchiveUniqueConstraintFieldDto> fields,
@@ -1465,7 +1455,6 @@ public class ArchiveMetadataService {
             ArchiveLevel archiveLevel,
             String constraintCode,
             String constraintName,
-            boolean includeFonds,
             boolean enabled,
             List<Long> fieldIds) {}
 }

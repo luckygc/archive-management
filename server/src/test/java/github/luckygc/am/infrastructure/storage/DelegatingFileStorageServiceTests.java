@@ -8,16 +8,19 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.List;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import github.luckygc.am.common.storage.StorageType;
 
+@DisplayName("委派文件存储服务")
 class DelegatingFileStorageServiceTests {
 
     @TempDir Path tempDir;
 
     @Test
+    @DisplayName("上传时使用默认存储类型和 bucket")
     void useDefaultStorageTypeWhenUpload() throws Exception {
         FileStorageBackend localBackend = localBackend();
         DelegatingFileStorageService service =
@@ -38,6 +41,7 @@ class DelegatingFileStorageServiceTests {
     }
 
     @Test
+    @DisplayName("未配置的存储位置会被拒绝")
     void rejectStorageTypeWithoutConfiguredBackend() {
         DelegatingFileStorageService service =
                 new DelegatingFileStorageService(
@@ -50,6 +54,7 @@ class DelegatingFileStorageServiceTests {
     }
 
     @Test
+    @DisplayName("腾讯 COS 按对象存储 bucket 路由")
     void routeTencentCosByStorageTypeAndBucketName() {
         DelegatingFileStorageService service =
                 new DelegatingFileStorageService(
@@ -66,6 +71,7 @@ class DelegatingFileStorageServiceTests {
     }
 
     @Test
+    @DisplayName("本地存储可按 bucket 路由读取")
     void routeLocalStorageByBucketName() throws Exception {
         LocalFileStorageService dataBackend = localBackend("data", tempDir.resolve("data"));
         LocalFileStorageService nasBackend = localBackend("nas", tempDir.resolve("nas"));
@@ -93,6 +99,7 @@ class DelegatingFileStorageServiceTests {
     }
 
     @Test
+    @DisplayName("上传写入 active local bucket")
     void uploadToActiveLocalBucket() throws Exception {
         LocalFileStorageService dataBackend = localBackend("data", tempDir.resolve("data"));
         LocalFileStorageService nasBackend = localBackend("nas", tempDir.resolve("nas"));

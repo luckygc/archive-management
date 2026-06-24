@@ -2,6 +2,9 @@ spring:
     application:
         # 应用名称，也会作为默认日志文件名前缀。
         name: archive-management
+    cache:
+        # 默认不启用业务缓存；需要本地简单缓存可改为 simple，Redis 缓存按 Spring Boot Cache 配置接入。
+        type: none
     datasource:
         # 业务数据库连接地址。
         url: jdbc:postgresql://localhost:5433/archive_management
@@ -48,7 +51,7 @@ spring:
             # Spring Session 主表名称。
             table-name: SPRING_SESSION
     quartz:
-        # Quartz 存储类型，memory 适合本地开发；部署可改为 jdbc。
+        # Quartz 存储类型；当前使用 JDBC，由 Flyway 管理 QRTZ_* 表。
         job-store-type: jdbc
         # 应用启动后是否自动启动 Quartz 调度器。
         auto-startup: true
@@ -149,8 +152,13 @@ mybatis:
 
 flowable:
     # Flowable 使用当前应用 DataSource 和事务管理器；引入 process starter 后会启用 BPMN process engine。
-    # 框架原生 ACT_* 表由 Flowable 自身维护，属于第三方框架表命名例外。
-    database-schema-update: true
+    # 框架原生 ACT_* 表由 Flyway 迁移管理，运行期只校验表结构。
+    database-schema-update: false
+    # 流程引擎由 process starter 默认启用；IDM 与 Event Registry 不随应用启动。
+    idm:
+        enabled: false
+    eventregistry:
+        enabled: false
     # 审批流首版不依赖异步执行器，避免引入额外后台线程行为。
     async-executor-activate: false
 
@@ -225,9 +233,43 @@ archive:
                 - X-Trace-Id
             allow-credentials: true
             max-age: 3600
+    search:
+        full-text:
+            # 档案全文检索用于查档、借阅等普通用户业务入口，不作为管理列表筛选入口。
+            # adapter: disabled 不启用；postgresql 使用 PostgreSQL 自带 pg_trgm 扩展；也可配置后续注册的 opensearch、solr、meilisearch 等 adapter。
+            adapter: disabled
+            # 全文检索索引名称，供具体 adapter 使用。
+            index-name: archive_records
+            # 全文检索结果上限。
+            result-limit: 1000
+    runtime:
+        # 部署拓扑：single 单节点；cluster 多节点。
+        topology: single
+        # 当前节点 ID，用于队列认领、锁和运行时日志识别。
+        node-id: ${AM_NODE_ID:${spring.application.name}-${server.port}}
+        database:
+            # 数据库 adapter。当前内置 postgresql，启动时会校验实际数据库产品。
+            adapter: postgresql
+        queue:
+            # 运行时队列 adapter。当前内置 database，优先满足单机最低部署。
+            adapter: database
+            # 主队列 adapter 未接入时的降级 adapter；留空则不降级并启动 fail-fast。
+            fallback-adapter: database
+            # 单条消息最大认领尝试次数，达到后进入死信状态，不再被队列认领。
+            max-attempts: 10
+        lock:
+            # 锁 adapter。最低部署使用 database；single 可改 local；cluster 不允许 local。
+            adapter: database
+            # 主锁 adapter 未接入时的降级 adapter；cluster 不会把不安全的 local 自动降级。
+            fallback-adapter: database
+        storage:
+            # cluster 拓扑下，如果没有对象存储且本地目录确认为共享挂载，才可设为 true。
+            local-shared: false
     storage:
-        # 上传策略：对象存储配置完整时优先对象存储，否则使用 active-local-bucket 指定的本地 bucket。
-        # 当前使用的本地存储 bucket。
+        # 默认上传文件存储 adapter：local、s3、minio、cos、oss、obs。
+        # 历史文件下载、删除和存在判断仍按文件记录中的 storage_type、bucket_name 路由。
+        adapter: local
+        # 当前默认 adapter 为 local 时使用的本地存储 bucket。
         active-local-bucket: local
         # 本地文件存储 bucket 列表。
         local:

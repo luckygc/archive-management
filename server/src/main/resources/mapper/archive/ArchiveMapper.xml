@@ -95,6 +95,9 @@
         where r.deleted_flag = false
           and d.deleted_flag = false
           and r.archive_level = #{archiveLevel}
+        <if test="requireAuthenticatedUser">
+            and #{userId} is not null
+        </if>
         <if test="fondsCode != null and fondsCode != ''">
             and r.fonds_code = #{fondsCode}
         </if>
@@ -113,20 +116,26 @@
                 </choose>
             </foreach>
         </if>
-        <if test="recordIds != null and recordIds.size() > 0">
-            and r.id in
-            <foreach collection="recordIds" item="recordId" open="(" separator="," close=")">
-                #{recordId}
-            </foreach>
+        <if test="fullTextKeyword != null and fullTextKeyword != ''">
+            and exists (
+                select 1
+                from am_archive_record_search s
+                where s.archive_record_id = r.id
+                  and (
+                      s.search_text ilike '%' || replace(replace(#{fullTextKeyword}, '%', '\%'), '_', '\_') || '%' escape '\'
+                      or s.search_text % #{fullTextKeyword}
+                  )
+            )
         </if>
         order by
         <choose>
-            <when test="recordIds != null and recordIds.size() > 0">
-                array_position(array[
-                <foreach collection="recordIds" item="recordId" separator=",">
-                    cast(#{recordId} as bigint)
-                </foreach>
-                ], r.id)
+            <when test="fullTextKeyword != null and fullTextKeyword != ''">
+                (
+                    select similarity(s.search_text, #{fullTextKeyword})
+                    from am_archive_record_search s
+                    where s.archive_record_id = r.id
+                ) desc,
+                r.id desc
             </when>
             <otherwise>
                 r.sort_order, r.id desc
@@ -342,12 +351,9 @@
         where id = #{id}
     </update>
 
-    <select id="searchRecordIds" resultType="map">
-        select archive_record_id,
-               search_text &lt;@&gt; #{keyword} as score
-        from am_archive_record_search
-        where search_text @@@ #{keyword}
-        order by score, archive_record_id desc
+    <select id="databaseFullTextSearchAvailable" resultType="boolean">
+        select exists(select 1 from pg_extension where extname = 'pg_trgm')
+           and to_regclass('idx_am_archive_record_search_trgm') is not null
     </select>
 
     <select id="listUniqueConstraints" resultType="map">
@@ -356,7 +362,6 @@
                archive_level,
                constraint_code,
                constraint_name,
-               include_fonds,
                index_name,
                enabled,
                created_at,
@@ -372,7 +377,6 @@
                archive_level,
                constraint_code,
                constraint_name,
-               include_fonds,
                index_name,
                enabled,
                created_at,
@@ -383,9 +387,9 @@
 
     <select id="insertUniqueConstraint" resultType="long">
         insert into am_archive_unique_constraint
-            (category_id, archive_level, constraint_code, constraint_name, include_fonds, index_name, enabled, created_by, updated_by)
+            (category_id, archive_level, constraint_code, constraint_name, index_name, enabled, created_by, updated_by)
         values
-            (#{categoryId}, #{archiveLevel}, #{constraintCode}, #{constraintName}, #{includeFonds}, #{indexName}, #{enabled}, #{userId}, #{userId})
+            (#{categoryId}, #{archiveLevel}, #{constraintCode}, #{constraintName}, #{indexName}, #{enabled}, #{userId}, #{userId})
         returning id
     </select>
 
@@ -394,7 +398,6 @@
         set archive_level = #{archiveLevel},
             constraint_code = #{constraintCode},
             constraint_name = #{constraintName},
-            include_fonds = #{includeFonds},
             index_name = #{indexName},
             enabled = #{enabled},
             updated_by = #{userId},

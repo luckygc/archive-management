@@ -36,6 +36,7 @@ import github.luckygc.am.module.archive.metadata.ArchiveMetadataService.ArchiveF
 import github.luckygc.am.module.archive.metadata.ArchiveMetadataService.ArchiveFondsDto;
 import github.luckygc.am.module.archive.metadata.ArchiveMetadataService.ArchiveUniqueConstraintDto;
 import github.luckygc.am.module.archive.metadata.ArchiveMetadataService.ArchiveUniqueConstraintFieldDto;
+import github.luckygc.am.module.archive.record.search.ArchiveSearchProperties;
 
 import tools.jackson.databind.annotation.JsonSerialize;
 
@@ -55,11 +56,15 @@ public class ArchiveRecordRoutingService {
 
     private final ArchiveMetadataService archiveMetadataService;
     private final ArchiveMapper archiveMapper;
+    private final ArchiveSearchProperties archiveSearchProperties;
 
     public ArchiveRecordRoutingService(
-            ArchiveMetadataService archiveMetadataService, ArchiveMapper archiveMapper) {
+            ArchiveMetadataService archiveMetadataService,
+            ArchiveMapper archiveMapper,
+            ArchiveSearchProperties archiveSearchProperties) {
         this.archiveMetadataService = archiveMetadataService;
         this.archiveMapper = archiveMapper;
+        this.archiveSearchProperties = archiveSearchProperties;
     }
 
     public ArchiveRecordListDto listRecords(Long categoryId, String fondsCode) {
@@ -83,7 +88,30 @@ public class ArchiveRecordRoutingService {
     }
 
     public ArchiveRecordListDto searchRecords(ArchiveRecordQueryRequest request, Long userId) {
+        return queryRecords(request, userId, false, false);
+    }
+
+    public ArchiveRecordListDto discoverRecords(ArchiveRecordQueryRequest request, Long userId) {
+        return queryRecords(request, userId, true, true);
+    }
+
+    private ArchiveRecordListDto queryRecords(
+            ArchiveRecordQueryRequest request,
+            Long userId,
+            boolean allowKeyword,
+            boolean requireAuthenticatedUser) {
+        String keyword = StringUtils.trimToNull(request == null ? null : request.keyword());
+        if (StringUtils.isNotBlank(keyword) && !allowKeyword) {
+            throw badRequest(
+                    "档案管理列表不支持全文关键词检索", "keyword", "档案管理列表只支持数据库字段筛选；全文检索用于查档、借阅等普通用户业务入口");
+        }
+        if (StringUtils.isNotBlank(keyword) && !fullTextSearchEnabled()) {
+            throw badRequest("当前部署未启用档案全文检索", "keyword", "当前部署未启用档案全文检索");
+        }
         if (request == null || request.categoryId() == null) {
+            if (StringUtils.isNotBlank(keyword)) {
+                throw badRequest("全文检索必须选择档案分类", "categoryId", "全文检索必须选择档案分类");
+            }
             return new ArchiveRecordListDto(
                     null,
                     List.of(),
@@ -108,7 +136,6 @@ public class ArchiveRecordRoutingService {
         if (!isDynamicTableBuilt(category, archiveLevel)) {
             return new ArchiveRecordListDto(category, fields, false, List.of());
         }
-
         List<ArchiveSqlCondition> conditions =
                 buildSearchConditions(
                         request.categoryId(),
@@ -116,17 +143,6 @@ public class ArchiveRecordRoutingService {
                         fields,
                         request.exactFilters(),
                         request.filters());
-        List<Long> recordIds = null;
-        if (StringUtils.isNotBlank(request.keyword())) {
-            recordIds =
-                    archiveMapper.searchRecordIds(request.keyword().trim()).stream()
-                            .map(row -> number(row, "archiveRecordId").longValue())
-                            .toList();
-            if (recordIds.isEmpty()) {
-                return new ArchiveRecordListDto(category, visibleFields, true, List.of());
-            }
-        }
-
         List<Map<String, Object>> rows =
                 archiveMapper.listDynamicRecords(
                         tableName,
@@ -134,9 +150,19 @@ public class ArchiveRecordRoutingService {
                         archiveLevel.value(),
                         StringUtils.trimToNull(request.fondsCode()),
                         conditions,
-                        recordIds);
+                        keyword,
+                        userId,
+                        requireAuthenticatedUser);
         return new ArchiveRecordListDto(
                 category, fields, true, normalizeDynamicFieldValues(rows, visibleFields));
+    }
+
+    private boolean fullTextSearchEnabled() {
+        return !"disabled"
+                .equals(
+                        StringUtils.defaultString(
+                                        archiveSearchProperties.getFullText().getAdapter())
+                                .trim());
     }
 
     @Transactional
@@ -186,8 +212,7 @@ public class ArchiveRecordRoutingService {
                         archiveYear,
                         userId);
         try {
-            insertDynamicRecord(
-                    tableName, recordId, fonds.fondsCode(), fields, convertedDynamicFields);
+            insertDynamicRecord(tableName, recordId, fields, convertedDynamicFields);
         } catch (DuplicateKeyException | MyBatisSystemException exception) {
             throw badRequest("档案记录违反唯一约束");
         }
@@ -301,9 +326,7 @@ public class ArchiveRecordRoutingService {
         }
         try {
             archiveMapper.updateDynamicRecord(
-                    tableName,
-                    id,
-                    dynamicAssignments(fonds.fondsCode(), before.fields(), convertedDynamicFields));
+                    tableName, id, dynamicAssignments(before.fields(), convertedDynamicFields));
         } catch (DuplicateKeyException | MyBatisSystemException exception) {
             throw badRequest("档案记录违反唯一约束");
         }
@@ -646,7 +669,9 @@ public class ArchiveRecordRoutingService {
         Map<String, Object> normalized = new LinkedHashMap<>(row);
         stringifyIdValue(normalized, "id");
         stringifyIdValue(normalized, "parentId");
+        stringifyIdValue(normalized, "parent_id");
         stringifyIdValue(normalized, "lockedBy");
+        stringifyIdValue(normalized, "locked_by");
         return normalized;
     }
 
@@ -687,13 +712,11 @@ public class ArchiveRecordRoutingService {
     private void insertDynamicRecord(
             String tableName,
             Long recordId,
-            String fondsCode,
             List<ArchiveFieldDto> fields,
             Map<String, Object> convertedDynamicFields) {
-        StringBuilder columns = new StringBuilder("id, fonds_code");
+        StringBuilder columns = new StringBuilder("id");
         List<Object> values = new ArrayList<>();
         values.add(recordId);
-        values.add(fondsCode);
         for (ArchiveFieldDto field : fields) {
             columns.append(", ").append(field.columnName());
             values.add(convertedDynamicFields.get(field.fieldCode()));
@@ -702,11 +725,8 @@ public class ArchiveRecordRoutingService {
     }
 
     private List<ArchiveSqlAssignment> dynamicAssignments(
-            String fondsCode,
-            List<ArchiveFieldDto> fields,
-            Map<String, Object> convertedDynamicFields) {
+            List<ArchiveFieldDto> fields, Map<String, Object> convertedDynamicFields) {
         List<ArchiveSqlAssignment> assignments = new ArrayList<>();
-        assignments.add(new ArchiveSqlAssignment("fonds_code", fondsCode));
         for (ArchiveFieldDto field : fields) {
             assignments.add(
                     new ArchiveSqlAssignment(

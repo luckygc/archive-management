@@ -12,15 +12,10 @@ public class TransactionalStatelessSessionContext {
 
     private final SessionFactory sessionFactory;
     private final DataSource dataSource;
-    private final SecurityAuditingInterceptor securityAuditingInterceptor;
 
-    public TransactionalStatelessSessionContext(
-            SessionFactory sessionFactory,
-            DataSource dataSource,
-            SecurityAuditingInterceptor securityAuditingInterceptor) {
+    public TransactionalStatelessSessionContext(SessionFactory sessionFactory, DataSource dataSource) {
         this.sessionFactory = sessionFactory;
         this.dataSource = dataSource;
-        this.securityAuditingInterceptor = securityAuditingInterceptor;
     }
 
     public StatelessSession currentSession() {
@@ -40,7 +35,6 @@ public class TransactionalStatelessSessionContext {
                 sessionFactory
                         .withStatelessOptions()
                         .connection(DataSourceUtils.getConnection(dataSource))
-                        .interceptor(securityAuditingInterceptor)
                         .openStatelessSession();
         TransactionSynchronizationManager.bindResource(sessionFactory, statelessSession);
         TransactionSynchronizationManager.registerSynchronization(

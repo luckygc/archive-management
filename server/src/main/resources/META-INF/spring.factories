@@ -1,0 +1,3 @@
+org.springframework.boot.diagnostics.FailureAnalyzer=\
+github.luckygc.am.infrastructure.search.ArchiveSearchConfigurationFailureAnalyzer,\
+github.luckygc.am.infrastructure.runtime.RuntimeCapabilityFailureAnalyzer
