@@ -2,11 +2,8 @@ package github.luckygc.am.module.auth;
 
 import java.util.Map;
 
-import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -33,11 +30,5 @@ public class PowChallengeController {
             @RequestBody PowChallengeService.CapValidateCommand command) {
         return powChallengeService.validateToken(
                 command.token(), Boolean.TRUE.equals(command.keepToken()));
-    }
-
-    @ExceptionHandler(PowChallengeException.class)
-    @ResponseStatus(HttpStatus.UNAUTHORIZED)
-    public String handlePowChallengeException(PowChallengeException ex) {
-        return ex.getMessage();
     }
 }

@@ -1,8 +1,11 @@
 package github.luckygc.am.module.auth;
 
-public class PowChallengeException extends RuntimeException {
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
+
+public class PowChallengeException extends ResponseStatusException {
 
     public PowChallengeException(String message) {
-        super(message);
+        super(HttpStatus.UNAUTHORIZED, message);
     }
 }

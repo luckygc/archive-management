@@ -73,14 +73,20 @@ Controller SHALL 显式声明完整 URL。
 
 ### Requirement: 前端可见 ID
 
-资源表示 SHALL 避免 JavaScript number 精度问题。
+明确指定的高增长或 JavaScript 精度风险资源 SHALL 避免 number 精度问题。
 
-#### Scenario: 返回数据库 Long 或 BigInt ID
+#### Scenario: 返回明确要求字符串化的数据库 Long 或 BigInt ID
 
-- **WHEN** API 向前端返回数据库 `Long` 或 `BigInt` ID
+- **WHEN** API 向前端返回已被规格或仓库规则明确要求字符串化的数据库 `Long` 或 `BigInt` ID
 - **THEN** 返回字段 SHALL 输出为字符串
 - **AND** 实体、Mapper 和 Service 内部 MAY 继续使用 `Long`
 - **AND** 路径参数 MAY 接收字符串并在 Service 层解析校验
+
+#### Scenario: 返回普通元数据配置 ID
+
+- **WHEN** API 向前端返回档案分类、字段、布局、唯一规则等普通元数据配置 ID
+- **THEN** 返回字段 MAY 继续输出为数字
+- **AND** 系统 SHALL NOT 为未明确要求的低增长配置数据强制引入字符串 ID 迁移
 
 #### Scenario: 返回资源主标识
 
@@ -96,3 +102,5 @@ Controller SHALL 显式声明完整 URL。
 - **WHEN** CAP widget 要求固定回调路径
 - **THEN** 系统 MAY 保留 `/api/v1/auth/cap/challenge`、`/api/v1/auth/cap/redeem` 和 `/api/v1/auth/cap/validateToken`
 - **AND** 这些端点 SHALL NOT 作为项目自有 API 命名风格示例
+- **AND** 服务端错误响应仍 SHALL 使用项目统一 `ProblemDetail` 结构
+- **AND** 浏览器端 MAY 通过 CAP 自定义 fetch 将 `ProblemDetail` 转换为 cap-widget 可识别的错误 JSON

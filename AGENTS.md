@@ -48,6 +48,7 @@
 - Flowable 使用 `flowable-spring-boot-starter-process` 的流程引擎能力，流程引擎由 starter 默认启用；不要配置无法被元数据解析的 `flowable.process.enabled`。默认禁用 Flowable IDM 与 Event Registry，只使用 `flowable.idm.enabled=false` 和 `flowable.eventregistry.enabled=false`，不要使用已弃用的 `flowable.db-identity-used`。
 - Flowable 原生表由 Flyway 管理，运行期 `flowable.database-schema-update=false`。迁移脚本应从当前 Flowable 版本随包 PostgreSQL DDL 复制，当前只纳入 common、process engine、history 表；不要纳入 IDM 的 `ACT_ID_*` 表或 Event Registry 的 `FLW_EVENT_*` 表，除非明确启用对应引擎。
 - 当前持久化入口是 Jakarta Data 和 MyBatis：固定 CRUD 表优先使用 Jakarta Data Repository；动态表、复杂 SQL、批处理、报表和认证适配查询统一使用 MyBatis；不要在项目代码里使用 JdbcClient 作为持久化入口，不要引入 Spring Data JPA。当前 Jakarta Data Repository 必须通过 Hibernate `StatelessSession` / `EntityAgent` 执行，不允许切换为普通有状态 `Session` 或引入依赖一级缓存、脏检查、延迟会话生命周期的写法。业务代码不得直接使用 Hibernate 有状态 `Session`、Hibernate `Query` 或其他依赖 Session 生命周期的对象；如确需 Hibernate 底层适配，只能封装在基础设施层，不能外泄为业务模块合同。Repository 对外不得返回 `Stream`、游标等依赖会话生命周期的对象，必须在 `@Transactional` 方法内消费完查询结果。
+- Jakarta Data Repository 自定义方法必须显式标注 `@Find`、`@Insert`、`@Update`、`@Delete`、`@Save`、`@Query` 或 Hibernate `@HQL` 等操作注解，避免缺失注解后由 provider 按方法名派生实现。方法名可以保留必要业务可读性，但不能把 Query-by-method-name 当成查询合同来源。
 - 固定实体写入不要默认调用 Repository `save` 或定义 `@Save` 方法；新增、修改、删除应优先使用语义明确的 `insert` / `update` / `delete` 生命周期方法，Service 层先判断业务分支再调用对应方法。只有明确需要 upsert 语义且已说明并发、审计和唯一约束影响时，才允许使用 `save`。
 - 固定实体的 `created_at`、`updated_at`、`created_by`、`updated_by` 应通过基础设施层无状态会话审计拦截器统一填充；其中操作人字段从 Spring Security 上下文读取当前 `AuthenticatedUser`。`@CreationTimestamp`、`@UpdateTimestamp` 可以保留为 Hibernate 实体写入路径的辅助生成注解，但不要把它们当成 `save`/upsert 或 MyBatis 写入路径的审计真相源。无状态会话 `onUpsert` 只能维护 `updated_at`、`updated_by`，不得覆盖 `created_at`、`created_by`；需要创建语义时必须走显式 `insert`。需要保留业务语义的操作流水继续写业务审计表。MyBatis 写入路径不会触发该拦截器，必须在 SQL 或调用方显式维护审计字段。
 - StringUtils.removeStart已过时，替换为Strings.CS.removeStart
@@ -55,6 +56,7 @@
 ## API 设计约定
 
 - 项目自有 HTTP API 合同以 `openspec/specs/api-contract/spec.md` 为准；具体 API 设计默认参考 Google Cloud API Design Guide / AIP，错误响应采用 Spring `ProblemDetail` / RFC 9457 口径。
+- 前端可见 ID 是否必须字符串化以 `openspec/specs/api-contract/spec.md` 为准；当前只对明确指定的高增长或 JavaScript 精度风险资源强制转换，例如档案记录、档案文件和文件存储对象。档案分类、字段、布局、唯一规则等元数据配置 ID 可以继续使用数字合同，除非对应规格明确升级。
 - 项目 API 设计任务优先使用 `.agents/skills/archive-api-design-strategy`；持久化入口、实体和 Mapper 边界任务优先使用 `.agents/skills/archive-persistence-strategy`。
 - API 设计规则只在 `AGENTS.md` 保留入口和技能路由；资源、路径、响应、错误、前端可见 ID 和第三方协议例外的验收场景统一维护到 OpenSpec。
 

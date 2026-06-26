@@ -16,6 +16,7 @@ import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.exception.BadRequestException;
+import github.luckygc.am.module.auth.PowChallengeException;
 
 @DisplayName("全局异常处理器")
 class GlobalExceptionHandlerTests {
@@ -74,6 +75,26 @@ class GlobalExceptionHandlerTests {
                                 assertThat(violation)
                                         .hasFieldOrPropertyWithValue("field", "archiveYear")
                                         .hasFieldOrPropertyWithValue("message", "年度必须在合法范围内"));
+    }
+
+    @Test
+    @DisplayName("CAP 验证异常输出未认证 ProblemDetail")
+    void powChallengeExceptionUsesUnauthenticatedProblemDetail() {
+        MockHttpServletRequest request =
+                new MockHttpServletRequest("POST", "/api/v1/auth/cap/validateToken");
+
+        var response =
+                handler.handleResponseStatusException(
+                        new PowChallengeException("安全验证已失效，请重试"), request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getStatus()).isEqualTo(401);
+        assertThat(response.getBody().getDetail()).isEqualTo("安全验证已失效，请重试");
+        assertThat(response.getBody().getProperties())
+                .containsEntry("code", "UNAUTHENTICATED")
+                .containsEntry("reason", "UNAUTHENTICATED_ERROR")
+                .containsEntry("path", "/api/v1/auth/cap/validateToken");
     }
 
     @Test

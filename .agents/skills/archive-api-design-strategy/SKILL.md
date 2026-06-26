@@ -34,8 +34,8 @@ Use this skill before changing archive-management API contracts. The project def
 
 - AIP-122/AIP-148: resource representations should use a string `name` field as the primary resource name, and `name` should be the first resource field when the DTO is resource-shaped.
 - Use collection-style resource names, for example `archiveCategories/{archiveCategory}` and `archiveRecords/{archiveRecord}`.
-- Short-term compatibility may keep `id`, `categoryId`, `fieldId`, `createdBy`, `updatedBy`, and similar fields, but every frontend-facing database `Long`/`BigInt` ID must be serialized as `String`.
-- Response records/DTOs expose `String id` and related ID fields. Internal entities, mapper models, and service-local variables may keep `Long`.
+- Short-term compatibility may keep `id`, `categoryId`, `fieldId`, `createdBy`, `updatedBy`, and similar fields. Only resources explicitly identified by `openspec/specs/api-contract/spec.md` or a concrete feature spec as high-growth or JavaScript precision-risk data must serialize database `Long`/`BigInt` IDs as `String`.
+- Response records/DTOs for explicitly identified resources expose `String id` and related ID fields. Metadata configuration DTOs such as archive categories, fields, layouts, and unique rules may keep numeric IDs until a spec requires migration. Internal entities, mapper models, and service-local variables may keep `Long`.
 - Path variables may be accepted as `String`; parse and validate them in the Service or a narrow parsing helper, then return ProblemDetail errors with `code=INVALID_ARGUMENT` for malformed IDs.
 - Do not expose JavaScript-unsafe numeric identifiers to the frontend. Avoid relying on `number` for database IDs in TypeScript types.
 
@@ -76,7 +76,7 @@ Use this skill before changing archive-management API contracts. The project def
 
 1. Identify the resource and whether the operation is standard CRUD or a custom method.
 2. Verify the URL includes `/api/v1` and each Controller method declares the complete path.
-3. Ensure response DTO IDs that reach the frontend are strings.
+3. Ensure response DTO IDs are strings only for resources explicitly required to avoid JavaScript numeric precision risk; do not migrate ordinary metadata IDs without a spec requirement.
 4. Ensure collection APIs use a dedicated cursor or offset pagination response DTO and stable ordering when the result can grow.
 5. Map validation, not-found, conflict, and precondition failures to ProblemDetail error bodies.
 6. Update OpenSpec, frontend types, and API clients together when changing a contract.

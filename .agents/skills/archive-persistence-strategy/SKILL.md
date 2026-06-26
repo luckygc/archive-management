@@ -86,7 +86,7 @@ Logical delete rule:
 
 ## Hard Bans
 
-- Do not use Query by Method Name. Methods such as `findByCategoryIdAndSurface(...)` are forbidden in this project.
+- Do not rely on Query by Method Name as the repository contract. Every custom repository method must explicitly declare its operation with annotations such as `@Find`, `@Insert`, `@Update`, `@Delete`, `@Save`, `@Query`, or Hibernate `@HQL`, so a missing annotation cannot silently fall back to provider-derived method-name queries.
 - Do not write native SQL in Jakarta Data Repository.
 - Do not move dynamic archive table/field SQL into Repository just to avoid MyBatis.
 - Do not create full unique indexes on logically deleted tables. Uniqueness must exclude deleted rows with a partial unique index such as `where deleted_flag = false`.
@@ -154,7 +154,7 @@ Repository rules:
 
 - Prefer `@Find` with parameter names matching entity attributes for fixed entity-field conditions; Jakarta Data provides compile-time checks for this style.
 - Use `@By` only when the Java parameter name cannot or should not match the entity attribute, or when explicit field path mapping is needed for nested/ambiguous fields.
-- Strictly prohibit Query by Method Name. Do not write `findBy...`, `deleteBy...`, `countBy...`, or similar convention-derived repository methods.
+- Strictly prohibit annotation-less Query by Method Name. Method names may remain business-readable, but `findBy...`, `deleteBy...`, `countBy...`, or similar names are not the query contract unless an explicit Jakarta Data/HQL operation annotation is present.
 - Use Jakarta Data special parameters such as `Order<T>`, `Sort<?>`, `Limit`, and `PageRequest` for dynamic sorting, limits, and pagination on fixed entity fields.
 - For paged lists, return `Page<T>` or a service DTO built from it; for cursor paging, return a service-level cursor model rather than leaking provider-specific internals.
 - Use Jakarta Data `Restriction<T>` and `Restrict` for dynamic conditions on fixed entity fields. Prefer generated Jakarta Data metamodel attributes from `hibernate-processor`, such as `_ArchiveCategory.categoryCode`, instead of stringly typed field names.
