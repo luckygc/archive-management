@@ -97,6 +97,8 @@ public class SecurityConfig {
         authorize
                 .requestMatchers(HttpMethod.OPTIONS, "/**")
                 .permitAll()
+                .requestMatchers("/", "/index.html", "/favicon.svg", "/assets/**")
+                .permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/auth:login")
                 .permitAll()
                 .requestMatchers("/api/v1/auth/cap/**")
