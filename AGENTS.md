@@ -70,16 +70,16 @@
 
 1. 先解析库：
 
-```bash
-npx ctx7@latest library <name> "<用户完整问题>"
-```
+    ```bash
+    npx ctx7@latest library <name> "<用户完整问题>"
+    ```
 
 2. 选择最匹配的 `/org/project` ID，优先考虑名称精确匹配、描述相关性、代码片段数量、来源信誉和 benchmark 分数。
 3. 再拉取文档：
 
-```bash
-npx ctx7@latest docs <libraryId> "<用户完整问题>"
-```
+    ```bash
+    npx ctx7@latest docs <libraryId> "<用户完整问题>"
+    ```
 
 4. 基于获取到的文档回答或实现。
 
