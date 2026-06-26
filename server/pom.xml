@@ -24,6 +24,7 @@
         <flowable.version>8.0.0</flowable.version>
         <spring-ai.version>2.0.0</spring-ai.version>
         <spring-modulith.version>2.1.0</spring-modulith.version>
+        <maven-enforcer-plugin.version>3.6.2</maven-enforcer-plugin.version>
         <spotless.version>3.7.0</spotless.version>
         <testcontainers.version>2.0.3</testcontainers.version>
         <cosid.version>2.13.1</cosid.version>
@@ -261,6 +262,27 @@
                         </exclude>
                     </excludes>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>${maven-enforcer-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>enforce-java-version</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <requireJavaVersion>
+                                    <version>[25,26)</version>
+                                    <message>请使用 JDK 25 运行 Maven。</message>
+                                </requireJavaVersion>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
