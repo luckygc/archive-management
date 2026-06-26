@@ -5,8 +5,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;
+import org.springframework.core.MethodParameter;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.validation.BeanPropertyBindingResult;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.exception.BadRequestException;
@@ -17,8 +23,8 @@ class GlobalExceptionHandlerTests {
     private final GlobalExceptionHandler handler = new GlobalExceptionHandler();
 
     @Test
-    @DisplayName("ResponseStatusException 转为 Google API 错误结构")
-    void responseStatusExceptionUsesGoogleApiErrorShape() {
+    @DisplayName("ResponseStatusException 转为 ProblemDetail 错误结构")
+    void responseStatusExceptionUsesProblemDetailShape() {
         MockHttpServletRequest request =
                 new MockHttpServletRequest("GET", "/api/v1/archive-records/1");
         MDC.put(TraceIdFilter.TRACE_ID, "trace-20260622");
@@ -29,23 +35,14 @@ class GlobalExceptionHandlerTests {
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
             assertThat(response.getBody()).isNotNull();
-            assertThat(response.getBody().error().code()).isEqualTo(404);
-            assertThat(response.getBody().error().status()).isEqualTo("NOT_FOUND");
-            assertThat(response.getBody().error().message()).isEqualTo("档案记录不存在");
-            assertThat(response.getBody().error().details())
-                    .singleElement()
-                    .satisfies(
-                            detail -> {
-                                assertThat(detail)
-                                        .containsEntry(
-                                                "@type",
-                                                "type.googleapis.com/google.rpc.ErrorInfo");
-                                assertThat(detail).containsEntry("reason", "NOT_FOUND_ERROR");
-                                assertThat(detail).containsEntry("domain", "archive-management");
-                                assertThat(detail.get("metadata"))
-                                        .asString()
-                                        .contains("trace-20260622");
-                            });
+            assertThat(response.getBody().getStatus()).isEqualTo(404);
+            assertThat(response.getBody().getTitle()).isEqualTo("资源不存在");
+            assertThat(response.getBody().getDetail()).isEqualTo("档案记录不存在");
+            assertThat(response.getBody().getProperties())
+                    .containsEntry("code", "NOT_FOUND")
+                    .containsEntry("reason", "NOT_FOUND_ERROR")
+                    .containsEntry("traceId", "trace-20260622")
+                    .containsEntry("path", "/api/v1/archive-records/1");
         } finally {
             MDC.remove(TraceIdFilter.TRACE_ID);
         }
@@ -64,18 +61,69 @@ class GlobalExceptionHandlerTests {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().error().code()).isEqualTo(400);
-        assertThat(response.getBody().error().status()).isEqualTo("INVALID_ARGUMENT");
-        assertThat(response.getBody().error().details()).hasSize(2);
-        assertThat(response.getBody().error().details().get(1))
-                .containsEntry("@type", "type.googleapis.com/google.rpc.BadRequest");
-        assertThat(response.getBody().error().details().get(1).get("fieldViolations"))
+        assertThat(response.getBody().getStatus()).isEqualTo(400);
+        assertThat(response.getBody().getTitle()).isEqualTo("请求参数无效");
+        assertThat(response.getBody().getProperties())
+                .containsEntry("code", "INVALID_ARGUMENT")
+                .containsEntry("reason", "FIELD_VIOLATION");
+        assertThat(response.getBody().getProperties().get("fieldViolations"))
                 .asList()
                 .singleElement()
                 .satisfies(
                         violation ->
                                 assertThat(violation)
                                         .hasFieldOrPropertyWithValue("field", "archiveYear")
-                                        .hasFieldOrPropertyWithValue("description", "年度必须在合法范围内"));
+                                        .hasFieldOrPropertyWithValue("message", "年度必须在合法范围内"));
     }
+
+    @Test
+    @DisplayName("Spring MVC 请求体校验异常输出字段级错误明细")
+    void methodArgumentNotValidExceptionIncludesFieldViolations() throws Exception {
+        MockHttpServletRequest request =
+                new MockHttpServletRequest("POST", "/api/v1/archive-categories");
+        BeanPropertyBindingResult bindingResult =
+                new BeanPropertyBindingResult(new TestRequest(""), "request");
+        bindingResult.addError(new FieldError("request", "displayName", "名称不能为空"));
+        MethodParameter parameter =
+                new MethodParameter(
+                        GlobalExceptionHandlerTests.class.getDeclaredMethod(
+                                "handle", TestRequest.class),
+                        0);
+        MethodArgumentNotValidException exception =
+                new MethodArgumentNotValidException(parameter, bindingResult);
+
+        var response =
+                handler.handleMethodArgumentNotValid(
+                        exception,
+                        HttpHeaders.EMPTY,
+                        HttpStatus.BAD_REQUEST,
+                        new ServletWebRequest(request));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody())
+                .isNotNull()
+                .isInstanceOfSatisfying(
+                        org.springframework.http.ProblemDetail.class,
+                        problem -> {
+                            assertThat(problem.getProperties())
+                                    .containsEntry("code", "INVALID_ARGUMENT")
+                                    .containsEntry("reason", "FIELD_VIOLATION")
+                                    .containsEntry("path", "/api/v1/archive-categories");
+                            assertThat(problem.getProperties().get("fieldViolations"))
+                                    .asList()
+                                    .singleElement()
+                                    .satisfies(
+                                            violation ->
+                                                    assertThat(violation)
+                                                            .hasFieldOrPropertyWithValue(
+                                                                    "field", "displayName")
+                                                            .hasFieldOrPropertyWithValue(
+                                                                    "message", "名称不能为空"));
+                        });
+    }
+
+    @SuppressWarnings("unused")
+    private static void handle(TestRequest request) {}
+
+    private record TestRequest(String displayName) {}
 }

@@ -1,13 +1,13 @@
 ---
 name: archive-api-design-strategy
-description: Use when designing, reviewing, or refactoring archive-management HTTP APIs, controller mappings, request/response DTOs, resource names, pagination, filtering, sorting, field masks, custom methods, AIP-193 errors, or frontend-facing ID fields. Trigger before changing project-owned API contracts, OpenSpec API sections, DTO records, or controller URLs.
+description: Use when designing, reviewing, or refactoring archive-management HTTP APIs, controller mappings, request/response DTOs, resource names, pagination, filtering, sorting, field masks, custom methods, ProblemDetail errors, or frontend-facing ID fields. Trigger before changing project-owned API contracts, OpenSpec API sections, DTO records, or controller URLs.
 ---
 
 # Archive API Design Strategy
 
 ## Overview
 
-Use this skill before changing archive-management API contracts. The project default is Google Cloud API Design Guide / AIP for project-owned HTTP APIs, adapted to Spring MVC JSON APIs.
+Use this skill before changing archive-management API contracts. The project default is Google Cloud API Design Guide / AIP for project-owned HTTP API resources, URLs, methods, success responses, filtering, sorting, and compatibility, adapted to Spring MVC JSON APIs. Error responses use Spring ProblemDetail / RFC 9457 with project extension fields.
 
 ## First Checks
 
@@ -36,34 +36,40 @@ Use this skill before changing archive-management API contracts. The project def
 - Use collection-style resource names, for example `archiveCategories/{archiveCategory}` and `archiveRecords/{archiveRecord}`.
 - Short-term compatibility may keep `id`, `categoryId`, `fieldId`, `createdBy`, `updatedBy`, and similar fields, but every frontend-facing database `Long`/`BigInt` ID must be serialized as `String`.
 - Response records/DTOs expose `String id` and related ID fields. Internal entities, mapper models, and service-local variables may keep `Long`.
-- Path variables may be accepted as `String`; parse and validate them in the Service or a narrow parsing helper, then return AIP-193 `INVALID_ARGUMENT` errors for malformed IDs.
+- Path variables may be accepted as `String`; parse and validate them in the Service or a narrow parsing helper, then return ProblemDetail errors with `code=INVALID_ARGUMENT` for malformed IDs.
 - Do not expose JavaScript-unsafe numeric identifiers to the frontend. Avoid relying on `number` for database IDs in TypeScript types.
 
 ## Pagination and Lists
 
 - Large or user-facing collection APIs must be paginated. Do not return unbounded bare lists unless the resource set is intentionally tiny and documented.
-- Use AIP JSON field names: request `pageSize`, `pageToken`; response `nextPageToken`.
+- Cursor pagination uses AIP JSON field names: request `pageSize`, `pageToken`; response `nextPageToken`.
+- Offset pagination uses dedicated request and response fields: request `pageSize`, `pageOffset`; response includes `pageSize`, `pageOffset`, and `totalSize`.
+- Every collection API must use a dedicated list/page response DTO. Do not expose generic internal pagination types as HTTP contracts.
 - Define deterministic ordering for every paged API. Add a unique immutable tie-breaker such as `id` when ordering by a non-unique business field.
 - Filtering and sorting names should use API field names, not database column names. Validate any dynamic field or sort expression before it reaches SQL.
 - Cursor/page tokens are API contracts. Treat token format as opaque to clients.
 
 ## Errors
 
-- Project-owned errors use AIP-193 JSON shape:
+- Project-owned errors use Spring ProblemDetail / RFC 9457 JSON shape with project extension fields:
 
 ```json
 {
-  "error": {
-    "code": 400,
-    "message": "...",
-    "status": "INVALID_ARGUMENT",
-    "details": []
-  }
+  "type": "about:blank",
+  "title": "请求参数无效",
+  "status": 400,
+  "detail": "...",
+  "code": "INVALID_ARGUMENT",
+  "reason": "FIELD_VIOLATION",
+  "fieldViolations": [
+    {"field": "displayName", "message": "不能为空"}
+  ],
+  "traceId": "..."
 }
 ```
 
-- Use `google.rpc.BadRequest` style `fieldViolations` for field-level validation.
-- Prefer standard `google.rpc.Code` status names such as `INVALID_ARGUMENT`, `NOT_FOUND`, `ALREADY_EXISTS`, `FAILED_PRECONDITION`, `ABORTED`, and `INTERNAL`.
+- Use top-level `fieldViolations: [{field, message}]` for field-level validation.
+- Prefer stable project error code names such as `INVALID_ARGUMENT`, `NOT_FOUND`, `ALREADY_EXISTS`, `FAILED_PRECONDITION`, `ABORTED`, and `INTERNAL`.
 - Do not make frontend code parse exception class names, stack traces, HTML error pages, or free-form validation text.
 
 ## Review Checklist
@@ -71,6 +77,6 @@ Use this skill before changing archive-management API contracts. The project def
 1. Identify the resource and whether the operation is standard CRUD or a custom method.
 2. Verify the URL includes `/api/v1` and each Controller method declares the complete path.
 3. Ensure response DTO IDs that reach the frontend are strings.
-4. Ensure collection APIs have `pageSize`, `pageToken`, `nextPageToken`, and stable ordering when the result can grow.
-5. Map validation, not-found, conflict, and precondition failures to AIP-193 error bodies.
+4. Ensure collection APIs use a dedicated cursor or offset pagination response DTO and stable ordering when the result can grow.
+5. Map validation, not-found, conflict, and precondition failures to ProblemDetail error bodies.
 6. Update OpenSpec, frontend types, and API clients together when changing a contract.

@@ -1,43 +1,43 @@
 :root {
-  --am-bg-page: #f4f6fa;
-  --am-bg-surface: #ffffff;
-  --am-bg-subtle: #f8fafc;
-  --am-border: #dce3ee;
-  --am-border-strong: #cbd5e1;
-  --am-text: #1f2937;
-  --am-text-muted: #6b7280;
-  --am-primary: #2563eb;
-  --am-sidebar-bg: #111827;
-  --am-sidebar-bg-active: #1d4ed8;
-  --am-sidebar-border: #1f2937;
-  --am-sidebar-text: #d1d5db;
-  --am-sidebar-text-muted: #9ca3af;
+    --am-bg-page: #f4f6fa;
+    --am-bg-surface: #ffffff;
+    --am-bg-subtle: #f8fafc;
+    --am-border: #dce3ee;
+    --am-border-strong: #cbd5e1;
+    --am-text: #1f2937;
+    --am-text-muted: #6b7280;
+    --am-primary: #2563eb;
+    --am-sidebar-bg: #111827;
+    --am-sidebar-bg-active: #1d4ed8;
+    --am-sidebar-border: #1f2937;
+    --am-sidebar-text: #d1d5db;
+    --am-sidebar-text-muted: #9ca3af;
 
-  color: var(--am-text);
-  background: var(--am-bg-page);
-  font-family: Inter, "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+    color: var(--am-text);
+    background: var(--am-bg-page);
+    font-family: Inter, "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 * {
-  box-sizing: border-box;
+    box-sizing: border-box;
 }
 
 html,
 body,
 #app {
-  width: 100%;
-  height: 100%;
+    width: 100%;
+    height: 100%;
 }
 
 body {
-  margin: 0;
+    margin: 0;
 }
 
 button,
 input {
-  font: inherit;
+    font: inherit;
 }

@@ -14,7 +14,7 @@
 
 - **WHEN** 管理员提交的审批流定义编码已被未删除定义使用
 - **THEN** 系统 SHALL 拒绝保存
-- **AND** 响应 SHALL 使用 AIP-193 错误格式指出编码已存在
+- **AND** 响应 SHALL 使用 Spring `ProblemDetail` 错误格式指出编码已存在
 
 #### Scenario: 停用审批流定义
 
@@ -90,7 +90,7 @@
 
 - **WHEN** 当前用户不是任务候选人或任务已完成
 - **THEN** 系统 SHALL 拒绝办理
-- **AND** 响应 SHALL 使用 AIP-193 错误格式指出无权办理或任务不可办理
+- **AND** 响应 SHALL 使用 Spring `ProblemDetail` 错误格式指出无权办理或任务不可办理
 
 #### Scenario: 驳回审批任务
 
@@ -128,7 +128,7 @@
 
 - **WHEN** 用户查询无权限访问的审批流程实例
 - **THEN** 系统 SHALL 拒绝查询
-- **AND** 响应 SHALL 使用 AIP-193 错误格式指出无权访问
+- **AND** 响应 SHALL 使用 Spring `ProblemDetail` 错误格式指出无权访问
 
 ### Requirement: 隔离 Flowable 原生 API 和表结构
 

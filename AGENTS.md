@@ -26,7 +26,7 @@
 - 跨业务模块协作允许直接依赖目标业务模块公开的类，但不要绕过目标模块已有 Service 去直接操作其 Repository、Mapper 或底层表；需要复用业务能力时优先抽出明确的 Service 方法。
 - 控制器请求/响应 DTO 如果只服务本模块 HTTP 接口，可放在模块内的 `dto` 或 `web` 相关包下；只有确实跨多个模块复用时再提升为模块根下稳定类型。
 - 后端架构边界通过 ArchUnit 测试固化；调整包结构、跨模块调用或公共类型落点时，必须同步维护对应架构测试。
-- Java 代码格式化统一以 Spotless 调用 `google-java-format` 的 AOSP 风格为真相源，不再另行维护手写缩进、折行、空格、括号位置等细粒度格式规则；需要格式化时运行 Maven/Makefile 暴露的 Spotless 任务。
+- Java 代码格式化统一以 Spotless 调用 `google-java-format` 的 AOSP 风格为真相源，不再另行维护手写缩进、折行、空格、括号位置等细粒度格式规则；需要格式化时运行 Maven/Makefile 暴露的 Spotless 任务。Spotless 对同次改动范围内 Java 文件产生的换行、导入和格式调整应保留，不要作为无关夹带改动还原。
 - Java 导入整理最终交给 Spotless：先按 `google-java-format` 处理格式，再按 `importOrder` 分组排序，并执行 `removeUnusedImports`。当前导入分组顺序为 `java|javax`、`jakarta`、`org`、`com`、`github`、其他导入、静态导入；不要手工调整成 IDE 默认顺序或 Checkstyle 口径。
 - Java 字符串判空统一使用 Apache Commons Lang `StringUtils`，不要直接散写原生空值和空白判断组合。
 - 摘要、编码、Hex 等通用加密/编码类方法优先使用 Apache Commons Codec 等成熟工具库，不要在业务代码里手写通用算法封装。
@@ -34,10 +34,12 @@
 - 数据库和 Flyway 迁移以 PostgreSQL 为唯一优先目标；项目自有 DDL、索引、约束、查询、执行计划和迁移脚本可以围绕 PostgreSQL 能力优化，不为 MySQL、Oracle、SQL Server 等数据库做兼容性折中。除非明确新增其他数据库支持，不维护多数据库迁移分支。
 - SQL 默认不使用双引号或反引号包裹标识符，也不要通过 `as "camelCase"` 这类 quoted alias 维持大小写；表名、列名、别名、索引名和约束名都使用小写 snake_case，让非法标识符尽早暴露。查询列名与结果名相同的场景不要写 `fonds_code as fonds_code` 这类冗余别名，只有表达式或确需更名时才使用小写 snake_case alias。动态 SQL 同样不要依赖自动引用标识符兜底，拼接前应校验标识符合法性。
 - SQL、迁移验证和测试断言不得假定 schema 固定为 `public`；需要限定当前 schema 时使用 `current_schema()`、当前 search_path 下的未限定对象名，或使用配置提供的 schema。除第三方上游脚本确实要求外，不写 `public.`、`table_schema = 'public'` 这类硬编码。
-- 搜索能力必须区分管理数据查询和普通用户搜索能力：管理列表、后台筛选、排序、权限过滤、精确字段筛选和统计查询固定使用数据库语义，不提供 adapter 配置，也不允许切到 Elasticsearch、OpenSearch、Solr、Meilisearch 或其他全文检索实现；全文检索只服务查档、借阅、利用服务等普通用户发现型场景。普通用户搜索必须在同一查询语义中合并全文条件、结构化筛选、权限判断和逻辑删除判断，不允许先从全文引擎召回裸 ID 再由业务代码二次过滤。全文检索不得在核心代码中绑定某个中间件产品，必须通过 `archive.search.full-text.adapter` 选择 `disabled`、`postgresql` 或后续注册的全文检索 adapter；内置 `postgresql` adapter 使用 PostgreSQL 自带 `pg_trgm` 扩展和 GIN 索引；配置启用但依赖能力缺失时必须启动 fail-fast。
-- 运行时能力按 adapter/能力标识统一建模，但默认优先利用 Spring Boot AutoConfiguration、标准框架 Bean 和条件装配自动升级或降级，减少项目自定义配置项；不为已有成熟抽象重复声明项目端口。缓存使用 Spring Cache 和 `spring.cache.*` 配置，HTTP 会话直接使用 Spring Session 和 `spring.session.*` 配置，调度直接使用 Spring Quartz 和 `spring.quartz.*` 配置，三者都不进入项目运行时能力 adapter 模型；文件对象存储使用 S3 兼容协议；只有队列、运行时锁、运行时能力标识等缺少统一项目可用标准的能力才保留薄项目接口。最低部署组合是 `topology=single`、`database.adapter=postgresql`、`queue.adapter=database`、`lock.adapter=database`、`spring.quartz.job-store-type=jdbc`、`spring.cache.type=none`；集群部署不得使用本地锁、非共享本地文件存储或本地/禁用缓存，除非配置明确声明共享或切到分布式实现，配置不满足时必须启动 fail-fast。
-- 运行时 adapter 支持自动或显式降级：`queue/lock` 可通过 `fallback-adapter` 在主 adapter 未接入时降到内置基础实现，例如队列降到 `database`。自动升级不能只看 classpath，必须基于显式配置、已注册标准 Bean 或真实连通性判断。Spring Session 由 Spring Boot/Spring Session 自己接管，项目不要再定义 `session.adapter`、`RuntimeSession` 或其他会话 adapter；Redis Session 按 Spring Session 依赖和 `spring.session.data.redis.*`、`spring.data.redis.*` 配置处理，不能和“Redis 业务缓存”混为一谈。缓存由 Spring Boot Cache 自己接管，项目不要再定义 `cache.adapter` 或自定义缓存端口；Redis 缓存按 Spring Cache/Boot 依赖、`spring.cache.*` 和 `spring.data.redis.*` 配置处理。调度由 Spring Quartz 自己接管，项目不要再定义 `scheduler.adapter`、`RuntimeScheduler` 或其他调度 adapter；关闭调度使用 `spring.quartz.auto-startup=false`，JDBC JobStore 使用 `spring.quartz.job-store-type=jdbc`。启用 Quartz JDBC 时必须能在当前 schema 下找到 `spring.quartz.properties.org.quartz.jobStore.tablePrefix` 对应的 Quartz 必需表，默认前缀是 `QRTZ_`。降级只能处理“主 adapter 未注册/未接入”这类可选能力缺口，不得掩盖数据库类型不匹配、集群使用本地锁、非共享本地存储、集群使用禁用/本地/无法确认共享性的缓存、Quartz JDBC 必需表缺失、Quartz 集群配置缺失等安全边界问题；这些场景必须 fail-fast。
-- 缓存直接使用 Spring Cache 抽象，业务模块使用 `CacheManager` 或 Spring Cache 注解，不使用项目自定义缓存端口。默认 `spring.cache.type=none` 使用 `NoOpCacheManager`；单机可用 `simple`、`caffeine`、`cache2k` 等本地实现，集群必须使用 Redis、Hazelcast、Infinispan、Couchbase 等分布式实现，或接入数据库缓存、多级缓存等共享 `CacheManager` 并声明 `archive.runtime.cache.shared=true`。需要本地简单缓存、Redis、Caffeine+Redis、JetCache、Redisson 本地缓存等能力时，应优先使用 Spring Boot AutoConfiguration 或在基础设施层注册 Spring Cache 兼容的 `CacheManager`；引入多级缓存前必须先明确缓存对象范围、TTL、失效事件、集群一致性和脏读容忍度。
+- 搜索能力必须区分管理数据查询和普通用户搜索能力：管理列表、后台筛选、排序、权限过滤、精确字段筛选和统计查询固定使用数据库语义，不提供 adapter 配置，也不允许切到 Elasticsearch、OpenSearch、Solr、Meilisearch 或其他全文检索实现；全文检索只服务查档、借阅、利用服务等普通用户发现型场景，并默认启用。普通用户搜索必须在同一查询语义中合并全文条件、结构化筛选、权限判断和逻辑删除判断，不允许先从全文引擎召回裸 ID 再由业务代码二次过滤。全文检索不得在核心代码中绑定某个中间件产品，必须通过 `archive.search.full-text.adapter` 选择 `postgresql` 或后续注册的全文检索 adapter；内置 `postgresql` adapter 使用 PostgreSQL 自带能力和项目迁移创建的检索索引，不再提供 `disabled` 作为业务开关。
+- 基础设施组件优先使用 Spring Boot AutoConfiguration、标准框架 Bean 和组件自身配置，不维护项目级基础设施总装配、统一 adapter、统一降级或统一 fail-fast 校验。HTTP 会话直接使用 Spring Session 和 `spring.session.*` 配置；缓存直接使用 Spring Cache 和 `spring.cache.*` 配置；调度直接使用 Spring Quartz 和 `spring.quartz.*` 配置；文件对象存储使用 S3 兼容协议和 `archive.storage.*` 配置；模块事件可靠发布使用 Spring Modulith 与 JDBC Event Publication Registry，不再维护项目自研数据库队列或 `archive.queue.*` 配置。
+- 模块间业务事件默认使用 Spring Modulith：需要可靠执行的监听器使用 `@ApplicationModuleListener`，只在当前进程内即时处理且可丢或可重算的动作才使用普通 Spring 事件。跨系统外发使用 Spring Modulith event externalization/outbox 或明确选定的消息中间件；导入、导出、AI/OCR、批处理等长耗时后台任务后续优先选 JobRunr 等成熟组件，不重新引入项目自研通用队列。
+- 项目暂不提供分布式锁组件，不保留项目级锁接口、旧锁配置或 `am_runtime_lock`。后续确需分布式锁时，先选定成熟开源库并固定具体实现，再按该库的配置方式接入，不重新引入项目级锁 adapter。
+- Spring Session、Spring Cache、Spring Quartz 都由各自框架接管，项目不要再定义会话 adapter、缓存 adapter、自定义缓存端口、调度 adapter 或其他项目级基础设施 adapter。关闭调度使用 `spring.quartz.auto-startup=false`，JDBC JobStore 使用 `spring.quartz.job-store-type=jdbc`；Quartz 必需表缺失时交给 Quartz/Spring 启动过程暴露错误，不再写项目级 Quartz 表存在性校验。
+- 缓存直接使用 Spring Cache 抽象，业务模块使用 `CacheManager` 或 Spring Cache 注解，不使用项目自定义缓存端口。默认 `spring.cache.type=none` 使用 `NoOpCacheManager`；单机可用 `simple`、`caffeine`、`cache2k` 等本地实现，集群必须使用 Redis、Hazelcast、Infinispan、Couchbase 等分布式实现，或接入数据库缓存、多级缓存等共享 `CacheManager`。需要本地简单缓存、Redis、Caffeine+Redis、JetCache、Redisson 本地缓存等能力时，应优先使用 Spring Boot AutoConfiguration 或在基础设施层注册 Spring Cache 兼容的 `CacheManager`；引入多级缓存前必须先明确缓存对象范围、TTL、失效事件、集群一致性和脏读容忍度。
 - Flyway 迁移，档案server的pom.xml里版本未达到1.0.0时，都按照目标结构修改，1.0.0之后使用增量迁移
 - 项目不会跨时区使用；项目自有表时间字段使用无时区 `timestamp`，不使用 `timestamptz`。
 - 项目自有数据库表必须使用 `am_模块_表名` 命名，例如 `am_auth_user`、`am_archive_file`、`am_storage_file`；不要只使用 `am_表名` 这类缺少模块语义的名称。Flyway 迁移中新建业务表、平台表、审计表、中间表等项目自有表时同样适用；索引、约束、序列等对象名称应跟随表名保持 `am_模块_` 语义。
@@ -54,7 +56,7 @@
 
 ## API 设计约定
 
-- 项目自有 HTTP API 默认遵循 Google Cloud API Design Guide / AIP；除 gRPC、protobuf、HTTP/gRPC transcoding 等传输和 IDL 专属内容外，资源建模、URL、标准方法、自定义方法、分页、过滤、字段命名、错误模型和兼容性规则都按 AIP 口径执行。
+- 项目自有 HTTP API 默认参考 Google Cloud API Design Guide / AIP 设计资源建模、URL、标准方法、自定义方法、成功响应对象、过滤、排序、字段命名和兼容性规则；错误响应采用 Spring `ProblemDetail` / RFC 9457 口径，并通过项目扩展字段承载业务错误码、字段级校验错误和 traceId。
 - 项目 API 设计任务优先使用 `.agents/skills/archive-api-design-strategy`；持久化入口、实体和 Mapper 边界任务优先使用 `.agents/skills/archive-persistence-strategy`。
 - API URL 设计使用 Google Cloud API Design Guide / AIP 的资源导向模型：先识别资源名词、层级和标准方法，再决定是否需要自定义方法；不要直接按数据库表、页面按钮或服务方法名暴露接口。
 - REST API 路径必须在 `/api` 后包含主版本号，例如 `/api/v1`；只暴露 `v1`、`v2` 这类主版本，不使用 `v1.0`、`v1.1`、`v1.4.2` 这类 minor/patch 版本。
@@ -63,8 +65,9 @@
 - 自定义方法如果只读取数据且请求参数适合 query string，可使用 `GET`；有副作用、消费令牌、改变服务端状态或提交复杂请求体时使用 `POST`。
 - 查询当前登录会话这类单例资源使用资源名表达，例如 `GET /api/v1/auth/session`；登录、退出等非 CRUD 动作使用 `POST /api/v1/auth:login`、`POST /api/v1/auth:logout`。
 - Controller 方法上的 Spring MVC 映射必须写完整 URL，例如 `@GetMapping("/api/v1/books")`、`@PostMapping("/api/v1/books/{id}:archive")`；不要使用类级 `@RequestMapping` 叠加方法级相对路径。冒号动作尤其不能通过类级路径和 `@PostMapping(":action")` 拼接，避免实际映射路径与前端 API 合同不一致。
-- 错误响应使用 AIP-193 的 HTTP/JSON 形态：响应体为 `{"error": {"code": 400, "message": "...", "status": "INVALID_ARGUMENT", "details": [...]}}`；`code` 使用 HTTP 状态码，`status` 使用 `google.rpc.Code` 的枚举名，`details` 优先使用 `google.rpc.ErrorInfo`、`google.rpc.BadRequest`、`google.rpc.LocalizedMessage`、`google.rpc.Help` 等标准 detail 的 JSON 表示。字段级校验错误放在 `BadRequest.fieldViolations`，不要让前端解析纯文本、HTML 或异常栈。
-- 分页、过滤、排序、字段掩码、批量方法和长任务等 API 合同按 AIP 对应章节建模；只有第三方组件固定协议、框架回调或明确无法适配 AIP 的外部接口可以作为例外，例外必须限制在适配层，不得扩散为项目自有 API 风格。
+- 成功响应不使用 `Result<T>` 这类统一包装层；创建、查询、更新和自定义动作直接返回资源对象或专用动作响应对象。集合接口必须使用专用响应对象，不直接暴露泛型分页类型：游标分页使用 `pageSize`、`pageToken` 和 `nextPageToken`；offset 分页使用 `pageSize`、`pageOffset` 和 `totalSize`，需要页码 UI 时由前端把页码换算为 offset。
+- 错误响应使用 Spring `ProblemDetail` 的 HTTP/JSON 形态：响应体保留 `type`、`title`、`status`、`detail`、`instance` 等标准字段，并扩展 `code`、`reason`、`fieldViolations`、`traceId`、`path` 等项目字段；字段级校验错误放在顶层 `fieldViolations: [{field, message}]`。不要让前端解析纯文本、HTML、异常类名或异常栈。
+- 过滤、排序、字段掩码、批量方法和长任务等 API 合同按 AIP 对应章节建模；只有第三方组件固定协议、框架回调或明确无法适配 AIP 的外部接口可以作为例外，例外必须限制在适配层，不得扩散为项目自有 API 风格。
 - 资源表示优先使用 AIP-122/AIP-148 的字符串 `name` 作为资源主标识；短期保留 `id`、`categoryId`、`createdBy` 等字段时，所有返回给前端的数据库 `Long`/`BigInt` ID 都必须输出为字符串，避免 JavaScript number 精度问题。实体、Mapper 和 Service 内部可以继续使用 `Long`；路径参数可以接收字符串并在 Service 层解析校验。
 - 第三方组件或外部协议强制要求的回调路径可以作为适配例外保留，例如 CAP widget 固定使用的 `/api/v1/auth/cap/challenge`、`/api/v1/auth/cap/redeem`、`/api/v1/auth/cap/validateToken`；这类例外不得扩散为项目自有 API 命名风格。
 

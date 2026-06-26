@@ -108,10 +108,7 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
                                 + "and table_name = 'am_archive_field' "
                                 + "and column_name = 'exact_searchable'",
                         Integer.class));
-        Assertions.assertEquals(
-                "am_runtime_job",
-                jdbcTemplate.queryForObject(
-                        "select to_regclass('am_runtime_job')::text", String.class));
+        Assertions.assertEquals(true, relationExistsInCurrentSchema("event_publication"));
         Assertions.assertEquals(true, relationExistsInCurrentSchema("spring_session"));
         Assertions.assertEquals(true, relationExistsInCurrentSchema("spring_session_attributes"));
         Assertions.assertEquals(true, relationExistsInCurrentSchema("qrtz_locks"));
@@ -119,16 +116,17 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
         Assertions.assertEquals(true, relationExistsInCurrentSchema("qrtz_triggers"));
         Assertions.assertEquals(true, relationExistsInCurrentSchema("qrtz_scheduler_state"));
         Assertions.assertEquals(
-                "am_runtime_lock",
+                "event_publication_by_completion_date_idx",
                 jdbcTemplate.queryForObject(
-                        "select to_regclass('am_runtime_lock')::text", String.class));
+                        "select to_regclass('event_publication_by_completion_date_idx')::text",
+                        String.class));
         Assertions.assertEquals(
                 1,
                 jdbcTemplate.queryForObject(
                         "select count(*) from information_schema.columns "
                                 + "where table_schema = current_schema() "
-                                + "and table_name = 'am_runtime_job' "
-                                + "and column_name = 'message_id'",
+                                + "and table_name = 'event_publication' "
+                                + "and column_name = 'listener_id'",
                         Integer.class));
         Assertions.assertEquals(
                 0,

@@ -147,8 +147,9 @@ begin
         output_field_order := output_field_order + 1;
     end loop;
 
+    execute format('drop index if exists %s', output_index_name);
     execute format(
-        'create unique index if not exists %s on %s (%s) where deleted_flag = false',
+        'create unique index %s on %s (%s) where deleted_flag = false',
         output_index_name,
         input_table_name,
         (select string_agg(column_name, ', ') from unnest(output_index_columns) as column_name)
@@ -240,7 +241,7 @@ $$
 declare
     next_id bigint;
 begin
-    select coalesce(max(id), 900000000000000) + 1
+    select coalesce(max(id), 0) + 1
     into next_id
     from am_archive_record;
     return next_id;
@@ -434,7 +435,7 @@ begin
     );
     perform seed_archive_unique_constraint(gw_category_id, 'item', gw_table, 'doc_no_unique', '文号唯一', array['doc_no']);
     perform seed_archive_unique_constraint(gw_category_id, 'volume', gw_volume_table, 'volume_no_unique', '案卷号唯一', array['volume_no']);
-    perform seed_archive_unique_constraint(ht_category_id, 'item', ht_table, 'contract_no_unique', '部门合同编号唯一', array['owner_dept', 'contract_no']);
+    perform seed_archive_unique_constraint(ht_category_id, 'item', ht_table, 'owner_dept_contract_no_unique', '部门合同编号唯一', array['owner_dept', 'contract_no']);
     perform seed_archive_unique_constraint(kj_category_id, 'item', kj_table, 'voucher_period_unique', '会计期间凭证号唯一', array['accounting_period', 'voucher_no']);
     perform seed_archive_unique_constraint(xm_category_id, 'item', xm_table, 'project_code_unique', '项目编号唯一', array['project_code']);
     perform seed_archive_unique_constraint(zp_category_id, 'item', zp_table, 'photo_title_time_unique', '照片题名拍摄时间唯一', array['photo_title', 'shoot_time']);

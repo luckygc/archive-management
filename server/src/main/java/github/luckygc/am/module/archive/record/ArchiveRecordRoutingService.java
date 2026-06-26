@@ -36,7 +36,6 @@ import github.luckygc.am.module.archive.metadata.ArchiveMetadataService.ArchiveF
 import github.luckygc.am.module.archive.metadata.ArchiveMetadataService.ArchiveFondsDto;
 import github.luckygc.am.module.archive.metadata.ArchiveMetadataService.ArchiveUniqueConstraintDto;
 import github.luckygc.am.module.archive.metadata.ArchiveMetadataService.ArchiveUniqueConstraintFieldDto;
-import github.luckygc.am.module.archive.record.search.ArchiveSearchProperties;
 
 import tools.jackson.databind.annotation.JsonSerialize;
 
@@ -56,15 +55,11 @@ public class ArchiveRecordRoutingService {
 
     private final ArchiveMetadataService archiveMetadataService;
     private final ArchiveMapper archiveMapper;
-    private final ArchiveSearchProperties archiveSearchProperties;
 
     public ArchiveRecordRoutingService(
-            ArchiveMetadataService archiveMetadataService,
-            ArchiveMapper archiveMapper,
-            ArchiveSearchProperties archiveSearchProperties) {
+            ArchiveMetadataService archiveMetadataService, ArchiveMapper archiveMapper) {
         this.archiveMetadataService = archiveMetadataService;
         this.archiveMapper = archiveMapper;
-        this.archiveSearchProperties = archiveSearchProperties;
     }
 
     public ArchiveRecordListDto listRecords(Long categoryId, String fondsCode) {
@@ -104,9 +99,6 @@ public class ArchiveRecordRoutingService {
         if (StringUtils.isNotBlank(keyword) && !allowKeyword) {
             throw badRequest(
                     "档案管理列表不支持全文关键词检索", "keyword", "档案管理列表只支持数据库字段筛选；全文检索用于查档、借阅等普通用户业务入口");
-        }
-        if (StringUtils.isNotBlank(keyword) && !fullTextSearchEnabled()) {
-            throw badRequest("当前部署未启用档案全文检索", "keyword", "当前部署未启用档案全文检索");
         }
         if (request == null || request.categoryId() == null) {
             if (StringUtils.isNotBlank(keyword)) {
@@ -155,14 +147,6 @@ public class ArchiveRecordRoutingService {
                         requireAuthenticatedUser);
         return new ArchiveRecordListDto(
                 category, fields, true, normalizeDynamicFieldValues(rows, visibleFields));
-    }
-
-    private boolean fullTextSearchEnabled() {
-        return !"disabled"
-                .equals(
-                        StringUtils.defaultString(
-                                        archiveSearchProperties.getFullText().getAdapter())
-                                .trim());
     }
 
     @Transactional

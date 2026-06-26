@@ -13,7 +13,8 @@ public class TransactionalStatelessSessionContext {
     private final SessionFactory sessionFactory;
     private final DataSource dataSource;
 
-    public TransactionalStatelessSessionContext(SessionFactory sessionFactory, DataSource dataSource) {
+    public TransactionalStatelessSessionContext(
+            SessionFactory sessionFactory, DataSource dataSource) {
         this.sessionFactory = sessionFactory;
         this.dataSource = dataSource;
     }

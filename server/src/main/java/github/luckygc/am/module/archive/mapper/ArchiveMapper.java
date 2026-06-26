@@ -130,8 +130,6 @@ public interface ArchiveMapper {
 
     int markSearchOutboxFailed(@Param("id") Long id, @Param("lastError") String lastError);
 
-    boolean databaseFullTextSearchAvailable();
-
     List<Map<String, Object>> listUniqueConstraints(@Param("categoryId") Long categoryId);
 
     Map<String, Object> getUniqueConstraint(@Param("id") Long id);

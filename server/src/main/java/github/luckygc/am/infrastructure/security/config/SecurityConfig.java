@@ -31,6 +31,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import github.luckygc.am.infrastructure.security.ApiRequestSignatureFilter;
 import github.luckygc.am.infrastructure.security.util.FormLoginAuthenticationFailureHandler;
 import github.luckygc.am.infrastructure.security.util.HttpStatusLogoutSuccessHandler;
 
@@ -39,6 +40,7 @@ import github.luckygc.am.infrastructure.security.util.HttpStatusLogoutSuccessHan
 public class SecurityConfig {
 
     private final SecurityContextRepository securityContextRepository;
+    private final ApiRequestSignatureFilter apiRequestSignatureFilter;
     private final OncePerRequestFilter powLoginFilter;
     private final AuthenticationSuccessHandler authenticationSuccessHandler;
     private final FormLoginAuthenticationFailureHandler authenticationFailureHandler;
@@ -48,6 +50,7 @@ public class SecurityConfig {
 
     public SecurityConfig(
             SecurityContextRepository securityContextRepository,
+            ApiRequestSignatureFilter apiRequestSignatureFilter,
             @Qualifier("powLoginFilter") OncePerRequestFilter powLoginFilter,
             @Qualifier("formLoginAuthenticationSuccessHandler") AuthenticationSuccessHandler authenticationSuccessHandler,
             FormLoginAuthenticationFailureHandler authenticationFailureHandler,
@@ -55,6 +58,7 @@ public class SecurityConfig {
             SecurityCorsProperties corsProperties,
             SecurityAuthorizationProperties authorizationProperties) {
         this.securityContextRepository = securityContextRepository;
+        this.apiRequestSignatureFilter = apiRequestSignatureFilter;
         this.powLoginFilter = powLoginFilter;
         this.authenticationSuccessHandler = authenticationSuccessHandler;
         this.authenticationFailureHandler = authenticationFailureHandler;
@@ -69,6 +73,8 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.spa().ignoringRequestMatchers("/api/v1/auth/cap/**"))
                 .securityContext(this::configureSecurityContext)
                 .authorizeHttpRequests(this::configureAuthorization)
+                .addFilterBefore(
+                        apiRequestSignatureFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(powLoginFilter, UsernamePasswordAuthenticationFilter.class)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .formLogin(this::configureFormLogin)

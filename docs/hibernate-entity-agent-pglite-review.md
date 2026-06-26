@@ -88,10 +88,10 @@ EntityAgent entityAgent(TransactionalStatelessSessionContext context) {
 - 使用 `memory://` 内存数据库。
 - 等待 TCP 端口可连接。
 - 向 Spring `DynamicPropertyRegistry` 注册：
-  - `spring.datasource.url`
-  - `spring.datasource.username`
-  - `spring.datasource.password`
-  - `spring.datasource.driver-class-name`
+    - `spring.datasource.url`
+    - `spring.datasource.username`
+    - `spring.datasource.password`
+    - `spring.datasource.driver-class-name`
 - 测试结束后销毁进程。
 
 边界：

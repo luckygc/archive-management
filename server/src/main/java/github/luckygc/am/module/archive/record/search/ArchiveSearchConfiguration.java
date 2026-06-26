@@ -6,7 +6,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import github.luckygc.am.common.search.FullTextSearchAdapter;
-import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 
 @Configuration
 class ArchiveSearchConfiguration {
@@ -19,9 +18,7 @@ class ArchiveSearchConfiguration {
     @Bean
     ArchiveSearchCapabilityValidator archiveSearchCapabilityValidator(
             ArchiveSearchProperties properties,
-            ArchiveMapper archiveMapper,
             List<FullTextSearchAdapter> fullTextSearchAdapters) {
-        return new ArchiveSearchCapabilityValidator(
-                properties, archiveMapper, fullTextSearchAdapters);
+        return new ArchiveSearchCapabilityValidator(properties, fullTextSearchAdapters);
     }
 }

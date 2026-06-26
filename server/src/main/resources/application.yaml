@@ -99,6 +99,17 @@ spring:
         date-format: yyyy-MM-dd HH:mm:ss
         # JSON 输出时包含 null 字段。
         default-property-inclusion: always
+    modulith:
+        events:
+            # 应用重启后重新发布未完成的模块事件，避免监听器失败或节点异常导致事件永久停留。
+            republish-outstanding-events-on-restart: true
+            externalization:
+                # 当前阶段只接入模块事件注册表，不默认启用跨系统事件外发。
+                enabled: false
+            jdbc:
+                schema-initialization:
+                    # Spring Modulith 原生事件发布注册表表结构由框架初始化，不作为项目自有表维护。
+                    enabled: true
 
 cosid:
     # 启用 CosId，为高数据量档案记录和文件实体提供插入前 Long ID。
@@ -212,6 +223,13 @@ archive:
         authorization:
             # 允许访问 Actuator 端点的角色名称。
             actuator-role-name: 系统监控
+        request-signature:
+            # 是否启用 /api/** 请求 HMAC 签名校验；开启后除 OPTIONS 预检外都必须携带签名头。
+            enabled: ${AM_REQUEST_SIGNATURE_ENABLED:false}
+            # HMAC-SHA256 密钥，开启签名校验时必须通过环境变量提供，长度至少 32 个字符。
+            secret: ${AM_REQUEST_SIGNATURE_SECRET:}
+            # 允许客户端签名时间戳与服务端时间的最大偏移。
+            clock-skew: 5m
         cors:
             # 允许本地 Vite 前端跨域携带凭证访问后端；部署时改为实际可信前端 Origin。
             allowed-origins:
@@ -229,6 +247,9 @@ archive:
                 - Content-Type
                 - X-XSRF-TOKEN
                 - X-Trace-Id
+                - X-AM-Timestamp
+                - X-AM-Nonce
+                - X-AM-Signature
             exposed-headers:
                 - X-Trace-Id
             allow-credentials: true
@@ -236,35 +257,12 @@ archive:
     search:
         full-text:
             # 档案全文检索用于查档、借阅等普通用户业务入口，不作为管理列表筛选入口。
-            # adapter: disabled 不启用；postgresql 使用 PostgreSQL 自带 pg_trgm 扩展；也可配置后续注册的 opensearch、solr、meilisearch 等 adapter。
-            adapter: disabled
+            # postgresql 使用数据库内置模糊检索；也可配置后续注册的 opensearch、solr、meilisearch 等 adapter。
+            adapter: postgresql
             # 全文检索索引名称，供具体 adapter 使用。
             index-name: archive_records
             # 全文检索结果上限。
             result-limit: 1000
-    runtime:
-        # 部署拓扑：single 单节点；cluster 多节点。
-        topology: single
-        # 当前节点 ID，用于队列认领、锁和运行时日志识别。
-        node-id: ${AM_NODE_ID:${spring.application.name}-${server.port}}
-        database:
-            # 数据库 adapter。当前内置 postgresql，启动时会校验实际数据库产品。
-            adapter: postgresql
-        queue:
-            # 运行时队列 adapter。当前内置 database，优先满足单机最低部署。
-            adapter: database
-            # 主队列 adapter 未接入时的降级 adapter；留空则不降级并启动 fail-fast。
-            fallback-adapter: database
-            # 单条消息最大认领尝试次数，达到后进入死信状态，不再被队列认领。
-            max-attempts: 10
-        lock:
-            # 锁 adapter。最低部署使用 database；single 可改 local；cluster 不允许 local。
-            adapter: database
-            # 主锁 adapter 未接入时的降级 adapter；cluster 不会把不安全的 local 自动降级。
-            fallback-adapter: database
-        storage:
-            # cluster 拓扑下，如果没有对象存储且本地目录确认为共享挂载，才可设为 true。
-            local-shared: false
     storage:
         # 默认上传文件存储 adapter：local、s3、minio、cos、oss、obs。
         # 历史文件下载、删除和存在判断仍按文件记录中的 storage_type、bucket_name 路由。

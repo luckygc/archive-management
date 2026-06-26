@@ -19,7 +19,14 @@ public class SecurityCorsProperties {
             new ArrayList<>(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
 
     private List<String> allowedHeaders =
-            new ArrayList<>(List.of("Content-Type", "X-XSRF-TOKEN", "X-Trace-Id"));
+            new ArrayList<>(
+                    List.of(
+                            "Content-Type",
+                            "X-XSRF-TOKEN",
+                            "X-Trace-Id",
+                            "X-AM-Timestamp",
+                            "X-AM-Nonce",
+                            "X-AM-Signature"));
 
     private List<String> exposedHeaders = new ArrayList<>(List.of("X-Trace-Id"));
 

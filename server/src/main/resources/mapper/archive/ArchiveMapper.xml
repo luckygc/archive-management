@@ -351,11 +351,6 @@
         where id = #{id}
     </update>
 
-    <select id="databaseFullTextSearchAvailable" resultType="boolean">
-        select exists(select 1 from pg_extension where extname = 'pg_trgm')
-           and to_regclass('idx_am_archive_record_search_trgm') is not null
-    </select>
-
     <select id="listUniqueConstraints" resultType="map">
         select id,
                category_id,
