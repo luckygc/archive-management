@@ -1,17 +1,6 @@
 <script setup lang="ts">
-import { combine } from "@atlaskit/pragmatic-drag-and-drop/combine";
-import {
-    draggable,
-    dropTargetForElements,
-} from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
-import type { CleanupFn } from "@atlaskit/pragmatic-drag-and-drop/types";
-import {
-    attachInstruction,
-    extractInstruction,
-} from "@atlaskit/pragmatic-drag-and-drop-hitbox/list-item";
 import { Rank } from "@element-plus/icons-vue";
 import { ElMessage, ElMessageBox } from "element-plus";
-import type { ObjectDirective } from "vue";
 import { computed, onMounted, reactive, ref, watch } from "vue";
 import {
     buildArchiveCategoryTable,
@@ -39,55 +28,22 @@ import type {
     ArchiveFieldLayoutItemDto,
     ArchiveLevel,
     ArchiveLayoutSurface,
-    ArchiveFieldType,
-    ArchiveManagementMode,
     ArchiveUniqueConstraintCommand,
     ArchiveUniqueConstraintDto,
 } from "../../shared/types/archive";
+import {
+    archiveLevelOptions,
+    defaultFieldControl,
+    fieldControlLabels,
+    fieldControlOptions,
+    fieldTypeOptions,
+    layoutSurfaceOptions,
+    managementModeOptions,
+} from "./archiveCategoryOptions";
+import { buildCategorySelectTree, buildCategoryTree } from "./categoryTree";
+import { useArchiveLayoutDrag } from "./useArchiveLayoutDrag";
 
 defineOptions({ name: "ArchiveCategoriesPage" });
-
-interface CategoryTreeNode extends ArchiveCategoryDto {
-    children?: CategoryTreeNode[];
-}
-
-interface CategorySelectNode {
-    value: number;
-    label: string;
-    children?: CategorySelectNode[];
-}
-
-const fieldTypeOptions: Array<{ label: string; value: ArchiveFieldType }> = [
-    { label: "文本", value: "text" },
-    { label: "整数", value: "integer" },
-    { label: "小数", value: "decimal" },
-    { label: "日期", value: "date" },
-    { label: "日期时间", value: "datetime" },
-];
-
-const fieldControlLabels: Record<ArchiveFieldControl, string> = {
-    input: "单行输入",
-    textarea: "多行文本",
-    number: "数字输入",
-    date: "日期选择",
-    datetime: "日期时间",
-};
-
-const layoutSurfaceOptions: Array<{ label: string; value: ArchiveLayoutSurface }> = [
-    { label: "表格", value: "table" },
-    { label: "详情", value: "detail" },
-    { label: "编辑", value: "edit" },
-];
-
-const archiveLevelOptions: Array<{ label: string; value: ArchiveLevel }> = [
-    { label: "卷内", value: "item" },
-    { label: "案卷", value: "volume" },
-];
-
-const managementModeOptions: Array<{ label: string; value: ArchiveManagementMode }> = [
-    { label: "按条目管理", value: "item_only" },
-    { label: "按案卷/卷内管理", value: "volume_item" },
-];
 
 const categoriesLoading = ref(false);
 const fieldsLoading = ref(false);
@@ -186,179 +142,11 @@ function fieldControlText(value: ArchiveFieldControl) {
     return fieldControlLabels[value];
 }
 
-function fieldControlOptions(fieldType: ArchiveFieldType) {
-    if (fieldType === "text") {
-        return ["input", "textarea"] satisfies ArchiveFieldControl[];
-    }
-    if (fieldType === "integer" || fieldType === "decimal") {
-        return ["number"] satisfies ArchiveFieldControl[];
-    }
-    if (fieldType === "date") {
-        return ["date"] satisfies ArchiveFieldControl[];
-    }
-    return ["datetime"] satisfies ArchiveFieldControl[];
-}
-
-function defaultFieldControl(fieldType: ArchiveFieldType): ArchiveFieldControl {
-    return fieldControlOptions(fieldType)[0];
-}
-
-interface LayoutDragData {
-    type: "archive-layout-item";
-    fieldId: number;
-}
-
-const layoutDragCleanupKey = Symbol("layoutDragCleanup");
-
-type LayoutDragElement = HTMLElement & {
-    [layoutDragCleanupKey]?: CleanupFn;
-};
-
-const vLayoutDrag: ObjectDirective<LayoutDragElement, ArchiveFieldLayoutItemDto> = {
-    mounted(element, binding) {
-        bindLayoutDrag(element, binding.value);
-    },
-    updated(element, binding) {
-        if (binding.oldValue?.fieldId !== binding.value.fieldId) {
-            cleanupLayoutDrag(element);
-            bindLayoutDrag(element, binding.value);
-        }
-    },
-    beforeUnmount(element) {
-        cleanupLayoutDrag(element);
-    },
-};
-
-function isLayoutDragData(data: Record<string | symbol, unknown>): data is LayoutDragData {
-    return data.type === "archive-layout-item" && typeof data.fieldId === "number";
-}
-
-function bindLayoutDrag(element: LayoutDragElement, item: ArchiveFieldLayoutItemDto) {
-    const dragHandle = element.querySelector(".archive-layout-config__drag");
-    const getData = (): LayoutDragData => ({
-        type: "archive-layout-item",
-        fieldId: item.fieldId,
-    });
-    element[layoutDragCleanupKey] = combine(
-        draggable({
-            element,
-            dragHandle: dragHandle ?? undefined,
-            getInitialData: getData,
-            onDragStart: () => {
-                draggingLayoutFieldId.value = item.fieldId;
-            },
-            onDrop: () => {
-                draggingLayoutFieldId.value = undefined;
-            },
-        }),
-        dropTargetForElements({
-            element,
-            canDrop: ({ source }) =>
-                isLayoutDragData(source.data) && source.data.fieldId !== item.fieldId,
-            getData: ({ input, element: target }) =>
-                attachInstruction(getData(), {
-                    input,
-                    element: target,
-                    operations: {
-                        "reorder-before": "available",
-                        "reorder-after": "available",
-                    },
-                    axis: activeLayoutSurface.value === "table" ? "horizontal" : "vertical",
-                }),
-            onDrop: ({ source, self }) => {
-                if (!isLayoutDragData(source.data)) {
-                    return;
-                }
-                const instruction = extractInstruction(self.data);
-                if (!instruction || instruction.operation === "combine") {
-                    return;
-                }
-                reorderLayoutItem(source.data.fieldId, item.fieldId, instruction.operation);
-            },
-        }),
-    );
-}
-
-function cleanupLayoutDrag(element: LayoutDragElement) {
-    element[layoutDragCleanupKey]?.();
-    element[layoutDragCleanupKey] = undefined;
-}
-
-function reorderLayoutItem(
-    sourceFieldId: number,
-    targetFieldId: number,
-    operation: "reorder-before" | "reorder-after",
-) {
-    const nextItems = [...layoutItems.value];
-    const sourceIndex = nextItems.findIndex((item) => item.fieldId === sourceFieldId);
-    if (sourceIndex < 0) {
-        return;
-    }
-    const [movedItem] = nextItems.splice(sourceIndex, 1);
-    const targetIndex = nextItems.findIndex((item) => item.fieldId === targetFieldId);
-    if (!movedItem || targetIndex < 0) {
-        return;
-    }
-    const insertIndex = operation === "reorder-after" ? targetIndex + 1 : targetIndex;
-    nextItems.splice(insertIndex, 0, movedItem);
-    layoutItems.value = nextItems;
-}
-
-function buildCategoryTree(rows: ArchiveCategoryDto[]) {
-    const nodeMap = new Map<number, CategoryTreeNode>();
-    const roots: CategoryTreeNode[] = [];
-    for (const row of rows) {
-        nodeMap.set(row.id, { ...row, children: [] });
-    }
-    for (const row of rows) {
-        const node = nodeMap.get(row.id);
-        if (!node) {
-            continue;
-        }
-        const parent = row.parentId ? nodeMap.get(row.parentId) : undefined;
-        if (parent) {
-            parent.children?.push(node);
-        } else {
-            roots.push(node);
-        }
-    }
-    return roots;
-}
-
-function buildCategorySelectTree(rows: ArchiveCategoryDto[], editingId?: number) {
-    const excludedIds = editingId ? collectDescendantIds(rows, editingId) : new Set<number>();
-    const availableRows = rows.filter((row) => !excludedIds.has(row.id));
-    return buildCategoryTree(availableRows).map(toSelectNode);
-}
-
-function collectDescendantIds(rows: ArchiveCategoryDto[], parentId: number) {
-    const childrenByParent = new Map<number, ArchiveCategoryDto[]>();
-    for (const row of rows) {
-        if (!row.parentId) {
-            continue;
-        }
-        childrenByParent.set(row.parentId, [...(childrenByParent.get(row.parentId) ?? []), row]);
-    }
-    const ids = new Set<number>();
-    const stack = [...(childrenByParent.get(parentId) ?? [])];
-    while (stack.length > 0) {
-        const current = stack.pop();
-        if (!current) {
-            continue;
-        }
-        ids.add(current.id);
-        stack.push(...(childrenByParent.get(current.id) ?? []));
-    }
-    return ids;
-}
-
-function toSelectNode(row: CategoryTreeNode): CategorySelectNode {
-    return {
-        value: row.id,
-        label: row.categoryName,
-        children: row.children?.length ? row.children.map(toSelectNode) : undefined,
-    };
-}
+const { vLayoutDrag } = useArchiveLayoutDrag(
+    layoutItems,
+    activeLayoutSurface,
+    draggingLayoutFieldId,
+);
 
 function resetCategoryForm(row?: ArchiveCategoryDto) {
     editingCategoryId.value = row?.id;

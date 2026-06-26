@@ -48,27 +48,23 @@
 #### Scenario: 管理查询不依赖全文检索中间件
 - **WHEN** 客户端按分类、全宗、精确字段或范围字段查询档案管理列表
 - **THEN** 系统 SHALL 使用数据库主表和分类动态表执行筛选
-- **AND** 系统 SHALL NOT 访问 Elasticsearch、OpenSearch、Solr、Meilisearch 或其他全文检索 adapter 作为必要步骤
+- **AND** 系统 SHALL NOT 访问 Elasticsearch、OpenSearch、Solr、Meilisearch 或其他全文检索 provider 作为必要步骤
 
-#### Scenario: 普通用户全文发现能力可选
+#### Scenario: 普通用户全文发现能力默认启用
 - **WHEN** 查档、借阅或利用服务类入口需要全文发现能力
 - **THEN** 系统 SHALL 在普通用户搜索查询中同时执行全文条件、结构化筛选、权限判断和逻辑删除判断
-- **AND** 全文检索 SHALL 通过 `archive.search.full-text.adapter` 支持 `disabled`、`postgresql` 或已注册 adapter 配置
+- **AND** 全文检索 SHALL 通过 `archive.search.full-text.provider` 支持默认 `postgresql` 或已注册 provider 配置
+- **AND** 系统 SHALL NOT 提供 `disabled` 作为普通用户全文发现能力的业务开关
 - **AND** 核心业务代码 SHALL NOT 绑定某一个全文检索中间件产品
 
 #### Scenario: 普通用户搜索直接合并过滤条件
 - **WHEN** 客户端提交 `keyword`、全宗和字段筛选条件
 - **THEN** 系统 SHALL 在同一搜索执行路径中合并全文条件、结构化筛选、全宗筛选、权限判断和逻辑删除判断
-- **AND** 系统 SHALL NOT 先从全文检索 adapter 召回裸 ID 再由业务代码二次过滤
+- **AND** 系统 SHALL NOT 先从全文检索 provider 召回裸 ID 再由业务代码二次过滤
 - **AND** 系统 SHALL 在最终查询阶段排除已逻辑删除记录和当前用户不可见记录
 
-#### Scenario: 未启用全文检索时执行管理查询
-- **WHEN** 全文检索 adapter 为 `disabled`
-- **THEN** 系统 SHALL 允许管理列表按数据库字段筛选
-- **AND** 系统 SHALL NOT 访问全文投影表作为必要步骤
-
 #### Scenario: 启用全文检索但依赖缺失
-- **WHEN** 全文检索 adapter 为 `postgresql` 且数据库缺少 `pg_trgm` 扩展或全文检索索引
+- **WHEN** 全文检索 provider 为 `postgresql` 且数据库缺少 `pg_trgm` 扩展或全文检索索引
 - **THEN** 系统 SHALL 在启动阶段 fail-fast
-- **WHEN** 全文检索 adapter 不是 `disabled` 且未注册
+- **WHEN** 全文检索 provider 未注册
 - **THEN** 系统 SHALL 在启动阶段 fail-fast

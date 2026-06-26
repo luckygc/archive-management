@@ -141,6 +141,11 @@
             <artifactId>commons-codec</artifactId>
             <version>1.22.0</version>
         </dependency>
+        <dependency>
+            <groupId>org.jspecify</groupId>
+            <artifactId>jspecify</artifactId>
+            <version>1.0.0</version>
+        </dependency>
 
         <dependency>
             <groupId>org.postgresql</groupId>

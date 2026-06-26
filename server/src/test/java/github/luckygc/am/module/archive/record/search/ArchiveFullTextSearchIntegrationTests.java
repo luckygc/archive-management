@@ -28,7 +28,7 @@ import github.luckygc.am.module.archive.record.ArchiveRecordRoutingService.Archi
         properties = {
             "spring.autoconfigure.exclude=org.springframework.ai.model.deepseek.autoconfigure.DeepSeekChatAutoConfiguration",
             "spring.flyway.locations=classpath:db/migration,classpath:db/sample",
-            "archive.search.full-text.adapter=postgresql",
+            "archive.search.full-text.provider=postgresql",
             "spring.quartz.auto-startup=false",
             "spring.session.jdbc.cleanup-cron=-",
             "flowable.async-executor-activate=false",

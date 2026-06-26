@@ -10,33 +10,33 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import github.luckygc.am.common.search.ArchiveSearchConfigurationException;
-import github.luckygc.am.common.search.FullTextSearchAdapter;
+import github.luckygc.am.common.search.FullTextSearchProvider;
 
 @DisplayName("档案全文检索能力校验")
 class ArchiveSearchCapabilityValidatorTests {
 
     @Test
-    @DisplayName("默认搜索配置使用 PostgreSQL 全文检索 adapter")
-    void defaultSearchConfigurationUsesPostgreSqlFullTextAdapter() {
+    @DisplayName("默认搜索配置使用 PostgreSQL 全文检索 provider")
+    void defaultSearchConfigurationUsesPostgreSqlFullTextProvider() {
         ArchiveSearchProperties properties = new ArchiveSearchProperties();
         ArchiveSearchCapabilityValidator validator =
                 new ArchiveSearchCapabilityValidator(
-                        properties, List.of(new StubFullTextSearchAdapter("postgresql")));
+                        properties, List.of(new StubFullTextSearchProvider("postgresql")));
 
         assertThatCode(validator::afterPropertiesSet).doesNotThrowAnyException();
     }
 
     @Test
-    @DisplayName("全文检索 adapter 为空时使用默认 PostgreSQL adapter")
-    void blankFullTextSearchAdapterUsesDefaultPostgreSqlAdapter() {
+    @DisplayName("全文检索 provider 为空时使用默认 PostgreSQL provider")
+    void blankFullTextSearchProviderUsesDefaultPostgreSqlProvider() {
         ArchiveSearchProperties properties = new ArchiveSearchProperties();
-        properties.getFullText().setAdapter(null);
+        properties.getFullText().setProvider(null);
         ArchiveSearchCapabilityValidator validator =
                 new ArchiveSearchCapabilityValidator(
-                        properties, List.of(new StubFullTextSearchAdapter("postgresql")));
+                        properties, List.of(new StubFullTextSearchProvider("postgresql")));
 
         assertThatCode(validator::afterPropertiesSet).doesNotThrowAnyException();
-        assertThat(properties.getFullText().getAdapter()).isEqualTo("postgresql");
+        assertThat(properties.getFullText().getProvider()).isEqualTo("postgresql");
     }
 
     @Test
@@ -46,7 +46,7 @@ class ArchiveSearchCapabilityValidatorTests {
         properties.getFullText().setResultLimit(0);
         ArchiveSearchCapabilityValidator validator =
                 new ArchiveSearchCapabilityValidator(
-                        properties, List.of(new StubFullTextSearchAdapter("postgresql")));
+                        properties, List.of(new StubFullTextSearchProvider("postgresql")));
 
         assertThatThrownBy(validator::afterPropertiesSet)
                 .isInstanceOf(ArchiveSearchConfigurationException.class)
@@ -58,27 +58,27 @@ class ArchiveSearchCapabilityValidatorTests {
     }
 
     @Test
-    @DisplayName("全文检索 adapter Bean 未注册时拒绝启动")
-    void rejectFullTextSearchWhenAdapterBeanIsNotRegistered() {
+    @DisplayName("全文检索 provider Bean 未注册时拒绝启动")
+    void rejectFullTextSearchWhenProviderBeanIsNotRegistered() {
         ArchiveSearchProperties properties = new ArchiveSearchProperties();
-        properties.getFullText().setAdapter("custom-search");
+        properties.getFullText().setProvider("custom-search");
         ArchiveSearchCapabilityValidator validator =
                 new ArchiveSearchCapabilityValidator(properties, List.of());
 
         assertThatThrownBy(validator::afterPropertiesSet)
                 .isInstanceOf(ArchiveSearchConfigurationException.class)
-                .hasMessageContaining("未注册 adapter: custom-search")
-                .satisfies(exception -> assertThat(action(exception)).contains("增加实现该 adapter"));
+                .hasMessageContaining("未注册 provider: custom-search")
+                .satisfies(exception -> assertThat(action(exception)).contains("增加实现该 provider"));
     }
 
     @Test
-    @DisplayName("全文检索 adapter Bean 已注册时允许启动")
-    void allowFullTextSearchWhenAdapterBeanIsRegistered() {
+    @DisplayName("全文检索 provider Bean 已注册时允许启动")
+    void allowFullTextSearchWhenProviderBeanIsRegistered() {
         ArchiveSearchProperties properties = new ArchiveSearchProperties();
-        properties.getFullText().setAdapter("custom-search");
+        properties.getFullText().setProvider("custom-search");
         ArchiveSearchCapabilityValidator validator =
                 new ArchiveSearchCapabilityValidator(
-                        properties, List.of(new StubFullTextSearchAdapter("custom-search")));
+                        properties, List.of(new StubFullTextSearchProvider("custom-search")));
 
         assertThatCode(validator::afterPropertiesSet).doesNotThrowAnyException();
     }
@@ -87,5 +87,5 @@ class ArchiveSearchCapabilityValidatorTests {
         return ((ArchiveSearchConfigurationException) exception).action();
     }
 
-    private record StubFullTextSearchAdapter(String adapter) implements FullTextSearchAdapter {}
+    private record StubFullTextSearchProvider(String provider) implements FullTextSearchProvider {}
 }

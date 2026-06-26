@@ -9,4 +9,7 @@
  * 或后续独立用户/权限模块；Spring Security、文件存储、外部系统客户端、持久化适配等
  * 技术实现放在 {@code github.luckygc.am.infrastructure} 下的具体子包。
  */
+@NullMarked
 package github.luckygc.am.common;
+
+import org.jspecify.annotations.NullMarked;

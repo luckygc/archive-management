@@ -14,7 +14,7 @@
 - 字段定义只暴露精确筛选语义；管理查询只使用数据库字段筛选。全文检索固定拼接所有启用动态字段，但只服务查档、借阅、利用服务等普通用户发现型入口。
 - 使用 MyBatis 承载动态列表、动态插入、动态记录加载、搜索和动态 DDL 参数拼装。
 - 使用 PostgreSQL 部分唯一索引实现分类唯一规则。
-- 使用全文投影表和 outbox 维护可重建检索文本；全文检索通过 `archive.search.full-text.adapter` 选择 `disabled`、`postgresql` 或后续注册的 adapter。
+- 使用全文投影表和 outbox 维护可重建检索文本；全文检索通过 `archive.search.full-text.provider` 选择默认 `postgresql` 或后续注册的 provider。
 - 使用通用档案记录操作审计表记录创建、删除、锁定、解锁等业务操作事实。
 
 **Non-Goals:**
@@ -22,7 +22,7 @@
 - 不支持跨分类动态表做统一动态字段查询。
 - 不实现动态字段物理列删除或已建字段类型变更。
 - 不把 `archive_no` 等主表字段纳入首版唯一规则字段来源。
-- 不在本变更中实现具体外部搜索引擎产品；保留 adapter 扩展点，PostgreSQL、OpenSearch、Solr、Meilisearch 等实现都按全文检索 adapter 接入，核心代码不得绑定某个特定产品。
+- 不在本变更中实现具体外部搜索引擎产品；保留 provider 扩展点，PostgreSQL、OpenSearch、Solr、Meilisearch 等实现都按全文检索 provider 接入，核心代码不得绑定某个特定产品。
 - 不在动态字段定义变更时同步阻塞重建历史投影；历史重建走单独任务或内部接口。
 
 ## Decisions
@@ -55,19 +55,18 @@
 
 首版字段来源只支持动态字段。需要范围唯一时，范围字段也必须是分类动态字段，例如“部门 + 合同编号”联合唯一。空值语义沿用 PostgreSQL 默认唯一索引行为，即 `NULL` 不互相冲突；如果未来要求空值也冲突，再引入表达式索引或应用层归一化规则。规则新增、启用或字段组合变化时创建或重建对应索引；规则禁用或删除时删除对应索引。
 
-### 全文检索使用投影表、outbox 和可插拔 adapter
+### 全文检索使用投影表、outbox 和可插拔 provider
 
 全文投影表 `am_archive_record_search` 只保存每条记录的 `archive_record_id`、拼接后的 `search_text`、`index_version` 和投影自身维护时间。分类、全宗、删除、锁定、档案状态和流程状态仍以 `am_archive_record` 与对应分类动态表为准，不在搜索表复制。
 
 记录新增、后续编辑、删除和历史重建维护 `am_archive_record_search`。维护端按 `archive_record_id` 回读主表、分类动态表和字段定义，重新拼接全文文本并写入或删除投影；新增路径可直接使用本次写入的动态字段生成投影，避免额外回读。
 
-档案管理列表不访问全文投影表，也不接收全文 `keyword`。普通用户查档、借阅或利用服务入口需要全文发现能力时，全文 adapter 必须接收关键词、分类、档案级别、全宗、用户等搜索上下文，并在同一查询语义中合并全文条件、分类动态字段筛选、全宗筛选、权限判断和逻辑删除判断。`postgresql` adapter 下由最终列表查询直接 join `am_archive_record`、分类动态表和 `am_archive_record_search` 完成权威过滤，不先召回裸 ID 再二次过滤。
+档案管理列表不访问全文投影表，也不接收全文 `keyword`。普通用户查档、借阅或利用服务入口需要全文发现能力时，全文 provider 必须接收关键词、分类、档案级别、全宗、用户等搜索上下文，并在同一查询语义中合并全文条件、分类动态字段筛选、全宗筛选、权限判断和逻辑删除判断。`postgresql` provider 下由最终列表查询直接 join `am_archive_record`、分类动态表和 `am_archive_record_search` 完成权威过滤，不先召回裸 ID 再二次过滤。
 
-全文检索 adapter：
+全文检索 provider：
 
-- `disabled`：最低部署默认值，不启用全文检索。
 - `postgresql`：通过 `search_text` 的 PostgreSQL `pg_trgm` GIN 索引参与最终列表查询；启动时必须检测扩展和索引存在。
-- 其他 adapter 名称：启动时必须检测 adapter 名称和对应适配器 Bean；具体实现必须接收完整搜索上下文，并提供等价的全文、筛选、权限和可见性合并搜索语义。
+- 其他 provider 名称：启动时必须检测 provider 名称和对应 provider Bean；具体实现必须接收完整搜索上下文，并提供等价的全文、筛选、权限和可见性合并搜索语义。
 
 投影表避免每个分类动态表都维护全文索引，同时不成为第二份业务状态真相源。
 
@@ -90,7 +89,7 @@
 - PostgreSQL 标识符长度限制 → 动态索引名使用规则 ID 或短 hash 生成，避免直接拼长字段名。
 - `NULL` 默认不冲突可能不符合个别业务预期 → 首版在规格中固定该语义，后续如需“空值也唯一”再新增规则选项。
 - 动态字段定义变更后历史投影不自动同步 → 字段定义保存不阻塞重建，历史重建通过单独流程补齐，避免元数据保存阻塞。
-- `postgresql` 全文检索依赖缺失 → 迁移启用 `pg_trgm` 并创建 `search_text gin_trgm_ops` GIN 索引；启用 `postgresql` 全文 adapter 时启动校验扩展和索引，缺失则 fail-fast。
+- `postgresql` 全文检索依赖缺失 → 迁移启用 `pg_trgm` 并创建 `search_text gin_trgm_ops` GIN 索引；启用 `postgresql` 全文 provider 时启动校验扩展和索引，缺失则 fail-fast。
 
 ## Migration Plan
 

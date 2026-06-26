@@ -4,8 +4,9 @@
 
 - 始终使用中文交流、编写文档和注释。
 - 默认按最小闭环推进改动；不要把需求顺手扩展到相邻模块。
+- 项目必须遵守奥卡姆剃刀原则：能用现有框架、现有组件、现有数据模型或更少代码清楚解决的问题，不新增抽象、适配层、配置开关、兼容分支或未来预留能力；只有真实需求已经出现且收益大于复杂度时，才引入额外机制。
 - 修改前先确认影响目录；如果后续新增更深层级的 `AGENTS.md`，必须优先读取最近层级规则，冲突时以更近目录规则为准。
-- 规则、约定、架构边界类需求优先固化到仓库文档，再按文档口径改代码。
+- 规则、约定、架构边界类需求优先固化到仓库文档，再按文档口径改代码；业务能力、业务流程、业务字段、状态机、接口行为和验收场景应进入 OpenSpec，不继续写入 `AGENTS.md`。`AGENTS.md` 只保留协作方式、代码风格、架构边界、技术选型和工具链规则；现有业务条款后续修改时应迁移到对应 OpenSpec 规格，再从 `AGENTS.md` 删除或仅保留指向性规则。
 
 ## 前端样式约定
 
@@ -28,24 +29,21 @@
 - 后端架构边界通过 ArchUnit 测试固化；调整包结构、跨模块调用或公共类型落点时，必须同步维护对应架构测试。
 - Java 代码格式化统一以 Spotless 调用 `google-java-format` 的 AOSP 风格为真相源，不再另行维护手写缩进、折行、空格、括号位置等细粒度格式规则；需要格式化时运行 Maven/Makefile 暴露的 Spotless 任务。Spotless 对同次改动范围内 Java 文件产生的换行、导入和格式调整应保留，不要作为无关夹带改动还原。
 - Java 导入整理最终交给 Spotless：先按 `google-java-format` 处理格式，再按 `importOrder` 分组排序，并执行 `removeUnusedImports`。当前导入分组顺序为 `java|javax`、`jakarta`、`org`、`com`、`github`、其他导入、静态导入；不要手工调整成 IDE 默认顺序或 Checkstyle 口径。
+- Java nullness 默认使用 JSpecify：项目源码包默认在 `package-info.java` 标注 `@NullMarked`，未标注的类型视为非空；普通 Java 代码中允许为 null 的字段、参数、返回值、泛型类型参数和数组元素必须显式使用 `org.jspecify.annotations.Nullable`。Jakarta Data Repository 方法签名例外：为了让 Hibernate/Jakarta Data provider 正确识别可空返回和非空参数，Repository 接口方法继续使用 `jakarta.annotation.Nullable` / `jakarta.annotation.Nonnull`。不要再新增 `javax.annotation.Nullable`、JetBrains Nullable 或 FindBugs Nullable；第三方 API 边界无法准确表达时，优先在最窄作用域使用 `@NullUnmarked` 或局部 `@Nullable`，不要扩大到整个模块。
 - Java 字符串判空统一使用 Apache Commons Lang `StringUtils`，不要直接散写原生空值和空白判断组合。
 - 摘要、编码、Hex 等通用加密/编码类方法优先使用 Apache Commons Codec 等成熟工具库，不要在业务代码里手写通用算法封装。
 - 方法参数校验、请求参数校验这类纯校验操作不应该被事务包裹；只有确实需要原子写入、状态变更、消费令牌、扣减库存、锁定记录等场景才开启事务。
 - 数据库和 Flyway 迁移以 PostgreSQL 为唯一优先目标；项目自有 DDL、索引、约束、查询、执行计划和迁移脚本可以围绕 PostgreSQL 能力优化，不为 MySQL、Oracle、SQL Server 等数据库做兼容性折中。除非明确新增其他数据库支持，不维护多数据库迁移分支。
 - SQL 默认不使用双引号或反引号包裹标识符，也不要通过 `as "camelCase"` 这类 quoted alias 维持大小写；表名、列名、别名、索引名和约束名都使用小写 snake_case，让非法标识符尽早暴露。查询列名与结果名相同的场景不要写 `fonds_code as fonds_code` 这类冗余别名，只有表达式或确需更名时才使用小写 snake_case alias。动态 SQL 同样不要依赖自动引用标识符兜底，拼接前应校验标识符合法性。
 - SQL、迁移验证和测试断言不得假定 schema 固定为 `public`；需要限定当前 schema 时使用 `current_schema()`、当前 search_path 下的未限定对象名，或使用配置提供的 schema。除第三方上游脚本确实要求外，不写 `public.`、`table_schema = 'public'` 这类硬编码。
-- 搜索能力必须区分管理数据查询和普通用户搜索能力：管理列表、后台筛选、排序、权限过滤、精确字段筛选和统计查询固定使用数据库语义，不提供 adapter 配置，也不允许切到 Elasticsearch、OpenSearch、Solr、Meilisearch 或其他全文检索实现；全文检索只服务查档、借阅、利用服务等普通用户发现型场景，并默认启用。普通用户搜索必须在同一查询语义中合并全文条件、结构化筛选、权限判断和逻辑删除判断，不允许先从全文引擎召回裸 ID 再由业务代码二次过滤。全文检索不得在核心代码中绑定某个中间件产品，必须通过 `archive.search.full-text.adapter` 选择 `postgresql` 或后续注册的全文检索 adapter；内置 `postgresql` adapter 使用 PostgreSQL 自带能力和项目迁移创建的检索索引，不再提供 `disabled` 作为业务开关。
+- 档案记录搜索、管理查询和全文 provider 的业务合同以 `openspec/specs/archive-record-search/spec.md` 为准；代码层只保留 provider 通过标准 Bean 与 `archive.search.full-text.provider` 配置切换，不在业务查询核心代码中绑定具体中间件。
 - 基础设施组件优先使用 Spring Boot AutoConfiguration、标准框架 Bean 和组件自身配置，不维护项目级基础设施总装配、统一 adapter、统一降级或统一 fail-fast 校验。HTTP 会话直接使用 Spring Session 和 `spring.session.*` 配置；缓存直接使用 Spring Cache 和 `spring.cache.*` 配置；调度直接使用 Spring Quartz 和 `spring.quartz.*` 配置；文件对象存储使用 S3 兼容协议和 `archive.storage.*` 配置；模块事件可靠发布使用 Spring Modulith 与 JDBC Event Publication Registry，不再维护项目自研数据库队列或 `archive.queue.*` 配置。
 - 模块间业务事件默认使用 Spring Modulith：需要可靠执行的监听器使用 `@ApplicationModuleListener`，只在当前进程内即时处理且可丢或可重算的动作才使用普通 Spring 事件。跨系统外发使用 Spring Modulith event externalization/outbox 或明确选定的消息中间件；导入、导出、AI/OCR、批处理等长耗时后台任务后续优先选 JobRunr 等成熟组件，不重新引入项目自研通用队列。
 - 项目暂不提供分布式锁组件，不保留项目级锁接口、旧锁配置或 `am_runtime_lock`。后续确需分布式锁时，先选定成熟开源库并固定具体实现，再按该库的配置方式接入，不重新引入项目级锁 adapter。
 - Spring Session、Spring Cache、Spring Quartz 都由各自框架接管，项目不要再定义会话 adapter、缓存 adapter、自定义缓存端口、调度 adapter 或其他项目级基础设施 adapter。关闭调度使用 `spring.quartz.auto-startup=false`，JDBC JobStore 使用 `spring.quartz.job-store-type=jdbc`；Quartz 必需表缺失时交给 Quartz/Spring 启动过程暴露错误，不再写项目级 Quartz 表存在性校验。
 - 缓存直接使用 Spring Cache 抽象，业务模块使用 `CacheManager` 或 Spring Cache 注解，不使用项目自定义缓存端口。默认 `spring.cache.type=none` 使用 `NoOpCacheManager`；单机可用 `simple`、`caffeine`、`cache2k` 等本地实现，集群必须使用 Redis、Hazelcast、Infinispan、Couchbase 等分布式实现，或接入数据库缓存、多级缓存等共享 `CacheManager`。需要本地简单缓存、Redis、Caffeine+Redis、JetCache、Redisson 本地缓存等能力时，应优先使用 Spring Boot AutoConfiguration 或在基础设施层注册 Spring Cache 兼容的 `CacheManager`；引入多级缓存前必须先明确缓存对象范围、TTL、失效事件、集群一致性和脏读容忍度。
 - Flyway 迁移，档案server的pom.xml里版本未达到1.0.0时，都按照目标结构修改，1.0.0之后使用增量迁移
-- 项目不会跨时区使用；项目自有表时间字段使用无时区 `timestamp`，不使用 `timestamptz`。
-- 项目自有数据库表必须使用 `am_模块_表名` 命名，例如 `am_auth_user`、`am_archive_file`、`am_storage_file`；不要只使用 `am_表名` 这类缺少模块语义的名称。Flyway 迁移中新建业务表、平台表、审计表、中间表等项目自有表时同样适用；索引、约束、序列等对象名称应跟随表名保持 `am_模块_` 语义。
-- 项目自有表不允许使用数据库 `CHECK` 约束；枚举、状态、数值范围等校验放在应用层或字典/配置层。
-- 实体枚举字段默认按文本持久化：Java enum 常量名直接使用对外和入库的小写 snake_case 值，实体属性标注 `@Enumerated(EnumType.STRING)`；不要依赖 `enum.ordinal()`，也不要为简单枚举手写 `AttributeConverter` 或额外注册 Jackson/MVC 枚举转换器。DDL 的 `comment on column` 必须列出每个枚举值及其含义。
-- 带逻辑删除字段的项目自有表不允许使用覆盖已删除数据的唯一约束；唯一性必须使用 `where deleted_at is null` 的部分唯一索引，只约束未删除记录。
+- 档案元数据、项目自有表命名、业务字段校验、枚举持久化、逻辑删除唯一性、分类动态表和唯一规则合同以 `openspec/specs/archive-metadata/spec.md` 为准。
 - 第三方框架原生表不属于项目自有表，例如 Spring Session 的 `SPRING_SESSION`、Quartz 的 `QRTZ_*`。除非明确改为项目自维护表，否则保留框架默认命名，避免偏离上游脚本。
 - Flowable 使用 `flowable-spring-boot-starter-process` 的流程引擎能力，流程引擎由 starter 默认启用；不要配置无法被元数据解析的 `flowable.process.enabled`。默认禁用 Flowable IDM 与 Event Registry，只使用 `flowable.idm.enabled=false` 和 `flowable.eventregistry.enabled=false`，不要使用已弃用的 `flowable.db-identity-used`。
 - Flowable 原生表由 Flyway 管理，运行期 `flowable.database-schema-update=false`。迁移脚本应从当前 Flowable 版本随包 PostgreSQL DDL 复制，当前只纳入 common、process engine、history 表；不要纳入 IDM 的 `ACT_ID_*` 表或 Event Registry 的 `FLW_EVENT_*` 表，除非明确启用对应引擎。
@@ -56,29 +54,13 @@
 
 ## API 设计约定
 
-- 项目自有 HTTP API 默认参考 Google Cloud API Design Guide / AIP 设计资源建模、URL、标准方法、自定义方法、成功响应对象、过滤、排序、字段命名和兼容性规则；错误响应采用 Spring `ProblemDetail` / RFC 9457 口径，并通过项目扩展字段承载业务错误码、字段级校验错误和 traceId。
+- 项目自有 HTTP API 合同以 `openspec/specs/api-contract/spec.md` 为准；具体 API 设计默认参考 Google Cloud API Design Guide / AIP，错误响应采用 Spring `ProblemDetail` / RFC 9457 口径。
 - 项目 API 设计任务优先使用 `.agents/skills/archive-api-design-strategy`；持久化入口、实体和 Mapper 边界任务优先使用 `.agents/skills/archive-persistence-strategy`。
-- API URL 设计使用 Google Cloud API Design Guide / AIP 的资源导向模型：先识别资源名词、层级和标准方法，再决定是否需要自定义方法；不要直接按数据库表、页面按钮或服务方法名暴露接口。
-- REST API 路径必须在 `/api` 后包含主版本号，例如 `/api/v1`；只暴露 `v1`、`v2` 这类主版本，不使用 `v1.0`、`v1.1`、`v1.4.2` 这类 minor/patch 版本。
-- 标准 CRUD 优先使用资源路径和 HTTP 方法表达：`GET /api/v1/books/{id}` 查询单个资源，`GET /api/v1/books` 查询集合，`POST /api/v1/books` 创建，`PATCH /api/v1/books/{id}` 局部更新，`DELETE /api/v1/books/{id}` 删除。
-- 只有标准方法无法自然表达的动作才使用自定义方法。自定义方法路径使用 AIP 风格冒号动作：`POST /api/v1/books/{id}:archive`、`POST /api/v1/auth:login`；动词使用 lower camelCase，不使用 `/archive`、`/_archive`、`/validate_token`、`/validateToken` 这类路径段承载项目自有动作。
-- 自定义方法如果只读取数据且请求参数适合 query string，可使用 `GET`；有副作用、消费令牌、改变服务端状态或提交复杂请求体时使用 `POST`。
-- 查询当前登录会话这类单例资源使用资源名表达，例如 `GET /api/v1/auth/session`；登录、退出等非 CRUD 动作使用 `POST /api/v1/auth:login`、`POST /api/v1/auth:logout`。
-- Controller 方法上的 Spring MVC 映射必须写完整 URL，例如 `@GetMapping("/api/v1/books")`、`@PostMapping("/api/v1/books/{id}:archive")`；不要使用类级 `@RequestMapping` 叠加方法级相对路径。冒号动作尤其不能通过类级路径和 `@PostMapping(":action")` 拼接，避免实际映射路径与前端 API 合同不一致。
-- 成功响应不使用 `Result<T>` 这类统一包装层；创建、查询、更新和自定义动作直接返回资源对象或专用动作响应对象。集合接口必须使用专用响应对象，不直接暴露泛型分页类型：游标分页使用 `pageSize`、`pageToken` 和 `nextPageToken`；offset 分页使用 `pageSize`、`pageOffset` 和 `totalSize`，需要页码 UI 时由前端把页码换算为 offset。
-- 错误响应使用 Spring `ProblemDetail` 的 HTTP/JSON 形态：响应体保留 `type`、`title`、`status`、`detail`、`instance` 等标准字段，并扩展 `code`、`reason`、`fieldViolations`、`traceId`、`path` 等项目字段；字段级校验错误放在顶层 `fieldViolations: [{field, message}]`。不要让前端解析纯文本、HTML、异常类名或异常栈。
-- 过滤、排序、字段掩码、批量方法和长任务等 API 合同按 AIP 对应章节建模；只有第三方组件固定协议、框架回调或明确无法适配 AIP 的外部接口可以作为例外，例外必须限制在适配层，不得扩散为项目自有 API 风格。
-- 资源表示优先使用 AIP-122/AIP-148 的字符串 `name` 作为资源主标识；短期保留 `id`、`categoryId`、`createdBy` 等字段时，所有返回给前端的数据库 `Long`/`BigInt` ID 都必须输出为字符串，避免 JavaScript number 精度问题。实体、Mapper 和 Service 内部可以继续使用 `Long`；路径参数可以接收字符串并在 Service 层解析校验。
-- 第三方组件或外部协议强制要求的回调路径可以作为适配例外保留，例如 CAP widget 固定使用的 `/api/v1/auth/cap/challenge`、`/api/v1/auth/cap/redeem`、`/api/v1/auth/cap/validateToken`；这类例外不得扩散为项目自有 API 命名风格。
+- API 设计规则只在 `AGENTS.md` 保留入口和技能路由；资源、路径、响应、错误、前端可见 ID 和第三方协议例外的验收场景统一维护到 OpenSpec。
 
 ## 文件存储约定
 
-- 文件存储统一通过 `FileStorageService` 使用；存储层只负责对象内容的上传、下载、删除和存在判断，不提供对象列举和元信息反查作为业务真相源。
-- 文件信息必须落本地数据库；每条文件记录必须固化自身的 `storage_type`、`bucket_name` 和 `object_key`，不能用当前全局存储类型推断历史文件位置；默认上传位置通过 `archive.storage.adapter` 显式选择 `local`、`s3`、`minio`、`cos`、`oss` 或 `obs`，不再按“对象存储配置完整就自动优先”隐式切换；下载、删除、存在判断按文件记录中的 `storage_type` 和 `bucket_name` 分发；本地存储允许配置多个 bucket/root，默认上传为 `local` 时使用 `active-local-bucket` 指定的本地 bucket；对象存储只配置一个 bucket，不设置 active bucket。
-- 对象存储适配 AWS S3、MinIO、腾讯 COS、阿里云 OSS、华为云 OBS，统一使用 S3 兼容协议和同一套对象存储配置。
-- `objectKey` 统一通过 `ObjectKeys.generate(originalFilename)` 生成，格式为 `yyyy/MM/dd/{uuid-v7}.{ext}`；UUID v7 使用开源库 `uuid-creator`，不要手写 UUID v7。
-- 文件扩展名解析使用 Apache Commons IO `FilenameUtils.getExtension`，路径分隔符归一化使用 `FilenameUtils.separatorsToUnix`。
-- 文件内容指纹默认只要求保存 `checksum_sha256`；`checksum_md5` 仅作为历史系统或外部系统兼容备用字段；对象存储返回的 `etag` 只作为存储侧元信息，不作为 checksum 真相源。
+- 文件存储业务合同以 `openspec/specs/file-storage/spec.md` 为准；代码层统一通过 `FileStorageService` 使用文件存储能力，对象存储默认使用 S3 兼容协议和成熟工具库。
 
 ## 文档查询
 

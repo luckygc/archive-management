@@ -17,6 +17,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.mybatis.spring.MyBatisSystemException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.support.JdbcUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -27,6 +28,7 @@ import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.mapper.ArchiveSqlAssignment;
 import github.luckygc.am.module.archive.mapper.ArchiveSqlCondition;
+import github.luckygc.am.module.archive.metadata.ArchiveDynamicTableNames;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldType;
 import github.luckygc.am.module.archive.metadata.ArchiveLayoutSurface;
 import github.luckygc.am.module.archive.metadata.ArchiveManagementMode;
@@ -47,19 +49,20 @@ public class ArchiveRecordRoutingService {
     private static final String AUDIT_OPERATION_DELETE = "DELETE";
     private static final String AUDIT_OPERATION_LOCK = "LOCK";
     private static final String AUDIT_OPERATION_UNLOCK = "UNLOCK";
-    private static final String SEARCH_EVENT_UPSERT = "UPSERT";
-    private static final String SEARCH_EVENT_DELETE = "DELETE";
-    private static final int SEARCH_OUTBOX_DRAIN_LIMIT = 100;
     private static final DateTimeFormatter DATE_TIME_FORMATTER =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final ArchiveMetadataService archiveMetadataService;
     private final ArchiveMapper archiveMapper;
+    private final ArchiveRecordSearchProjectionService searchProjectionService;
 
     public ArchiveRecordRoutingService(
-            ArchiveMetadataService archiveMetadataService, ArchiveMapper archiveMapper) {
+            ArchiveMetadataService archiveMetadataService,
+            ArchiveMapper archiveMapper,
+            ArchiveRecordSearchProjectionService searchProjectionService) {
         this.archiveMetadataService = archiveMetadataService;
         this.archiveMapper = archiveMapper;
+        this.searchProjectionService = searchProjectionService;
     }
 
     public ArchiveRecordListDto listRecords(Long categoryId, String fondsCode) {
@@ -201,7 +204,7 @@ public class ArchiveRecordRoutingService {
             throw badRequest("档案记录违反唯一约束");
         }
         upsertPhysicalObjectIfPresent(recordId, request.physicalObject(), userId);
-        upsertSearchProjection(recordId, fields, convertedDynamicFields);
+        searchProjectionService.upsert(recordId, fields, convertedDynamicFields);
         ArchiveRecordDto record = getRecord(recordId);
         insertRecordAudit(AUDIT_OPERATION_CREATE, record, null, userId);
         return record;
@@ -229,11 +232,11 @@ public class ArchiveRecordRoutingService {
                     archiveMapper.listRecordsForSearchRebuild(
                             tableName, selectColumns(List.of()), archiveLevel.value());
             for (Map<String, Object> row : rows) {
-                enqueueSearchProjection(number(row, "id").longValue(), SEARCH_EVENT_UPSERT);
+                searchProjectionService.enqueueUpsert(number(row, "id").longValue());
                 rebuilt++;
             }
         }
-        drainSearchProjectionOutbox();
+        searchProjectionService.drainOutbox();
         return new SearchProjectionRebuildResult(categoryId, rebuilt);
     }
 
@@ -315,7 +318,8 @@ public class ArchiveRecordRoutingService {
             throw badRequest("档案记录违反唯一约束");
         }
         upsertPhysicalObjectIfPresent(id, request.physicalObject(), userId);
-        refreshSearchProjectionFromDynamicRecord(id, category, before.record().archiveLevel());
+        searchProjectionService.refreshFromDynamicRecord(
+                id, category, before.record().archiveLevel());
         ArchiveRecordDetailDto after = getRecordDetail(id, userId, ArchiveLayoutSurface.edit);
         insertRecordAudit(AUDIT_OPERATION_UPDATE, after.record(), null, userId);
         return after;
@@ -339,7 +343,7 @@ public class ArchiveRecordRoutingService {
         if (updated == 0) {
             throw badRequest("档案记录已锁定，不能删除");
         }
-        archiveMapper.deleteSearchProjection(id);
+        searchProjectionService.delete(id);
     }
 
     @Transactional
@@ -466,25 +470,15 @@ public class ArchiveRecordRoutingService {
     }
 
     private String dynamicTableName(ArchiveCategoryDto category, ArchiveLevel archiveLevel) {
-        ArchiveLevel normalizedLevel = normalizeArchiveLevel(archiveLevel);
-        String tableName =
-                normalizedLevel == ArchiveLevel.volume
-                        ? category.volumeTableName()
-                        : category.itemTableName();
-        if (StringUtils.isNotBlank(tableName)) {
-            return tableName;
-        }
-        return "am_archive_record_" + normalizedLevel.value().toLowerCase() + "_" + category.id();
+        return ArchiveDynamicTableNames.tableName(category, archiveLevel);
     }
 
     private ArchiveLevel normalizeArchiveLevel(ArchiveLevel archiveLevel) {
-        return archiveLevel == null ? ArchiveLevel.item : archiveLevel;
+        return ArchiveDynamicTableNames.normalizeArchiveLevel(archiveLevel);
     }
 
     private void ensureArchiveLevelAllowed(ArchiveCategoryDto category, ArchiveLevel archiveLevel) {
-        ArchiveLevel normalizedLevel = normalizeArchiveLevel(archiveLevel);
-        if (normalizedLevel == ArchiveLevel.volume
-                && category.managementMode() != ArchiveManagementMode.volume_item) {
+        if (!ArchiveDynamicTableNames.isVolumeLevelAllowed(category, archiveLevel)) {
             throw badRequest("该分类未启用案卷管理");
         }
     }
@@ -719,81 +713,6 @@ public class ArchiveRecordRoutingService {
         return assignments;
     }
 
-    private void enqueueSearchProjection(Long recordId, String eventType) {
-        archiveMapper.insertSearchOutbox(recordId, eventType);
-    }
-
-    private void drainSearchProjectionOutbox() {
-        for (Map<String, Object> outbox :
-                archiveMapper.listPendingSearchOutbox(SEARCH_OUTBOX_DRAIN_LIMIT)) {
-            Long outboxId = number(outbox, "id").longValue();
-            try {
-                processSearchProjectionOutbox(outbox);
-                archiveMapper.markSearchOutboxProcessed(outboxId);
-            } catch (RuntimeException exception) {
-                archiveMapper.markSearchOutboxFailed(outboxId, exception.getMessage());
-            }
-        }
-    }
-
-    private void processSearchProjectionOutbox(Map<String, Object> outbox) {
-        Long recordId = number(outbox, "archiveRecordId").longValue();
-        String eventType = string(outbox, "eventType");
-        if (SEARCH_EVENT_DELETE.equals(eventType)) {
-            archiveMapper.deleteSearchProjection(recordId);
-            return;
-        }
-
-        Map<String, Object> recordRow = archiveMapper.getArchiveRecord(recordId);
-        if (recordRow == null) {
-            archiveMapper.deleteSearchProjection(recordId);
-            return;
-        }
-        ArchiveCategoryDto category = getCategoryByCode(string(recordRow, "categoryCode"));
-        ArchiveLevel archiveLevel = ArchiveLevel.fromValue(string(recordRow, "archiveLevel"));
-        if (!isDynamicTableBuilt(category, archiveLevel)) {
-            archiveMapper.deleteSearchProjection(recordId);
-            return;
-        }
-        refreshSearchProjectionFromDynamicRecord(recordId, category, archiveLevel);
-    }
-
-    private void refreshSearchProjectionFromDynamicRecord(
-            Long recordId, ArchiveCategoryDto category, ArchiveLevel archiveLevel) {
-        String tableName = dynamicTableName(category, archiveLevel);
-        List<ArchiveFieldDto> fields =
-                archiveMetadataService.listEnabledFields(category.id(), archiveLevel);
-        Map<String, Object> dynamicRecord = archiveMapper.loadDynamicRecord(tableName, recordId);
-        if (dynamicRecord == null) {
-            archiveMapper.deleteSearchProjection(recordId);
-            return;
-        }
-        upsertSearchProjection(recordId, fields, dynamicFieldsByCode(dynamicRecord, fields));
-    }
-
-    private void upsertSearchProjection(
-            Long recordId, List<ArchiveFieldDto> fields, Map<String, Object> dynamicFields) {
-        StringBuilder searchText = new StringBuilder();
-        for (ArchiveFieldDto field : fields) {
-            Object value = normalizeDynamicFieldValue(field, dynamicFields.get(field.fieldCode()));
-            if (value == null || StringUtils.isBlank(value.toString())) {
-                continue;
-            }
-            if (!searchText.isEmpty()) {
-                searchText.append('\n');
-            }
-            if (StringUtils.isNotBlank(field.fieldName())) {
-                searchText.append(field.fieldName().trim()).append(' ');
-            }
-            searchText.append(value);
-        }
-        if (searchText.isEmpty()) {
-            archiveMapper.deleteSearchProjection(recordId);
-            return;
-        }
-        archiveMapper.insertSearchProjection(recordId, searchText.toString(), 1);
-    }
-
     private void validateArchiveYear(int archiveYear) {
         int nextYear = Year.now().getValue() + 1;
         if (archiveYear < 1 || archiveYear > nextYear) {
@@ -924,20 +843,7 @@ public class ArchiveRecordRoutingService {
         if (row.containsKey(key)) {
             return row.get(key);
         }
-        return row.get(camelToSnake(key));
-    }
-
-    private String camelToSnake(String key) {
-        StringBuilder result = new StringBuilder(key.length() + 4);
-        for (int index = 0; index < key.length(); index++) {
-            char ch = key.charAt(index);
-            if (Character.isUpperCase(ch)) {
-                result.append('_').append(Character.toLowerCase(ch));
-            } else {
-                result.append(ch);
-            }
-        }
-        return result.toString();
+        return row.get(JdbcUtils.convertPropertyNameToUnderscoreName(key));
     }
 
     public record ArchiveRecordQueryRequest(

@@ -19,10 +19,10 @@ public class ArchiveSearchProperties {
     @Setter
     public static class FullText {
 
-        /** 全文检索 adapter 名称，默认使用 PostgreSQL 实现。 */
-        private String adapter = "postgresql";
+        /** 全文检索 provider 名称，默认使用 PostgreSQL 实现。 */
+        private String provider = "postgresql";
 
-        /** adapter 内部使用的索引名或逻辑索引标识。 */
+        /** provider 内部使用的索引名或逻辑索引标识。 */
         private String indexName = "archive_records";
 
         /** 单次全文检索结果上限。 */

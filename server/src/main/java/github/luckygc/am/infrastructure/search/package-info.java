@@ -4,4 +4,7 @@
  * <p>本包只承载 failure analyzer 等基础设施胶水代码，全文检索业务合同在 common/search，archive 记录侧的启用策略和查询编排在
  * module/archive/record/search。
  */
+@NullMarked
 package github.luckygc.am.infrastructure.search;
+
+import org.jspecify.annotations.NullMarked;

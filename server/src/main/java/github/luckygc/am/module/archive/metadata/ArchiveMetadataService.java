@@ -9,6 +9,7 @@ import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.support.JdbcUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -526,15 +527,7 @@ public class ArchiveMetadataService {
     }
 
     private String dynamicTableName(ArchiveCategoryDto category, ArchiveLevel archiveLevel) {
-        ArchiveLevel normalizedLevel = normalizeArchiveLevel(archiveLevel);
-        String configuredName =
-                normalizedLevel == ArchiveLevel.volume
-                        ? category.volumeTableName()
-                        : category.itemTableName();
-        if (StringUtils.isNotBlank(configuredName)) {
-            return configuredName;
-        }
-        return "am_archive_record_" + normalizedLevel.value().toLowerCase() + "_" + category.id();
+        return ArchiveDynamicTableNames.tableName(category, archiveLevel);
     }
 
     private void syncDynamicColumnAfterFieldUpdate(
@@ -682,13 +675,11 @@ public class ArchiveMetadataService {
     }
 
     private ArchiveLevel normalizeArchiveLevel(ArchiveLevel archiveLevel) {
-        return archiveLevel == null ? ArchiveLevel.item : archiveLevel;
+        return ArchiveDynamicTableNames.normalizeArchiveLevel(archiveLevel);
     }
 
     private void ensureArchiveLevelAllowed(ArchiveCategoryDto category, ArchiveLevel archiveLevel) {
-        ArchiveLevel normalizedLevel = normalizeArchiveLevel(archiveLevel);
-        if (normalizedLevel == ArchiveLevel.volume
-                && category.managementMode() != ArchiveManagementMode.volume_item) {
+        if (!ArchiveDynamicTableNames.isVolumeLevelAllowed(category, archiveLevel)) {
             throw badRequest("该分类未启用案卷管理");
         }
     }
@@ -1277,20 +1268,7 @@ public class ArchiveMetadataService {
         if (row.containsKey(key)) {
             return row.get(key);
         }
-        return row.get(camelToSnake(key));
-    }
-
-    private String camelToSnake(String key) {
-        StringBuilder result = new StringBuilder(key.length() + 4);
-        for (int index = 0; index < key.length(); index++) {
-            char ch = key.charAt(index);
-            if (Character.isUpperCase(ch)) {
-                result.append('_').append(Character.toLowerCase(ch));
-            } else {
-                result.append(ch);
-            }
-        }
-        return result.toString();
+        return row.get(JdbcUtils.convertPropertyNameToUnderscoreName(key));
     }
 
     public record ArchiveFondsRequest(
