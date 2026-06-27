@@ -5,9 +5,12 @@
     <springProperty scope="context" name="APP_NAME" source="spring.application.name" defaultValue="archive-management"/>
     <springProperty scope="context" name="LOG_DIR" source="logging.file.path" defaultValue="logs"/>
     <springProperty scope="context" name="ROOT_LOG_LEVEL" source="logging.level.root" defaultValue="INFO"/>
-    <property name="LOG_MAX_FILE_SIZE" value="20MB"/>
-    <property name="LOG_MAX_HISTORY" value="30"/>
-    <property name="LOG_TOTAL_SIZE_CAP" value="5GB"/>
+    <property name="APP_LOG_MAX_FILE_SIZE" value="50MB"/>
+    <property name="APP_LOG_MAX_HISTORY" value="30"/>
+    <property name="APP_LOG_TOTAL_SIZE_CAP" value="2GB"/>
+    <property name="ERROR_LOG_MAX_FILE_SIZE" value="20MB"/>
+    <property name="ERROR_LOG_MAX_HISTORY" value="60"/>
+    <property name="ERROR_LOG_TOTAL_SIZE_CAP" value="512MB"/>
 
     <property name="TRACE_PATTERN" value="[%X{traceId:-}]"/>
     <property name="CONSOLE_PATTERN"
@@ -32,9 +35,9 @@
         </encoder>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
             <fileNamePattern>${LOG_DIR}/${APP_NAME}.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
-            <maxFileSize>${LOG_MAX_FILE_SIZE}</maxFileSize>
-            <maxHistory>${LOG_MAX_HISTORY}</maxHistory>
-            <totalSizeCap>${LOG_TOTAL_SIZE_CAP}</totalSizeCap>
+            <maxFileSize>${APP_LOG_MAX_FILE_SIZE}</maxFileSize>
+            <maxHistory>${APP_LOG_MAX_HISTORY}</maxHistory>
+            <totalSizeCap>${APP_LOG_TOTAL_SIZE_CAP}</totalSizeCap>
             <cleanHistoryOnStart>false</cleanHistoryOnStart>
         </rollingPolicy>
     </appender>
@@ -54,12 +57,22 @@
         </encoder>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
             <fileNamePattern>${LOG_DIR}/${APP_NAME}-error.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
-            <maxFileSize>${LOG_MAX_FILE_SIZE}</maxFileSize>
-            <maxHistory>${LOG_MAX_HISTORY}</maxHistory>
-            <totalSizeCap>${LOG_TOTAL_SIZE_CAP}</totalSizeCap>
+            <maxFileSize>${ERROR_LOG_MAX_FILE_SIZE}</maxFileSize>
+            <maxHistory>${ERROR_LOG_MAX_HISTORY}</maxHistory>
+            <totalSizeCap>${ERROR_LOG_TOTAL_SIZE_CAP}</totalSizeCap>
             <cleanHistoryOnStart>false</cleanHistoryOnStart>
         </rollingPolicy>
     </appender>
+
+    <logger name="org.apache.catalina.startup.DigesterFactory" level="ERROR"/>
+    <logger name="org.apache.catalina.util.LifecycleBase" level="ERROR"/>
+    <logger name="org.apache.coyote.http11.Http11NioProtocol" level="WARN"/>
+    <logger name="org.apache.sshd.common.util.SecurityUtils" level="WARN"/>
+    <logger name="org.eclipse.jetty.util.component.AbstractLifeCycle" level="ERROR"/>
+    <logger name="org.hibernate.orm.deprecation" level="WARN"/>
+    <logger name="org.quartz" level="WARN"/>
+    <logger name="org.flowable" level="WARN"/>
+    <logger name="software.amazon.awssdk" level="WARN"/>
 
     <root level="${ROOT_LOG_LEVEL}">
         <appender-ref ref="CONSOLE"/>
