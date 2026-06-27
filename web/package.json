@@ -1,0 +1,43 @@
+{
+    "name": "@archive-management/web",
+    "version": "0.0.0",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "check": "vp lint src vite.config.ts",
+        "check:fix": "vp lint --fix src vite.config.ts",
+        "lint": "vp lint src vite.config.ts",
+        "lint:fix": "vp lint --fix src vite.config.ts",
+        "test": "vp test run --passWithNoTests",
+        "build": "tsc --noEmit && vp build"
+    },
+    "dependencies": {
+        "@ant-design/icons": "catalog:",
+        "@ant-design/pro-components": "catalog:",
+        "@archive-management/frontend-core": "workspace:*",
+        "@cap.js/wasm": "catalog:",
+        "@tanstack/react-query": "catalog:",
+        "antd": "catalog:",
+        "cap-widget": "catalog:",
+        "dayjs": "catalog:",
+        "keepalive-for-react": "catalog:",
+        "keepalive-for-react-router": "catalog:",
+        "react": "catalog:",
+        "react-dom": "catalog:",
+        "react-router": "catalog:",
+        "zod": "catalog:",
+        "zustand": "catalog:"
+    },
+    "devDependencies": {
+        "@ant-design/cli": "catalog:",
+        "@testing-library/react": "catalog:",
+        "@types/react": "catalog:",
+        "@types/react-dom": "catalog:",
+        "@vitejs/plugin-react": "catalog:",
+        "jsdom": "catalog:",
+        "typescript": "~6.0.3",
+        "vite": "catalog:",
+        "vite-plus": "catalog:",
+        "vitest": "catalog:"
+    }
+}

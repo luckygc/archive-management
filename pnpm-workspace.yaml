@@ -1,6 +1,7 @@
 packages:
-    - "apps/*"
-    - "packages/*"
+    - "web"
+    - "mobile"
+    - "frontend-core"
 
 catalogMode: prefer
 

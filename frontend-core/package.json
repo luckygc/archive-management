@@ -1,0 +1,32 @@
+{
+    "name": "@archive-management/frontend-core",
+    "version": "0.0.0",
+    "private": true,
+    "type": "module",
+    "exports": {
+        ".": "./src/index.ts",
+        "./api": "./src/api/index.ts",
+        "./auth": "./src/auth/index.ts",
+        "./cap": "./src/cap/index.ts",
+        "./types": "./src/types/index.ts"
+    },
+    "scripts": {
+        "check": "vp lint src && tsc --noEmit",
+        "check:fix": "vp lint --fix src",
+        "lint": "vp lint src",
+        "lint:fix": "vp lint --fix src",
+        "test": "vp test run --passWithNoTests",
+        "build": "tsc --noEmit"
+    },
+    "dependencies": {
+        "cap-widget": "catalog:",
+        "react": "catalog:",
+        "zustand": "catalog:"
+    },
+    "devDependencies": {
+        "@types/react": "catalog:",
+        "typescript": "~6.0.3",
+        "vite-plus": "catalog:",
+        "vitest": "catalog:"
+    }
+}

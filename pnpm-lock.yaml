@@ -87,11 +87,36 @@ importers:
         specifier: 'catalog:'
         version: 0.2.1(@types/node@25.9.1)(jiti@2.7.0)(jsdom@29.1.1)(sass-embedded@1.100.0)(sass@1.100.0)(typescript@6.0.3)(vite@8.0.16(@types/node@25.9.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.100.0)(yaml@2.9.0))(yaml@2.9.0)
 
-  apps/mobile:
+  frontend-core:
     dependencies:
-      '@archive-management/app-core':
+      cap-widget:
+        specifier: 'catalog:'
+        version: 0.1.56
+      react:
+        specifier: 'catalog:'
+        version: 19.2.7
+      zustand:
+        specifier: 'catalog:'
+        version: 5.0.14(@types/react@19.2.17)(react@19.2.7)(use-sync-external-store@1.6.0(react@19.2.7))
+    devDependencies:
+      '@types/react':
+        specifier: 'catalog:'
+        version: 19.2.17
+      typescript:
+        specifier: ~6.0.3
+        version: 6.0.3
+      vite-plus:
+        specifier: 'catalog:'
+        version: 0.2.1(@types/node@25.9.1)(jiti@2.7.0)(jsdom@29.1.1)(sass-embedded@1.100.0)(sass@1.100.0)(typescript@6.0.3)(vite@8.0.16(@types/node@25.9.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.100.0)(yaml@2.9.0))(yaml@2.9.0)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.9(@types/node@25.9.1)(@vitest/browser-preview@4.1.9)(jsdom@29.1.1)(vite@8.0.16(@types/node@25.9.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.100.0)(yaml@2.9.0))
+
+  mobile:
+    dependencies:
+      '@archive-management/frontend-core':
         specifier: workspace:*
-        version: link:../../packages/app-core
+        version: link:../frontend-core
       '@cap.js/wasm':
         specifier: 'catalog:'
         version: 0.0.7
@@ -139,7 +164,7 @@ importers:
         specifier: 'catalog:'
         version: 4.1.9(@types/node@25.9.1)(@vitest/browser-preview@4.1.9)(@voidzero-dev/vite-plus-core@0.2.1(@types/node@25.9.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.100.0)(typescript@6.0.3)(yaml@2.9.0))(jsdom@29.1.1)
 
-  apps/web:
+  web:
     dependencies:
       '@ant-design/icons':
         specifier: 'catalog:'
@@ -147,9 +172,9 @@ importers:
       '@ant-design/pro-components':
         specifier: 'catalog:'
         version: 3.1.12-0(antd@6.4.5(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
-      '@archive-management/app-core':
+      '@archive-management/frontend-core':
         specifier: workspace:*
-        version: link:../../packages/app-core
+        version: link:../frontend-core
       '@cap.js/wasm':
         specifier: 'catalog:'
         version: 0.0.7
@@ -217,31 +242,6 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 4.1.9(@types/node@25.9.1)(@vitest/browser-preview@4.1.9)(@voidzero-dev/vite-plus-core@0.2.1(@types/node@25.9.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.100.0)(typescript@6.0.3)(yaml@2.9.0))(jsdom@29.1.1)
-
-  packages/app-core:
-    dependencies:
-      cap-widget:
-        specifier: 'catalog:'
-        version: 0.1.56
-      react:
-        specifier: 'catalog:'
-        version: 19.2.7
-      zustand:
-        specifier: 'catalog:'
-        version: 5.0.14(@types/react@19.2.17)(react@19.2.7)(use-sync-external-store@1.6.0(react@19.2.7))
-    devDependencies:
-      '@types/react':
-        specifier: 'catalog:'
-        version: 19.2.17
-      typescript:
-        specifier: ~6.0.3
-        version: 6.0.3
-      vite-plus:
-        specifier: 'catalog:'
-        version: 0.2.1(@types/node@25.9.1)(jiti@2.7.0)(jsdom@29.1.1)(sass-embedded@1.100.0)(sass@1.100.0)(typescript@6.0.3)(vite@8.0.16(@types/node@25.9.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.100.0)(yaml@2.9.0))(yaml@2.9.0)
-      vitest:
-        specifier: 'catalog:'
-        version: 4.1.9(@types/node@25.9.1)(@vitest/browser-preview@4.1.9)(jsdom@29.1.1)(vite@8.0.16(@types/node@25.9.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.100.0)(yaml@2.9.0))
 
 packages:
 
