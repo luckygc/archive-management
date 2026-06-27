@@ -1,0 +1,34 @@
+{
+    "name": "@archive-management/mobile",
+    "version": "0.0.0",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "check": "vp lint src vite.config.ts",
+        "check:fix": "vp lint --fix src vite.config.ts",
+        "lint": "vp lint src vite.config.ts",
+        "lint:fix": "vp lint --fix src vite.config.ts",
+        "test": "vp test run --passWithNoTests",
+        "build": "tsc --noEmit && vp build"
+    },
+    "dependencies": {
+        "@archive-management/app-core": "workspace:*",
+        "@cap.js/wasm": "catalog:",
+        "antd-mobile": "catalog:",
+        "cap-widget": "catalog:",
+        "react": "catalog:",
+        "react-dom": "catalog:",
+        "react-router": "catalog:"
+    },
+    "devDependencies": {
+        "@testing-library/react": "catalog:",
+        "@types/react": "catalog:",
+        "@types/react-dom": "catalog:",
+        "@vitejs/plugin-react": "catalog:",
+        "jsdom": "catalog:",
+        "typescript": "~6.0.3",
+        "vite": "catalog:",
+        "vite-plus": "catalog:",
+        "vitest": "catalog:"
+    }
+}

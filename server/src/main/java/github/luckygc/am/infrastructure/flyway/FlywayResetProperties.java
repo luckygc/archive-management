@@ -1,7 +1,11 @@
 package github.luckygc.am.infrastructure.flyway;
 
+import lombok.Getter;
+import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+@Setter
+@Getter
 @ConfigurationProperties(prefix = "archive.flyway")
 public class FlywayResetProperties {
 
@@ -10,11 +14,4 @@ public class FlywayResetProperties {
      */
     private boolean cleanBeforeMigrate;
 
-    public boolean isCleanBeforeMigrate() {
-        return cleanBeforeMigrate;
-    }
-
-    public void setCleanBeforeMigrate(boolean cleanBeforeMigrate) {
-        this.cleanBeforeMigrate = cleanBeforeMigrate;
-    }
 }

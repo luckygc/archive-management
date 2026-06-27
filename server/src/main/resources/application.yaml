@@ -2,6 +2,9 @@ spring:
     application:
         # 应用名称，也会作为默认日志文件名前缀。
         name: archive-management
+    config:
+        # 本机差异配置放在 application-local.yaml，文件被 Git 忽略；导入值优先于本默认配置。
+        import: optional:classpath:application-local.yaml
     cache:
         # 默认不启用业务缓存；需要本地简单缓存可改为 simple，Redis 缓存按 Spring Boot Cache 配置接入。
         type: none
@@ -30,18 +33,17 @@ spring:
     flyway:
         # 是否启用 Flyway 数据库迁移。
         enabled: true
-        # Flyway 迁移脚本位置。默认只执行结构迁移。
-        # 本地加载示例数据可设置：
-        # AM_FLYWAY_LOCATIONS=classpath:db/migration,classpath:db/sample
-        locations: ${AM_FLYWAY_LOCATIONS:classpath:db/migration}
+        # Flyway 迁移脚本位置。产品默认只执行结构迁移；本机差异通过 application-local.yaml 覆盖。
+        locations:
+            - classpath:db/migration
         # 非空库首次接入迁移时是否自动建立基线。
         baseline-on-migrate: true
         # Flyway 基线版本。
         baseline-version: 0
         # 启动迁移前是否校验已执行脚本。
-        validate-on-migrate: ${AM_FLYWAY_VALIDATE_ON_MIGRATE:true}
-        # 禁用 clean，避免误删库表；本地重置时可临时设置 AM_FLYWAY_CLEAN_DISABLED=false。
-        clean-disabled: ${AM_FLYWAY_CLEAN_DISABLED:true}
+        validate-on-migrate: true
+        # 禁用 clean，避免误删库表；本地重置时通过外部配置覆盖。
+        clean-disabled: true
     session:
         # HTTP Session 过期时间。
         timeout: 30m
@@ -75,8 +77,8 @@ spring:
             org.quartz.threadPool.threadPriority: 5
     ai:
         deepseek:
-            # DeepSeek API Key，唯一保留环境变量占位的敏感配置。
-            api-key: ${DEEPSEEK_API_KEY:}
+            # DeepSeek API Key。产品默认不提交密钥，实际部署文件不要提交。
+            api-key:
             # DeepSeek API 基础地址。
             base-url: https://api.deepseek.com
             chat:
@@ -118,9 +120,10 @@ cosid:
     machine:
         # 机器号通过业务库 cosid_machine 表分配。
         enabled: true
-        stable: true
+        # 默认不使用本机持久化机器号状态，避免本地重建数据库后残留的 ~/.cosid-machine-state 与 cosid_machine 表不一致。
+        stable: false
         machine-bit: 10
-        instance-id: ${AM_COSID_INSTANCE_ID:${spring.application.name}-${server.port}}
+        instance-id: archive-management-8080
         distributor:
             type: jdbc
     snowflake:
@@ -204,17 +207,17 @@ logging:
 archive:
     flyway:
         # 启动迁移前是否先执行 Flyway clean。仅允许本地重建或演示环境临时开启。
-        clean-before-migrate: ${AM_FLYWAY_CLEAN_BEFORE_MIGRATE:false}
+        clean-before-migrate: false
     auth:
         bootstrap-admin:
             # 是否在启动时初始化管理员账号；仅在本地初始化或部署初始化时显式开启。
-            enabled: ${AM_BOOTSTRAP_ADMIN_ENABLED:false}
+            enabled: false
             # 初始化管理员账号。
-            username: ${AM_BOOTSTRAP_ADMIN_USERNAME:admin}
-            # 初始化管理员密码，开启初始化时必须通过环境变量提供。
-            password: ${AM_BOOTSTRAP_ADMIN_PASSWORD:}
+            username: admin
+            # 初始化管理员密码，开启初始化时必须通过外部配置提供。
+            password:
             # 初始化管理员显示名称。
-            display-name: ${AM_BOOTSTRAP_ADMIN_DISPLAY_NAME:系统管理员}
+            display-name: 系统管理员
             # 初始化管理员默认授予的角色名称。
             role-names:
                 - 系统管理员
@@ -225,9 +228,9 @@ archive:
             actuator-role-name: 系统监控
         request-signature:
             # 是否启用 /api/** 请求 HMAC 签名校验；开启后除 OPTIONS 预检外都必须携带签名头。
-            enabled: ${AM_REQUEST_SIGNATURE_ENABLED:false}
-            # HMAC-SHA256 密钥，开启签名校验时必须通过环境变量提供，长度至少 32 个字符。
-            secret: ${AM_REQUEST_SIGNATURE_SECRET:}
+            enabled: false
+            # HMAC-SHA256 密钥，开启签名校验时必须通过外部配置提供，长度至少 32 个字符。
+            secret:
             # 允许客户端签名时间戳与服务端时间的最大偏移。
             clock-skew: 5m
         cors:
@@ -272,13 +275,13 @@ archive:
         # 本地文件存储 bucket 列表。
         local:
             # 本地 bucket。
-            -   bucket: local
-                # 本地 bucket 根目录。
-                root: data/files
+            - bucket: local
+              # 本地 bucket 根目录。
+              root: data/files
             # NAS 挂载 bucket。
-            -   bucket: backup
-                # NAS 挂载目录。
-                root: /home/gc/archive-files
+            - bucket: backup
+              # NAS 挂载目录。
+              root: /home/gc/archive-files
         object:
             # 支持 AWS S3、MinIO、腾讯 COS、阿里云 OSS、华为云 OBS 等 S3 兼容对象存储。
             # S3 兼容对象存储服务地址，留空表示不启用对象存储。

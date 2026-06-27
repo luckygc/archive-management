@@ -1,0 +1,181 @@
+:root {
+    color: #172033;
+    background: #f5f7fb;
+    font-family:
+        Inter,
+        ui-sans-serif,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+    width: 100%;
+    height: 100%;
+}
+
+body {
+    margin: 0;
+    min-width: 1024px;
+}
+
+a {
+    color: inherit;
+    text-decoration: none;
+}
+
+.am-shell {
+    min-height: 100vh;
+}
+
+.am-shell__sider {
+    border-right: 1px solid #e6eaf2;
+    background: #ffffff;
+}
+
+.am-shell__brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 56px;
+    padding: 0 20px;
+    border-bottom: 1px solid #eef1f6;
+    color: #172033;
+}
+
+.am-shell__brand .anticon {
+    color: #1677ff;
+    font-size: 18px;
+}
+
+.am-shell__sider .ant-menu {
+    border-inline-end: 0;
+}
+
+.am-shell__header {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    height: 56px;
+    padding: 0 16px;
+    border-bottom: 1px solid #e6eaf2;
+    background: #ffffff;
+}
+
+.am-shell__tabs {
+    position: sticky;
+    z-index: 2;
+    top: 0;
+    padding: 8px 16px 0;
+    border-bottom: 1px solid #e6eaf2;
+    background: #ffffff;
+}
+
+.am-shell__tabs .ant-tabs-nav {
+    margin: 0;
+}
+
+.am-shell__content {
+    min-height: calc(100vh - 104px);
+    padding: 16px;
+    background: #f5f7fb;
+}
+
+.am-shell__tab-close {
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: #6b7280;
+    cursor: pointer;
+    font: inherit;
+    line-height: 18px;
+}
+
+.am-shell__tab-close:hover,
+.am-shell__tab-close:focus-visible {
+    background: #edf1f7;
+    color: #243044;
+    outline: none;
+}
+
+.am-page {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.am-page__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    min-height: 32px;
+}
+
+.am-page__header h1.ant-typography {
+    margin: 0;
+    font-size: 22px;
+    line-height: 32px;
+}
+
+.am-page__filter {
+    overflow: visible;
+}
+
+.am-page-loading {
+    padding: 32px;
+    color: #526071;
+}
+
+.am-login {
+    display: grid;
+    min-height: 100%;
+    place-items: center;
+    background: #f5f7fb;
+}
+
+.am-login__panel {
+    width: min(420px, calc(100vw - 32px));
+}
+
+.am-login__panel h1.ant-typography {
+    margin-top: 0;
+    font-size: 24px;
+}
+
+.am-login__pow {
+    display: grid;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.am-auth-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    min-height: 100vh;
+    background: #f5f7fb;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+    }
+}
