@@ -37,6 +37,10 @@ public class ArchiveField implements CreationAuditable, UpdateAuditable {
     @Enumerated(EnumType.STRING)
     private ArchiveLevel archiveLevel = ArchiveLevel.item;
 
+    @Column(name = "field_scope", nullable = false, length = 30)
+    @Enumerated(EnumType.STRING)
+    private ArchiveFieldScope fieldScope = ArchiveFieldScope.metadata;
+
     @Column(name = "field_code", nullable = false, length = 80)
     private String fieldCode;
 

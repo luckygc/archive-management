@@ -177,7 +177,7 @@ class MyBatisMapNullColumnTests {
     }
 
     interface NullColumnMapper {
-        @Select("select id, f_empty from am_archive_record_item_1")
+        @Select("select id, f_empty from am_archive_record_item_demo")
         List<Map<String, Object>> selectRows();
     }
 }

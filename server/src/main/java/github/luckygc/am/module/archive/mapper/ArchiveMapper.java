@@ -24,6 +24,7 @@ public interface ArchiveMapper {
     int updateCategoryTableStatus(
             @Param("id") Long id,
             @Param("archiveLevel") String archiveLevel,
+            @Param("fieldScope") String fieldScope,
             @Param("tableName") String tableName,
             @Param("tableStatus") String tableStatus,
             @Param("userId") Long userId);
@@ -87,17 +88,6 @@ public interface ArchiveMapper {
             @Param("tableName") String tableName, @Param("id") Long id);
 
     Map<String, Object> getArchiveRecord(@Param("id") Long id);
-
-    Map<String, Object> getPhysicalObjectByRecordId(@Param("archiveRecordId") Long archiveRecordId);
-
-    int upsertPhysicalObject(
-            @Param("archiveRecordId") Long archiveRecordId,
-            @Param("physicalStatus") String physicalStatus,
-            @Param("boxNo") String boxNo,
-            @Param("locationNo") String locationNo,
-            @Param("barcode") String barcode,
-            @Param("remark") String remark,
-            @Param("userId") Long userId);
 
     int insertRecordAudit(
             @Param("sourceTableName") String sourceTableName,

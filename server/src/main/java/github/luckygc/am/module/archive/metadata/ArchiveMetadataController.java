@@ -130,8 +130,9 @@ public class ArchiveMetadataController {
     public ArchiveFieldLayoutDto getFieldLayout(
             @PathVariable Long categoryId,
             @PathVariable ArchiveLayoutSurface surface,
-            @RequestParam(required = false) ArchiveLevel archiveLevel) {
-        return archiveMetadataService.getFieldLayout(categoryId, archiveLevel, surface);
+            @RequestParam(required = false) ArchiveLevel archiveLevel,
+            @RequestParam(required = false) ArchiveFieldScope fieldScope) {
+        return archiveMetadataService.getFieldLayout(categoryId, archiveLevel, fieldScope, surface);
     }
 
     @PatchMapping("/api/v1/archive-categories/{categoryId}/layouts/{surface}")
@@ -139,18 +140,26 @@ public class ArchiveMetadataController {
             @PathVariable Long categoryId,
             @PathVariable ArchiveLayoutSurface surface,
             @RequestParam(required = false) ArchiveLevel archiveLevel,
+            @RequestParam(required = false) ArchiveFieldScope fieldScope,
             @RequestBody ArchiveFieldLayoutRequest request,
             Authentication authentication) {
         return archiveMetadataService.savePublicFieldLayout(
-                categoryId, archiveLevel, surface, request, currentUserId(authentication));
+                categoryId,
+                archiveLevel,
+                fieldScope,
+                surface,
+                request,
+                currentUserId(authentication));
     }
 
     @PostMapping("/api/v1/archive-categories/{id}:buildTable")
     public ArchiveCategoryDto buildTable(
             @PathVariable Long id,
             @RequestParam(required = false) ArchiveLevel archiveLevel,
+            @RequestParam(required = false) ArchiveFieldScope fieldScope,
             Authentication authentication) {
-        return archiveMetadataService.buildTable(id, archiveLevel, currentUserId(authentication));
+        return archiveMetadataService.buildTable(
+                id, archiveLevel, fieldScope, currentUserId(authentication));
     }
 
     @PostMapping("/api/v1/archive-categories/{id}:rebuildSearchProjection")

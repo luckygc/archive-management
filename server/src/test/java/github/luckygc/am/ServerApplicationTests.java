@@ -154,7 +154,6 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
     void highGrowthBusinessIdsUseReservedPostgreSqlSequences() {
         assertSequence("am_archive_record_id_seq");
         assertSequence("am_archive_record_electronic_file_id_seq");
-        assertSequence("am_archive_physical_object_id_seq");
         assertSequence("am_storage_object_id_seq");
     }
 

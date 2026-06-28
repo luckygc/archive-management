@@ -42,8 +42,10 @@
 
     <update id="updateCategoryTableStatus">
         update am_archive_category
-        set item_table_name = case when #{archiveLevel} = 'item' then #{tableName} else item_table_name end,
-            volume_table_name = case when #{archiveLevel} = 'volume' then #{tableName} else volume_table_name end,
+        set item_table_name = case when #{archiveLevel} = 'item' and #{fieldScope} = 'metadata' then #{tableName} else item_table_name end,
+            volume_table_name = case when #{archiveLevel} = 'volume' and #{fieldScope} = 'metadata' then #{tableName} else volume_table_name end,
+            item_physical_table_name = case when #{archiveLevel} = 'item' and #{fieldScope} = 'physical' then #{tableName} else item_physical_table_name end,
+            volume_physical_table_name = case when #{archiveLevel} = 'volume' and #{fieldScope} = 'physical' then #{tableName} else volume_physical_table_name end,
             table_status = #{tableStatus},
             built_at = localtimestamp,
             updated_by = #{userId},
@@ -220,37 +222,6 @@
         from am_archive_record
         where id = #{id} and deleted_flag = false
     </select>
-
-    <select id="getPhysicalObjectByRecordId" resultType="map">
-        select id,
-               archive_record_id,
-               physical_status,
-               box_no,
-               location_no,
-               barcode,
-               remark,
-               created_at,
-               updated_at
-        from am_archive_physical_object
-        where archive_record_id = #{archiveRecordId}
-          and deleted_flag = false
-    </select>
-
-    <insert id="upsertPhysicalObject">
-        insert into am_archive_physical_object
-            (archive_record_id, physical_status, box_no, location_no, barcode, remark, created_by, updated_by)
-        values
-            (#{archiveRecordId}, #{physicalStatus}, #{boxNo}, #{locationNo}, #{barcode}, #{remark}, #{userId}, #{userId})
-        on conflict (archive_record_id) where deleted_flag = false
-        do update set physical_status = excluded.physical_status,
-                      box_no = excluded.box_no,
-                      location_no = excluded.location_no,
-                      barcode = excluded.barcode,
-                      remark = excluded.remark,
-                      updated_by = excluded.updated_by,
-                      version = am_archive_physical_object.version + 1,
-                      updated_at = localtimestamp
-    </insert>
 
     <insert id="insertRecordAudit">
         insert into am_archive_record_audit

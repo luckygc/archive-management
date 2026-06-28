@@ -72,10 +72,16 @@
 
 ## API 设计约定
 
-- 项目自有 HTTP API 合同以 `openspec/specs/api-contract/spec.md` 为准；具体 API 设计以 Zalando RESTful API Guidelines 为主体，复杂业务动作仅引入 Google AIP-136 `POST /resource/{id}:action` 扩展；错误响应采用 Spring `ProblemDetail` / RFC 9457 口径。
-- 前端可见 ID 默认使用数字合同；本档案系统当前不为 JavaScript 精度风险预先引入 Long 转字符串规则。只有外部协议或已确认会超过安全整数范围的资源，才在对应 OpenSpec 中单独声明字符串 ID。
+- 项目自有 HTTP API 合同的真相源是 `openspec/specs/api-contract/spec.md`；分页、排序、过滤、响应 DTO、错误响应、ID 类型、异步任务、第三方协议例外和验收场景都以该规格为准，不在 `AGENTS.md` 复制细节。
+- 设计或修改项目自有 HTTP API 时，按以下规范路由执行：
+    - 普通资源、URL、HTTP 方法、JSON 响应、分页、兼容性：遵守 `api-contract` 中采用的 Zalando RESTful API Guidelines 口径。
+    - 标准 CRUD 难以自然表达的业务动作：仅使用 Google AIP-136 custom method 扩展，例如 `POST /api/v1/{resources}/{id}:action` 或 `POST /api/v1/{resources}:batchAction`。
+    - 长耗时或异步执行的导入、导出、批处理、外部同步、AI/OCR 等任务：遵守 `api-contract` 中采用的 Microsoft Azure REST long-running operation 口径，使用 `202 Accepted`、`Operation-Location` 和可轮询 job 资源。
+    - 错误响应：遵守 Spring `ProblemDetail` / RFC 9457 口径，并按 `api-contract` 的项目扩展字段返回。
+    - 第三方组件或外部协议固定路径：只作为适配层例外处理，不反向污染项目自有 API 规范。
+- 具体业务模块的接口字段、状态机、权限边界和验收场景应进入对应 OpenSpec 业务规格；如果与通用 API 规范冲突，先修改或澄清 OpenSpec，再改代码。
 - 项目 API 设计任务优先使用 `.agents/skills/archive-api-design-strategy`；持久化入口、实体和 Mapper 边界任务优先使用 `.agents/skills/archive-persistence-strategy`。
-- API 设计规则只在 `AGENTS.md` 保留入口和技能路由；资源、路径、响应、错误、前端可见 ID 和第三方协议例外的验收场景统一维护到 OpenSpec。
+- API 设计规则在 `AGENTS.md` 只保留规范适用时机、真相源和技能路由；资源、路径、响应、错误、ID、分页和第三方协议例外的具体验收场景统一维护到 OpenSpec。
 
 ## 文件存储约定
 

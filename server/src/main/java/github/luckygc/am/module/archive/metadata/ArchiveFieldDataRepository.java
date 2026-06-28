@@ -32,5 +32,16 @@ public interface ArchiveFieldDataRepository extends CrudRepository<ArchiveField,
 
     @Transactional(readOnly = true)
     @Find
+    @OrderBy("sortOrder")
+    @OrderBy("id")
+    List<ArchiveField> list(
+            Long categoryId,
+            ArchiveLevel archiveLevel,
+            ArchiveFieldScope fieldScope,
+            boolean deletedFlag,
+            boolean enabled);
+
+    @Transactional(readOnly = true)
+    @Find
     Optional<ArchiveField> find(Long id, boolean deletedFlag);
 }

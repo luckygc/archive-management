@@ -68,12 +68,30 @@
 
 系统 SHALL 在每张分类动态数据表中固定保存动态表删除标记和动态行维护时间。
 
+#### Scenario: 动态表名使用稳定业务键
+
+- **WHEN** 系统为档案分类、档案层级和字段域生成默认动态表名
+- **THEN** 表名 SHALL 基于分类编码、`archive_level` 和 `field_scope` 这些稳定业务键生成
+- **AND** 表名 SHALL NOT 使用数据库自增 ID 作为必要组成部分
+- **AND** 表名 SHALL 使用小写 snake_case 且不超过 PostgreSQL 63 字节标识符限制
+- **AND** 当稳定业务键过长时，系统 SHALL 使用稳定哈希后缀生成可重复的短表名
+
 #### Scenario: 首次创建分类动态表
 
 - **WHEN** 客户端对有启用字段的档案分类执行建表动作
 - **THEN** 系统 SHALL 创建该分类对应的动态数据表
 - **AND** 动态表 SHALL 固定包含 `id`、`deleted_flag`、`created_at` 和 `updated_at`
 - **AND** 动态表 SHALL 使用 `id` 作为主键并引用统一档案记录主表 ID
+
+#### Scenario: 分层创建著录和实物动态表
+
+- **WHEN** 档案分类启用 `item_only` 管理模式
+- **THEN** 系统 SHALL 至少支持卷内条目的著录字段动态表
+- **AND** 系统 SHALL 在存在卷内实物字段时支持独立的卷内实物信息动态表
+- **WHEN** 档案分类启用 `volume_item` 管理模式
+- **THEN** 系统 SHALL 支持案卷著录、案卷实物、卷内著录和卷内实物四类动态表
+- **AND** 系统 SHALL NOT 将案卷和卷内数据混写到同一张分类动态表
+- **AND** 系统 SHALL NOT 强制案卷和卷内共用同一套实物字段
 
 #### Scenario: 逻辑删除释放动态表唯一值
 
@@ -85,6 +103,14 @@
 ### Requirement: 字段检索标记
 
 系统 SHALL 在字段定义中只暴露精确筛选标记，全文检索不暴露字段级开关。
+
+#### Scenario: 字段定义区分字段域
+
+- **WHEN** 客户端为档案分类新增字段
+- **THEN** 字段定义 SHALL 保存 `archive_level`
+- **AND** 字段定义 SHALL 保存 `field_scope`
+- **AND** `field_scope=metadata` SHALL 表示案卷或卷内著录字段
+- **AND** `field_scope=physical` SHALL 表示案卷或卷内实物信息字段
 
 #### Scenario: 创建字段定义
 
@@ -140,6 +166,14 @@
 ### Requirement: 动态唯一索引
 
 系统 SHALL 通过分类动态表部分唯一索引执行唯一规则。
+
+#### Scenario: 动态唯一索引名使用稳定业务键
+
+- **WHEN** 系统为分类唯一规则创建动态唯一索引
+- **THEN** 索引名 SHALL 基于分类编码、`archive_level` 和唯一规则编码这些稳定业务键生成
+- **AND** 索引名 SHALL NOT 使用数据库自增 ID 作为必要组成部分
+- **AND** 索引名 SHALL 不超过 PostgreSQL 63 字节标识符限制
+- **AND** 当稳定业务键过长时，系统 SHALL 使用稳定哈希后缀生成可重复的短索引名
 
 #### Scenario: 创建动态字段唯一索引
 

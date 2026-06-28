@@ -48,6 +48,12 @@ public class ArchiveCategory implements CreationAuditable, UpdateAuditable {
     @Column(name = "item_table_name", length = 100)
     private String itemTableName;
 
+    @Column(name = "volume_physical_table_name", length = 100)
+    private String volumePhysicalTableName;
+
+    @Column(name = "item_physical_table_name", length = 100)
+    private String itemPhysicalTableName;
+
     @Column(name = "table_status", nullable = false, length = 30)
     @Enumerated(EnumType.STRING)
     private ArchiveTableStatus tableStatus = ArchiveTableStatus.not_built;
