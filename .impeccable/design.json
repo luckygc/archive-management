@@ -1,0 +1,281 @@
+{
+    "schemaVersion": 2,
+    "generatedAt": "2026-06-28T01:40:00+08:00",
+    "title": "Design System: Archive Management",
+    "extensions": {
+        "colorMeta": {
+            "primary": {
+                "role": "primary",
+                "displayName": "Archive Blue",
+                "canonical": "#1f5eff",
+                "tonalRamp": [
+                    "#0f1e4d",
+                    "#15318a",
+                    "#1a45c8",
+                    "#1f5eff",
+                    "#5f8aff",
+                    "#9bb5ff",
+                    "#d4defe",
+                    "#f2f5ff"
+                ]
+            },
+            "primary-ant": {
+                "role": "primary",
+                "displayName": "Ant Blue",
+                "canonical": "#1677ff",
+                "tonalRamp": [
+                    "#102449",
+                    "#123d82",
+                    "#145abf",
+                    "#1677ff",
+                    "#5a9dff",
+                    "#9bc3ff",
+                    "#d4e8ff",
+                    "#f1f7ff"
+                ]
+            },
+            "background": {
+                "role": "neutral",
+                "displayName": "Workbench Mist",
+                "canonical": "#f5f7fb",
+                "tonalRamp": [
+                    "#1b202b",
+                    "#303744",
+                    "#4d5667",
+                    "#768196",
+                    "#a7b1c3",
+                    "#d7deea",
+                    "#f5f7fb",
+                    "#ffffff"
+                ]
+            },
+            "surface": {
+                "role": "neutral",
+                "displayName": "Panel White",
+                "canonical": "#ffffff",
+                "tonalRamp": [
+                    "#1f2937",
+                    "#374151",
+                    "#6b7280",
+                    "#9ca3af",
+                    "#d1d5db",
+                    "#f3f4f6",
+                    "#ffffff",
+                    "#ffffff"
+                ]
+            },
+            "text": {
+                "role": "neutral",
+                "displayName": "Ink Text",
+                "canonical": "#172033",
+                "tonalRamp": [
+                    "#0a0f1a",
+                    "#172033",
+                    "#243044",
+                    "#526071",
+                    "#8792a2",
+                    "#c8ced8",
+                    "#e9edf3",
+                    "#f8fafc"
+                ]
+            },
+            "text-secondary": {
+                "role": "neutral",
+                "displayName": "Secondary Slate",
+                "canonical": "#596579",
+                "tonalRamp": [
+                    "#111827",
+                    "#243044",
+                    "#3f4a5d",
+                    "#596579",
+                    "#7d8797",
+                    "#b5bdc9",
+                    "#e1e6ee",
+                    "#f7f9fc"
+                ]
+            },
+            "border": {
+                "role": "neutral",
+                "displayName": "Divider Blue Gray",
+                "canonical": "#e6eaf2",
+                "tonalRamp": [
+                    "#1f2937",
+                    "#3b4555",
+                    "#647084",
+                    "#99a3b3",
+                    "#c5ccd8",
+                    "#e6eaf2",
+                    "#f2f5f9",
+                    "#ffffff"
+                ]
+            },
+            "muted": {
+                "role": "neutral",
+                "displayName": "Hover Wash",
+                "canonical": "#edf1f7",
+                "tonalRamp": [
+                    "#1f2937",
+                    "#354052",
+                    "#5b6678",
+                    "#8f99aa",
+                    "#c0c8d5",
+                    "#edf1f7",
+                    "#f6f8fb",
+                    "#ffffff"
+                ]
+            }
+        },
+        "typographyMeta": {
+            "display": {
+                "displayName": "Workbench Display",
+                "purpose": "只用于登录页或移动端入口标题。"
+            },
+            "body": {
+                "displayName": "Enterprise Body",
+                "purpose": "用于表格、表单、描述列表和业务正文。"
+            }
+        },
+        "shadows": [
+            {
+                "name": "flat-surface",
+                "value": "none",
+                "purpose": "常驻工作区表面默认不用阴影。"
+            },
+            {
+                "name": "component-default",
+                "value": "Ant Design default",
+                "purpose": "Modal、Drawer、Dropdown、Tooltip、Popover 等浮层使用组件库默认阴影。"
+            }
+        ],
+        "motion": [
+            {
+                "name": "instant-workbench-feedback",
+                "value": "0ms",
+                "purpose": "高频按钮、页签、菜单、表格行状态变化默认即时响应。"
+            },
+            {
+                "name": "short-state-transition",
+                "value": "120ms-180ms",
+                "purpose": "仅用于弹窗、抽屉、加载和提交反馈等确有状态过程的场景。"
+            }
+        ],
+        "breakpoints": [
+            {
+                "name": "pc-min",
+                "value": "1024px"
+            },
+            {
+                "name": "mobile",
+                "value": "0-767px"
+            },
+            {
+                "name": "tablet",
+                "value": "768px-1023px"
+            }
+        ]
+    },
+    "components": [
+        {
+            "name": "Primary Button",
+            "kind": "button",
+            "refersTo": "button-primary",
+            "description": "页面主动作和确认动作。",
+            "html": "<button class=\"ds-btn-primary\">保存</button>",
+            "css": ".ds-btn-primary { min-width: 72px; height: 32px; padding: 4px 15px; border: 1px solid #1f5eff; border-radius: 6px; background: #1f5eff; color: #fff; font: 500 14px/22px Inter, ui-sans-serif, system-ui, sans-serif; cursor: pointer; } .ds-btn-primary:hover, .ds-btn-primary:focus-visible { border-color: #5f8aff; background: #5f8aff; outline: 2px solid rgba(31, 94, 255, 0.18); outline-offset: 2px; } .ds-btn-primary:active { border-color: #1a45c8; background: #1a45c8; }"
+        },
+        {
+            "name": "Secondary Button",
+            "kind": "button",
+            "refersTo": "button-secondary",
+            "description": "列表工具栏、取消和次要命令。",
+            "html": "<button class=\"ds-btn-secondary\">取消</button>",
+            "css": ".ds-btn-secondary { min-width: 72px; height: 32px; padding: 4px 15px; border: 1px solid #e6eaf2; border-radius: 6px; background: #fff; color: #172033; font: 400 14px/22px Inter, ui-sans-serif, system-ui, sans-serif; cursor: pointer; } .ds-btn-secondary:hover, .ds-btn-secondary:focus-visible { border-color: #1f5eff; color: #1f5eff; outline: 2px solid rgba(31, 94, 255, 0.14); outline-offset: 2px; }"
+        },
+        {
+            "name": "Workbench Input",
+            "kind": "input",
+            "refersTo": "input",
+            "description": "筛选和表单字段的标准输入形态。",
+            "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">题名</span><input class=\"ds-input\" value=\"2026 年归档批次\" /></label>",
+            "css": ".ds-field { display: grid; gap: 6px; width: 260px; font-family: Inter, ui-sans-serif, system-ui, sans-serif; } .ds-field-label { color: #172033; font-size: 14px; font-weight: 500; line-height: 22px; } .ds-input { height: 32px; padding: 4px 11px; border: 1px solid #d9d9d9; border-radius: 6px; background: #fff; color: #172033; font: 400 14px/22px Inter, ui-sans-serif, system-ui, sans-serif; } .ds-input:hover { border-color: #5f8aff; } .ds-input:focus { border-color: #1f5eff; box-shadow: 0 0 0 2px rgba(31, 94, 255, 0.12); outline: none; }"
+        },
+        {
+            "name": "Status Tag",
+            "kind": "chip",
+            "refersTo": "tag-status",
+            "description": "表格状态、分类状态和移动端任务状态。",
+            "html": "<span class=\"ds-tag-status\">已启用</span>",
+            "css": ".ds-tag-status { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border: 1px solid #b7d3ff; border-radius: 4px; background: #eef5ff; color: #1f5eff; font: 500 12px/20px Inter, ui-sans-serif, system-ui, sans-serif; }"
+        },
+        {
+            "name": "Workbench Panel",
+            "kind": "card",
+            "refersTo": "panel",
+            "description": "筛选区、表单区和明确边界的工具面板。",
+            "html": "<section class=\"ds-panel\"><div class=\"ds-panel-title\">全宗管理</div><div class=\"ds-panel-body\">筛选、表格或详情内容直接放在这里。</div></section>",
+            "css": ".ds-panel { width: 360px; border: 1px solid #e6eaf2; border-radius: 8px; background: #fff; color: #172033; font-family: Inter, ui-sans-serif, system-ui, sans-serif; } .ds-panel-title { padding: 12px 16px; border-bottom: 1px solid #e6eaf2; font-size: 16px; font-weight: 600; line-height: 24px; } .ds-panel-body { padding: 16px; color: #596579; font-size: 14px; line-height: 22px; }"
+        },
+        {
+            "name": "PC Navigation",
+            "kind": "nav",
+            "refersTo": "pc-navigation",
+            "description": "左侧菜单和多页签组合表达 PC 工作区结构。",
+            "html": "<nav class=\"ds-nav\"><div class=\"ds-nav-brand\">档案管理</div><a class=\"ds-nav-item ds-nav-item-active\">档案库</a><a class=\"ds-nav-item\">归档接收</a><a class=\"ds-nav-item\">审批中心</a></nav>",
+            "css": ".ds-nav { width: 232px; border-right: 1px solid #e6eaf2; background: #fff; font-family: Inter, ui-sans-serif, system-ui, sans-serif; } .ds-nav-brand { height: 56px; padding: 16px 20px; border-bottom: 1px solid #eef1f6; color: #172033; font-size: 16px; font-weight: 600; line-height: 24px; } .ds-nav-item { display: block; margin: 4px 8px; padding: 8px 12px; border-radius: 6px; color: #243044; font-size: 14px; line-height: 22px; text-decoration: none; } .ds-nav-item:hover { background: #edf1f7; } .ds-nav-item-active { background: #eef5ff; color: #1f5eff; font-weight: 500; }"
+        },
+        {
+            "name": "Mobile Summary Tile",
+            "kind": "card",
+            "refersTo": "mobile-summary-tile",
+            "description": "移动端首页轻量概览项。",
+            "html": "<div class=\"ds-mobile-summary\"><span class=\"ds-mobile-summary-value\">0</span><span class=\"ds-mobile-summary-label\">待办</span></div>",
+            "css": ".ds-mobile-summary { width: 108px; min-width: 0; padding: 12px; border: 1px solid #e7eaf0; border-radius: 8px; background: #fff; font-family: Inter, ui-sans-serif, system-ui, sans-serif; } .ds-mobile-summary-value { display: block; margin-bottom: 4px; color: #1f5eff; font-size: 24px; font-weight: 700; line-height: 1; } .ds-mobile-summary-label { display: block; color: #596579; font-size: 12px; line-height: 18px; }"
+        }
+    ],
+    "narrative": {
+        "northStar": "清晰的档案工作台",
+        "overview": "Archive Management 的设计系统服务于长期、高频、可审计的档案业务操作。它以 Ant Design 的企业级产品语言为主线，强调稳定结构、明确状态和可预期反馈，而不是营销展示、装饰叙事或炫技视觉。\n\nPC 端是高密度工作台：侧边菜单、多页签、表格、筛选、动态表单和详情区是主要表达。移动端是轻门户：只保留待办、审批、归档接收入口和轻量查询，不把 PC 管理界面压缩复制到手机上。\n\n系统明确拒绝营销落地页、宣传站、深色炫技后台、大面积渐变、玻璃拟态、装饰卡片、插画堆叠和品牌 hero。组件外观优先交给 Ant Design / Ant Design Mobile，不另起一套平行组件库。",
+        "keyCharacteristics": [
+            "克制、可信、清晰、务实。",
+            "信息密度服务业务操作，不服务视觉展示。",
+            "页面首屏直接进入筛选、表格、表单、详情、待办或配置内容。",
+            "PC 和移动端共享品牌色、字体和登录能力，但交互密度分开设计。"
+        ],
+        "rules": [
+            {
+                "name": "The Accent Rarity Rule",
+                "body": "蓝色只用于动作、选中和关键状态；普通容器、标题区和说明块不得为了强调而铺蓝色。",
+                "section": "colors"
+            },
+            {
+                "name": "The Surface Discipline Rule",
+                "body": "内容区默认使用 #f5f7fb 背景和 #ffffff 表面；不要用渐变、玻璃拟态或大面积深色制造层次。",
+                "section": "colors"
+            },
+            {
+                "name": "The Workbench Type Rule",
+                "body": "管理界面内不使用 hero-scale 字号；页面身份由菜单、页签、面包屑和必要标题承担。",
+                "section": "typography"
+            },
+            {
+                "name": "The Flat Work Surface Rule",
+                "body": "工作区内容默认平铺，不用阴影堆叠卡片；只有浮层、明确边界的工具面板和重复项卡片可以获得视觉边界。",
+                "section": "elevation"
+            }
+        ],
+        "dos": [
+            "Do 通过 ConfigProvider、Ant Design token 和少量布局 CSS 控制主题。",
+            "Do 让首屏直接呈现表格、筛选、表单、详情、状态面板或待办内容。",
+            "Do 覆盖 Loading、Empty、Error、Disabled、Submitting 等状态。",
+            "Do 保持 PC 管理界面高密度，移动端低密度。",
+            "Do 让图标按钮具备 aria-label 或可见文本。"
+        ],
+        "donts": [
+            "Don't 做成营销落地页、宣传站、深色炫技后台。",
+            "Don't 使用大面积渐变、玻璃拟态、装饰卡片、插画堆叠或品牌 hero。",
+            "Don't 重度覆盖 .ant-* 内部 DOM 类名来改变基础视觉。",
+            "Don't 为普通业务操作发明非标准表单、弹窗、滚动条或按钮形态。",
+            "Don't 每个页面都放标题说明块、欢迎语、功能介绍或空洞引导文案。"
+        ]
+    }
+}

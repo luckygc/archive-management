@@ -1,65 +1,92 @@
 SERVER_DIR := server
 MVN := mvn
-VP := vp
+PNPM := pnpm
 
-.PHONY: help frontend-install frontend-check frontend-check-fix frontend-lint frontend-lint-fix frontend-format-check frontend-format frontend-test frontend-build frontend-ready frontend-dev server-java server-deps server-format-check server-format server-compile server-test server-package server-run server-init
+.PHONY: help \
+	frontend-install frontend-check frontend-check-fix frontend-test frontend-build frontend-ready \
+	web-check web-test web-build web-dev \
+	mobile-check mobile-test mobile-build mobile-dev \
+	frontend-core-check frontend-core-test frontend-core-build \
+	server-java server-deps server-format-check server-format server-compile server-test server-package server-run
 
 help:
 	@echo "可用命令:"
-	@echo "  make frontend-install   	 安装前端依赖"
-	@echo "  make frontend-check     	 检查前端格式、lint 和类型"
-	@echo "  make frontend-check-fix     自动修复前端格式和 lint 问题"
-	@echo "  make frontend-lint          运行前端 lint"
-	@echo "  make frontend-lint-fix      自动修复前端 lint 问题"
-	@echo "  make frontend-format-check  检查前端格式"
-	@echo "  make frontend-format   	 自动格式化前端"
-	@echo "  make frontend-test     	 运行前端测试"
-	@echo "  make frontend-build    	 构建前端"
-	@echo "  make frontend-ready    	 前端检查并构建"
-	@echo "  make frontend-dev      	 启动前端开发服务"
-	@echo "  make server-java     	     打印 Java/Maven 版本"
-	@echo "  make server-deps     		 下载 Maven 依赖"
+	@echo "  make frontend-install       安装前端依赖"
+	@echo "  make frontend-check         检查全部前端包"
+	@echo "  make frontend-check-fix     自动修复全部前端包 lint 问题"
+	@echo "  make frontend-test          测试全部前端包"
+	@echo "  make frontend-build         构建全部前端包"
+	@echo "  make frontend-ready         前端检查、测试并构建"
+	@echo "  make web-check              检查 PC 前端"
+	@echo "  make web-test               测试 PC 前端"
+	@echo "  make web-build              构建 PC 前端"
+	@echo "  make web-dev                启动 PC 前端开发服务"
+	@echo "  make mobile-check           检查移动端前端"
+	@echo "  make mobile-test            测试移动端前端"
+	@echo "  make mobile-build           构建移动端前端"
+	@echo "  make mobile-dev             启动移动端前端开发服务"
+	@echo "  make frontend-core-check    检查前端共享包"
+	@echo "  make frontend-core-test     测试前端共享包"
+	@echo "  make frontend-core-build    构建前端共享包"
+	@echo "  make server-java            打印 Java/Maven 版本"
+	@echo "  make server-deps            下载 Maven 依赖"
 	@echo "  make server-format-check    检查 server 格式"
-	@echo "  make server-format   		 自动格式化 server"
-	@echo "  make server-compile  		 编译 server"
-	@echo "  make server-test     		 测试 server"
-	@echo "  make server-package  		 打包 server"
-	@echo "  make server-run      		 启动 server"
+	@echo "  make server-format          自动格式化 server"
+	@echo "  make server-compile         编译 server"
+	@echo "  make server-test            测试 server"
+	@echo "  make server-package         打包 server"
+	@echo "  make server-run             启动 server"
 
 frontend-install:
-	$(VP) install
+	$(PNPM) exec vp install
 
 frontend-check:
-	$(VP) check
+	$(PNPM) check
 
 frontend-check-fix:
-	$(VP) check --fix
-
-frontend-lint:
-	$(VP) lint
-
-frontend-lint-fix:
-	$(VP) lint --fix
-
-frontend-format-check:
-	$(VP) fmt --check
-
-frontend-format:
-	$(VP) fmt --write
+	$(PNPM) check:fix
 
 frontend-test:
-	$(VP) test run --passWithNoTests
+	$(PNPM) test
 
 frontend-build:
-	$(VP) build
+	$(PNPM) build
 
 frontend-ready:
-	$(VP) check
-	$(VP) test run --passWithNoTests
-	$(VP) build
+	$(PNPM) ready
 
-frontend-dev:
-	$(VP) dev
+web-check:
+	$(PNPM) -F @archive-management/web check
+
+web-test:
+	$(PNPM) -F @archive-management/web test
+
+web-build:
+	$(PNPM) -F @archive-management/web build
+
+web-dev:
+	$(PNPM) run dev:web
+
+mobile-check:
+	$(PNPM) -F @archive-management/mobile check
+
+mobile-test:
+	$(PNPM) -F @archive-management/mobile test
+
+mobile-build:
+	$(PNPM) -F @archive-management/mobile build
+
+mobile-dev:
+	$(PNPM) run dev:mobile
+
+frontend-core-check:
+	$(PNPM) -F @archive-management/frontend-core check
+
+frontend-core-test:
+	$(PNPM) -F @archive-management/frontend-core test
+
+frontend-core-build:
+	$(PNPM) -F @archive-management/frontend-core build
 
 server-java:
 	cd $(SERVER_DIR) && java -version
