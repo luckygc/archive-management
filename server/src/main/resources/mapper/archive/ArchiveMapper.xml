@@ -64,6 +64,7 @@
                electronic_status,
                archive_year,
                display_order,
+               created_at,
                locked_flag,
                lock_reason,
                locked_by,
@@ -85,6 +86,7 @@
                r.electronic_status,
                r.archive_year,
                r.display_order,
+               r.created_at,
                r.locked_flag,
                r.lock_reason,
                r.locked_by,
@@ -127,20 +129,11 @@
                   )
             )
         </if>
-        order by
-        <choose>
-            <when test="fullTextKeyword != null and fullTextKeyword != ''">
-                (
-                    select similarity(s.search_text, #{fullTextKeyword})
-                    from am_archive_record_search s
-                    where s.archive_record_id = r.id
-                ) desc,
-                r.id desc
-            </when>
-            <otherwise>
-                r.sort_order, r.id desc
-            </otherwise>
-        </choose>
+        <if test="cursorPredicateSql != null and cursorPredicateSql != ''">
+            and (${cursorPredicateSql})
+        </if>
+        order by ${orderBySql}
+        limit #{limit}
     </select>
 
     <select id="listRecordsForSearchRebuild" resultType="map">

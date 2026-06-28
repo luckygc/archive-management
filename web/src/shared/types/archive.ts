@@ -13,6 +13,10 @@ export type ArchivePhysicalStatus =
     | "IN_STORAGE"
     | "BORROWED";
 
+export interface CollectionResponse<T> {
+    items: T[];
+}
+
 export interface ArchiveFondsDto {
     id: number;
     fondsCode: string;
@@ -175,7 +179,24 @@ export interface ArchiveRecordQuery {
     keyword?: string;
     exactFilters?: Record<string, unknown>;
     filters?: ArchiveRecordFieldFilter[];
+    limit?: number;
+    cursor?: string;
+    orderBy?: ArchiveRecordOrderBy[];
 }
+
+export interface ArchiveRecordOrderBy {
+    field: ArchiveRecordSortField;
+    direction: "ASC" | "DESC";
+}
+
+export type ArchiveRecordSortField =
+    | "createdAt"
+    | "archiveNo"
+    | "archiveYear"
+    | "fondsCode"
+    | "categoryCode"
+    | "electronicStatus"
+    | "id";
 
 export interface ArchiveRecordFieldFilter {
     fieldCode: string;
@@ -187,7 +208,7 @@ export interface ArchiveRecordFieldFilter {
 export interface ArchiveRecordCommand {
     categoryId: number;
     archiveLevel?: ArchiveLevel;
-    parentId?: string;
+    parentId?: number;
     fondsCode: string;
     archiveNo?: string;
     archiveYear?: number;
@@ -197,7 +218,7 @@ export interface ArchiveRecordCommand {
 }
 
 export interface ArchiveRecordUpdateCommand {
-    parentId?: string;
+    parentId?: number;
     fondsCode: string;
     archiveNo?: string;
     archiveYear?: number;
@@ -215,9 +236,9 @@ export interface ArchivePhysicalObjectCommand {
 }
 
 export interface ArchiveRecordDto {
-    id: string;
+    id: number;
     archiveLevel: ArchiveLevel;
-    parentId?: string;
+    parentId?: number;
     fondsCode: string;
     fondsName: string;
     categoryCode: string;
@@ -227,13 +248,13 @@ export interface ArchiveRecordDto {
     archiveYear: number;
     lockedFlag: boolean;
     lockReason?: string;
-    lockedBy?: string;
+    lockedBy?: number;
     lockedAt?: string;
 }
 
 export interface ArchivePhysicalObjectDto {
-    id: string;
-    archiveRecordId: string;
+    id: number;
+    archiveRecordId: number;
     physicalStatus: ArchivePhysicalStatus;
     boxNo?: string;
     locationNo?: string;
@@ -245,7 +266,11 @@ export interface ArchiveRecordListDto {
     category?: ArchiveCategoryDto;
     fields: ArchiveFieldDto[];
     tableBuilt: boolean;
-    rows: Record<string, unknown>[];
+    self?: string;
+    prev?: string;
+    next?: string;
+    first?: string;
+    items: Record<string, unknown>[];
 }
 
 export interface ArchiveRecordDetailDto {

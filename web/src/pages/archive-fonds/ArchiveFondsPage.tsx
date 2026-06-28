@@ -3,7 +3,7 @@ import { Button, Card, Space, Switch, Table, Typography } from "antd";
 import type { TableColumnsType } from "antd";
 
 import { listArchiveFonds, updateArchiveFonds } from "@/shared/api/archive";
-import type { ArchiveFondsDto } from "@/shared/types/archive";
+import type { ArchiveFondsDto, CollectionResponse } from "@/shared/types/archive";
 
 const fondsQueryKey = ["archive-fonds"] as const;
 
@@ -22,8 +22,17 @@ export function ArchiveFondsPage() {
                 sortOrder: row.sortOrder,
             }),
         onSuccess: (updated) => {
-            queryClient.setQueryData<ArchiveFondsDto[]>(fondsQueryKey, (rows) =>
-                rows?.map((row) => (row.id === updated.id ? updated : row)),
+            queryClient.setQueryData<CollectionResponse<ArchiveFondsDto>>(
+                fondsQueryKey,
+                (response) =>
+                    response
+                        ? {
+                              ...response,
+                              items: response.items.map((row) =>
+                                  row.id === updated.id ? updated : row,
+                              ),
+                          }
+                        : response,
             );
         },
     });
@@ -64,7 +73,7 @@ export function ArchiveFondsPage() {
             <Card>
                 <Table<ArchiveFondsDto>
                     columns={columns}
-                    dataSource={fondsQuery.data ?? []}
+                    dataSource={fondsQuery.data?.items ?? []}
                     loading={fondsQuery.isLoading}
                     pagination={false}
                     rowKey="id"

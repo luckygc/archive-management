@@ -93,7 +93,7 @@
 
 ## Migration Plan
 
-1. 当前后端版本低于 `1.0.0`，直接调整 `V20260622_0100__create_archive_tables.sql` 目标结构。
+1. 当前项目未正式发布前，迁移脚本直接按目标结构维护，不保留未发布结构的兼容分支。
 2. 保留 `am_archive_record` 的全宗编码和全宗名称快照字段，并让动态建表固定创建 `deleted_flag`、`created_at` 和 `updated_at`。
 3. 将 `am_archive_field.searchable` 替换为 `exact_searchable`，全文检索不保留 DTO 字段级开关。
 4. 新增唯一规则表、唯一规则字段表、全文投影表和全文投影 outbox 表。

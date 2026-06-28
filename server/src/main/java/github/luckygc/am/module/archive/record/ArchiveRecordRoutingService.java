@@ -1,6 +1,7 @@
 package github.luckygc.am.module.archive.record;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.sql.Date;
 import java.sql.Timestamp;
 import java.time.LocalDate;
@@ -9,10 +10,14 @@ import java.time.Year;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.TreeMap;
 
+import org.apache.commons.codec.digest.HmacUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.mybatis.spring.MyBatisSystemException;
 import org.springframework.dao.DuplicateKeyException;
@@ -22,12 +27,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import github.luckygc.am.common.api.LongStringSerializer;
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.mapper.ArchiveSqlAssignment;
 import github.luckygc.am.module.archive.mapper.ArchiveSqlCondition;
+import github.luckygc.am.module.archive.mapper.ArchiveSqlOrder;
+import github.luckygc.am.module.archive.mapper.ArchiveSqlOrder.Direction;
 import github.luckygc.am.module.archive.metadata.ArchiveDynamicTableNames;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldType;
 import github.luckygc.am.module.archive.metadata.ArchiveLayoutSurface;
@@ -39,8 +45,6 @@ import github.luckygc.am.module.archive.metadata.ArchiveMetadataService.ArchiveF
 import github.luckygc.am.module.archive.metadata.ArchiveMetadataService.ArchiveUniqueConstraintDto;
 import github.luckygc.am.module.archive.metadata.ArchiveMetadataService.ArchiveUniqueConstraintFieldDto;
 
-import tools.jackson.databind.annotation.JsonSerialize;
-
 @Service
 public class ArchiveRecordRoutingService {
 
@@ -51,6 +55,9 @@ public class ArchiveRecordRoutingService {
     private static final String AUDIT_OPERATION_UNLOCK = "UNLOCK";
     private static final DateTimeFormatter DATE_TIME_FORMATTER =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final int DEFAULT_PAGE_LIMIT = 100;
+    private static final int MAX_PAGE_LIMIT = 1000;
+    private static final String CURSOR_HMAC_KEY = "archive-record-cursor-v1";
 
     private final ArchiveMetadataService archiveMetadataService;
     private final ArchiveMapper archiveMapper;
@@ -77,7 +84,7 @@ public class ArchiveRecordRoutingService {
             Long categoryId, ArchiveLevel archiveLevel, String fondsCode, Long userId) {
         return searchRecords(
                 new ArchiveRecordQueryRequest(
-                        categoryId, archiveLevel, fondsCode, null, null, null),
+                        categoryId, archiveLevel, fondsCode, null, null, null, null, null, null),
                 userId);
     }
 
@@ -107,11 +114,18 @@ public class ArchiveRecordRoutingService {
             if (StringUtils.isNotBlank(keyword)) {
                 throw badRequest("全文检索必须选择档案分类", "categoryId", "全文检索必须选择档案分类");
             }
+            int limit = pageLimit(request == null ? null : request.limit());
+            List<Map<String, Object>> rows =
+                    archiveMapper.listRecordOverview().stream().limit(limit).toList();
             return new ArchiveRecordListDto(
                     null,
                     List.of(),
                     true,
-                    normalizeRecordRowIds(archiveMapper.listRecordOverview()));
+                    null,
+                    null,
+                    null,
+                    null,
+                    rows);
         }
 
         ArchiveCategoryDto category = archiveMetadataService.getCategory(request.categoryId());
@@ -129,8 +143,11 @@ public class ArchiveRecordRoutingService {
                                         .thenComparing(ArchiveFieldDto::id))
                         .toList();
         if (!isDynamicTableBuilt(category, archiveLevel)) {
-            return new ArchiveRecordListDto(category, fields, false, List.of());
+            return new ArchiveRecordListDto(category, fields, false, null, null, null, null, List.of());
         }
+        int limit = pageLimit(request.limit());
+        List<ArchiveSqlOrder> orderBy = orderBy(request.orderBy());
+        Cursor cursor = decodeCursor(request.cursor(), queryFingerprint(request, orderBy));
         List<ArchiveSqlCondition> conditions =
                 buildSearchConditions(
                         request.categoryId(),
@@ -138,6 +155,9 @@ public class ArchiveRecordRoutingService {
                         fields,
                         request.exactFilters(),
                         request.filters());
+        List<ArchiveSqlOrder> queryOrderBy = cursor != null && "prev".equals(cursor.direction())
+                ? invert(orderBy)
+                : orderBy;
         List<Map<String, Object>> rows =
                 archiveMapper.listDynamicRecords(
                         tableName,
@@ -147,9 +167,244 @@ public class ArchiveRecordRoutingService {
                         conditions,
                         keyword,
                         userId,
-                        requireAuthenticatedUser);
+                        requireAuthenticatedUser,
+                        orderBySql(queryOrderBy),
+                        cursorPredicateSql(queryOrderBy, cursor),
+                        cursorValues(cursor),
+                        limit + 1);
+        List<Map<String, Object>> normalizedRows = normalizeDynamicFieldValues(rows, visibleFields);
+        boolean hasMore = normalizedRows.size() > limit;
+        List<Map<String, Object>> pageItems =
+                hasMore ? normalizedRows.subList(0, limit) : normalizedRows;
+        if (cursor != null && "prev".equals(cursor.direction())) {
+            pageItems = pageItems.reversed();
+        }
+        String fingerprint = queryFingerprint(request, orderBy);
+        String prev =
+                cursor == null || pageItems.isEmpty()
+                        ? null
+                        : encodeCursor("prev", fingerprint, orderBy, pageItems.get(0));
+        String next =
+                pageItems.isEmpty()
+                                || (cursor != null && "prev".equals(cursor.direction()) && !hasMore)
+                        ? null
+                        : encodeCursor(
+                                "next", fingerprint, orderBy, pageItems.get(pageItems.size() - 1));
+        if ((cursor == null || "next".equals(cursor.direction())) && !hasMore) {
+            next = null;
+        }
         return new ArchiveRecordListDto(
-                category, fields, true, normalizeDynamicFieldValues(rows, visibleFields));
+                category,
+                fields,
+                true,
+                encodeCursor(
+                        "self", fingerprint, orderBy, pageItems.isEmpty() ? null : pageItems.get(0)),
+                prev,
+                next,
+                null,
+                pageItems);
+    }
+
+    private int pageLimit(Integer limit) {
+        if (limit == null) {
+            return DEFAULT_PAGE_LIMIT;
+        }
+        if (limit < 1 || limit > MAX_PAGE_LIMIT) {
+            throw badRequest("分页大小必须在 1 到 " + MAX_PAGE_LIMIT + " 之间", "limit", "分页大小超出范围");
+        }
+        return limit;
+    }
+
+    private List<ArchiveSqlOrder> orderBy(List<ArchiveRecordOrderBy> requestOrderBy) {
+        List<ArchiveSqlOrder> orders = new ArrayList<>();
+        if (requestOrderBy != null) {
+            for (ArchiveRecordOrderBy order : requestOrderBy) {
+                orders.add(toSqlOrder(order));
+            }
+        }
+        appendFallbackOrder(orders, new ArchiveSqlOrder("r.created_at", Direction.desc));
+        appendFallbackOrder(orders, new ArchiveSqlOrder("r.id", Direction.desc));
+        return orders;
+    }
+
+    private void appendFallbackOrder(List<ArchiveSqlOrder> orders, ArchiveSqlOrder fallback) {
+        boolean alreadyOrdered =
+                orders.stream().anyMatch(order -> Objects.equals(order.expression(), fallback.expression()));
+        if (!alreadyOrdered) {
+            orders.add(fallback);
+        }
+    }
+
+    private ArchiveSqlOrder toSqlOrder(ArchiveRecordOrderBy order) {
+        if (order == null || StringUtils.isBlank(order.field())) {
+            throw badRequest("排序字段不能为空", "orderBy.field", "排序字段不能为空");
+        }
+        Direction direction =
+                "ASC".equalsIgnoreCase(order.direction()) ? Direction.asc : Direction.desc;
+        return new ArchiveSqlOrder(sortExpression(order.field()), direction);
+    }
+
+    private String sortExpression(String field) {
+        return switch (field) {
+            case "createdAt" -> "r.created_at";
+            case "archiveNo" -> "r.archive_no";
+            case "archiveYear" -> "r.archive_year";
+            case "fondsCode" -> "r.fonds_code";
+            case "categoryCode" -> "r.category_code";
+            case "electronicStatus" -> "r.electronic_status";
+            case "id" -> "r.id";
+            default -> throw badRequest("不支持的排序字段", "orderBy.field", "不支持的排序字段：" + field);
+        };
+    }
+
+    private String orderBySql(List<ArchiveSqlOrder> orders) {
+        return orders.stream()
+                .map(ArchiveSqlOrder::sql)
+                .reduce((left, right) -> left + ", " + right)
+                .orElse("r.created_at desc, r.id desc");
+    }
+
+    private List<ArchiveSqlOrder> invert(List<ArchiveSqlOrder> orders) {
+        return orders.stream()
+                .map(order -> new ArchiveSqlOrder(
+                        order.expression(), order.direction() == Direction.asc ? Direction.desc : Direction.asc))
+                .toList();
+    }
+
+    private String cursorPredicateSql(List<ArchiveSqlOrder> orders, Cursor cursor) {
+        if (cursor == null) {
+            return null;
+        }
+        List<String> parts = new ArrayList<>();
+        for (int i = 0; i < orders.size(); i++) {
+            List<String> equalsParts = new ArrayList<>();
+            for (int j = 0; j < i; j++) {
+                equalsParts.add(orders.get(j).expression() + " = #{cursorValues[" + j + "]}");
+            }
+            String operator = orders.get(i).direction() == Direction.asc ? ">" : "<";
+            equalsParts.add(orders.get(i).expression() + " " + operator + " #{cursorValues[" + i + "]}");
+            parts.add("(" + String.join(" and ", equalsParts) + ")");
+        }
+        return String.join(" or ", parts);
+    }
+
+    private List<Object> cursorValues(Cursor cursor) {
+        return cursor == null ? List.of() : cursor.values();
+    }
+
+    private Cursor decodeCursor(String token, String fingerprint) {
+        if (StringUtils.isBlank(token)) {
+            return null;
+        }
+        String[] parts = token.split("\\.", 2);
+        if (parts.length != 2) {
+            throw badRequest("分页 cursor 无效", "cursor", "cursor 格式无效");
+        }
+        String payload = new String(Base64.getUrlDecoder().decode(parts[0]), StandardCharsets.UTF_8);
+        String expected = HmacUtils.hmacSha256Hex(CURSOR_HMAC_KEY, payload);
+        if (!Objects.equals(expected, parts[1])) {
+            throw badRequest("分页 cursor 无效", "cursor", "cursor 签名无效");
+        }
+        String[] fields = payload.split("\\|", -1);
+        if (fields.length < 3 || !Objects.equals(fingerprint, fields[1])) {
+            throw badRequest("分页条件已变化，请重新搜索", "cursor", "cursor 与当前查询条件不匹配");
+        }
+        List<Object> values = new ArrayList<>();
+        for (int i = 2; i < fields.length; i++) {
+            values.add(decodeCursorValue(fields[i]));
+        }
+        return new Cursor(fields[0], values);
+    }
+
+    private Object decodeCursorValue(String value) {
+        if (value.startsWith("L:")) {
+            return Long.valueOf(value.substring(2));
+        }
+        if (value.startsWith("I:")) {
+            return Integer.valueOf(value.substring(2));
+        }
+        if (value.startsWith("T:")) {
+            return LocalDateTime.parse(value.substring(2));
+        }
+        return value.substring(2);
+    }
+
+    private String encodeCursor(
+            String direction, String fingerprint, List<ArchiveSqlOrder> orders, Map<String, Object> row) {
+        if (row == null) {
+            return null;
+        }
+        List<String> values = new ArrayList<>();
+        for (ArchiveSqlOrder order : orders) {
+            values.add(encodeCursorValue(cursorRowValue(row, order.expression())));
+        }
+        String payload = direction + "|" + fingerprint + "|" + String.join("|", values);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(payload.getBytes(StandardCharsets.UTF_8))
+                + "."
+                + HmacUtils.hmacSha256Hex(CURSOR_HMAC_KEY, payload);
+    }
+
+    private Object cursorRowValue(Map<String, Object> row, String expression) {
+        return switch (expression) {
+            case "r.created_at" -> value(row, "createdAt");
+            case "r.id" -> longCursorValue(row, "id");
+            case "r.archive_no" -> value(row, "archiveNo");
+            case "r.archive_year" -> integerCursorValue(row, "archiveYear");
+            case "r.fonds_code" -> value(row, "fondsCode");
+            case "r.category_code" -> value(row, "categoryCode");
+            case "r.electronic_status" -> value(row, "electronicStatus");
+            default -> throw new IllegalStateException("不支持的 cursor 排序字段：" + expression);
+        };
+    }
+
+    private Long longCursorValue(Map<String, Object> row, String key) {
+        Object value = value(row, key);
+        if (value instanceof Number number) {
+            return number.longValue();
+        }
+        return Long.valueOf(value.toString());
+    }
+
+    private Integer integerCursorValue(Map<String, Object> row, String key) {
+        Object value = value(row, key);
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        return Integer.valueOf(value.toString());
+    }
+
+    private String encodeCursorValue(Object value) {
+        if (value instanceof Long longValue) {
+            return "L:" + longValue;
+        }
+        if (value instanceof Integer intValue) {
+            return "I:" + intValue;
+        }
+        if (value instanceof Number number) {
+            return "L:" + number.longValue();
+        }
+        if (value instanceof LocalDateTime dateTime) {
+            return "T:" + dateTime;
+        }
+        if (value instanceof Timestamp timestamp) {
+            return "T:" + timestamp.toLocalDateTime();
+        }
+        return "S:" + value;
+    }
+
+    private String queryFingerprint(ArchiveRecordQueryRequest request, List<ArchiveSqlOrder> orderBy) {
+        Map<String, Object> exactFilters =
+                request.exactFilters() == null ? Map.of() : new TreeMap<>(request.exactFilters());
+        return Integer.toHexString(
+                Objects.hash(
+                        request.categoryId(),
+                        normalizeArchiveLevel(request.archiveLevel()),
+                        StringUtils.trimToNull(request.fondsCode()),
+                        StringUtils.trimToNull(request.keyword()),
+                        exactFilters,
+                        request.filters(),
+                        request.limit(),
+                        orderBy.stream().map(ArchiveSqlOrder::sql).toList()));
     }
 
     @Transactional
@@ -627,7 +882,7 @@ public class ArchiveRecordRoutingService {
         return rows.stream()
                 .map(
                         row -> {
-                            Map<String, Object> normalized = normalizeRecordRowIds(row);
+                            Map<String, Object> normalized = new LinkedHashMap<>(row);
                             for (ArchiveFieldDto field : fields) {
                                 Object value = normalized.get(field.columnName());
                                 normalized.put(
@@ -637,27 +892,6 @@ public class ArchiveRecordRoutingService {
                             return normalized;
                         })
                 .toList();
-    }
-
-    private List<Map<String, Object>> normalizeRecordRowIds(List<Map<String, Object>> rows) {
-        return rows.stream().map(this::normalizeRecordRowIds).toList();
-    }
-
-    private Map<String, Object> normalizeRecordRowIds(Map<String, Object> row) {
-        Map<String, Object> normalized = new LinkedHashMap<>(row);
-        stringifyIdValue(normalized, "id");
-        stringifyIdValue(normalized, "parentId");
-        stringifyIdValue(normalized, "parent_id");
-        stringifyIdValue(normalized, "lockedBy");
-        stringifyIdValue(normalized, "locked_by");
-        return normalized;
-    }
-
-    private void stringifyIdValue(Map<String, Object> row, String key) {
-        Object value = row.get(key);
-        if (value instanceof Number number) {
-            row.put(key, number.toString());
-        }
     }
 
     private Object normalizeDynamicFieldValue(ArchiveFieldDto field, Object value) {
@@ -852,7 +1086,12 @@ public class ArchiveRecordRoutingService {
             String fondsCode,
             String keyword,
             Map<String, Object> exactFilters,
-            List<ArchiveRecordFieldFilter> filters) {}
+            List<ArchiveRecordFieldFilter> filters,
+            Integer limit,
+            String cursor,
+            List<ArchiveRecordOrderBy> orderBy) {}
+
+    public record ArchiveRecordOrderBy(String field, String direction) {}
 
     public record ArchiveRecordFieldFilter(
             String fieldCode, Object value, Object startValue, Object endValue) {}
@@ -889,9 +1128,9 @@ public class ArchiveRecordRoutingService {
     public record LockRecordRequest(String reason) {}
 
     public record ArchiveRecordDto(
-            @JsonSerialize(using = LongStringSerializer.class) Long id,
+            Long id,
             ArchiveLevel archiveLevel,
-            @JsonSerialize(using = LongStringSerializer.class) Long parentId,
+            Long parentId,
             String fondsCode,
             String fondsName,
             String categoryCode,
@@ -901,14 +1140,20 @@ public class ArchiveRecordRoutingService {
             int archiveYear,
             boolean lockedFlag,
             String lockReason,
-            @JsonSerialize(using = LongStringSerializer.class) Long lockedBy,
+            Long lockedBy,
             LocalDateTime lockedAt) {}
 
     public record ArchiveRecordListDto(
             ArchiveCategoryDto category,
             List<ArchiveFieldDto> fields,
             boolean tableBuilt,
-            List<Map<String, Object>> rows) {}
+            String self,
+            String prev,
+            String next,
+            String first,
+            List<Map<String, Object>> items) {}
+
+    private record Cursor(String direction, List<Object> values) {}
 
     public record ArchiveRecordDetailDto(
             ArchiveRecordDto record,
@@ -918,8 +1163,8 @@ public class ArchiveRecordRoutingService {
             ArchivePhysicalObjectDto physicalObject) {}
 
     public record ArchivePhysicalObjectDto(
-            @JsonSerialize(using = LongStringSerializer.class) Long id,
-            @JsonSerialize(using = LongStringSerializer.class) Long archiveRecordId,
+            Long id,
+            Long archiveRecordId,
             String physicalStatus,
             String boxNo,
             String locationNo,

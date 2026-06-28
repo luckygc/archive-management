@@ -2,6 +2,7 @@ import { request } from "@archive-management/frontend-core/api";
 import type {
     ArchiveCategoryCommand,
     ArchiveCategoryDto,
+    CollectionResponse,
     ArchiveFieldCommand,
     ArchiveFieldDto,
     ArchiveFieldLayoutCommand,
@@ -32,7 +33,9 @@ function queryString(params: Record<string, string | number | boolean | undefine
 }
 
 export function listArchiveFonds(enabled?: boolean) {
-    return request<ArchiveFondsDto[]>(`/api/v1/archive-fonds${queryString({ enabled })}`);
+    return request<CollectionResponse<ArchiveFondsDto>>(
+        `/api/v1/archive-fonds${queryString({ enabled })}`,
+    );
 }
 
 export function createArchiveFonds(command: ArchiveFondsCommand) {
@@ -56,7 +59,9 @@ export function deleteArchiveFonds(id: number) {
 }
 
 export function listArchiveCategories(enabled?: boolean) {
-    return request<ArchiveCategoryDto[]>(`/api/v1/archive-categories${queryString({ enabled })}`);
+    return request<CollectionResponse<ArchiveCategoryDto>>(
+        `/api/v1/archive-categories${queryString({ enabled })}`,
+    );
 }
 
 export function createArchiveCategory(command: ArchiveCategoryCommand) {
@@ -80,7 +85,9 @@ export function deleteArchiveCategory(id: number) {
 }
 
 export function listArchiveFields(categoryId: number) {
-    return request<ArchiveFieldDto[]>(`/api/v1/archive-categories/${categoryId}/fields`);
+    return request<CollectionResponse<ArchiveFieldDto>>(
+        `/api/v1/archive-categories/${categoryId}/fields`,
+    );
 }
 
 export function createArchiveField(categoryId: number, command: ArchiveFieldCommand) {
@@ -142,7 +149,7 @@ export function buildArchiveCategoryTable(categoryId: number, archiveLevel?: Arc
 }
 
 export function listArchiveUniqueConstraints(categoryId: number) {
-    return request<ArchiveUniqueConstraintDto[]>(
+    return request<CollectionResponse<ArchiveUniqueConstraintDto>>(
         `/api/v1/archive-categories/${categoryId}/unique-constraints`,
     );
 }
@@ -212,27 +219,27 @@ export function createArchiveRecord(command: ArchiveRecordCommand) {
     });
 }
 
-export function getArchiveRecord(id: string, surface?: ArchiveLayoutSurface) {
+export function getArchiveRecord(id: number, surface?: ArchiveLayoutSurface) {
     return request<ArchiveRecordDetailDto>(
         `/api/v1/archive-records/${id}${queryString({ surface })}`,
     );
 }
 
-export function updateArchiveRecord(id: string, command: ArchiveRecordUpdateCommand) {
+export function updateArchiveRecord(id: number, command: ArchiveRecordUpdateCommand) {
     return request<ArchiveRecordDetailDto>(`/api/v1/archive-records/${id}`, {
         method: "PATCH",
         body: JSON.stringify(command),
     });
 }
 
-export function lockArchiveRecord(id: string, reason?: string) {
+export function lockArchiveRecord(id: number, reason?: string) {
     return request<ArchiveRecordDto>(`/api/v1/archive-records/${id}:lock`, {
         method: "POST",
         body: JSON.stringify({ reason }),
     });
 }
 
-export function unlockArchiveRecord(id: string) {
+export function unlockArchiveRecord(id: number) {
     return request<ArchiveRecordDto>(`/api/v1/archive-records/${id}:unlock`, {
         method: "POST",
     });

@@ -59,7 +59,7 @@
 - 项目暂不提供分布式锁组件，不保留项目级锁接口、旧锁配置或 `am_runtime_lock`。后续确需分布式锁时，先选定成熟开源库并固定具体实现，再按该库的配置方式接入，不重新引入项目级锁 adapter。
 - Spring Session、Spring Cache、Spring Quartz 都由各自框架接管，项目不要再定义会话 adapter、缓存 adapter、自定义缓存端口、调度 adapter 或其他项目级基础设施 adapter。关闭调度使用 `spring.quartz.auto-startup=false`，JDBC JobStore 使用 `spring.quartz.job-store-type=jdbc`；Quartz 必需表缺失时交给 Quartz/Spring 启动过程暴露错误，不再写项目级 Quartz 表存在性校验。
 - 缓存直接使用 Spring Cache 抽象，业务模块使用 `CacheManager` 或 Spring Cache 注解，不使用项目自定义缓存端口。默认 `spring.cache.type=none` 使用 `NoOpCacheManager`；单机可用 `simple`、`caffeine`、`cache2k` 等本地实现，集群必须使用 Redis、Hazelcast、Infinispan、Couchbase 等分布式实现，或接入数据库缓存、多级缓存等共享 `CacheManager`。需要本地简单缓存、Redis、Caffeine+Redis、JetCache、Redisson 本地缓存等能力时，应优先使用 Spring Boot AutoConfiguration 或在基础设施层注册 Spring Cache 兼容的 `CacheManager`；引入多级缓存前必须先明确缓存对象范围、TTL、失效事件、集群一致性和脏读容忍度。
-- Flyway 迁移，档案server的pom.xml里版本未达到1.0.0时，都按照目标结构修改，1.0.0之后使用增量迁移
+- 当前项目未正式发布前，Flyway 迁移按目标结构直接维护；不为尚未发布的旧结构保留兼容分支或增量包袱。
 - 档案元数据、项目自有表命名、业务字段校验、枚举持久化、逻辑删除唯一性、分类动态表和唯一规则合同以 `openspec/specs/archive-metadata/spec.md` 为准。
 - 第三方框架原生表不属于项目自有表，例如 Spring Session 的 `SPRING_SESSION`、Quartz 的 `QRTZ_*`。除非明确改为项目自维护表，否则保留框架默认命名，避免偏离上游脚本。
 - Flowable 使用 `flowable-spring-boot-starter-process` 的流程引擎能力，流程引擎由 starter 默认启用；不要配置无法被元数据解析的 `flowable.process.enabled`。默认禁用 Flowable IDM 与 Event Registry，只使用 `flowable.idm.enabled=false` 和 `flowable.eventregistry.enabled=false`，不要使用已弃用的 `flowable.db-identity-used`。
@@ -72,8 +72,8 @@
 
 ## API 设计约定
 
-- 项目自有 HTTP API 合同以 `openspec/specs/api-contract/spec.md` 为准；具体 API 设计默认参考 Google Cloud API Design Guide / AIP，错误响应采用 Spring `ProblemDetail` / RFC 9457 口径。
-- 前端可见 ID 是否必须字符串化以 `openspec/specs/api-contract/spec.md` 为准；当前只对明确指定的高增长或 JavaScript 精度风险资源强制转换，例如档案记录、档案文件和文件存储对象。档案分类、字段、布局、唯一规则等元数据配置 ID 可以继续使用数字合同，除非对应规格明确升级。
+- 项目自有 HTTP API 合同以 `openspec/specs/api-contract/spec.md` 为准；具体 API 设计以 Zalando RESTful API Guidelines 为主体，复杂业务动作仅引入 Google AIP-136 `POST /resource/{id}:action` 扩展；错误响应采用 Spring `ProblemDetail` / RFC 9457 口径。
+- 前端可见 ID 默认使用数字合同；本档案系统当前不为 JavaScript 精度风险预先引入 Long 转字符串规则。只有外部协议或已确认会超过安全整数范围的资源，才在对应 OpenSpec 中单独声明字符串 ID。
 - 项目 API 设计任务优先使用 `.agents/skills/archive-api-design-strategy`；持久化入口、实体和 Mapper 边界任务优先使用 `.agents/skills/archive-persistence-strategy`。
 - API 设计规则只在 `AGENTS.md` 保留入口和技能路由；资源、路径、响应、错误、前端可见 ID 和第三方协议例外的验收场景统一维护到 OpenSpec。
 

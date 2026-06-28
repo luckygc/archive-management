@@ -1,6 +1,7 @@
 package github.luckygc.am.module.archive.record.search;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
 
@@ -19,6 +20,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import github.luckygc.am.app.ArchiveManagementApplication;
 import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.record.ArchiveRecordRoutingService;
+import github.luckygc.am.module.archive.record.ArchiveRecordRoutingService.ArchiveRecordOrderBy;
 import github.luckygc.am.module.archive.record.ArchiveRecordRoutingService.ArchiveRecordQueryRequest;
 
 @Testcontainers(disabledWithoutDocker = true)
@@ -68,11 +70,102 @@ class ArchiveFullTextSearchIntegrationTests {
         var result =
                 archiveRecordRoutingService.discoverRecords(
                         new ArchiveRecordQueryRequest(
-                                categoryId, ArchiveLevel.item, "Z001", "档案管理系统", null, List.of()),
+                                categoryId,
+                                ArchiveLevel.item,
+                                "Z001",
+                                "档案管理系统",
+                                null,
+                                List.of(),
+                                50,
+                                null,
+                                null),
                         1L);
 
-        assertThat(result.rows())
+        assertThat(result.items())
                 .extracting(row -> row.get("archive_no"))
                 .containsExactly("HT-2026-001");
+    }
+
+    @Test
+    @DisplayName("键集分页使用用户排序并追加兜底排序")
+    void searchRecordsUsesCursorWithUserOrderAndFallbackOrder() {
+        Long categoryId =
+                jdbcTemplate.queryForObject(
+                        "select id from am_archive_category where category_code = 'GW'",
+                        Long.class);
+
+        var firstPage =
+                archiveRecordRoutingService.searchRecords(
+                        new ArchiveRecordQueryRequest(
+                                categoryId,
+                                ArchiveLevel.item,
+                                null,
+                                null,
+                                null,
+                                List.of(),
+                                1,
+                                null,
+                                List.of(new ArchiveRecordOrderBy("archiveNo", "ASC"))),
+                        1L);
+
+        assertThat(firstPage.items())
+                .extracting(row -> row.get("archive_no"))
+                .containsExactly("GW-2026-001");
+        assertThat(firstPage.next()).isNotBlank();
+
+        var secondPage =
+                archiveRecordRoutingService.searchRecords(
+                        new ArchiveRecordQueryRequest(
+                                categoryId,
+                                ArchiveLevel.item,
+                                null,
+                                null,
+                                null,
+                                List.of(),
+                                1,
+                                firstPage.next(),
+                                List.of(new ArchiveRecordOrderBy("archiveNo", "ASC"))),
+                        1L);
+
+        assertThat(secondPage.items())
+                .extracting(row -> row.get("archive_no"))
+                .containsExactly("GW-2026-002");
+        assertThat(secondPage.prev()).isNotBlank();
+
+        var previousPage =
+                archiveRecordRoutingService.searchRecords(
+                        new ArchiveRecordQueryRequest(
+                                categoryId,
+                                ArchiveLevel.item,
+                                null,
+                                null,
+                                null,
+                                List.of(),
+                                1,
+                                secondPage.prev(),
+                                List.of(new ArchiveRecordOrderBy("archiveNo", "ASC"))),
+                        1L);
+
+        assertThat(previousPage.items())
+                .extracting(row -> row.get("archive_no"))
+                .containsExactly("GW-2026-001");
+
+        assertThatThrownBy(
+                        () ->
+                                archiveRecordRoutingService.searchRecords(
+                                        new ArchiveRecordQueryRequest(
+                                                categoryId,
+                                                ArchiveLevel.item,
+                                                "Z001",
+                                                null,
+                                                null,
+                                                List.of(),
+                                                1,
+                                                firstPage.next(),
+                                                List.of(
+                                                        new ArchiveRecordOrderBy(
+                                                                "archiveNo", "ASC"))),
+                                        1L))
+                .hasMessageContaining("分页条件已变化");
     }
 }

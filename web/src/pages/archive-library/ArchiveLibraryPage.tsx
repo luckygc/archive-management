@@ -2,7 +2,7 @@ import { Button, Card, Form, Input, Select, Space, Table, Tag, Typography } from
 import type { TableColumnsType } from "antd";
 
 interface ArchiveRecordRow {
-    id: string;
+    id: number;
     archiveNo: string;
     title: string;
     category: string;
@@ -12,7 +12,7 @@ interface ArchiveRecordRow {
 
 const records: ArchiveRecordRow[] = [
     {
-        id: "190001",
+        id: 190001,
         archiveNo: "AM-2026-001",
         title: "项目建设审批材料",
         category: "项目档案",
@@ -20,7 +20,7 @@ const records: ArchiveRecordRow[] = [
         owner: "档案室",
     },
     {
-        id: "190002",
+        id: 190002,
         archiveNo: "AM-2026-002",
         title: "财务凭证归档批次",
         category: "会计档案",
@@ -28,7 +28,7 @@ const records: ArchiveRecordRow[] = [
         owner: "财务部",
     },
     {
-        id: "190003",
+        id: 190003,
         archiveNo: "AM-2026-003",
         title: "外部系统同步记录",
         category: "异构数据归档",
@@ -96,9 +96,11 @@ export function ArchiveLibraryPage() {
                 <Table<ArchiveRecordRow>
                     columns={columns}
                     dataSource={records}
-                    pagination={{ pageSize: 10, showSizeChanger: true }}
+                    pagination={false}
                     rowKey="id"
+                    scroll={{ x: 820, y: 520 }}
                     size="middle"
+                    virtual
                 />
             </Card>
         </section>

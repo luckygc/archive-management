@@ -30,7 +30,6 @@ import org.springframework.test.annotation.DirtiesContext;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import github.luckygc.am.app.ArchiveManagementApplication;
-import github.luckygc.am.common.api.LongStringSerializer;
 import github.luckygc.am.infrastructure.hibernate.SecurityAuditingInterceptor;
 import github.luckygc.am.module.archive.metadata.ArchiveFonds;
 import github.luckygc.am.module.archive.metadata.ArchiveFondsDataRepository;
@@ -39,7 +38,6 @@ import github.luckygc.am.module.auth.PowChallengeService;
 import github.luckygc.am.test.PostgreSqlContainerTest;
 
 import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.annotation.JsonSerialize;
 import tools.jackson.databind.json.JsonMapper;
 
 @Testcontainers(disabledWithoutDocker = true)
@@ -213,19 +211,6 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
         Assertions.assertEquals(true, redeemJson.get("success").booleanValue());
         Assertions.assertTrue(redeemJson.get("token").isTextual());
         Assertions.assertTrue(redeemJson.get("expires").isNumber());
-    }
-
-    @Test
-    @DisplayName("LongStringSerializer 只作用于显式标注字段")
-    void jsonLongStringSerializationAppliesOnlyToAnnotatedFields() throws Exception {
-        JsonNode json =
-                jsonMapper.readTree(
-                        jsonMapper.writeValueAsString(
-                                new LongFieldResponse(1L, 2L, 1_782_192_922_952L)));
-
-        Assertions.assertTrue(json.get("id").isTextual());
-        Assertions.assertTrue(json.get("categoryId").isNumber());
-        Assertions.assertTrue(json.get("expires").isNumber());
     }
 
     @Test
@@ -425,9 +410,4 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
         }
         return hash;
     }
-
-    private record LongFieldResponse(
-            @JsonSerialize(using = LongStringSerializer.class) Long id,
-            Long categoryId,
-            long expires) {}
 }

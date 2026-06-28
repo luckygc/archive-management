@@ -38,7 +38,11 @@ public interface ArchiveMapper {
             @Param("conditions") List<ArchiveSqlCondition> conditions,
             @Param("fullTextKeyword") String fullTextKeyword,
             @Param("userId") Long userId,
-            @Param("requireAuthenticatedUser") boolean requireAuthenticatedUser);
+            @Param("requireAuthenticatedUser") boolean requireAuthenticatedUser,
+            @Param("orderBySql") String orderBySql,
+            @Param("cursorPredicateSql") String cursorPredicateSql,
+            @Param("cursorValues") List<Object> cursorValues,
+            @Param("limit") int limit);
 
     List<Map<String, Object>> listRecordsForSearchRebuild(
             @Param("tableName") String tableName,

@@ -10,10 +10,22 @@ beforeEach(() => {
         vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
             const url = requestUrl(input);
             if (url === "/api/v1/archive-fonds" && !init?.method) {
-                return jsonResponse([
-                    createFonds({ id: 1, fondsCode: "HD", fondsName: "华东公司", enabled: true }),
-                    createFonds({ id: 2, fondsCode: "CW", fondsName: "财务部", enabled: false }),
-                ]);
+                return jsonResponse({
+                    items: [
+                        createFonds({
+                            id: 1,
+                            fondsCode: "HD",
+                            fondsName: "华东公司",
+                            enabled: true,
+                        }),
+                        createFonds({
+                            id: 2,
+                            fondsCode: "CW",
+                            fondsName: "财务部",
+                            enabled: false,
+                        }),
+                    ],
+                });
             }
             if (url === "/api/v1/archive-fonds/1" && init?.method === "PATCH") {
                 expect(JSON.parse(requestBodyText(init?.body))).toMatchObject({

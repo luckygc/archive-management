@@ -1,7 +1,5 @@
 package github.luckygc.am.module.archive.metadata;
 
-import java.util.List;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -14,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import github.luckygc.am.common.api.CollectionResponse;
 import github.luckygc.am.common.security.AuthenticatedUser;
 import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.metadata.ArchiveMetadataService.ArchiveCategoryDto;
@@ -42,8 +41,8 @@ public class ArchiveMetadataController {
     }
 
     @GetMapping("/api/v1/archive-fonds")
-    public List<ArchiveFondsDto> listFonds(Boolean enabled) {
-        return archiveMetadataService.listFonds(enabled);
+    public CollectionResponse<ArchiveFondsDto> listFonds(Boolean enabled) {
+        return CollectionResponse.of(archiveMetadataService.listFonds(enabled));
     }
 
     @PostMapping("/api/v1/archive-fonds")
@@ -68,8 +67,8 @@ public class ArchiveMetadataController {
     }
 
     @GetMapping("/api/v1/archive-categories")
-    public List<ArchiveCategoryDto> listCategories(Boolean enabled) {
-        return archiveMetadataService.listCategories(enabled);
+    public CollectionResponse<ArchiveCategoryDto> listCategories(Boolean enabled) {
+        return CollectionResponse.of(archiveMetadataService.listCategories(enabled));
     }
 
     @PostMapping("/api/v1/archive-categories")
@@ -94,8 +93,8 @@ public class ArchiveMetadataController {
     }
 
     @GetMapping("/api/v1/archive-categories/{categoryId}/fields")
-    public List<ArchiveFieldDto> listFields(@PathVariable Long categoryId) {
-        return archiveMetadataService.listFields(categoryId);
+    public CollectionResponse<ArchiveFieldDto> listFields(@PathVariable Long categoryId) {
+        return CollectionResponse.of(archiveMetadataService.listFields(categoryId));
     }
 
     @PostMapping("/api/v1/archive-categories/{categoryId}/fields")
@@ -161,8 +160,9 @@ public class ArchiveMetadataController {
     }
 
     @GetMapping("/api/v1/archive-categories/{categoryId}/unique-constraints")
-    public List<ArchiveUniqueConstraintDto> listUniqueConstraints(@PathVariable Long categoryId) {
-        return archiveMetadataService.listUniqueConstraints(categoryId);
+    public CollectionResponse<ArchiveUniqueConstraintDto> listUniqueConstraints(
+            @PathVariable Long categoryId) {
+        return CollectionResponse.of(archiveMetadataService.listUniqueConstraints(categoryId));
     }
 
     @PostMapping("/api/v1/archive-categories/{categoryId}/unique-constraints")
