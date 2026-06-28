@@ -152,6 +152,34 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
     }
 
     @Test
+    @DisplayName("高增长业务 ID 使用 PostgreSQL sequence 预留内置数据区间")
+    void highGrowthBusinessIdsUseReservedPostgreSqlSequences() {
+        assertSequence("am_archive_record_id_seq");
+        assertSequence("am_archive_record_electronic_file_id_seq");
+        assertSequence("am_archive_physical_object_id_seq");
+        assertSequence("am_storage_object_id_seq");
+    }
+
+    private void assertSequence(String sequenceName) {
+        Assertions.assertEquals(
+                1_000_000L,
+                jdbcTemplate.queryForObject(
+                        "select start_value from pg_sequences "
+                                + "where schemaname = current_schema() "
+                                + "and sequencename = ?",
+                        Long.class,
+                        sequenceName));
+        Assertions.assertEquals(
+                1_000L,
+                jdbcTemplate.queryForObject(
+                        "select increment_by from pg_sequences "
+                                + "where schemaname = current_schema() "
+                                + "and sequencename = ?",
+                        Long.class,
+                        sequenceName));
+    }
+
+    @Test
     @DisplayName("CAP 挑战创建时持久化创建时间")
     void capChallengeCreationPersistsCreatedAt() {
         PowChallengeService.CapChallengeResponse response = powChallengeService.createChallenge();

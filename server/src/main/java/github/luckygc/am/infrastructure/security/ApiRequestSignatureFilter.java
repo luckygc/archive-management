@@ -80,7 +80,10 @@ public class ApiRequestSignatureFilter extends OncePerRequestFilter {
 
     private boolean isLoginBootstrapRequest(HttpServletRequest request) {
         String uri = request.getRequestURI();
-        return "/api/v1/auth:login".equals(uri) || uri.startsWith("/api/v1/auth/cap/");
+        return "/api/v1/auth:login".equals(uri)
+                || "/api/v1/auth/cap-challenges".equals(uri)
+                || "/api/v1/auth/cap-tokens".equals(uri)
+                || "/api/v1/auth/cap-tokens:validate".equals(uri);
     }
 
     @Override

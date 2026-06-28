@@ -20,7 +20,7 @@ allowBuilds:
     "@parcel/watcher": true
 
 catalog:
-    "@ant-design/cli": ^6.4.5
+    "@ant-design/cli": ^6.5.0
     "@ant-design/icons": ^6.2.5
     "@ant-design/pro-components": 3.1.12-0
     "@cap.js/wasm": ^0.0.7
@@ -44,3 +44,6 @@ catalog:
     vitest: ^4.1.9
     zod: ^4.4.3
     zustand: ^5.0.14
+
+minimumReleaseAgeExclude:
+    - "@ant-design/cli@6.5.0"

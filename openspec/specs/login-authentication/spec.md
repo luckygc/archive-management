@@ -12,7 +12,7 @@
 
 #### Scenario: 创建安全验证挑战
 
-- **WHEN** 客户端请求 `POST /api/v1/auth/cap/challenge`
+- **WHEN** 客户端请求 `POST /api/v1/auth/cap-challenges`
 - **THEN** 系统 SHALL 创建一条 `am_auth_cap_challenge` 挑战记录
 - **AND** 响应 SHALL 包含 `challenge`、`token` 和 `expires`
 - **AND** `challenge` SHALL 包含挑战数量 `c`、挑战尺寸 `s` 和难度 `d`
@@ -21,7 +21,7 @@
 #### Scenario: 兑换安全验证令牌
 
 - **GIVEN** 客户端持有未过期的 challenge token
-- **WHEN** 客户端请求 `POST /api/v1/auth/cap/redeem` 并提交 token 与完整 solutions
+- **WHEN** 客户端请求 `POST /api/v1/auth/cap-tokens` 并提交 token 与完整 solutions
 - **THEN** 系统 SHALL 校验每个 solution 是否匹配 challenge 规则
 - **AND** 系统 SHALL 删除已提交的 challenge token
 - **AND** 校验成功时 SHALL 创建一条 `am_auth_cap_token` 令牌记录
@@ -37,15 +37,16 @@
 
 #### Scenario: 校验安全验证令牌
 
-- **WHEN** 客户端请求 `POST /api/v1/auth/cap/validateToken`
+- **WHEN** 客户端请求 `POST /api/v1/auth/cap-tokens:validate`
 - **THEN** 系统 SHALL 按提交的 token 返回 `{ "success": true }` 或 `{ "success": false }`
 - **AND** 当 `keepToken` 为 `true` 时，系统 SHALL 只检查令牌有效性，不消费令牌
 - **AND** 当 `keepToken` 不为 `true` 时，系统 SHALL 消费一次性令牌
 
-#### Scenario: CAP 协议端点例外
+#### Scenario: CAP widget 请求适配
 
-- **THEN** CAP 安全验证端点 SHALL 保持 CAP widget 约定的 `/api/v1/auth/cap/challenge`、`/api/v1/auth/cap/redeem` 和 `/api/v1/auth/cap/validateToken`
-- **AND** 这些端点 SHALL NOT 作为项目自有 API 动作路径命名示例
+- **WHEN** CAP widget 按内部协议请求 `challenge`、`redeem` 或 `validateToken`
+- **THEN** 浏览器端 SHALL 通过 CAP 自定义 fetch 改写到 `/api/v1/auth/cap-challenges`、`/api/v1/auth/cap-tokens` 或 `/api/v1/auth/cap-tokens:validate`
+- **AND** 服务端 SHALL NOT 暴露 `/api/v1/auth/cap/challenge`、`/api/v1/auth/cap/redeem` 或 `/api/v1/auth/cap/validateToken`
 
 ### Requirement: 账号密码登录
 

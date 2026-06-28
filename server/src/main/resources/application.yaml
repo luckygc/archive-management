@@ -113,27 +113,6 @@ spring:
                     # Spring Modulith 原生事件发布注册表表结构由框架初始化，不作为项目自有表维护。
                     enabled: true
 
-cosid:
-    # 启用 CosId，为高数据量档案记录和文件实体提供插入前 Long ID。
-    enabled: true
-    namespace: archive-management
-    machine:
-        # 机器号通过业务库 cosid_machine 表分配。
-        enabled: true
-        # 默认不使用本机持久化机器号状态，避免本地重建数据库后残留的 ~/.cosid-machine-state 与 cosid_machine 表不一致。
-        stable: false
-        machine-bit: 10
-        instance-id: archive-management-8080
-        distributor:
-            type: jdbc
-    snowflake:
-        # 共享 Snowflake 生成器供 Hibernate 标识生成器使用。
-        enabled: true
-        share:
-            enabled: true
-            namespace: archive-management
-            machine-bit: 10
-
 server:
     # HTTP 服务端口。
     port: 8080

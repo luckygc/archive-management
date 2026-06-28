@@ -4,7 +4,9 @@ import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
+import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 
@@ -13,7 +15,6 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import github.luckygc.am.common.audit.CreationAuditable;
 import github.luckygc.am.common.audit.UpdateAuditable;
-import github.luckygc.am.common.persistence.CosIdGeneratedValue;
 
 import lombok.Data;
 
@@ -22,7 +23,13 @@ import lombok.Data;
 @Table(name = "am_archive_physical_object")
 public class ArchivePhysicalObject implements CreationAuditable, UpdateAuditable {
 
-    @Id @CosIdGeneratedValue private Long id;
+    @Id
+    @GeneratedValue(generator = "am_archive_physical_object_id_seq")
+    @SequenceGenerator(
+            name = "am_archive_physical_object_id_seq",
+            sequenceName = "am_archive_physical_object_id_seq",
+            allocationSize = 1000)
+    private Long id;
 
     @Column(name = "archive_record_id", nullable = false)
     private Long archiveRecordId;

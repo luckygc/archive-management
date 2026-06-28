@@ -81,7 +81,7 @@ class GlobalExceptionHandlerTests {
     @DisplayName("CAP 验证异常输出未认证 ProblemDetail")
     void powChallengeExceptionUsesUnauthenticatedProblemDetail() {
         MockHttpServletRequest request =
-                new MockHttpServletRequest("POST", "/api/v1/auth/cap/validateToken");
+                new MockHttpServletRequest("POST", "/api/v1/auth/cap-tokens:validate");
 
         var response =
                 handler.handleResponseStatusException(
@@ -94,7 +94,7 @@ class GlobalExceptionHandlerTests {
         assertThat(response.getBody().getProperties())
                 .containsEntry("code", "UNAUTHENTICATED")
                 .containsEntry("reason", "UNAUTHENTICATED_ERROR")
-                .containsEntry("path", "/api/v1/auth/cap/validateToken");
+                .containsEntry("path", "/api/v1/auth/cap-tokens:validate");
     }
 
     @Test

@@ -27,7 +27,6 @@
         <maven-enforcer-plugin.version>3.6.2</maven-enforcer-plugin.version>
         <spotless.version>3.7.0</spotless.version>
         <testcontainers.version>2.0.3</testcontainers.version>
-        <cosid.version>2.13.1</cosid.version>
     </properties>
 
     <dependencies>
@@ -93,17 +92,6 @@
             <groupId>org.flowable</groupId>
             <artifactId>flowable-spring-boot-starter-process</artifactId>
             <version>${flowable.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>me.ahoo.cosid</groupId>
-            <artifactId>cosid-spring-boot-starter</artifactId>
-            <version>${cosid.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>me.ahoo.cosid</groupId>
-            <artifactId>cosid-jdbc</artifactId>
-            <version>${cosid.version}</version>
-            <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>org.mybatis.spring.boot</groupId>

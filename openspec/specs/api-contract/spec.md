@@ -93,14 +93,15 @@ Controller SHALL 显式声明完整 URL。
 - **WHEN** API 返回稳定资源表示
 - **THEN** 资源表示 SHOULD 优先使用 AIP-122/AIP-148 的字符串 `name` 作为主标识
 
-### Requirement: 第三方协议例外
+### Requirement: 第三方协议适配
 
-第三方组件或外部协议强制要求的回调路径 SHALL 限制在适配层。
+第三方组件或外部协议强制要求的非 AIP 路径 SHALL 在客户端或适配层改写，不作为项目自有服务端 API 暴露。
 
-#### Scenario: 保留 CAP widget 端点
+#### Scenario: 适配 CAP widget 端点
 
 - **WHEN** CAP widget 要求固定回调路径
-- **THEN** 系统 MAY 保留 `/api/v1/auth/cap/challenge`、`/api/v1/auth/cap/redeem` 和 `/api/v1/auth/cap/validateToken`
-- **AND** 这些端点 SHALL NOT 作为项目自有 API 命名风格示例
+- **THEN** 浏览器端 SHALL 通过 CAP 自定义 fetch 将 widget 内部请求改写为项目 AIP 风格 API
+- **AND** 服务端 SHALL 暴露 `POST /api/v1/auth/cap-challenges`、`POST /api/v1/auth/cap-tokens` 和 `POST /api/v1/auth/cap-tokens:validate`
+- **AND** 服务端 SHALL NOT 暴露 `/api/v1/auth/cap/challenge`、`/api/v1/auth/cap/redeem` 或 `/api/v1/auth/cap/validateToken`
 - **AND** 服务端错误响应仍 SHALL 使用项目统一 `ProblemDetail` 结构
-- **AND** 浏览器端 MAY 通过 CAP 自定义 fetch 将 `ProblemDetail` 转换为 cap-widget 可识别的错误 JSON
+- **AND** 浏览器端 MAY 将 `ProblemDetail` 转换为 cap-widget 可识别的错误 JSON

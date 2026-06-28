@@ -70,7 +70,13 @@ public class SecurityConfig {
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http.cors(this::configureCors)
-                .csrf(csrf -> csrf.spa().ignoringRequestMatchers("/api/v1/auth/cap/**"))
+                .csrf(
+                        csrf ->
+                                csrf.spa()
+                                        .ignoringRequestMatchers(
+                                                "/api/v1/auth/cap-challenges",
+                                                "/api/v1/auth/cap-tokens",
+                                                "/api/v1/auth/cap-tokens:validate"))
                 .securityContext(this::configureSecurityContext)
                 .authorizeHttpRequests(this::configureAuthorization)
                 .addFilterBefore(
@@ -101,7 +107,11 @@ public class SecurityConfig {
                 .permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/auth:login")
                 .permitAll()
-                .requestMatchers("/api/v1/auth/cap/**")
+                .requestMatchers(
+                        HttpMethod.POST,
+                        "/api/v1/auth/cap-challenges",
+                        "/api/v1/auth/cap-tokens",
+                        "/api/v1/auth/cap-tokens:validate")
                 .permitAll()
                 .requestMatchers("/actuator/**")
                 .hasRole(authorizationProperties.getActuatorRoleName())

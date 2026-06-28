@@ -15,17 +15,17 @@ public class PowChallengeController {
         this.powChallengeService = powChallengeService;
     }
 
-    @PostMapping("/api/v1/auth/cap/challenge")
+    @PostMapping("/api/v1/auth/cap-challenges")
     public PowChallengeService.CapChallengeResponse challenge() {
         return powChallengeService.createChallenge();
     }
 
-    @PostMapping("/api/v1/auth/cap/redeem")
+    @PostMapping("/api/v1/auth/cap-tokens")
     public Map<String, Object> redeem(@RequestBody PowChallengeService.CapRedeemCommand command) {
         return powChallengeService.redeemChallenge(command);
     }
 
-    @PostMapping("/api/v1/auth/cap/validateToken")
+    @PostMapping("/api/v1/auth/cap-tokens:validate")
     public Map<String, Object> validateToken(
             @RequestBody PowChallengeService.CapValidateCommand command) {
         return powChallengeService.validateToken(

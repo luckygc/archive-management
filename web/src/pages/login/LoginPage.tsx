@@ -1,6 +1,6 @@
 import { Button, Card, Form, Input, Typography } from "antd";
 import { errorMessage } from "@archive-management/frontend-core/api";
-import { useCapVerification } from "@archive-management/frontend-core/cap";
+import { capWidgetApiEndpoint, useCapVerification } from "@archive-management/frontend-core/cap";
 import { useSessionStore } from "@archive-management/frontend-core/auth";
 import { createElement, forwardRef, useEffect, useRef, useState } from "react";
 import type { HTMLAttributes } from "react";
@@ -94,7 +94,7 @@ export function LoginPage() {
                     <div className="am-login__pow">
                         <CapWidgetElement
                             ref={capWidgetRef}
-                            data-cap-api-endpoint="/api/v1/auth/cap/"
+                            data-cap-api-endpoint={capWidgetApiEndpoint()}
                             data-cap-hidden-field-name="powToken"
                             data-cap-i18n-error-aria-label="安全验证失败"
                             data-cap-i18n-error-label="验证失败"

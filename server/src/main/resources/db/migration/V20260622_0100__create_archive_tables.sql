@@ -153,9 +153,24 @@ comment on column am_archive_field.created_at is '创建时间';
 comment on column am_archive_field.updated_by is '更新人用户 ID';
 comment on column am_archive_field.updated_at is '更新时间';
 
+create sequence am_archive_record_id_seq
+    as bigint
+    start with 1000000
+    increment by 1000;
+
+create sequence am_archive_record_electronic_file_id_seq
+    as bigint
+    start with 1000000
+    increment by 1000;
+
+create sequence am_archive_physical_object_id_seq
+    as bigint
+    start with 1000000
+    increment by 1000;
+
 create table am_archive_record
 (
-    id             bigint primary key,
+    id             bigint primary key default nextval('am_archive_record_id_seq'),
     archive_level  varchar(30)  not null default 'item',
     parent_id      bigint references am_archive_record (id),
     fonds_code     varchar(100) not null,
@@ -226,7 +241,7 @@ comment on column am_archive_record.updated_at is '更新时间';
 
 create table am_archive_record_electronic_file
 (
-    id                bigint primary key,
+    id                bigint primary key default nextval('am_archive_record_electronic_file_id_seq'),
     archive_record_id bigint      not null references am_archive_record (id),
     storage_object_id bigint      not null references am_storage_object (id),
     usage_type        varchar(50) not null default 'DEFAULT',
@@ -255,7 +270,7 @@ comment on column am_archive_record_electronic_file.created_at is '创建时间'
 
 create table am_archive_physical_object
 (
-    id                bigint primary key,
+    id                bigint primary key default nextval('am_archive_physical_object_id_seq'),
     archive_record_id bigint      not null references am_archive_record (id),
     physical_status   varchar(50) not null default 'NONE',
     box_no            varchar(100),

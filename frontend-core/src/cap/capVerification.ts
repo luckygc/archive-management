@@ -4,6 +4,13 @@ import type { CapErrorEvent, CapSolveEvent, CapWidget } from "cap-widget";
 
 const CSRF_COOKIE_NAME = "XSRF-TOKEN";
 const CSRF_HEADER_NAME = "X-XSRF-TOKEN";
+const CAP_WIDGET_API_ENDPOINT = "/api/v1/auth/cap-challenges/";
+const CAP_WIDGET_ENDPOINT_PREFIX = "/api/v1/auth/cap-challenges/";
+const CAP_WIDGET_ACTION_PATHS: Record<string, string> = {
+    challenge: "/api/v1/auth/cap-challenges",
+    redeem: "/api/v1/auth/cap-tokens",
+    validateToken: "/api/v1/auth/cap-tokens:validate",
+};
 
 interface ProblemDetailBody {
     title?: string;
@@ -55,11 +62,15 @@ export function useCapVerification(capWidgetRef: RefObject<CapWidget | null>) {
 }
 
 export async function capFetch(input: RequestInfo | URL, init: RequestInit = {}) {
-    const response = await fetch(input, withCredentialsAndCsrf(init));
+    const response = await fetch(rewriteCapWidgetRequest(input), withCredentialsAndCsrf(init));
     if (response.ok) {
         return response;
     }
     return capErrorResponse(response);
+}
+
+export function capWidgetApiEndpoint() {
+    return CAP_WIDGET_API_ENDPOINT;
 }
 
 export function installCapFetch() {
@@ -83,6 +94,36 @@ function withCredentialsAndCsrf(init: RequestInit) {
         credentials: "include" as RequestCredentials,
         headers,
     };
+}
+
+function rewriteCapWidgetRequest(input: RequestInfo | URL) {
+    if (input instanceof Request) {
+        const rewrittenUrl = rewriteCapWidgetUrl(input.url);
+        const requestUrl = new URL(rewrittenUrl.toString(), input.url).toString();
+        return requestUrl === input.url ? input : new Request(requestUrl, input);
+    }
+
+    if (input instanceof URL) {
+        return new URL(rewriteCapWidgetUrl(input));
+    }
+
+    return rewriteCapWidgetUrl(input);
+}
+
+function rewriteCapWidgetUrl(input: string | URL) {
+    const origin = typeof window === "undefined" ? "http://localhost" : window.location.origin;
+    const parsedUrl = new URL(input, origin);
+    if (!parsedUrl.pathname.startsWith(CAP_WIDGET_ENDPOINT_PREFIX)) {
+        return input instanceof URL ? parsedUrl : input;
+    }
+    const action = parsedUrl.pathname.slice(CAP_WIDGET_ENDPOINT_PREFIX.length);
+    const mappedPath = CAP_WIDGET_ACTION_PATHS[action];
+    if (mappedPath) {
+        parsedUrl.pathname = mappedPath;
+    }
+    return input instanceof URL
+        ? parsedUrl
+        : `${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
 }
 
 async function capErrorResponse(response: Response) {
