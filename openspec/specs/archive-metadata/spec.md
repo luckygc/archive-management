@@ -83,13 +83,13 @@
 - **AND** 动态表 SHALL 固定包含 `id`、`deleted_flag`、`created_at` 和 `updated_at`
 - **AND** 动态表 SHALL 使用 `id` 作为主键并引用统一档案记录主表 ID
 
-#### Scenario: 分层创建著录和实物动态表
+#### Scenario: 分层创建电子和实物动态表
 
 - **WHEN** 档案分类启用 `item_only` 管理模式
-- **THEN** 系统 SHALL 至少支持卷内条目的著录字段动态表
+- **THEN** 系统 SHALL 至少支持卷内条目的电子字段动态表
 - **AND** 系统 SHALL 在存在卷内实物字段时支持独立的卷内实物信息动态表
 - **WHEN** 档案分类启用 `volume_item` 管理模式
-- **THEN** 系统 SHALL 支持案卷著录、案卷实物、卷内著录和卷内实物四类动态表
+- **THEN** 系统 SHALL 支持案卷电子、案卷实物、卷内电子和卷内实物四类动态表
 - **AND** 系统 SHALL NOT 将案卷和卷内数据混写到同一张分类动态表
 - **AND** 系统 SHALL NOT 强制案卷和卷内共用同一套实物字段
 
@@ -109,7 +109,7 @@
 - **WHEN** 客户端为档案分类新增字段
 - **THEN** 字段定义 SHALL 保存 `archive_level`
 - **AND** 字段定义 SHALL 保存 `field_scope`
-- **AND** `field_scope=metadata` SHALL 表示案卷或卷内著录字段
+- **AND** `field_scope=metadata` SHALL 表示案卷或卷内电子字段
 - **AND** `field_scope=physical` SHALL 表示案卷或卷内实物信息字段
 
 #### Scenario: 创建字段定义
@@ -154,7 +154,9 @@
 
 - **WHEN** 客户端为某个档案分类提交唯一规则名称、编码和字段组合
 - **THEN** 系统 SHALL 保存唯一规则
-- **AND** 系统 SHALL 只允许选择该分类下未删除的动态字段
+- **AND** 系统 SHALL 只允许选择该分类下未删除、当前约束层级一致且 `field_scope=metadata` 的案卷或卷内电子字段
+- **AND** 系统 SHALL NOT 允许实物信息字段参与唯一校验
+- **AND** 如果分类未启用案卷管理，系统 SHALL NOT 允许创建案卷层级唯一规则
 - **AND** 系统 SHALL 按客户端提交的字段顺序保存规则字段
 
 #### Scenario: 禁用唯一规则
@@ -177,14 +179,14 @@
 
 #### Scenario: 创建动态字段唯一索引
 
-- **WHEN** 唯一规则包含一个或多个动态字段
+- **WHEN** 唯一规则包含一个或多个案卷或卷内电子字段
 - **THEN** 系统 SHALL 在该分类动态表上按规则字段顺序创建唯一索引
 - **AND** 唯一索引 SHALL 使用 `where deleted_flag = false` 只约束未删除动态行
 
 #### Scenario: 使用动态字段组合表达范围唯一
 
 - **WHEN** 客户端需要部门内或其他业务范围内唯一
-- **THEN** 系统 SHALL 允许客户端选择部门等范围字段和业务字段共同组成唯一规则
+- **THEN** 系统 SHALL 允许客户端选择部门等电子范围字段和电子业务字段共同组成唯一规则
 - **AND** 系统 SHALL NOT 提供全宗固定字段特殊唯一范围开关
 
 #### Scenario: 空值唯一语义

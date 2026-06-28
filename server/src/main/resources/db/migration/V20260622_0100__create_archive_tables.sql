@@ -131,7 +131,7 @@ comment on table am_archive_field is '档案分类字段定义表';
 comment on column am_archive_field.id is '主键';
 comment on column am_archive_field.category_id is '档案分类 ID';
 comment on column am_archive_field.archive_level is '字段适用层级：volume 案卷，item 卷内条目';
-comment on column am_archive_field.field_scope is '字段域：metadata 著录字段，physical 实物信息字段';
+comment on column am_archive_field.field_scope is '字段域：metadata 电子字段，physical 实物信息字段';
 comment on column am_archive_field.field_code is '字段编码';
 comment on column am_archive_field.field_name is '字段名称';
 comment on column am_archive_field.field_type is '字段类型：text 文本，integer 整数，decimal 小数，date 日期，datetime 日期时间';

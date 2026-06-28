@@ -456,7 +456,7 @@ public class ArchiveMetadataService {
             Long categoryId, ArchiveUniqueConstraintRequest request, Long userId) {
         requireId(categoryId);
         ArchiveCategoryDto category = getCategory(categoryId);
-        UniqueConstraintValues values = validateUniqueConstraintRequest(categoryId, request);
+        UniqueConstraintValues values = validateUniqueConstraintRequest(category, request);
         String indexName =
                 uniqueConstraintIndexName(
                         category.categoryCode(), values.archiveLevel(), values.constraintCode());
@@ -493,7 +493,7 @@ public class ArchiveMetadataService {
             throw notFound("唯一约束不存在");
         }
         dropIndexIfExists(current.indexName());
-        UniqueConstraintValues values = validateUniqueConstraintRequest(categoryId, request);
+        UniqueConstraintValues values = validateUniqueConstraintRequest(category, request);
         String indexName =
                 uniqueConstraintIndexName(
                         category.categoryCode(), values.archiveLevel(), values.constraintCode());
@@ -1084,7 +1084,7 @@ public class ArchiveMetadataService {
     }
 
     private UniqueConstraintValues validateUniqueConstraintRequest(
-            Long categoryId, ArchiveUniqueConstraintRequest request) {
+            ArchiveCategoryDto category, ArchiveUniqueConstraintRequest request) {
         validateRequired(request.constraintCode(), "约束编码不能为空");
         validateRequired(request.constraintName(), "约束名称不能为空");
         String constraintCode = request.constraintCode().trim();
@@ -1099,8 +1099,9 @@ public class ArchiveMetadataService {
             throw badRequest("唯一约束字段不能重复");
         }
         ArchiveLevel archiveLevel = normalizeArchiveLevel(request.archiveLevel());
+        ensureArchiveLevelAllowed(category, archiveLevel);
         Map<Long, ArchiveFieldDto> fieldsById =
-                listFields(categoryId).stream()
+                listFields(category.id()).stream()
                         .collect(
                                 java.util.stream.Collectors.toMap(
                                         ArchiveFieldDto::id, field -> field));
@@ -1113,7 +1114,7 @@ public class ArchiveMetadataService {
                 throw badRequest("唯一约束字段必须和约束层级一致");
             }
             if (field.fieldScope() != ArchiveFieldScope.metadata) {
-                throw badRequest("唯一约束字段必须是著录字段");
+                throw badRequest("唯一约束字段必须是案卷或卷内电子字段");
             }
         }
         return new UniqueConstraintValues(
