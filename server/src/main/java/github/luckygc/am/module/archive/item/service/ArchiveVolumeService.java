@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.lang3.StringUtils;
+import org.jspecify.annotations.Nullable;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.support.JdbcUtils;
 import org.springframework.stereotype.Service;
@@ -71,17 +73,37 @@ public class ArchiveVolumeService {
         ArchiveFondsDto fonds = archiveMetadataService.getEnabledFondsByCode(request.fondsCode());
         int archiveYear =
                 request.archiveYear() == null ? Year.now().getValue() : request.archiveYear();
-        Long id =
-                archiveMapper.insertArchiveVolume(
-                        fonds.fondsCode(),
-                        fonds.fondsName(),
-                        category.categoryCode(),
-                        category.categoryName(),
-                        StringUtils.trimToNull(request.archiveNo()),
-                        StringUtils.defaultIfBlank(request.electronicStatus(), "DRAFT"),
-                        archiveYear,
-                        userId);
+        String archiveNo = StringUtils.trimToNull(request.archiveNo());
+        ensureVolumeArchiveNoUnique(category.categoryCode(), archiveNo);
+        Long id;
+        try {
+            id =
+                    archiveMapper.insertArchiveVolume(
+                            fonds.fondsCode(),
+                            fonds.fondsName(),
+                            category.categoryCode(),
+                            category.categoryName(),
+                            archiveNo,
+                            StringUtils.defaultIfBlank(request.electronicStatus(), "DRAFT"),
+                            archiveYear,
+                            userId);
+        } catch (DuplicateKeyException exception) {
+            throw duplicateArchiveNo();
+        }
         return getVolume(id);
+    }
+
+    private void ensureVolumeArchiveNoUnique(String categoryCode, @Nullable String archiveNo) {
+        if (StringUtils.isBlank(archiveNo)) {
+            return;
+        }
+        if (archiveMapper.countArchiveVolumesByArchiveNo(categoryCode, archiveNo, null) > 0) {
+            throw duplicateArchiveNo();
+        }
+    }
+
+    private BadRequestException duplicateArchiveNo() {
+        return new BadRequestException("档号已存在", "archiveNo", "档号已存在");
     }
 
     @Transactional

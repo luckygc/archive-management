@@ -34,19 +34,29 @@
 
 ### Requirement: 手工档号与唯一校验
 
-系统 SHALL 在 MVP 中支持手工档号保存，并通过分类唯一规则执行唯一性。
+系统 SHALL 在 MVP 中支持手工档号保存，并分别通过主表内建唯一约束和分类动态唯一规则执行唯一性。
 
 #### Scenario: 保存手工档号
 
-- **WHEN** 客户端创建或更新 `ArchiveItem` 或 `ArchiveVolume`
+- **WHEN** 客户端创建 `ArchiveVolume` 或创建、更新 `ArchiveItem`
 - **THEN** 系统 SHALL 允许客户端提交 `archive_no`
 - **AND** 系统 SHALL 保存该档号为档案固定字段
+- **AND** 后续新增 `ArchiveVolume` 更新能力时，系统 SHALL 对该更新能力复用相同的手工档号校验
 
-#### Scenario: 校验档号唯一性
+#### Scenario: 校验业务档号组成字段唯一性
 
-- **WHEN** 分类配置了包含档号或档号组成字段的唯一规则
+- **WHEN** 分类配置了包含业务档号组成字段的动态唯一规则
 - **THEN** 系统 SHALL 按该唯一规则拒绝重复档案
+- **AND** 系统 SHALL NOT 将固定字段 `archive_no` 作为动态字段参与分类唯一规则
 - **AND** 系统 SHALL NOT 在 MVP 中要求启用自动档号规则引擎
+
+#### Scenario: 校验手工档号固定字段唯一性
+
+- **WHEN** 客户端在同一分类、同一档案对象层级下创建未删除 `ArchiveVolume` 或创建、更新未删除 `ArchiveItem`，并提交非空 `archive_no`
+- **THEN** 系统 SHALL 拒绝与未删除档案重复的 `archive_no`
+- **AND** 系统 SHALL 使用 `ArchiveItem` / `ArchiveVolume` 主表内建部分唯一约束分别校验档号唯一性
+- **AND** 系统 SHALL 允许已删除档案占用的 `archive_no` 被后续档案重新使用
+- **AND** 后续新增 `ArchiveVolume` 更新能力时，系统 SHALL 对该更新能力复用相同的主表唯一校验
 
 ### Requirement: 文件绑定和下载路由
 

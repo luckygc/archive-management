@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+import org.jspecify.annotations.Nullable;
 
 @Mapper
 public interface ArchiveMapper {
@@ -66,6 +67,11 @@ public interface ArchiveMapper {
             @Param("archiveYear") int archiveYear,
             @Param("userId") Long userId);
 
+    int countArchiveItemsByArchiveNo(
+            @Param("categoryCode") String categoryCode,
+            @Param("archiveNo") String archiveNo,
+            @Param("excludedId") @Nullable Long excludedId);
+
     int insertDynamicRecord(
             @Param("tableName") String tableName,
             @Param("columns") String columns,
@@ -110,6 +116,11 @@ public interface ArchiveMapper {
             @Param("electronicStatus") String electronicStatus,
             @Param("archiveYear") int archiveYear,
             @Param("userId") Long userId);
+
+    int countArchiveVolumesByArchiveNo(
+            @Param("categoryCode") String categoryCode,
+            @Param("archiveNo") String archiveNo,
+            @Param("excludedId") @Nullable Long excludedId);
 
     int insertItemAudit(
             @Param("sourceTableName") String sourceTableName,

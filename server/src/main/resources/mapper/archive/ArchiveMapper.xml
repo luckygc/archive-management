@@ -263,6 +263,17 @@
         returning id
     </select>
 
+    <select id="countArchiveItemsByArchiveNo" resultType="int">
+        select count(1)
+        from am_archive_item
+        where deleted_flag = false
+          and category_code = #{categoryCode}
+          and archive_no = #{archiveNo}
+        <if test="excludedId != null">
+          and id != #{excludedId}
+        </if>
+    </select>
+
     <insert id="insertDynamicRecord">
         insert into ${tableName} (${columns})
         values
@@ -377,6 +388,17 @@
             (#{fondsCode}, #{fondsName}, #{categoryCode}, #{categoryName},
              #{archiveNo}, #{electronicStatus}, #{archiveYear}, #{userId}, #{userId})
         returning id
+    </select>
+
+    <select id="countArchiveVolumesByArchiveNo" resultType="int">
+        select count(1)
+        from am_archive_volume
+        where deleted_flag = false
+          and category_code = #{categoryCode}
+          and archive_no = #{archiveNo}
+        <if test="excludedId != null">
+          and id != #{excludedId}
+        </if>
     </select>
 
     <insert id="insertItemAudit">

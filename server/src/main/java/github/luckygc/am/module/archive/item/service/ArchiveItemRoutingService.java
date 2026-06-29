@@ -534,6 +534,8 @@ public class ArchiveItemRoutingService {
         int archiveYear =
                 request.archiveYear() == null ? Year.now().getValue() : request.archiveYear();
         validateArchiveYear(archiveYear);
+        String archiveNo = StringUtils.trimToNull(request.archiveNo());
+        ensureItemArchiveNoUnique(category.categoryCode(), archiveNo, null);
         Map<String, @Nullable Object> convertedDynamicFields =
                 convertDynamicFields(fields, dynamicFields);
         Map<String, @Nullable Object> convertedPhysicalFields =
@@ -541,18 +543,23 @@ public class ArchiveItemRoutingService {
                         ? Map.of()
                         : convertDynamicFields(physicalFields, requestPhysicalFields);
 
-        Long recordId =
-                archiveMapper.insertArchiveItem(
-                        archiveLevel.value(),
-                        volumeId,
-                        fonds.fondsCode(),
-                        fonds.fondsName(),
-                        category.categoryCode(),
-                        category.categoryName(),
-                        StringUtils.trimToNull(request.archiveNo()),
-                        StringUtils.defaultIfBlank(request.electronicStatus(), "DRAFT"),
-                        archiveYear,
-                        userId);
+        Long recordId;
+        try {
+            recordId =
+                    archiveMapper.insertArchiveItem(
+                            archiveLevel.value(),
+                            volumeId,
+                            fonds.fondsCode(),
+                            fonds.fondsName(),
+                            category.categoryCode(),
+                            category.categoryName(),
+                            archiveNo,
+                            StringUtils.defaultIfBlank(request.electronicStatus(), "DRAFT"),
+                            archiveYear,
+                            userId);
+        } catch (DuplicateKeyException exception) {
+            throw duplicateArchiveNo();
+        }
         try {
             insertDynamicRecord(tableName, recordId, fields, convertedDynamicFields);
         } catch (DuplicateKeyException | MyBatisSystemException exception) {
@@ -653,6 +660,8 @@ public class ArchiveItemRoutingService {
         int archiveYear =
                 request.archiveYear() == null ? before.item().archiveYear() : request.archiveYear();
         validateArchiveYear(archiveYear);
+        String archiveNo = StringUtils.trimToNull(request.archiveNo());
+        ensureItemArchiveNoUnique(before.item().categoryCode(), archiveNo, id);
         Map<String, @Nullable Object> requestDynamicFields =
                 request.dynamicFields() == null ? before.dynamicFields() : request.dynamicFields();
         Map<String, @Nullable Object> convertedDynamicFields =
@@ -662,17 +671,22 @@ public class ArchiveItemRoutingService {
                 requestPhysicalFields == null
                         ? Map.of()
                         : convertDynamicFields(before.physicalFields(), requestPhysicalFields);
-        int updated =
-                archiveMapper.updateArchiveItem(
-                        id,
-                        volumeId,
-                        fonds.fondsCode(),
-                        fonds.fondsName(),
-                        StringUtils.trimToNull(request.archiveNo()),
-                        StringUtils.defaultIfBlank(
-                                request.electronicStatus(), before.item().electronicStatus()),
-                        archiveYear,
-                        userId);
+        int updated;
+        try {
+            updated =
+                    archiveMapper.updateArchiveItem(
+                            id,
+                            volumeId,
+                            fonds.fondsCode(),
+                            fonds.fondsName(),
+                            archiveNo,
+                            StringUtils.defaultIfBlank(
+                                    request.electronicStatus(), before.item().electronicStatus()),
+                            archiveYear,
+                            userId);
+        } catch (DuplicateKeyException exception) {
+            throw duplicateArchiveNo();
+        }
         if (updated == 0) {
             throw badRequest("档案条目已锁定，不能修改");
         }
@@ -1258,6 +1272,20 @@ public class ArchiveItemRoutingService {
                     "archiveYear",
                     "年度必须在 1 到 " + nextYear + " 之间");
         }
+    }
+
+    private void ensureItemArchiveNoUnique(
+            String categoryCode, @Nullable String archiveNo, @Nullable Long excludedId) {
+        if (StringUtils.isBlank(archiveNo)) {
+            return;
+        }
+        if (archiveMapper.countArchiveItemsByArchiveNo(categoryCode, archiveNo, excludedId) > 0) {
+            throw duplicateArchiveNo();
+        }
+    }
+
+    private BadRequestException duplicateArchiveNo() {
+        return badRequest("档号已存在", "archiveNo", "档号已存在");
     }
 
     private Map<String, @Nullable Object> convertDynamicFields(

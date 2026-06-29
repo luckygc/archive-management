@@ -214,6 +214,9 @@ create index idx_am_archive_volume_random_bucket_active
 create index idx_am_archive_volume_sort_active
     on am_archive_volume (sort_order, id)
     where deleted_flag = false;
+create unique index uk_am_archive_volume_category_archive_no_active
+    on am_archive_volume (category_code, archive_no)
+    where deleted_flag = false;
 create index idx_am_archive_volume_created_at on am_archive_volume (created_at);
 create index idx_am_archive_volume_deleted_at
     on am_archive_volume (deleted_at desc, id desc)
@@ -293,6 +296,9 @@ create index idx_am_archive_item_random_bucket_active
     where deleted_flag = false;
 create index idx_am_archive_item_sort_active
     on am_archive_item (sort_order, id)
+    where deleted_flag = false;
+create unique index uk_am_archive_item_category_archive_no_active
+    on am_archive_item (category_code, archive_no)
     where deleted_flag = false;
 create index idx_am_archive_item_created_at on am_archive_item (created_at);
 create index idx_am_archive_item_deleted_at

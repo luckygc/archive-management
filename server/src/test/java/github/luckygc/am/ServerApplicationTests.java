@@ -109,9 +109,23 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
                 jdbcTemplate.queryForObject(
                         "select to_regclass('am_archive_volume')::text", String.class));
         Assertions.assertEquals(
+                "uk_am_archive_volume_category_archive_no_active",
+                jdbcTemplate.queryForObject(
+                        "select to_regclass('uk_am_archive_volume_category_archive_no_active')::text",
+                        String.class));
+        Assertions.assertTrue(
+                uniqueIndexUsesActiveRowsOnly("uk_am_archive_volume_category_archive_no_active"));
+        Assertions.assertEquals(
                 "am_archive_item_relation",
                 jdbcTemplate.queryForObject(
                         "select to_regclass('am_archive_item_relation')::text", String.class));
+        Assertions.assertEquals(
+                "uk_am_archive_item_category_archive_no_active",
+                jdbcTemplate.queryForObject(
+                        "select to_regclass('uk_am_archive_item_category_archive_no_active')::text",
+                        String.class));
+        Assertions.assertTrue(
+                uniqueIndexUsesActiveRowsOnly("uk_am_archive_item_category_archive_no_active"));
         Assertions.assertEquals(
                 "am_archive_item_line_table",
                 jdbcTemplate.queryForObject(
@@ -169,6 +183,19 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
                                 + ")",
                         Boolean.class,
                         relationName));
+    }
+
+    private boolean uniqueIndexUsesActiveRowsOnly(String indexName) {
+        String indexDefinition =
+                jdbcTemplate.queryForObject(
+                        "select indexdef from pg_indexes "
+                                + "where schemaname = current_schema() "
+                                + "and indexname = ?",
+                        String.class,
+                        indexName);
+        return indexDefinition != null
+                && indexDefinition.contains("UNIQUE")
+                && indexDefinition.contains("WHERE (deleted_flag = false)");
     }
 
     @Test
