@@ -1,4 +1,4 @@
-import type { CurrentUserDto, LoginCommand } from "../types/auth";
+import type { CurrentUserDto, LoginCommand } from "../types";
 import { request } from "./client";
 
 export function login(command: LoginCommand) {

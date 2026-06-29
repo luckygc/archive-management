@@ -26,27 +26,27 @@ class FileStorageConfiguration {
         boolean objectStorageConfigured = isObjectStorageConfigured(properties.getObject());
         if (objectStorageConfigured) {
             backends.add(
-                    new S3CompatibleFileStorageService(StorageType.s3, properties.getObject()));
+                    new S3CompatibleFileStorageService(StorageType.S3, properties.getObject()));
             backends.add(
-                    new S3CompatibleFileStorageService(StorageType.minio, properties.getObject()));
+                    new S3CompatibleFileStorageService(StorageType.MINIO, properties.getObject()));
             backends.add(
-                    new S3CompatibleFileStorageService(StorageType.cos, properties.getObject()));
+                    new S3CompatibleFileStorageService(StorageType.COS, properties.getObject()));
             backends.add(
-                    new S3CompatibleFileStorageService(StorageType.oss, properties.getObject()));
+                    new S3CompatibleFileStorageService(StorageType.OSS, properties.getObject()));
             backends.add(
-                    new S3CompatibleFileStorageService(StorageType.obs, properties.getObject()));
+                    new S3CompatibleFileStorageService(StorageType.OBS, properties.getObject()));
         }
         if (backends.isEmpty()) {
             throw new StorageException("至少需要配置一种文件存储后端");
         }
-        if (defaultStorageType != StorageType.local && !objectStorageConfigured) {
+        if (defaultStorageType != StorageType.LOCAL && !objectStorageConfigured) {
             throw new StorageException(
                     "已选择文件存储 adapter "
                             + defaultStorageType
                             + "，但对象存储配置不完整；请补齐 archive.storage.object 配置");
         }
         String defaultBucketName =
-                defaultStorageType == StorageType.local
+                defaultStorageType == StorageType.LOCAL
                         ? requireText(
                                 properties.getActiveLocalBucket(),
                                 "archive.storage.active-local-bucket")
@@ -62,7 +62,7 @@ class FileStorageConfiguration {
             throw new StorageException(
                     "文件存储 adapter 不支持: "
                             + properties.getAdapter()
-                            + "，支持 local、s3、minio、cos、oss、obs");
+                            + "，支持 LOCAL、S3、MINIO、COS、OSS、OBS");
         }
     }
 

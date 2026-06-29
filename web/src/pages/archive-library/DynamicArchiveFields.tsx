@@ -45,27 +45,27 @@ export function normalizeArchiveRecordFormValues(values: unknown) {
 }
 
 function renderFieldControl(field: ArchiveFieldDto, disabled: boolean) {
-    if (field.editControl === "textarea") {
+    if (field.editControl === "TEXTAREA") {
         return <Input.TextArea disabled={disabled} maxLength={field.textLength} rows={3} />;
     }
 
-    if (field.editControl === "number") {
+    if (field.editControl === "NUMBER") {
         return (
             <InputNumber
                 disabled={disabled}
                 max={numberLimit(field)}
-                precision={field.fieldType === "decimal" ? field.decimalScale : 0}
+                precision={field.fieldType === "DECIMAL" ? field.decimalScale : 0}
                 style={{ width: "100%" }}
             />
         );
     }
 
-    if (field.editControl === "date" || field.editControl === "datetime") {
+    if (field.editControl === "DATE" || field.editControl === "DATETIME") {
         return (
             <DatePicker
                 disabled={disabled}
-                format={field.editControl === "datetime" ? "YYYY-MM-DD HH:mm:ss" : "YYYY-MM-DD"}
-                showTime={field.editControl === "datetime"}
+                format={field.editControl === "DATETIME" ? "YYYY-MM-DD HH:mm:ss" : "YYYY-MM-DD"}
+                showTime={field.editControl === "DATETIME"}
                 style={{ width: "100%" }}
             />
         );
@@ -77,11 +77,11 @@ function renderFieldControl(field: ArchiveFieldDto, disabled: boolean) {
 function fieldValueBridge(
     field: ArchiveFieldDto,
 ): Pick<FormItemProps, "getValueProps" | "normalize"> {
-    if (field.editControl !== "date" && field.editControl !== "datetime") {
+    if (field.editControl !== "DATE" && field.editControl !== "DATETIME") {
         return {};
     }
 
-    const format = field.editControl === "datetime" ? "YYYY-MM-DD HH:mm:ss" : "YYYY-MM-DD";
+    const format = field.editControl === "DATETIME" ? "YYYY-MM-DD HH:mm:ss" : "YYYY-MM-DD";
 
     return {
         getValueProps: (value: unknown) => ({
@@ -97,11 +97,11 @@ function fieldColSpan(field: ArchiveFieldDto) {
 }
 
 function numberLimit(field: ArchiveFieldDto) {
-    if (field.fieldType !== "integer" && field.fieldType !== "decimal") {
+    if (field.fieldType !== "INTEGER" && field.fieldType !== "DECIMAL") {
         return undefined;
     }
 
     const precision = field.decimalPrecision ?? 18;
-    const scale = field.fieldType === "decimal" ? (field.decimalScale ?? 2) : 0;
+    const scale = field.fieldType === "DECIMAL" ? (field.decimalScale ?? 2) : 0;
     return Number("9".repeat(Math.max(1, precision - scale)));
 }

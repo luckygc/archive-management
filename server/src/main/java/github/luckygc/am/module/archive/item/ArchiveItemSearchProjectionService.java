@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.lang3.StringUtils;
+import org.jspecify.annotations.Nullable;
 import org.springframework.jdbc.support.JdbcUtils;
 import org.springframework.stereotype.Service;
 
@@ -21,7 +22,7 @@ import github.luckygc.am.module.archive.metadata.ArchiveMetadataService.ArchiveC
 import github.luckygc.am.module.archive.metadata.ArchiveMetadataService.ArchiveFieldDto;
 
 @Service
-class ArchiveItemSearchProjectionService {
+public class ArchiveItemSearchProjectionService {
 
     private static final String SEARCH_EVENT_UPSERT = "UPSERT";
     private static final String SEARCH_EVENT_DELETE = "DELETE";
@@ -43,7 +44,7 @@ class ArchiveItemSearchProjectionService {
     }
 
     void drainOutbox() {
-        for (Map<String, Object> outbox :
+        for (Map<String, @Nullable Object> outbox :
                 archiveMapper.listPendingSearchOutbox(SEARCH_OUTBOX_DRAIN_LIMIT)) {
             Long outboxId = number(outbox, "id").longValue();
             try {
@@ -60,7 +61,8 @@ class ArchiveItemSearchProjectionService {
         String tableName = ArchiveDynamicTableNames.tableName(category, archiveLevel);
         List<ArchiveFieldDto> fields =
                 archiveMetadataService.listEnabledFields(category.id(), archiveLevel);
-        Map<String, Object> dynamicRecord = archiveMapper.loadDynamicRecord(tableName, recordId);
+        Map<String, @Nullable Object> dynamicRecord =
+                archiveMapper.loadDynamicRecord(tableName, recordId);
         if (dynamicRecord == null) {
             delete(recordId);
             return;
@@ -68,27 +70,21 @@ class ArchiveItemSearchProjectionService {
         upsert(recordId, category, fields, dynamicFieldsByCode(dynamicRecord, fields));
     }
 
-    void upsert(Long recordId, List<ArchiveFieldDto> fields, Map<String, Object> dynamicFields) {
-        upsert(recordId, null, fields, dynamicFields);
-    }
-
     void upsert(
             Long recordId,
             ArchiveCategoryDto category,
             List<ArchiveFieldDto> fields,
-            Map<String, Object> dynamicFields) {
+            Map<String, @Nullable Object> dynamicFields) {
         StringBuilder searchText = new StringBuilder();
         appendFieldText(searchText, fields, dynamicFields);
-        if (category != null) {
-            for (String lineText : itemLineTexts(recordId, category.id())) {
-                if (StringUtils.isBlank(lineText)) {
-                    continue;
-                }
-                if (!searchText.isEmpty()) {
-                    searchText.append('\n');
-                }
-                searchText.append(lineText);
+        for (String lineText : itemLineTexts(recordId, category.id())) {
+            if (StringUtils.isBlank(lineText)) {
+                continue;
             }
+            if (!searchText.isEmpty()) {
+                searchText.append('\n');
+            }
+            searchText.append(lineText);
         }
         if (searchText.isEmpty()) {
             delete(recordId);
@@ -98,7 +94,9 @@ class ArchiveItemSearchProjectionService {
     }
 
     private void appendFieldText(
-            StringBuilder searchText, List<ArchiveFieldDto> fields, Map<String, Object> values) {
+            StringBuilder searchText,
+            List<ArchiveFieldDto> fields,
+            Map<String, @Nullable Object> values) {
         for (ArchiveFieldDto field : fields) {
             Object value = normalizeDynamicFieldValue(field, values.get(field.fieldCode()));
             if (value == null || StringUtils.isBlank(value.toString())) {
@@ -116,18 +114,24 @@ class ArchiveItemSearchProjectionService {
 
     private List<String> itemLineTexts(Long itemId, Long categoryId) {
         List<String> lines = new ArrayList<>();
-        for (Map<String, Object> lineTable : archiveMapper.listItemLineTables(categoryId)) {
+        for (Map<String, @Nullable Object> lineTable :
+                archiveMapper.listItemLineTables(categoryId)) {
             String tableName = string(lineTable, "physicalTableName");
             if (StringUtils.isBlank(tableName) || archiveMapper.tableExists(tableName) == 0) {
                 continue;
             }
-            List<Map<String, Object>> fields =
+            List<Map<String, @Nullable Object>> fields =
                     archiveMapper.listItemLineFields(number(lineTable, "id").longValue());
-            List<Map<String, Object>> rows = archiveMapper.listItemLineRows(tableName, itemId);
-            for (Map<String, Object> row : rows) {
+            List<Map<String, @Nullable Object>> rows =
+                    archiveMapper.listItemLineRows(tableName, itemId);
+            for (Map<String, @Nullable Object> row : rows) {
                 StringBuilder lineText = new StringBuilder();
-                for (Map<String, Object> field : fields) {
-                    Object value = value(row, string(field, "columnName"));
+                for (Map<String, @Nullable Object> field : fields) {
+                    String columnName = string(field, "columnName");
+                    if (StringUtils.isBlank(columnName)) {
+                        continue;
+                    }
+                    Object value = value(row, columnName);
                     if (value == null || StringUtils.isBlank(value.toString())) {
                         continue;
                     }
@@ -151,7 +155,7 @@ class ArchiveItemSearchProjectionService {
         archiveMapper.deleteSearchProjection(recordId);
     }
 
-    private void processOutbox(Map<String, Object> outbox) {
+    private void processOutbox(Map<String, @Nullable Object> outbox) {
         Long recordId = number(outbox, "archiveItemId").longValue();
         String eventType = string(outbox, "eventType");
         if (SEARCH_EVENT_DELETE.equals(eventType)) {
@@ -159,13 +163,13 @@ class ArchiveItemSearchProjectionService {
             return;
         }
 
-        Map<String, Object> recordRow = archiveMapper.getArchiveItem(recordId);
+        Map<String, @Nullable Object> recordRow = archiveMapper.getArchiveItem(recordId);
         if (recordRow == null) {
             delete(recordId);
             return;
         }
         ArchiveCategoryDto category = getCategoryByCode(string(recordRow, "categoryCode"));
-        ArchiveLevel archiveLevel = ArchiveLevel.item;
+        ArchiveLevel archiveLevel = ArchiveLevel.ITEM;
         if (!isDynamicTableBuilt(category, archiveLevel)) {
             delete(recordId);
             return;
@@ -173,8 +177,8 @@ class ArchiveItemSearchProjectionService {
         refreshFromDynamicRecord(recordId, category, archiveLevel);
     }
 
-    private Map<String, Object> dynamicFieldsByCode(
-            Map<String, Object> dynamicRecord, List<ArchiveFieldDto> fields) {
+    private Map<String, @Nullable Object> dynamicFieldsByCode(
+            Map<String, @Nullable Object> dynamicRecord, List<ArchiveFieldDto> fields) {
         return fields.stream()
                 .collect(
                         java.util.stream.Collectors.toMap(
@@ -182,16 +186,17 @@ class ArchiveItemSearchProjectionService {
                                 field ->
                                         normalizeDynamicFieldValue(
                                                 field, dynamicRecord.get(field.columnName())),
-                                (left, right) -> right,
+                                (_, right) -> right,
                                 java.util.LinkedHashMap::new));
     }
 
-    private Object normalizeDynamicFieldValue(ArchiveFieldDto field, Object value) {
+    private @Nullable Object normalizeDynamicFieldValue(
+            ArchiveFieldDto field, @Nullable Object value) {
         if (value == null) {
             return null;
         }
         return switch (field.fieldType()) {
-            case date -> {
+            case DATE -> {
                 if (value instanceof Date date) {
                     yield date.toLocalDate().toString();
                 }
@@ -200,7 +205,7 @@ class ArchiveItemSearchProjectionService {
                 }
                 yield value;
             }
-            case datetime -> {
+            case DATETIME -> {
                 if (value instanceof Timestamp timestamp) {
                     yield timestamp.toLocalDateTime().format(DATE_TIME_FORMATTER);
                 }
@@ -225,12 +230,12 @@ class ArchiveItemSearchProjectionService {
                 .orElseThrow(() -> new IllegalStateException("档案分类不存在"));
     }
 
-    private String string(Map<String, Object> row, String key) {
+    private @Nullable String string(Map<String, @Nullable Object> row, String key) {
         Object value = value(row, key);
         return value == null ? null : value.toString();
     }
 
-    private Number number(Map<String, Object> row, String key) {
+    private Number number(Map<String, @Nullable Object> row, String key) {
         Object value = value(row, key);
         if (value instanceof Number number) {
             return number;
@@ -238,7 +243,7 @@ class ArchiveItemSearchProjectionService {
         throw new IllegalStateException("缺少数值字段：" + key);
     }
 
-    private Object value(Map<String, Object> row, String key) {
+    private @Nullable Object value(Map<String, @Nullable Object> row, String key) {
         if (row.containsKey(key)) {
             return row.get(key);
         }

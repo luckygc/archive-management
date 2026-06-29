@@ -12,15 +12,15 @@ afterEach(() => {
 });
 
 const fields: ArchiveFieldDto[] = [
-    createField({ id: 1, fieldCode: "title", fieldName: "题名", editControl: "input" }),
+    createField({ id: 1, fieldCode: "title", fieldName: "题名", editControl: "INPUT" }),
     createField({
         id: 2,
         fieldCode: "amount",
         fieldName: "金额",
-        fieldType: "decimal",
-        editControl: "number",
+        fieldType: "DECIMAL",
+        editControl: "NUMBER",
     }),
-    createField({ id: 3, fieldCode: "remark", fieldName: "备注", editControl: "textarea" }),
+    createField({ id: 3, fieldCode: "remark", fieldName: "备注", editControl: "TEXTAREA" }),
 ];
 
 describe("DynamicArchiveFields", () => {
@@ -89,7 +89,7 @@ function DynamicArchiveFieldsHarness({
 
 function createField(field: Partial<ArchiveFieldDto>): ArchiveFieldDto {
     return {
-        archiveLevel: "item",
+        archiveLevel: "ITEM",
         categoryId: 1,
         columnName: `f_${field.fieldCode ?? "field"}`,
         createdAt: "2026-06-27T00:00:00Z",
@@ -99,14 +99,14 @@ function createField(field: Partial<ArchiveFieldDto>): ArchiveFieldDto {
         detailSortOrder: field.id ?? 1,
         detailVisible: true,
         editColSpan: 1,
-        editControl: "input",
+        editControl: "INPUT",
         editSortOrder: field.id ?? 1,
         editVisible: true,
         enabled: true,
         exactSearchable: false,
         fieldCode: "field",
         fieldName: "字段",
-        fieldType: "text",
+        fieldType: "TEXT",
         id: 1,
         listSortOrder: field.id ?? 1,
         listVisible: true,

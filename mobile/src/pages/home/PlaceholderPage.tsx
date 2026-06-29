@@ -1,4 +1,4 @@
-import { Empty, NavBar } from "antd-mobile";
+import { ErrorBlock, NavBar } from "antd-mobile";
 import { useNavigate } from "react-router";
 
 export function PlaceholderPage({ title }: { title: string }) {
@@ -8,7 +8,11 @@ export function PlaceholderPage({ title }: { title: string }) {
         <main className="am-mobile-page">
             <NavBar onBack={() => void navigate(-1)}>{title}</NavBar>
             <section className="am-mobile-content">
-                <Empty description="入口已预留，后续按业务流程接入" />
+                <ErrorBlock
+                    description="入口已预留，后续按业务流程接入"
+                    status="empty"
+                    title={title}
+                />
             </section>
         </main>
     );

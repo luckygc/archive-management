@@ -246,10 +246,10 @@ archive:
             # 全文检索结果上限。
             result-limit: 1000
     storage:
-        # 默认上传文件存储 adapter：local、s3、minio、cos、oss、obs。
+        # 默认上传文件存储 adapter：LOCAL、S3、MINIO、COS、OSS、OBS。
         # 历史文件下载、删除和存在判断仍按文件记录中的 storage_type、bucket_name 路由。
-        adapter: local
-        # 当前默认 adapter 为 local 时使用的本地存储 bucket。
+        adapter: LOCAL
+        # 当前默认 adapter 为 LOCAL 时使用的本地存储 bucket。
         active-local-bucket: local
         # 本地文件存储 bucket 列表。
         local:

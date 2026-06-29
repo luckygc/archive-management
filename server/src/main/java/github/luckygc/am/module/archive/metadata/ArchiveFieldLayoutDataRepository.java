@@ -2,6 +2,7 @@ package github.luckygc.am.module.archive.metadata;
 
 import java.util.List;
 
+import jakarta.annotation.Nonnull;
 import jakarta.data.repository.CrudRepository;
 import jakarta.data.repository.Find;
 import jakarta.data.repository.OrderBy;
@@ -20,5 +21,5 @@ public interface ArchiveFieldLayoutDataRepository extends CrudRepository<Archive
     @OrderBy("colOrder")
     @OrderBy("id")
     List<ArchiveFieldLayout> list(
-            Long categoryId, ArchiveLayoutSurface surface, boolean deletedFlag);
+            @Nonnull Long categoryId, @Nonnull ArchiveLayoutSurface surface, boolean deletedFlag);
 }

@@ -25,7 +25,7 @@ class DelegatingFileStorageServiceTests {
         FileStorageBackend localBackend = localBackend();
         DelegatingFileStorageService service =
                 new DelegatingFileStorageService(
-                        StorageType.local, "local-test", List.of(localBackend));
+                        StorageType.LOCAL, "local-test", List.of(localBackend));
 
         byte[] content = "archive file".getBytes(StandardCharsets.UTF_8);
         StorageObjectInfo stored =
@@ -35,9 +35,9 @@ class DelegatingFileStorageServiceTests {
                         content.length,
                         "text/plain");
 
-        assertThat(stored.storageType()).isEqualTo(StorageType.local);
+        assertThat(stored.storageType()).isEqualTo(StorageType.LOCAL);
         assertThat(stored.bucketName()).isEqualTo("local-test");
-        assertThat(service.defaultStorageType()).isEqualTo(StorageType.local);
+        assertThat(service.defaultStorageType()).isEqualTo(StorageType.LOCAL);
     }
 
     @Test
@@ -45,12 +45,12 @@ class DelegatingFileStorageServiceTests {
     void rejectStorageTypeWithoutConfiguredBackend() {
         DelegatingFileStorageService service =
                 new DelegatingFileStorageService(
-                        StorageType.local, "local-test", List.of(localBackend()));
+                        StorageType.LOCAL, "local-test", List.of(localBackend()));
 
         assertThatThrownBy(
-                        () -> service.objectExists(StorageType.s3, "bucket", "2026/06/06/demo.txt"))
+                        () -> service.objectExists(StorageType.S3, "bucket", "2026/06/06/demo.txt"))
                 .isInstanceOf(StorageException.class)
-                .hasMessageContaining("未启用文件存储位置: s3/bucket");
+                .hasMessageContaining("未启用文件存储位置: S3/bucket");
     }
 
     @Test
@@ -58,16 +58,16 @@ class DelegatingFileStorageServiceTests {
     void routeTencentCosByStorageTypeAndBucketName() {
         DelegatingFileStorageService service =
                 new DelegatingFileStorageService(
-                        StorageType.s3,
+                        StorageType.S3,
                         "archive",
                         List.of(
-                                objectBackend(StorageType.s3, "archive"),
-                                objectBackend(StorageType.minio, "archive"),
-                                objectBackend(StorageType.cos, "archive"),
-                                objectBackend(StorageType.oss, "archive"),
-                                objectBackend(StorageType.obs, "archive")));
+                                objectBackend(StorageType.S3, "archive"),
+                                objectBackend(StorageType.MINIO, "archive"),
+                                objectBackend(StorageType.COS, "archive"),
+                                objectBackend(StorageType.OSS, "archive"),
+                                objectBackend(StorageType.OBS, "archive")));
 
-        assertThat(service.bucketName(StorageType.cos)).isEqualTo("archive");
+        assertThat(service.bucketName(StorageType.COS)).isEqualTo("archive");
     }
 
     @Test
@@ -77,7 +77,7 @@ class DelegatingFileStorageServiceTests {
         LocalFileStorageService nasBackend = localBackend("nas", tempDir.resolve("nas"));
         DelegatingFileStorageService service =
                 new DelegatingFileStorageService(
-                        StorageType.local, "data", List.of(dataBackend, nasBackend));
+                        StorageType.LOCAL, "data", List.of(dataBackend, nasBackend));
 
         byte[] content = "nas file".getBytes(StandardCharsets.UTF_8);
         dataBackend.putObject(
@@ -92,7 +92,7 @@ class DelegatingFileStorageServiceTests {
                 "text/plain");
 
         try (FileStorageResource resource =
-                service.getObject(StorageType.local, "nas", "2026/06/06/demo.txt")) {
+                service.getObject(StorageType.LOCAL, "nas", "2026/06/06/demo.txt")) {
             assertThat(resource.bucketName()).isEqualTo("nas");
             assertThat(resource.inputStream().readAllBytes()).isEqualTo(content);
         }
@@ -105,7 +105,7 @@ class DelegatingFileStorageServiceTests {
         LocalFileStorageService nasBackend = localBackend("nas", tempDir.resolve("nas"));
         DelegatingFileStorageService service =
                 new DelegatingFileStorageService(
-                        StorageType.local, "nas", List.of(dataBackend, nasBackend));
+                        StorageType.LOCAL, "nas", List.of(dataBackend, nasBackend));
 
         byte[] content = "active nas file".getBytes(StandardCharsets.UTF_8);
         StorageObjectInfo stored =

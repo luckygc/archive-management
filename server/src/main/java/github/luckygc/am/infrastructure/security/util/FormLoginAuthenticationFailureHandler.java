@@ -2,7 +2,6 @@ package github.luckygc.am.infrastructure.security.util;
 
 import java.io.IOException;
 
-import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -26,7 +25,7 @@ public class FormLoginAuthenticationFailureHandler implements AuthenticationFail
             HttpServletRequest request,
             HttpServletResponse response,
             AuthenticationException exception)
-            throws IOException, ServletException {
+            throws IOException {
         responseWriter.writeUnauthorized(response, "账号或密码错误");
     }
 }

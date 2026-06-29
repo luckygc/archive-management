@@ -1,20 +1,18 @@
 package github.luckygc.am.common.storage;
 
-import java.util.Locale;
-
 public enum StorageType {
-    local,
-    s3,
-    minio,
-    cos,
-    oss,
-    obs;
+    LOCAL,
+    S3,
+    MINIO,
+    COS,
+    OSS,
+    OBS;
 
     public String value() {
         return name();
     }
 
     public static StorageType fromValue(String value) {
-        return StorageType.valueOf(value.trim().toLowerCase(Locale.ROOT));
+        return StorageType.valueOf(value.trim());
     }
 }

@@ -1,5 +1,6 @@
 package github.luckygc.am.module.auth;
 
+import java.io.Serial;
 import java.util.Collection;
 
 import org.springframework.security.core.GrantedAuthority;
@@ -8,6 +9,8 @@ import org.springframework.security.core.userdetails.User;
 import github.luckygc.am.common.security.AuthenticatedUser;
 
 public class ArchiveUserDetails extends User implements AuthenticatedUser {
+
+    @Serial private static final long serialVersionUID = -1L;
 
     private final Long id;
     private final String displayName;

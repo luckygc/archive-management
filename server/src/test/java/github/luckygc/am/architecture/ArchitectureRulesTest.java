@@ -5,6 +5,8 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 
 import jakarta.data.repository.Delete;
 import jakarta.data.repository.Find;
@@ -14,6 +16,7 @@ import jakarta.data.repository.Save;
 import jakarta.data.repository.Update;
 
 import org.hibernate.annotations.processing.HQL;
+import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.modulith.core.ApplicationModules;
@@ -122,6 +125,31 @@ class ArchitectureRulesTest {
         assertTrue(
                 violations.isEmpty(),
                 () -> "Repository 自定义方法必须显式标注 Jakarta Data/HQL 操作注解: " + violations);
+    }
+
+    @ArchTest
+    static void packages_with_project_classes_should_declare_null_marked(JavaClasses classes) {
+        Set<String> packagesWithProjectClasses = new TreeSet<>();
+        Set<String> nullMarkedPackages = new TreeSet<>();
+
+        classes.forEach(
+                javaClass -> {
+                    if (javaClass.getSimpleName().equals("package-info")) {
+                        if (javaClass.isAnnotatedWith(NullMarked.class)) {
+                            nullMarkedPackages.add(javaClass.getPackageName());
+                        }
+                    } else {
+                        packagesWithProjectClasses.add(javaClass.getPackageName());
+                    }
+                });
+
+        packagesWithProjectClasses.removeAll(nullMarkedPackages);
+
+        assertTrue(
+                packagesWithProjectClasses.isEmpty(),
+                () ->
+                        "有 Java 类的包必须提供 package-info.java 并标注 @NullMarked: "
+                                + packagesWithProjectClasses);
     }
 
     @Test

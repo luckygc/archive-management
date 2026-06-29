@@ -2,10 +2,13 @@ package github.luckygc.am.module.auth;
 
 import java.time.LocalDateTime;
 
+import jakarta.annotation.Nonnull;
+import jakarta.data.constraint.LessThan;
 import jakarta.data.repository.CrudRepository;
+import jakarta.data.repository.Delete;
+import jakarta.data.repository.Is;
 import jakarta.data.repository.Repository;
 
-import org.hibernate.annotations.processing.HQL;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,6 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Repository
 public interface AuthCapChallengeDataRepository extends CrudRepository<AuthCapChallenge, String> {
 
-    @HQL("delete from AuthCapChallenge where expiresAt < ?1")
-    int deleteExpired(LocalDateTime now);
+    @Delete
+    int deleteExpired(@Nonnull @Is(LessThan.class) LocalDateTime expiresAt);
 }

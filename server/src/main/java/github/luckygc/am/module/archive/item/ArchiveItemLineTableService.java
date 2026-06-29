@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.StringUtils;
+import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.support.JdbcUtils;
 import org.springframework.stereotype.Service;
@@ -42,11 +43,8 @@ public class ArchiveItemLineTableService {
 
     @Transactional
     public ArchiveItemLineTableDto createLineTable(
-            Long categoryId, ArchiveItemLineTableRequest request, Long userId) {
+            Long categoryId, ArchiveItemLineTableRequest request, @Nullable Long userId) {
         ArchiveCategoryDto category = archiveMetadataService.getCategory(categoryId);
-        if (request == null) {
-            throw new BadRequestException("请求体不能为空");
-        }
         String tableCode = requiredCode(request.tableCode(), "明细表编码不能为空");
         String tableName = StringUtils.trimToNull(request.tableName());
         if (tableName == null) {
@@ -96,18 +94,15 @@ public class ArchiveItemLineTableService {
 
     @Transactional
     public ArchiveItemLineFieldDto createLineField(
-            Long lineTableId, ArchiveItemLineFieldRequest request, Long userId) {
+            Long lineTableId, ArchiveItemLineFieldRequest request, @Nullable Long userId) {
         getLineTableRow(lineTableId);
-        if (request == null) {
-            throw new BadRequestException("请求体不能为空");
-        }
         String fieldCode = requiredCode(request.fieldCode(), "字段编码不能为空");
         String fieldName = StringUtils.trimToNull(request.fieldName());
         if (fieldName == null) {
             throw new BadRequestException("字段名称不能为空");
         }
         ArchiveFieldType fieldType =
-                request.fieldType() == null ? ArchiveFieldType.text : request.fieldType();
+                request.fieldType() == null ? ArchiveFieldType.TEXT : request.fieldType();
         String columnName =
                 StringUtils.defaultIfBlank(
                         request.columnName(), "f_" + fieldCode.toLowerCase(Locale.ROOT));
@@ -119,7 +114,7 @@ public class ArchiveItemLineTableService {
                         fieldName,
                         fieldType.value(),
                         columnName,
-                        Boolean.TRUE.equals(request.exactSearchable()),
+                        request.exactSearchable(),
                         request.sortOrder() == null ? 0 : request.sortOrder(),
                         userId);
         return listLineFields(lineTableId).stream()
@@ -129,7 +124,7 @@ public class ArchiveItemLineTableService {
     }
 
     @Transactional
-    public ArchiveItemLineTableDto buildLineTable(Long lineTableId, Long userId) {
+    public ArchiveItemLineTableDto buildLineTable(Long lineTableId, @Nullable Long userId) {
         ArchiveItemLineTableDto table = getLineTable(lineTableId);
         if (table.fields().isEmpty()) {
             throw new BadRequestException("明细表没有可建表字段");
@@ -167,11 +162,11 @@ public class ArchiveItemLineTableService {
 
     private String sqlType(ArchiveFieldType fieldType) {
         return switch (fieldType) {
-            case text -> "text";
-            case integer -> "integer";
-            case decimal -> "numeric";
-            case date -> "date";
-            case datetime -> "timestamp";
+            case TEXT -> "text";
+            case INTEGER -> "integer";
+            case DECIMAL -> "numeric";
+            case DATE -> "date";
+            case DATETIME -> "timestamp";
         };
     }
 
@@ -248,15 +243,18 @@ public class ArchiveItemLineTableService {
     }
 
     public record ArchiveItemLineTableRequest(
-            String tableCode, String tableName, String physicalTableName, Integer sortOrder) {}
+            @Nullable String tableCode,
+            @Nullable String tableName,
+            @Nullable String physicalTableName,
+            @Nullable Integer sortOrder) {}
 
     public record ArchiveItemLineFieldRequest(
-            String fieldCode,
-            String fieldName,
-            ArchiveFieldType fieldType,
-            String columnName,
-            Boolean exactSearchable,
-            Integer sortOrder) {}
+            @Nullable String fieldCode,
+            @Nullable String fieldName,
+            @Nullable ArchiveFieldType fieldType,
+            @Nullable String columnName,
+            boolean exactSearchable,
+            @Nullable Integer sortOrder) {}
 
     public record ArchiveItemLineTableDto(
             Long id,

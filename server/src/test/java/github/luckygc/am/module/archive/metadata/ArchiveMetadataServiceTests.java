@@ -52,13 +52,13 @@ class ArchiveMetadataServiceTests {
     @Test
     @DisplayName("允许卷内电子字段参与唯一规则")
     void createUniqueConstraintShouldAcceptItemMetadataFields() {
-        ArchiveCategory category = category(1L, ArchiveManagementMode.volume_item);
-        ArchiveField field = field(11L, ArchiveLevel.item, ArchiveFieldScope.metadata);
+        ArchiveCategory category = category(1L, ArchiveManagementMode.VOLUME_ITEM);
+        ArchiveField field = field(11L, ArchiveLevel.ITEM, ArchiveFieldScope.METADATA);
         when(categoryRepository.find(1L, false)).thenReturn(Optional.of(category));
         when(fieldRepository.list(1L, false)).thenReturn(List.of(field));
         when(archiveMapper.insertUniqueConstraint(
                         eq(1L),
-                        eq(ArchiveLevel.item.value()),
+                        eq(ArchiveLevel.ITEM.value()),
                         eq("doc_no_unique"),
                         eq("文号唯一"),
                         anyString(),
@@ -66,7 +66,7 @@ class ArchiveMetadataServiceTests {
                         eq(9L)))
                 .thenReturn(21L);
         when(archiveMapper.getUniqueConstraint(21L))
-                .thenReturn(uniqueConstraintRow(21L, 1L, ArchiveLevel.item));
+                .thenReturn(uniqueConstraintRow(21L, 1L, ArchiveLevel.ITEM));
         when(archiveMapper.listUniqueConstraintFields(21L))
                 .thenReturn(List.of(uniqueConstraintFieldRow(field)));
 
@@ -74,10 +74,10 @@ class ArchiveMetadataServiceTests {
                 service.createUniqueConstraint(
                         1L,
                         new ArchiveUniqueConstraintRequest(
-                                ArchiveLevel.item, "doc_no_unique", "文号唯一", true, List.of(11L)),
+                                ArchiveLevel.ITEM, "doc_no_unique", "文号唯一", true, List.of(11L)),
                         9L);
 
-        assertThat(result.archiveLevel()).isEqualTo(ArchiveLevel.item);
+        assertThat(result.archiveLevel()).isEqualTo(ArchiveLevel.ITEM);
         assertThat(result.fields()).extracting("fieldId").containsExactly(11L);
         verify(archiveMapper).markFieldsExactSearchable(1L, List.of(11L), 9L);
     }
@@ -85,8 +85,8 @@ class ArchiveMetadataServiceTests {
     @Test
     @DisplayName("拒绝实物字段参与唯一规则")
     void createUniqueConstraintShouldRejectPhysicalFields() {
-        ArchiveCategory category = category(1L, ArchiveManagementMode.volume_item);
-        ArchiveField field = field(11L, ArchiveLevel.item, ArchiveFieldScope.physical);
+        ArchiveCategory category = category(1L, ArchiveManagementMode.VOLUME_ITEM);
+        ArchiveField field = field(11L, ArchiveLevel.ITEM, ArchiveFieldScope.PHYSICAL);
         when(categoryRepository.find(1L, false)).thenReturn(Optional.of(category));
         when(fieldRepository.list(1L, false)).thenReturn(List.of(field));
 
@@ -95,7 +95,7 @@ class ArchiveMetadataServiceTests {
                                 service.createUniqueConstraint(
                                         1L,
                                         new ArchiveUniqueConstraintRequest(
-                                                ArchiveLevel.item,
+                                                ArchiveLevel.ITEM,
                                                 "box_no_unique",
                                                 "盒号唯一",
                                                 true,
@@ -110,8 +110,8 @@ class ArchiveMetadataServiceTests {
     @Test
     @DisplayName("拒绝未启用案卷管理分类创建案卷唯一规则")
     void createUniqueConstraintShouldRejectVolumeRuleWhenCategoryDoesNotUseVolumes() {
-        ArchiveCategory category = category(1L, ArchiveManagementMode.item_only);
-        ArchiveField field = field(11L, ArchiveLevel.volume, ArchiveFieldScope.metadata);
+        ArchiveCategory category = category(1L, ArchiveManagementMode.ITEM_ONLY);
+        ArchiveField field = field(11L, ArchiveLevel.VOLUME, ArchiveFieldScope.METADATA);
         when(categoryRepository.find(1L, false)).thenReturn(Optional.of(category));
         when(fieldRepository.list(1L, false)).thenReturn(List.of(field));
 
@@ -120,7 +120,7 @@ class ArchiveMetadataServiceTests {
                                 service.createUniqueConstraint(
                                         1L,
                                         new ArchiveUniqueConstraintRequest(
-                                                ArchiveLevel.volume,
+                                                ArchiveLevel.VOLUME,
                                                 "volume_no_unique",
                                                 "案卷号唯一",
                                                 true,
@@ -154,10 +154,10 @@ class ArchiveMetadataServiceTests {
         field.setFieldScope(fieldScope);
         field.setFieldCode("doc_no");
         field.setFieldName("文号");
-        field.setFieldType(ArchiveFieldType.text);
+        field.setFieldType(ArchiveFieldType.TEXT);
         field.setColumnName("f_doc_no");
         field.setTextLength(100);
-        field.setEditControl(ArchiveFieldControl.input);
+        field.setEditControl(ArchiveFieldControl.INPUT);
         field.setEnabled(true);
         return field;
     }

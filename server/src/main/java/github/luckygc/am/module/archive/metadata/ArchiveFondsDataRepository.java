@@ -3,6 +3,7 @@ package github.luckygc.am.module.archive.metadata;
 import java.util.List;
 import java.util.Optional;
 
+import jakarta.annotation.Nonnull;
 import jakarta.data.repository.CrudRepository;
 import jakarta.data.repository.Find;
 import jakarta.data.repository.OrderBy;
@@ -33,5 +34,5 @@ public interface ArchiveFondsDataRepository extends CrudRepository<ArchiveFonds,
 
     @Transactional(readOnly = true)
     @Find
-    Optional<ArchiveFonds> find(String fondsCode, boolean deletedFlag);
+    Optional<ArchiveFonds> find(@Nonnull String fondsCode, boolean deletedFlag);
 }

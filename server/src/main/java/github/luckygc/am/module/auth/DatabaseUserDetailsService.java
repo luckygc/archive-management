@@ -1,6 +1,7 @@
 package github.luckygc.am.module.auth;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -36,7 +37,7 @@ public class DatabaseUserDetailsService implements UserDetailsService {
                 userRoleRelationRepository.findByUserId(user.getId()).stream()
                         .map(AuthUserRoleRelation::getRoleId)
                         .map(roleRepository::findById)
-                        .flatMap(role -> role.stream())
+                        .flatMap(Optional::stream)
                         .filter(AuthRole::isEnabled)
                         .map(AuthRole::getRoleName)
                         .filter(StringUtils::isNotBlank)

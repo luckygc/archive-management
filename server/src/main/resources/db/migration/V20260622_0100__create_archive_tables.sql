@@ -41,12 +41,12 @@ create table am_archive_category
     parent_id         bigint references am_archive_category (id),
     category_code     varchar(100) not null,
     category_name     varchar(255) not null,
-    management_mode   varchar(30)  not null default 'item_only',
+    management_mode   varchar(30)  not null default 'ITEM_ONLY',
     volume_table_name varchar(100),
     item_table_name   varchar(100),
     volume_physical_table_name varchar(100),
     item_physical_table_name   varchar(100),
-    table_status      varchar(30)  not null default 'not_built',
+    table_status      varchar(30)  not null default 'NOT_BUILT',
     built_at          timestamp,
     enabled           boolean      not null default true,
     sort_order        integer      not null default 0,
@@ -70,12 +70,12 @@ comment on column am_archive_category.id is '主键';
 comment on column am_archive_category.parent_id is '父级档案分类 ID';
 comment on column am_archive_category.category_code is '档案分类编码';
 comment on column am_archive_category.category_name is '档案分类名称';
-comment on column am_archive_category.management_mode is '管理模式：item_only 只按条目管理，volume_item 按案卷和卷内条目管理';
+comment on column am_archive_category.management_mode is '管理模式：ITEM_ONLY 只按条目管理，VOLUME_ITEM 按案卷和卷内条目管理';
 comment on column am_archive_category.volume_table_name is '案卷层级动态记录表名';
 comment on column am_archive_category.item_table_name is '卷内条目层级动态记录表名';
 comment on column am_archive_category.volume_physical_table_name is '案卷层级动态实物信息表名';
 comment on column am_archive_category.item_physical_table_name is '卷内条目层级动态实物信息表名';
-comment on column am_archive_category.table_status is '动态表状态：not_built 未建表，built 已建表';
+comment on column am_archive_category.table_status is '动态表状态：NOT_BUILT 未建表，BUILT 已建表';
 comment on column am_archive_category.built_at is '最近建表时间';
 comment on column am_archive_category.enabled is '是否启用';
 comment on column am_archive_category.sort_order is '排序字段';
@@ -90,8 +90,8 @@ create table am_archive_field
 (
     id                bigserial primary key,
     category_id       bigint       not null references am_archive_category (id),
-    archive_level     varchar(30)  not null default 'item',
-    field_scope       varchar(30)  not null default 'metadata',
+    archive_level     varchar(30)  not null default 'ITEM',
+    field_scope       varchar(30)  not null default 'METADATA',
     field_code        varchar(80)  not null,
     field_name        varchar(255) not null,
     field_type        varchar(30)  not null,
@@ -99,7 +99,7 @@ create table am_archive_field
     text_length       integer,
     decimal_precision integer,
     decimal_scale     integer,
-    edit_control      varchar(30)  not null default 'input',
+    edit_control      varchar(30)  not null default 'INPUT',
     list_visible      boolean      not null default true,
     list_width        integer,
     list_sort_order   integer      not null default 0,
@@ -462,7 +462,7 @@ create table am_archive_unique_constraint
 (
     id            bigserial primary key,
     category_id   bigint       not null references am_archive_category (id),
-    archive_level varchar(30)  not null default 'item',
+    archive_level varchar(30)  not null default 'ITEM',
     constraint_code     varchar(80)  not null,
     constraint_name     varchar(255) not null,
     index_name    varchar(100) not null,

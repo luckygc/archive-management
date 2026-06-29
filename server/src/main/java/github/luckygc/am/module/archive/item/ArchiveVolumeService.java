@@ -65,7 +65,7 @@ public class ArchiveVolumeService {
             throw new BadRequestException("全宗不能为空");
         }
         ArchiveCategoryDto category = archiveMetadataService.getCategory(request.categoryId());
-        if (category.managementMode() != ArchiveManagementMode.volume_item) {
+        if (category.managementMode() != ArchiveManagementMode.VOLUME_ITEM) {
             throw new BadRequestException("该分类未启用案卷管理");
         }
         ArchiveFondsDto fonds = archiveMetadataService.getFondsByCode(request.fondsCode());

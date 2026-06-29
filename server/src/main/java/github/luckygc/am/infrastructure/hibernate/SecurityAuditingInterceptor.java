@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 
 import org.hibernate.Interceptor;
 import org.hibernate.type.Type;
+import org.jspecify.annotations.Nullable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -123,7 +124,7 @@ public class SecurityAuditingInterceptor implements Interceptor {
         setState(state, propertyNames, "updatedBy", userId);
     }
 
-    private Long currentUserId() {
+    private @Nullable Long currentUserId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null
                 || !authentication.isAuthenticated()

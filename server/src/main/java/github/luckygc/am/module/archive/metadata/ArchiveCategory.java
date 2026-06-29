@@ -40,7 +40,7 @@ public class ArchiveCategory implements CreationAuditable, UpdateAuditable {
 
     @Column(name = "management_mode", nullable = false, length = 30)
     @Enumerated(EnumType.STRING)
-    private ArchiveManagementMode managementMode = ArchiveManagementMode.item_only;
+    private ArchiveManagementMode managementMode = ArchiveManagementMode.ITEM_ONLY;
 
     @Column(name = "volume_table_name", length = 100)
     private String volumeTableName;
@@ -56,7 +56,7 @@ public class ArchiveCategory implements CreationAuditable, UpdateAuditable {
 
     @Column(name = "table_status", nullable = false, length = 30)
     @Enumerated(EnumType.STRING)
-    private ArchiveTableStatus tableStatus = ArchiveTableStatus.not_built;
+    private ArchiveTableStatus tableStatus = ArchiveTableStatus.NOT_BUILT;
 
     @Column(name = "built_at")
     private LocalDateTime builtAt;

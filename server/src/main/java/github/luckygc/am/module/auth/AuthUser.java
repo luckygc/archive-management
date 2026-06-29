@@ -32,8 +32,7 @@ public class AuthUser {
     @Column(name = "display_name", nullable = false, length = 100)
     private String displayName;
 
-    @Column(length = 255)
-    private String email;
+    @Column private String email;
 
     @Column(name = "mobile_phone", length = 50)
     private String mobilePhone;

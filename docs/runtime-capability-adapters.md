@@ -41,7 +41,7 @@ archive:
         full-text:
             adapter: postgresql
     storage:
-        adapter: local
+        adapter: LOCAL
         active-local-bucket: local
 ```
 

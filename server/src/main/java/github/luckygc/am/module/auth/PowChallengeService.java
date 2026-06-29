@@ -7,10 +7,12 @@ import java.time.ZoneId;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -59,11 +61,11 @@ public class PowChallengeService {
     }
 
     @Transactional
-    public Map<String, Object> redeemChallenge(CapRedeemCommand command) {
+    public Map<String, Object> redeemChallenge(@Nullable CapRedeemCommand command) {
         if (command == null
                 || StringUtils.isBlank(command.token())
                 || command.solutions() == null
-                || command.solutions().stream().anyMatch(solution -> solution == null)) {
+                || command.solutions().stream().anyMatch(Objects::isNull)) {
             return redeemFailure("Invalid body");
         }
 
@@ -100,13 +102,14 @@ public class PowChallengeService {
         return response;
     }
 
-    public Map<String, Object> validateToken(String token, boolean keepToken) {
+    @Transactional
+    public Map<String, Object> validateToken(@Nullable String token, boolean keepToken) {
         if (keepToken) {
             return validationResult(validToken(token));
         }
 
         try {
-            consumeToken(token);
+            consumeTokenInCurrentTransaction(token);
             return validationResult(true);
         } catch (PowChallengeException ex) {
             return validationResult(false);
@@ -114,7 +117,11 @@ public class PowChallengeService {
     }
 
     @Transactional
-    public void consumeToken(String token) {
+    public void consumeToken(@Nullable String token) {
+        consumeTokenInCurrentTransaction(token);
+    }
+
+    private void consumeTokenInCurrentTransaction(@Nullable String token) {
         String tokenKey = tokenKey(token);
         if (tokenKey == null) {
             throw new PowChallengeException("安全验证已失效，请重试");
@@ -139,7 +146,7 @@ public class PowChallengeService {
         return Map.of("success", success);
     }
 
-    private boolean validToken(String token) {
+    private boolean validToken(@Nullable String token) {
         String tokenKey = tokenKey(token);
         if (tokenKey == null) {
             return false;
@@ -151,7 +158,7 @@ public class PowChallengeService {
         return expiresAt != null && toEpochMillis(expiresAt) > System.currentTimeMillis();
     }
 
-    private String tokenKey(String token) {
+    private @Nullable String tokenKey(@Nullable String token) {
         if (StringUtils.isBlank(token)) {
             return null;
         }
@@ -164,7 +171,7 @@ public class PowChallengeService {
         return parts[0] + ":" + sha256Hex(parts[1]);
     }
 
-    private boolean validSolutions(AuthCapChallenge challenge, List<Long> solutions) {
+    private boolean validSolutions(AuthCapChallenge challenge, List<@Nullable Long> solutions) {
         if (solutions.size() != challenge.getChallengeCount()) {
             return false;
         }
@@ -173,7 +180,8 @@ public class PowChallengeService {
             String salt = prng(challenge.getToken() + (index + 1), challenge.getChallengeSize());
             String target =
                     prng(challenge.getToken() + (index + 1) + "d", challenge.getDifficulty());
-            if (!sha256Hex(salt + solutions.get(index)).startsWith(target)) {
+            Long solution = solutions.get(index);
+            if (solution == null || !sha256Hex(salt + solution).startsWith(target)) {
                 return false;
             }
         }
@@ -244,7 +252,8 @@ public class PowChallengeService {
 
     public record CapChallenge(int c, int s, int d) {}
 
-    public record CapRedeemCommand(String token, List<Long> solutions) {}
+    public record CapRedeemCommand(
+            @Nullable String token, @Nullable List<@Nullable Long> solutions) {}
 
-    public record CapValidateCommand(String token, Boolean keepToken) {}
+    public record CapValidateCommand(@Nullable String token, @Nullable Boolean keepToken) {}
 }

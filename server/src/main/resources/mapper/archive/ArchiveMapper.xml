@@ -42,10 +42,10 @@
 
     <update id="updateCategoryTableStatus">
         update am_archive_category
-        set item_table_name = case when #{archiveLevel} = 'item' and #{fieldScope} = 'metadata' then #{tableName} else item_table_name end,
-            volume_table_name = case when #{archiveLevel} = 'volume' and #{fieldScope} = 'metadata' then #{tableName} else volume_table_name end,
-            item_physical_table_name = case when #{archiveLevel} = 'item' and #{fieldScope} = 'physical' then #{tableName} else item_physical_table_name end,
-            volume_physical_table_name = case when #{archiveLevel} = 'volume' and #{fieldScope} = 'physical' then #{tableName} else volume_physical_table_name end,
+        set item_table_name = case when #{archiveLevel} = 'ITEM' and #{fieldScope} = 'METADATA' then #{tableName} else item_table_name end,
+            volume_table_name = case when #{archiveLevel} = 'VOLUME' and #{fieldScope} = 'METADATA' then #{tableName} else volume_table_name end,
+            item_physical_table_name = case when #{archiveLevel} = 'ITEM' and #{fieldScope} = 'PHYSICAL' then #{tableName} else item_physical_table_name end,
+            volume_physical_table_name = case when #{archiveLevel} = 'VOLUME' and #{fieldScope} = 'PHYSICAL' then #{tableName} else volume_physical_table_name end,
             table_status = #{tableStatus},
             built_at = localtimestamp,
             updated_by = #{userId},

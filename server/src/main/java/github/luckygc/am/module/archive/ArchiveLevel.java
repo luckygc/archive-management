@@ -1,11 +1,10 @@
 package github.luckygc.am.module.archive;
 
 import java.util.List;
-import java.util.Locale;
 
 public enum ArchiveLevel {
-    volume,
-    item;
+    VOLUME,
+    ITEM;
 
     private static final List<ArchiveLevel> ORDERED_VALUES = List.of(values());
 
@@ -18,6 +17,6 @@ public enum ArchiveLevel {
     }
 
     public static ArchiveLevel fromValue(String value) {
-        return ArchiveLevel.valueOf(value.trim().toLowerCase(Locale.ROOT));
+        return ArchiveLevel.valueOf(value.trim());
     }
 }

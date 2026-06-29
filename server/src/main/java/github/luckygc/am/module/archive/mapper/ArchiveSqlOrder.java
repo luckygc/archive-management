@@ -7,7 +7,7 @@ public record ArchiveSqlOrder(String expression, Direction direction) {
     }
 
     public enum Direction {
-        asc,
-        desc
+        ASC,
+        DESC
     }
 }

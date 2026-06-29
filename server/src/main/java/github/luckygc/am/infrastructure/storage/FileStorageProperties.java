@@ -14,7 +14,7 @@ import lombok.Setter;
 @ConfigurationProperties(prefix = "archive.storage")
 public class FileStorageProperties {
 
-    private String adapter = "local";
+    private String adapter = "LOCAL";
 
     private String activeLocalBucket = "";
 

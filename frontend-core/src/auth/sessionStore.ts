@@ -1,8 +1,7 @@
 import { create } from "zustand";
 
-import { getCurrentUser, login, logout } from "../api/auth";
-import { HttpClientError } from "../api/client";
-import type { CurrentUserDto, LoginCommand } from "../types/auth";
+import { getCurrentUser, HttpClientError, login, logout } from "../api";
+import type { CurrentUserDto, LoginCommand } from "../types";
 
 interface SessionState {
     initialized: boolean;

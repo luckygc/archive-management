@@ -36,7 +36,7 @@
 #### Scenario: 保存实体枚举字段
 
 - **WHEN** 实体字段使用 Java enum 表达业务枚举
-- **THEN** enum 常量名 SHALL 使用对外和入库一致的小写 snake_case 值
+- **THEN** enum 常量名 SHALL 使用对外和入库一致的大写可读字符串，多个英文单词使用下划线分隔
 - **AND** 实体属性 SHALL 标注 `@Enumerated(EnumType.STRING)`
 - **AND** 系统 SHALL NOT 依赖 `enum.ordinal()`
 - **AND** 系统 SHALL NOT 为简单枚举手写 `AttributeConverter` 或额外注册 Jackson/MVC 枚举转换器
@@ -130,10 +130,10 @@
 
 #### Scenario: 分层创建电子和实物动态表
 
-- **WHEN** 档案分类启用 `item_only` 管理模式
+- **WHEN** 档案分类启用 `ITEM_ONLY` 管理模式
 - **THEN** 系统 SHALL 至少支持卷内条目的电子字段动态表
 - **AND** 系统 SHALL 在存在卷内实物字段时支持独立的卷内实物信息动态表
-- **WHEN** 档案分类启用 `volume_item` 管理模式
+- **WHEN** 档案分类启用 `VOLUME_ITEM` 管理模式
 - **THEN** 系统 SHALL 支持案卷电子、案卷实物、卷内电子和卷内实物四类动态表
 - **AND** 系统 SHALL NOT 将案卷和卷内数据混写到同一张分类动态表
 - **AND** 系统 SHALL NOT 强制案卷和卷内共用同一套实物字段
@@ -154,8 +154,8 @@
 - **WHEN** 客户端为档案分类新增字段
 - **THEN** 字段定义 SHALL 保存 item/volume 适用对象
 - **AND** 字段定义 SHALL 保存 `field_scope`
-- **AND** `field_scope=metadata` SHALL 表示案卷或卷内电子字段
-- **AND** `field_scope=physical` SHALL 表示案卷或卷内实物信息字段
+- **AND** `field_scope=METADATA` SHALL 表示案卷或卷内电子字段
+- **AND** `field_scope=PHYSICAL` SHALL 表示案卷或卷内实物信息字段
 
 #### Scenario: 创建字段定义
 
@@ -199,7 +199,7 @@
 
 - **WHEN** 客户端为某个档案分类提交唯一规则名称、编码和字段组合
 - **THEN** 系统 SHALL 保存唯一规则
-- **AND** 系统 SHALL 只允许选择该分类下未删除、当前约束层级一致且 `field_scope=metadata` 的案卷或卷内电子字段
+- **AND** 系统 SHALL 只允许选择该分类下未删除、当前约束层级一致且 `field_scope=METADATA` 的案卷或卷内电子字段
 - **AND** 系统 SHALL NOT 允许实物信息字段参与唯一校验
 - **AND** 如果分类未启用案卷管理，系统 SHALL NOT 允许创建案卷层级唯一规则
 - **AND** 系统 SHALL 按客户端提交的字段顺序保存规则字段

@@ -1,5 +1,6 @@
 package github.luckygc.am.module.archive.item;
 
+import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -121,7 +122,7 @@ public class ArchiveItemController {
         archiveItemRoutingService.deleteRelation(id, relationId, currentUserId(authentication));
     }
 
-    private Long currentUserId(Authentication authentication) {
+    private @Nullable Long currentUserId(@Nullable Authentication authentication) {
         if (authentication != null
                 && authentication.getPrincipal() instanceof AuthenticatedUser userDetails) {
             return userDetails.id();

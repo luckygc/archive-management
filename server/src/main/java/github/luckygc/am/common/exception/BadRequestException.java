@@ -1,10 +1,13 @@
 package github.luckygc.am.common.exception;
 
+import java.io.Serial;
 import java.util.List;
 
 import github.luckygc.am.common.api.ApiFieldViolation;
 
 public class BadRequestException extends RuntimeException {
+
+    @Serial private static final long serialVersionUID = -1L;
 
     private final List<ApiFieldViolation> fieldViolations;
 

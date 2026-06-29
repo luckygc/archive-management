@@ -17,12 +17,12 @@ class ArchiveDynamicTableNamesTests {
                         null,
                         "contract",
                         "合同档案",
-                        ArchiveManagementMode.volume_item,
+                        ArchiveManagementMode.VOLUME_ITEM,
                         null,
                         null,
                         null,
                         null,
-                        ArchiveTableStatus.not_built,
+                        ArchiveTableStatus.NOT_BUILT,
                         null,
                         true,
                         0,
@@ -31,19 +31,19 @@ class ArchiveDynamicTableNamesTests {
 
         assertThat(
                         ArchiveDynamicTableNames.tableName(
-                                category, ArchiveLevel.volume, ArchiveFieldScope.metadata))
+                                category, ArchiveLevel.VOLUME, ArchiveFieldScope.METADATA))
                 .isEqualTo("am_archive_volume_data_contract_800c327aefb3");
         assertThat(
                         ArchiveDynamicTableNames.tableName(
-                                category, ArchiveLevel.volume, ArchiveFieldScope.physical))
+                                category, ArchiveLevel.VOLUME, ArchiveFieldScope.PHYSICAL))
                 .isEqualTo("am_archive_volume_physical_contract_800c327aefb3");
         assertThat(
                         ArchiveDynamicTableNames.tableName(
-                                category, ArchiveLevel.item, ArchiveFieldScope.metadata))
+                                category, ArchiveLevel.ITEM, ArchiveFieldScope.METADATA))
                 .isEqualTo("am_archive_item_data_contract_800c327aefb3");
         assertThat(
                         ArchiveDynamicTableNames.tableName(
-                                category, ArchiveLevel.item, ArchiveFieldScope.physical))
+                                category, ArchiveLevel.ITEM, ArchiveFieldScope.PHYSICAL))
                 .isEqualTo("am_archive_item_physical_contract_800c327aefb3");
     }
 

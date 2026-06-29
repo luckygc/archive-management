@@ -19,7 +19,7 @@ class FileStorageConfigurationTests {
     private final FileStorageConfiguration configuration = new FileStorageConfiguration();
 
     @Test
-    @DisplayName("默认 local adapter 使用 active local bucket")
+    @DisplayName("默认 LOCAL adapter 使用 active local bucket")
     void defaultAdapterUsesActiveLocalBucket() throws Exception {
         FileStorageProperties properties = new FileStorageProperties();
         properties.setActiveLocalBucket("local");
@@ -30,20 +30,20 @@ class FileStorageConfigurationTests {
 
         FileStorageService service = configuration.fileStorageService(properties);
 
-        assertThat(service.defaultStorageType()).isEqualTo(StorageType.local);
-        assertThat(service.bucketName(StorageType.local)).isEqualTo("local");
+        assertThat(service.defaultStorageType()).isEqualTo(StorageType.LOCAL);
+        assertThat(service.bucketName(StorageType.LOCAL)).isEqualTo("local");
     }
 
     @Test
     @DisplayName("对象存储 adapter 使用配置的对象 bucket")
     void objectAdapterUsesConfiguredObjectBucket() throws Exception {
         FileStorageProperties properties = objectStorageProperties();
-        properties.setAdapter("s3");
+        properties.setAdapter("S3");
 
         try (DelegatingFileStorageService service =
                 (DelegatingFileStorageService) configuration.fileStorageService(properties)) {
-            assertThat(service.defaultStorageType()).isEqualTo(StorageType.s3);
-            assertThat(service.bucketName(StorageType.s3)).isEqualTo("archive");
+            assertThat(service.defaultStorageType()).isEqualTo(StorageType.S3);
+            assertThat(service.bucketName(StorageType.S3)).isEqualTo("archive");
         }
     }
 
@@ -51,7 +51,7 @@ class FileStorageConfigurationTests {
     @DisplayName("对象存储配置不完整时拒绝创建服务")
     void rejectObjectAdapterWhenObjectStorageIsIncomplete() {
         FileStorageProperties properties = new FileStorageProperties();
-        properties.setAdapter("s3");
+        properties.setAdapter("S3");
         properties.setActiveLocalBucket("local");
         FileStorageProperties.Local local = new FileStorageProperties.Local();
         local.setBucket("local");

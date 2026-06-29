@@ -20,18 +20,18 @@ public final class ArchiveDynamicTableNames {
     private ArchiveDynamicTableNames() {}
 
     public static ArchiveLevel normalizeArchiveLevel(ArchiveLevel archiveLevel) {
-        return archiveLevel == null ? ArchiveLevel.item : archiveLevel;
+        return archiveLevel == null ? ArchiveLevel.ITEM : archiveLevel;
     }
 
-    public static boolean isVolumeLevelAllowed(
+    public static boolean supportsArchiveLevel(
             ArchiveCategoryDto category, ArchiveLevel archiveLevel) {
         ArchiveLevel normalizedLevel = normalizeArchiveLevel(archiveLevel);
-        return normalizedLevel != ArchiveLevel.volume
-                || category.managementMode() == ArchiveManagementMode.volume_item;
+        return normalizedLevel != ArchiveLevel.VOLUME
+                || category.managementMode() == ArchiveManagementMode.VOLUME_ITEM;
     }
 
     public static String tableName(ArchiveCategoryDto category, ArchiveLevel archiveLevel) {
-        return tableName(category, archiveLevel, ArchiveFieldScope.metadata);
+        return tableName(category, archiveLevel, ArchiveFieldScope.METADATA);
     }
 
     public static String tableName(
@@ -40,21 +40,21 @@ public final class ArchiveDynamicTableNames {
         ArchiveFieldScope normalizedScope = normalizeFieldScope(fieldScope);
         String configuredName =
                 switch (normalizedScope) {
-                    case metadata ->
-                            normalizedLevel == ArchiveLevel.volume
+                    case METADATA ->
+                            normalizedLevel == ArchiveLevel.VOLUME
                                     ? category.volumeTableName()
                                     : category.itemTableName();
-                    case physical ->
-                            normalizedLevel == ArchiveLevel.volume
+                    case PHYSICAL ->
+                            normalizedLevel == ArchiveLevel.VOLUME
                                     ? category.volumePhysicalTableName()
                                     : category.itemPhysicalTableName();
                 };
         if (StringUtils.isNotBlank(configuredName)) {
             return configuredName;
         }
-        String objectType = normalizedLevel == ArchiveLevel.volume ? "volume" : "item";
+        String objectType = normalizedLevel == ArchiveLevel.VOLUME ? "volume" : "item";
         String suffix =
-                normalizedScope == ArchiveFieldScope.metadata
+                normalizedScope == ArchiveFieldScope.METADATA
                         ? "data"
                         : normalizedScope.value().toLowerCase();
         return stableIdentifier(
@@ -62,7 +62,7 @@ public final class ArchiveDynamicTableNames {
     }
 
     public static ArchiveFieldScope normalizeFieldScope(ArchiveFieldScope fieldScope) {
-        return fieldScope == null ? ArchiveFieldScope.metadata : fieldScope;
+        return fieldScope == null ? ArchiveFieldScope.METADATA : fieldScope;
     }
 
     public static String stableIdentifier(String prefix, String stableKey) {

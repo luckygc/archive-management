@@ -3,11 +3,13 @@ package github.luckygc.am.infrastructure.web;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 import jakarta.servlet.http.HttpServletRequest;
 
 import org.apache.commons.lang3.StringUtils;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -37,7 +39,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(BadRequestException.class)
     ResponseEntity<ProblemDetail> handleBadRequestException(
             BadRequestException exception, HttpServletRequest request) {
-        String message = StringUtils.defaultIfBlank(exception.getMessage(), "请求参数不合法");
+        String message = defaultText(exception.getMessage(), "请求参数不合法");
         ProblemDetail problem =
                 problem(
                         HttpStatus.BAD_REQUEST,
@@ -54,7 +56,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     ResponseEntity<ProblemDetail> handleResponseStatusException(
             ResponseStatusException exception, HttpServletRequest request) {
         HttpStatusCode statusCode = exception.getStatusCode();
-        String message = StringUtils.defaultIfBlank(exception.getReason(), "请求处理失败");
+        String message = defaultText(exception.getReason(), "请求处理失败");
         String code = canonicalCode(statusCode);
         ProblemDetail problem =
                 problem(statusCode, title(statusCode), message, code, code + "_ERROR", request);
@@ -94,7 +96,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 exception.getBindingResult().getFieldErrors().stream()
                         .map(this::fieldViolation)
                         .toList());
-        return handleExceptionInternal(exception, problem, headers, status, request);
+        return Objects.requireNonNull(
+                handleExceptionInternal(exception, problem, headers, status, request));
     }
 
     @Override
@@ -121,17 +124,21 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                                                         error ->
                                                                 new ApiFieldViolation(
                                                                         parameterName(result),
-                                                                        StringUtils.defaultIfBlank(
+                                                                        defaultText(
                                                                                 error
                                                                                         .getDefaultMessage(),
                                                                                 "参数不合法"))))
                         .toList());
-        return handleExceptionInternal(exception, problem, headers, status, request);
+        return Objects.requireNonNull(
+                handleExceptionInternal(exception, problem, headers, status, request));
     }
 
     @Override
     protected ResponseEntity<Object> createResponseEntity(
-            Object body, HttpHeaders headers, HttpStatusCode statusCode, WebRequest request) {
+            @Nullable Object body,
+            HttpHeaders headers,
+            HttpStatusCode statusCode,
+            WebRequest request) {
         Object responseBody = body;
         if (responseBody instanceof ProblemDetail problem) {
             completeProblem(problem, statusCode, request);
@@ -140,7 +147,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                     problem(
                             statusCode,
                             title(statusCode),
-                            StringUtils.defaultIfBlank(title(statusCode), "请求处理失败"),
+                            defaultText(title(statusCode), "请求处理失败"),
                             canonicalCode(statusCode),
                             canonicalCode(statusCode) + "_ERROR",
                             request);
@@ -186,20 +193,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public static Map<String, Object> problemBody(ProblemDetail problem) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("type", problem.getType() == null ? "about:blank" : problem.getType().toString());
-        body.put("title", problem.getTitle());
+        body.put("title", defaultText(problem.getTitle(), "请求处理失败"));
         body.put("status", problem.getStatus());
-        body.put("detail", problem.getDetail());
+        body.put("detail", defaultText(problem.getDetail(), "请求处理失败"));
         if (problem.getInstance() != null) {
             body.put("instance", problem.getInstance().toString());
         }
         if (problem.getProperties() != null) {
-            problem.getProperties()
-                    .forEach(
-                            (key, value) -> {
-                                if (value != null) {
-                                    body.put(key, value);
-                                }
-                            });
+            body.putAll(problem.getProperties());
         }
         return body;
     }
@@ -250,8 +251,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     private ApiFieldViolation fieldViolation(FieldError fieldError) {
         return new ApiFieldViolation(
-                fieldError.getField(),
-                StringUtils.defaultIfBlank(fieldError.getDefaultMessage(), "字段不合法"));
+                fieldError.getField(), defaultText(fieldError.getDefaultMessage(), "字段不合法"));
     }
 
     private String parameterName(
@@ -303,5 +303,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             case TOO_MANY_REQUESTS -> "请求过于频繁";
             default -> status.is5xxServerError() ? "服务处理失败" : "请求处理失败";
         };
+    }
+
+    private static String defaultText(@Nullable String value, String fallback) {
+        return StringUtils.isBlank(value) ? fallback : value;
     }
 }

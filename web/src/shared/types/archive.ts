@@ -1,10 +1,10 @@
-export type ArchiveFieldType = "text" | "integer" | "decimal" | "date" | "datetime";
-export type ArchiveFieldControl = "input" | "textarea" | "number" | "date" | "datetime";
-export type ArchiveTableStatus = "not_built" | "built";
-export type ArchiveLayoutSurface = "table" | "detail" | "edit";
+export type ArchiveFieldType = "TEXT" | "INTEGER" | "DECIMAL" | "DATE" | "DATETIME";
+export type ArchiveFieldControl = "INPUT" | "TEXTAREA" | "NUMBER" | "DATE" | "DATETIME";
+export type ArchiveTableStatus = "NOT_BUILT" | "BUILT";
+export type ArchiveLayoutSurface = "TABLE" | "DETAIL" | "EDIT";
 export type ArchiveLayoutScope = "public" | "effective";
-export type ArchiveLevel = "volume" | "item";
-export type ArchiveManagementMode = "item_only" | "volume_item";
+export type ArchiveLevel = "VOLUME" | "ITEM";
+export type ArchiveManagementMode = "ITEM_ONLY" | "VOLUME_ITEM";
 export type ArchiveElectronicStatus = "DRAFT" | "ARCHIVED" | "BORROWED";
 export type ArchivePhysicalStatus =
     | "NONE"
