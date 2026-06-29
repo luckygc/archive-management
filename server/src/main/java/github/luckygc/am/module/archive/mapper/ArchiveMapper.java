@@ -1,5 +1,6 @@
 package github.luckygc.am.module.archive.mapper;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -131,6 +132,24 @@ public interface ArchiveMapper {
             @Param("operationType") String operationType,
             @Param("operationReason") String operationReason,
             @Param("operatedBy") Long operatedBy);
+
+    long countArchiveItemAudits(
+            @Param("archiveItemId") @Nullable Long archiveItemId,
+            @Param("fondsCode") @Nullable String fondsCode,
+            @Param("categoryCode") @Nullable String categoryCode,
+            @Param("operationType") @Nullable String operationType,
+            @Param("operatedAfter") @Nullable LocalDateTime operatedAfter,
+            @Param("operatedBefore") @Nullable LocalDateTime operatedBefore);
+
+    List<Map<String, Object>> listArchiveItemAudits(
+            @Param("archiveItemId") @Nullable Long archiveItemId,
+            @Param("fondsCode") @Nullable String fondsCode,
+            @Param("categoryCode") @Nullable String categoryCode,
+            @Param("operationType") @Nullable String operationType,
+            @Param("operatedAfter") @Nullable LocalDateTime operatedAfter,
+            @Param("operatedBefore") @Nullable LocalDateTime operatedBefore,
+            @Param("limit") int limit,
+            @Param("offset") long offset);
 
     int markArchiveItemDeleted(@Param("id") Long id, @Param("userId") Long userId);
 

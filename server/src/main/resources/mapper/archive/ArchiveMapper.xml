@@ -410,6 +410,67 @@
              #{categoryCode}, #{operationType}, #{operationReason}, #{operatedBy})
     </insert>
 
+    <select id="countArchiveItemAudits" resultType="long">
+        select count(1)
+        from am_archive_item_audit
+        <where>
+            <if test="archiveItemId != null">
+                and archive_item_id = #{archiveItemId}
+            </if>
+            <if test="fondsCode != null and fondsCode != ''">
+                and fonds_code = #{fondsCode}
+            </if>
+            <if test="categoryCode != null and categoryCode != ''">
+                and category_code = #{categoryCode}
+            </if>
+            <if test="operationType != null and operationType != ''">
+                and operation_type = #{operationType}
+            </if>
+            <if test="operatedAfter != null">
+                and operated_at &gt;= #{operatedAfter}
+            </if>
+            <if test="operatedBefore != null">
+                and operated_at &lt; #{operatedBefore}
+            </if>
+        </where>
+    </select>
+
+    <select id="listArchiveItemAudits" resultType="map">
+        select id,
+               source_table_name,
+               source_item_id,
+               archive_item_id,
+               fonds_code,
+               category_code,
+               operation_type,
+               operation_reason,
+               operated_by,
+               operated_at
+        from am_archive_item_audit
+        <where>
+            <if test="archiveItemId != null">
+                and archive_item_id = #{archiveItemId}
+            </if>
+            <if test="fondsCode != null and fondsCode != ''">
+                and fonds_code = #{fondsCode}
+            </if>
+            <if test="categoryCode != null and categoryCode != ''">
+                and category_code = #{categoryCode}
+            </if>
+            <if test="operationType != null and operationType != ''">
+                and operation_type = #{operationType}
+            </if>
+            <if test="operatedAfter != null">
+                and operated_at &gt;= #{operatedAfter}
+            </if>
+            <if test="operatedBefore != null">
+                and operated_at &lt; #{operatedBefore}
+            </if>
+        </where>
+        order by operated_at desc, id desc
+        limit #{limit} offset #{offset}
+    </select>
+
     <update id="markArchiveItemDeleted">
         update am_archive_item
         set deleted_flag = true,
