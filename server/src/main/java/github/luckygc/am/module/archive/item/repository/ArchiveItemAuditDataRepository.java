@@ -6,6 +6,8 @@ import jakarta.data.repository.Repository;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
+import github.luckygc.am.module.archive.item.ArchiveItemAudit;
+
 @Transactional(rollbackFor = Throwable.class, isolation = Isolation.READ_COMMITTED)
 @Repository
 public interface ArchiveItemAuditDataRepository extends CrudRepository<ArchiveItemAudit, Long> {}

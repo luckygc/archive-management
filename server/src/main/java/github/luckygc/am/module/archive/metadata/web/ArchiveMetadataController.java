@@ -15,17 +15,20 @@ import org.springframework.web.bind.annotation.RestController;
 import github.luckygc.am.common.api.CollectionResponse;
 import github.luckygc.am.common.security.AuthenticatedUser;
 import github.luckygc.am.module.archive.ArchiveLevel;
-import github.luckygc.am.module.archive.item.ArchiveItemRoutingService;
-import github.luckygc.am.module.archive.metadata.ArchiveMetadataService.ArchiveCategoryDto;
-import github.luckygc.am.module.archive.metadata.ArchiveMetadataService.ArchiveCategoryRequest;
-import github.luckygc.am.module.archive.metadata.ArchiveMetadataService.ArchiveFieldDto;
-import github.luckygc.am.module.archive.metadata.ArchiveMetadataService.ArchiveFieldLayoutDto;
-import github.luckygc.am.module.archive.metadata.ArchiveMetadataService.ArchiveFieldLayoutRequest;
-import github.luckygc.am.module.archive.metadata.ArchiveMetadataService.ArchiveFieldRequest;
-import github.luckygc.am.module.archive.metadata.ArchiveMetadataService.ArchiveFondsDto;
-import github.luckygc.am.module.archive.metadata.ArchiveMetadataService.ArchiveFondsRequest;
-import github.luckygc.am.module.archive.metadata.ArchiveMetadataService.ArchiveUniqueConstraintDto;
-import github.luckygc.am.module.archive.metadata.ArchiveMetadataService.ArchiveUniqueConstraintRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService;
+import github.luckygc.am.module.archive.metadata.ArchiveFieldScope;
+import github.luckygc.am.module.archive.metadata.ArchiveLayoutSurface;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryRequest;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFieldDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFieldLayoutDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFieldLayoutRequest;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFieldRequest;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFondsDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFondsRequest;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveUniqueConstraintDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveUniqueConstraintRequest;
 
 @RestController
 public class ArchiveMetadataController {

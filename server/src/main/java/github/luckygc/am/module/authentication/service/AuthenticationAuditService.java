@@ -31,6 +31,16 @@ import org.springframework.transaction.annotation.Transactional;
 import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.common.security.AuthenticatedUser;
+import github.luckygc.am.module.authentication.AuthenticationLoginEventType;
+import github.luckygc.am.module.authentication.AuthenticationLoginLog;
+import github.luckygc.am.module.authentication.ClientInfo;
+import github.luckygc.am.module.authentication.ClientRequestContext;
+import github.luckygc.am.module.authentication.ClientRequestContextResolver;
+import github.luckygc.am.module.authentication.SpringSessionRecord;
+import github.luckygc.am.module.authentication._AuthenticationLoginLog;
+import github.luckygc.am.module.authentication._SpringSessionRecord;
+import github.luckygc.am.module.authentication.repository.AuthenticationLoginLogDataRepository;
+import github.luckygc.am.module.authentication.repository.SpringSessionRecordDataRepository;
 
 @Service
 public class AuthenticationAuditService {

@@ -8,10 +8,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import github.luckygc.am.module.authentication.repository.AuthenticationUserDataRepository;
 import github.luckygc.am.module.authorization.AuthorizationRole;
-import github.luckygc.am.module.authorization.AuthorizationRoleDataRepository;
 import github.luckygc.am.module.authorization.AuthorizationUserRoleRelation;
-import github.luckygc.am.module.authorization.AuthorizationUserRoleRelationDataRepository;
+import github.luckygc.am.module.authorization.repository.AuthorizationRoleDataRepository;
+import github.luckygc.am.module.authorization.repository.AuthorizationUserRoleRelationDataRepository;
 
 @Component
 @ConditionalOnProperty(

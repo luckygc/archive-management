@@ -11,9 +11,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import github.luckygc.am.common.api.CollectionResponse;
 import github.luckygc.am.common.security.AuthenticatedUser;
-import github.luckygc.am.module.archive.item.ArchiveVolumeService.AddItemToVolumeRequest;
-import github.luckygc.am.module.archive.item.ArchiveVolumeService.ArchiveVolumeDto;
-import github.luckygc.am.module.archive.item.ArchiveVolumeService.ArchiveVolumeRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveVolumeService;
+import github.luckygc.am.module.archive.item.service.ArchiveVolumeService.AddItemToVolumeRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveVolumeService.ArchiveVolumeDto;
+import github.luckygc.am.module.archive.item.service.ArchiveVolumeService.ArchiveVolumeRequest;
 
 @RestController
 public class ArchiveVolumeController {

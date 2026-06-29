@@ -10,10 +10,13 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
+import github.luckygc.am.module.authentication.ArchiveUserDetails;
+import github.luckygc.am.module.authentication.AuthenticationUser;
+import github.luckygc.am.module.authentication.repository.AuthenticationUserDataRepository;
 import github.luckygc.am.module.authorization.AuthorizationRole;
-import github.luckygc.am.module.authorization.AuthorizationRoleDataRepository;
 import github.luckygc.am.module.authorization.AuthorizationUserRoleRelation;
-import github.luckygc.am.module.authorization.AuthorizationUserRoleRelationDataRepository;
+import github.luckygc.am.module.authorization.repository.AuthorizationRoleDataRepository;
+import github.luckygc.am.module.authorization.repository.AuthorizationUserRoleRelationDataRepository;
 
 @Service
 public class DatabaseUserDetailsService implements UserDetailsService {

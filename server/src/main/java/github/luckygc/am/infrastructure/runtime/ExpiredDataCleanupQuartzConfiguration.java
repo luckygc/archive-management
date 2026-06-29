@@ -1,5 +1,7 @@
 package github.luckygc.am.infrastructure.runtime;
 
+import java.util.List;
+
 import org.quartz.CronScheduleBuilder;
 import org.quartz.JobBuilder;
 import org.quartz.JobDetail;
@@ -8,8 +10,16 @@ import org.quartz.TriggerBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import github.luckygc.am.common.cleanup.ExpiredDataCleaner;
+import github.luckygc.am.common.cleanup.ExpiredDataCleanupService;
+
 @Configuration(proxyBeanMethods = false)
 public class ExpiredDataCleanupQuartzConfiguration {
+
+    @Bean
+    public ExpiredDataCleanupService expiredDataCleanupService(List<ExpiredDataCleaner> cleaners) {
+        return new ExpiredDataCleanupService(cleaners);
+    }
 
     @Bean
     public JobDetail expiredDataCleanupJobDetail() {

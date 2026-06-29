@@ -17,8 +17,8 @@ import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.metadata.ArchiveDynamicTableNames;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldType;
-import github.luckygc.am.module.archive.metadata.ArchiveMetadataService;
-import github.luckygc.am.module.archive.metadata.ArchiveMetadataService.ArchiveCategoryDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryDto;
 
 @Service
 public class ArchiveItemLineTableService {

@@ -21,8 +21,13 @@ import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
-import github.luckygc.am.module.archive.metadata.ArchiveMetadataService.ArchiveUniqueConstraintDto;
-import github.luckygc.am.module.archive.metadata.ArchiveMetadataService.ArchiveUniqueConstraintRequest;
+import github.luckygc.am.module.archive.metadata.repository.ArchiveCategoryDataRepository;
+import github.luckygc.am.module.archive.metadata.repository.ArchiveFieldDataRepository;
+import github.luckygc.am.module.archive.metadata.repository.ArchiveFieldLayoutDataRepository;
+import github.luckygc.am.module.archive.metadata.repository.ArchiveFondsDataRepository;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveUniqueConstraintDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveUniqueConstraintRequest;
 
 @DisplayName("档案元数据服务")
 class ArchiveMetadataServiceTests {

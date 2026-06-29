@@ -21,9 +21,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import github.luckygc.am.app.ArchiveManagementApplication;
-import github.luckygc.am.module.archive.item.ArchiveItemRoutingService;
-import github.luckygc.am.module.archive.item.ArchiveItemRoutingService.ArchiveItemOrderBy;
-import github.luckygc.am.module.archive.item.ArchiveItemRoutingService.ArchiveItemQueryRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService;
+import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveItemOrderBy;
+import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveItemQueryRequest;
 
 @Testcontainers(disabledWithoutDocker = true)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)

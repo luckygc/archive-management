@@ -34,6 +34,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import com.jayway.jsonpath.JsonPath;
 
 import github.luckygc.am.app.ArchiveManagementApplication;
+import github.luckygc.am.module.authentication.repository.AuthenticationLoginLogDataRepository;
+import github.luckygc.am.module.authentication.repository.SpringSessionRecordDataRepository;
+import github.luckygc.am.module.authentication.service.PowChallengeService;
 import github.luckygc.am.test.PostgreSqlContainerTest;
 
 @Testcontainers(disabledWithoutDocker = true)

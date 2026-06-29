@@ -12,10 +12,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 import github.luckygc.am.common.api.CollectionResponse;
 import github.luckygc.am.common.security.AuthenticatedUser;
-import github.luckygc.am.module.archive.item.ArchiveItemLineTableService.ArchiveItemLineFieldDto;
-import github.luckygc.am.module.archive.item.ArchiveItemLineTableService.ArchiveItemLineFieldRequest;
-import github.luckygc.am.module.archive.item.ArchiveItemLineTableService.ArchiveItemLineTableDto;
-import github.luckygc.am.module.archive.item.ArchiveItemLineTableService.ArchiveItemLineTableRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemLineTableService;
+import github.luckygc.am.module.archive.item.service.ArchiveItemLineTableService.ArchiveItemLineFieldDto;
+import github.luckygc.am.module.archive.item.service.ArchiveItemLineTableService.ArchiveItemLineFieldRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemLineTableService.ArchiveItemLineTableDto;
+import github.luckygc.am.module.archive.item.service.ArchiveItemLineTableService.ArchiveItemLineTableRequest;
 
 @RestController
 public class ArchiveItemLineTableController {

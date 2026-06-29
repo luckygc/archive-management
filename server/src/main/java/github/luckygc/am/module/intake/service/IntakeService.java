@@ -2,6 +2,8 @@ package github.luckygc.am.module.intake.service;
 
 import org.springframework.stereotype.Service;
 
+import github.luckygc.am.module.intake.IntakeOverviewDto;
+
 @Service
 public class IntakeService {
 

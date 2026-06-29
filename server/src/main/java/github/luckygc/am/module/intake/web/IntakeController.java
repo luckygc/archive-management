@@ -3,6 +3,9 @@ package github.luckygc.am.module.intake.web;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import github.luckygc.am.module.intake.IntakeOverviewDto;
+import github.luckygc.am.module.intake.service.IntakeService;
+
 @RestController
 public class IntakeController {
 

@@ -11,6 +11,8 @@ import jakarta.data.restrict.Restriction;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
+import github.luckygc.am.module.authentication.AuthenticationLoginLog;
+
 @Transactional(rollbackFor = Throwable.class, isolation = Isolation.READ_COMMITTED)
 @Repository
 public interface AuthenticationLoginLogDataRepository

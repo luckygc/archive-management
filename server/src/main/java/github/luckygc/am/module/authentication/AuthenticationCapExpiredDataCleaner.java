@@ -7,6 +7,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import github.luckygc.am.common.cleanup.ExpiredDataCleaner;
 import github.luckygc.am.common.cleanup.ExpiredDataCleanupResult;
+import github.luckygc.am.module.authentication.repository.AuthenticationCapChallengeDataRepository;
+import github.luckygc.am.module.authentication.repository.AuthenticationCapTokenDataRepository;
 
 @Component
 public class AuthenticationCapExpiredDataCleaner implements ExpiredDataCleaner {

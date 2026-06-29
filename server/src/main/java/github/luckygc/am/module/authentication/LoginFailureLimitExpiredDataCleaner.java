@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import github.luckygc.am.common.cleanup.ExpiredDataCleaner;
 import github.luckygc.am.common.cleanup.ExpiredDataCleanupResult;
+import github.luckygc.am.module.authentication.repository.LoginFailureLimitDataRepository;
 
 @Component
 public class LoginFailureLimitExpiredDataCleaner implements ExpiredDataCleaner {

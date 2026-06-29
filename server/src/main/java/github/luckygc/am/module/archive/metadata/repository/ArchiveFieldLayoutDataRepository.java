@@ -11,6 +11,9 @@ import jakarta.data.repository.Repository;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
+import github.luckygc.am.module.archive.metadata.ArchiveFieldLayout;
+import github.luckygc.am.module.archive.metadata.ArchiveLayoutSurface;
+
 @Transactional(rollbackFor = Throwable.class, isolation = Isolation.READ_COMMITTED)
 @Repository
 public interface ArchiveFieldLayoutDataRepository extends CrudRepository<ArchiveFieldLayout, Long> {

@@ -14,6 +14,9 @@ import org.springframework.security.web.authentication.AuthenticationSuccessHand
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.stereotype.Component;
 
+import github.luckygc.am.module.authentication.service.AuthenticationAuditService;
+import github.luckygc.am.module.authentication.service.LoginFailureLimitService;
+
 import tools.jackson.databind.json.JsonMapper;
 
 @Component

@@ -6,6 +6,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import github.luckygc.am.module.authentication.service.PowChallengeService;
+
 @RestController
 public class CapController {
 

@@ -15,17 +15,18 @@ import org.springframework.web.bind.annotation.RestController;
 
 import github.luckygc.am.common.api.CollectionResponse;
 import github.luckygc.am.common.security.AuthenticatedUser;
-import github.luckygc.am.module.archive.item.ArchiveItemRoutingService.ArchiveItemDetailDto;
-import github.luckygc.am.module.archive.item.ArchiveItemRoutingService.ArchiveItemDto;
-import github.luckygc.am.module.archive.item.ArchiveItemRoutingService.ArchiveItemListDto;
-import github.luckygc.am.module.archive.item.ArchiveItemRoutingService.ArchiveItemQueryRequest;
-import github.luckygc.am.module.archive.item.ArchiveItemRoutingService.ArchiveItemRelationDto;
-import github.luckygc.am.module.archive.item.ArchiveItemRoutingService.ArchiveItemRelationRequest;
-import github.luckygc.am.module.archive.item.ArchiveItemRoutingService.ArchiveItemRequest;
-import github.luckygc.am.module.archive.item.ArchiveItemRoutingService.ArchiveItemUpdateRequest;
-import github.luckygc.am.module.archive.item.ArchiveItemRoutingService.ArchiveRelatedFilterCategoryDto;
-import github.luckygc.am.module.archive.item.ArchiveItemRoutingService.DeleteItemRequest;
-import github.luckygc.am.module.archive.item.ArchiveItemRoutingService.LockItemRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService;
+import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveItemDetailDto;
+import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveItemDto;
+import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveItemListDto;
+import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveItemQueryRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveItemRelationDto;
+import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveItemRelationRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveItemRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveItemUpdateRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveRelatedFilterCategoryDto;
+import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.DeleteItemRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.LockItemRequest;
 import github.luckygc.am.module.archive.metadata.ArchiveLayoutSurface;
 
 @RestController

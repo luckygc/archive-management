@@ -12,6 +12,8 @@ import jakarta.data.repository.Repository;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
+import github.luckygc.am.module.authentication.LoginFailureLimit;
+
 @Transactional(rollbackFor = Throwable.class, isolation = Isolation.READ_COMMITTED)
 @Repository
 public interface LoginFailureLimitDataRepository extends CrudRepository<LoginFailureLimit, String> {

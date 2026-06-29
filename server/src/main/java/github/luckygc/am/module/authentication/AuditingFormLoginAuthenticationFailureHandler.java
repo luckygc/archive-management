@@ -12,6 +12,9 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.stereotype.Component;
 
+import github.luckygc.am.module.authentication.service.AuthenticationAuditService;
+import github.luckygc.am.module.authentication.service.LoginFailureLimitService;
+
 @Component("formLoginAuthenticationFailureHandler")
 public class AuditingFormLoginAuthenticationFailureHandler implements AuthenticationFailureHandler {
 

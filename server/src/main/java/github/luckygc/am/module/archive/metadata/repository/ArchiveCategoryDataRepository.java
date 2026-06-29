@@ -10,6 +10,8 @@ import jakarta.data.repository.Repository;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
+import github.luckygc.am.module.archive.metadata.ArchiveCategory;
+
 @Transactional(rollbackFor = Throwable.class, isolation = Isolation.READ_COMMITTED)
 @Repository
 public interface ArchiveCategoryDataRepository extends CrudRepository<ArchiveCategory, Long> {

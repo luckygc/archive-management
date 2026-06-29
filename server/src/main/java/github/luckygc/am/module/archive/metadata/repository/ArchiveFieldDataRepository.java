@@ -12,6 +12,8 @@ import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import github.luckygc.am.module.archive.ArchiveLevel;
+import github.luckygc.am.module.archive.metadata.ArchiveField;
+import github.luckygc.am.module.archive.metadata.ArchiveFieldScope;
 
 @Transactional(rollbackFor = Throwable.class, isolation = Isolation.READ_COMMITTED)
 @Repository

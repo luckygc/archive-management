@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.common.security.AuthenticatedUser;
+import github.luckygc.am.module.authentication.service.AuthenticationAuditService;
 
 @RestController
 public class LoginSessionController {

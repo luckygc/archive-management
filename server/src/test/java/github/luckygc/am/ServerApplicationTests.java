@@ -32,9 +32,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import github.luckygc.am.app.ArchiveManagementApplication;
 import github.luckygc.am.infrastructure.hibernate.SecurityAuditingInterceptor;
 import github.luckygc.am.module.archive.metadata.ArchiveFonds;
-import github.luckygc.am.module.archive.metadata.ArchiveFondsDataRepository;
+import github.luckygc.am.module.archive.metadata.repository.ArchiveFondsDataRepository;
 import github.luckygc.am.module.authentication.ArchiveUserDetails;
-import github.luckygc.am.module.authentication.PowChallengeService;
+import github.luckygc.am.module.authentication.service.PowChallengeService;
 import github.luckygc.am.test.PostgreSqlContainerTest;
 
 import tools.jackson.databind.JsonNode;

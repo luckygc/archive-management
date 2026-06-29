@@ -12,6 +12,8 @@ import jakarta.data.repository.Repository;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
+import github.luckygc.am.module.archive.metadata.ArchiveFonds;
+
 @Transactional(rollbackFor = Throwable.class, isolation = Isolation.READ_COMMITTED)
 @Repository
 public interface ArchiveFondsDataRepository extends CrudRepository<ArchiveFonds, Long> {

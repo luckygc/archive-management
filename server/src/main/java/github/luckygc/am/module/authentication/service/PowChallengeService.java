@@ -16,6 +16,12 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import github.luckygc.am.module.authentication.AuthenticationCapChallenge;
+import github.luckygc.am.module.authentication.AuthenticationCapToken;
+import github.luckygc.am.module.authentication.PowChallengeException;
+import github.luckygc.am.module.authentication.repository.AuthenticationCapChallengeDataRepository;
+import github.luckygc.am.module.authentication.repository.AuthenticationCapTokenDataRepository;
+
 @Service
 public class PowChallengeService {
 

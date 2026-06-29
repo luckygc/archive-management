@@ -18,6 +18,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import github.luckygc.am.app.ArchiveManagementApplication;
+import github.luckygc.am.module.authentication.repository.LoginFailureLimitDataRepository;
+import github.luckygc.am.module.authentication.service.PowChallengeService;
 import github.luckygc.am.test.PostgreSqlContainerTest;
 
 @Testcontainers(disabledWithoutDocker = true)

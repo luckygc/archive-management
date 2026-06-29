@@ -17,6 +17,21 @@ import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
+import github.luckygc.am.module.archive.metadata.ArchiveCategory;
+import github.luckygc.am.module.archive.metadata.ArchiveDynamicTableNames;
+import github.luckygc.am.module.archive.metadata.ArchiveField;
+import github.luckygc.am.module.archive.metadata.ArchiveFieldControl;
+import github.luckygc.am.module.archive.metadata.ArchiveFieldLayout;
+import github.luckygc.am.module.archive.metadata.ArchiveFieldScope;
+import github.luckygc.am.module.archive.metadata.ArchiveFieldType;
+import github.luckygc.am.module.archive.metadata.ArchiveFonds;
+import github.luckygc.am.module.archive.metadata.ArchiveLayoutSurface;
+import github.luckygc.am.module.archive.metadata.ArchiveManagementMode;
+import github.luckygc.am.module.archive.metadata.ArchiveTableStatus;
+import github.luckygc.am.module.archive.metadata.repository.ArchiveCategoryDataRepository;
+import github.luckygc.am.module.archive.metadata.repository.ArchiveFieldDataRepository;
+import github.luckygc.am.module.archive.metadata.repository.ArchiveFieldLayoutDataRepository;
+import github.luckygc.am.module.archive.metadata.repository.ArchiveFondsDataRepository;
 
 @Service
 public class ArchiveMetadataService {

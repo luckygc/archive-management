@@ -8,6 +8,11 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import github.luckygc.am.module.authentication.LoginBlockedException;
+import github.luckygc.am.module.authentication.LoginFailureLimit;
+import github.luckygc.am.module.authentication.LoginFailureLimitProperties;
+import github.luckygc.am.module.authentication.repository.LoginFailureLimitDataRepository;
+
 @Service
 public class LoginFailureLimitService {
 

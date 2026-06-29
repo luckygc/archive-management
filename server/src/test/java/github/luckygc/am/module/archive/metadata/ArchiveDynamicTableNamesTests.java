@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Test;
 
 import github.luckygc.am.module.archive.ArchiveLevel;
-import github.luckygc.am.module.archive.metadata.ArchiveMetadataService.ArchiveCategoryDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryDto;
 
 class ArchiveDynamicTableNamesTests {
 

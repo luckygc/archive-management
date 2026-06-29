@@ -13,6 +13,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import github.luckygc.am.app.ArchiveManagementApplication;
 import github.luckygc.am.common.cleanup.ExpiredDataCleanupService;
+import github.luckygc.am.module.authentication.repository.AuthenticationCapChallengeDataRepository;
+import github.luckygc.am.module.authentication.repository.AuthenticationCapTokenDataRepository;
+import github.luckygc.am.module.authentication.repository.LoginFailureLimitDataRepository;
 import github.luckygc.am.test.PostgreSqlContainerTest;
 
 @Testcontainers(disabledWithoutDocker = true)
