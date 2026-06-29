@@ -24,6 +24,7 @@
 - [元数据、封装与格式](./metadata-package-and-format.md)：元数据、XML 封装、长期保存格式对模型和存储的影响。
 - [四性、证据效力与备份](./authenticity-integrity-usability.md)：真实性、完整性、可用性、安全性、证据效力和备份。
 - [会计与 ERP 专题](./domain-accounting-and-erp.md)：电子会计档案、财务报销电子凭证和 ERP 归档专题。
+- [MVP 实施缺口](./mvp-implementation-gap.md)：从当前项目状态到可持续使用 MVP 还需要补齐的能力。
 
 ## 推荐阅读顺序
 
@@ -31,10 +32,11 @@
 2. 再读 [档案专业术语](./professional-terminology.md)，统一“全宗、案卷、件、档号、著录、归档”等基础语言。
 3. 读 [常用档案分类](./classification-reference.md) 和 [档号与全宗规则](./reference-code-and-fonds-rules.md)，明确分类、全宗、档号如何落到模型。
 4. 读 [档案系统能力地图](./archive-system-capability-map.md)，确认当前讨论处在 POC、MVP、基础能力还是完整能力层。
-5. 做通用档案能力时读法规底座、系统能力、归档移交、元数据封装和四性文档。
-6. 做高校、档案馆或标杆调研时读 [高校与档案馆实践](./archive-institution-practices.md)。
-7. 做会计、财务报销、ERP 或业务系统归档时，再读专题文档。
-8. 需要落地实现时，把已确认要求迁入 OpenSpec，再改代码和测试。
+5. 如果目标是 MVP，读 [MVP 实施缺口](./mvp-implementation-gap.md)，确认必须补齐和可以推迟的能力。
+6. 做通用档案能力时读法规底座、系统能力、归档移交、元数据封装和四性文档。
+7. 做高校、档案馆或标杆调研时读 [高校与档案馆实践](./archive-institution-practices.md)。
+8. 做会计、财务报销、ERP 或业务系统归档时，再读专题文档。
+9. 需要落地实现时，把已确认要求迁入 OpenSpec，再改代码和测试。
 
 ## 当前项目优先关注
 
