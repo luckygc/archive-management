@@ -91,6 +91,15 @@
 - **THEN** 系统 SHALL 使用 `am_archive_volume` 保存案卷固定字段
 - **AND** 系统 SHALL NOT 将案卷作为 `am_archive_item` 中的一行保存
 
+#### Scenario: 主表保存随机抽查辅助分桶
+
+- **WHEN** Flyway 创建档案条目和案卷主表
+- **THEN** `am_archive_item` 和 `am_archive_volume` SHALL 保存 `random_bucket`
+- **AND** `random_bucket` SHALL 是创建时生成的稳定辅助分桶
+- **AND** `random_bucket` SHALL 约束在 `[0, 10000)` 范围内
+- **AND** 系统 SHALL 为未删除记录提供 `random_bucket` 查询索引
+- **AND** 分类动态表 SHALL NOT 保存 `random_bucket`
+
 ### Requirement: 条目关联
 
 系统 SHALL 仅支持 archive item 到 archive item 的结构化关联。

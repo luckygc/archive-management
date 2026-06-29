@@ -66,6 +66,9 @@ public class ArchiveVolume implements CreationAuditable, UpdateAuditable {
     @Column(name = "archive_year", nullable = false)
     private int archiveYear;
 
+    @Column(name = "random_bucket", nullable = false, insertable = false, updatable = false)
+    private int randomBucket;
+
     @Column(name = "locked_flag", nullable = false)
     private boolean lockedFlag;
 

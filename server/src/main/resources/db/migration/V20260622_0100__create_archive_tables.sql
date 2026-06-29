@@ -183,6 +183,8 @@ create table am_archive_volume
     display_order  integer      not null default 0,
     archived_at    timestamp,
     archive_year   integer      not null,
+    random_bucket  smallint     not null default floor(random() * 10000)::smallint
+        check (random_bucket >= 0 and random_bucket < 10000),
     locked_flag    boolean      not null default false,
     lock_reason    varchar(500),
     locked_by      bigint,
@@ -206,6 +208,9 @@ create index idx_am_archive_volume_fonds_active
 create index idx_am_archive_volume_year_active
     on am_archive_volume (archive_year)
     where deleted_flag = false;
+create index idx_am_archive_volume_random_bucket_active
+    on am_archive_volume (random_bucket, id)
+    where deleted_flag = false;
 create index idx_am_archive_volume_sort_active
     on am_archive_volume (sort_order, id)
     where deleted_flag = false;
@@ -226,6 +231,7 @@ comment on column am_archive_volume.security_level is '密级';
 comment on column am_archive_volume.sort_order is '排序字段';
 comment on column am_archive_volume.archived_at is '归档时间';
 comment on column am_archive_volume.archive_year is '年度';
+comment on column am_archive_volume.random_bucket is '随机抽查辅助分桶';
 comment on column am_archive_volume.locked_flag is '业务锁定标记';
 comment on column am_archive_volume.lock_reason is '锁定原因';
 comment on column am_archive_volume.locked_by is '锁定人用户 ID';
@@ -254,6 +260,8 @@ create table am_archive_item
     display_order  integer      not null default 0,
     archived_at    timestamp,
     archive_year   integer      not null,
+    random_bucket  smallint     not null default floor(random() * 10000)::smallint
+        check (random_bucket >= 0 and random_bucket < 10000),
     locked_flag    boolean      not null default false,
     lock_reason    varchar(500),
     locked_by      bigint,
@@ -280,6 +288,9 @@ create index idx_am_archive_volume_data_active
 create index idx_am_archive_item_year_active
     on am_archive_item (archive_year)
     where deleted_flag = false;
+create index idx_am_archive_item_random_bucket_active
+    on am_archive_item (random_bucket, id)
+    where deleted_flag = false;
 create index idx_am_archive_item_sort_active
     on am_archive_item (sort_order, id)
     where deleted_flag = false;
@@ -302,6 +313,7 @@ comment on column am_archive_item.sort_order is '排序字段';
 comment on column am_archive_item.display_order is '同一案卷内卷内排序';
 comment on column am_archive_item.archived_at is '归档时间';
 comment on column am_archive_item.archive_year is '年度';
+comment on column am_archive_item.random_bucket is '随机抽查辅助分桶';
 comment on column am_archive_item.locked_flag is '业务锁定标记';
 comment on column am_archive_item.lock_reason is '锁定原因';
 comment on column am_archive_item.locked_by is '锁定人用户 ID';
