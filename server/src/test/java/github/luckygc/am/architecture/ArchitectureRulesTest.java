@@ -94,6 +94,86 @@ class ArchitectureRulesTest {
                     .notBeAnnotatedWith(RequestMapping.class);
 
     @ArchTest
+    static final ArchRule module_controllers_should_reside_in_web_package =
+            classes()
+                    .that()
+                    .resideInAPackage("github.luckygc.am.module..")
+                    .and()
+                    .haveSimpleNameEndingWith("Controller")
+                    .should()
+                    .resideInAPackage("..web..");
+
+    @ArchTest
+    static final ArchRule module_services_should_reside_in_service_package =
+            classes()
+                    .that()
+                    .resideInAPackage("github.luckygc.am.module..")
+                    .and()
+                    .haveSimpleNameEndingWith("Service")
+                    .should()
+                    .resideInAPackage("..service..");
+
+    @ArchTest
+    static final ArchRule module_managers_should_reside_in_manager_package =
+            classes()
+                    .that()
+                    .resideInAPackage("github.luckygc.am.module..")
+                    .and()
+                    .haveSimpleNameEndingWith("Manager")
+                    .should()
+                    .resideInAPackage("..manager..")
+                    .allowEmptyShould(true);
+
+    @ArchTest
+    static final ArchRule module_mappers_should_reside_in_mapper_package =
+            classes()
+                    .that()
+                    .resideInAPackage("github.luckygc.am.module..")
+                    .and()
+                    .haveSimpleNameEndingWith("Mapper")
+                    .should()
+                    .resideInAPackage("..mapper..");
+
+    @ArchTest
+    static final ArchRule module_repositories_should_reside_in_repository_package =
+            classes()
+                    .that()
+                    .resideInAPackage("github.luckygc.am.module..")
+                    .and()
+                    .haveSimpleNameEndingWith("DataRepository")
+                    .and()
+                    .haveSimpleNameNotStartingWith("_")
+                    .should()
+                    .resideInAPackage("..repository..");
+
+    @ArchTest
+    static final ArchRule module_web_should_not_depend_on_data_access =
+            noClasses()
+                    .that()
+                    .resideInAPackage("github.luckygc.am.module..web..")
+                    .should()
+                    .dependOnClassesThat()
+                    .resideInAnyPackage(
+                            "github.luckygc.am.module..repository..",
+                            "github.luckygc.am.module..mapper..")
+                    .allowEmptyShould(true);
+
+    @ArchTest
+    static final ArchRule module_data_access_should_not_depend_on_upper_layers =
+            noClasses()
+                    .that()
+                    .resideInAnyPackage(
+                            "github.luckygc.am.module..repository..",
+                            "github.luckygc.am.module..mapper..")
+                    .should()
+                    .dependOnClassesThat()
+                    .resideInAnyPackage(
+                            "github.luckygc.am.module..web..",
+                            "github.luckygc.am.module..service..",
+                            "github.luckygc.am.module..manager..")
+                    .allowEmptyShould(true);
+
+    @ArchTest
     static final ArchRule project_should_not_depend_on_spring_data =
             noClasses()
                     .should()
