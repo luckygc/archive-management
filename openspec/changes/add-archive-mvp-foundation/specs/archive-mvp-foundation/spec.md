@@ -62,16 +62,43 @@
 
 系统 SHALL 在 MVP 中支持档案条目绑定文件记录，并按文件记录下载。
 
+#### Scenario: 使用既有关联表保存文件绑定
+
+- **WHEN** 系统保存档案条目和文件记录的绑定关系
+- **THEN** 系统 SHALL 使用 `am_archive_item_electronic_file` 作为绑定真相表
+- **AND** 绑定记录 SHALL 保存 `archive_item_id`、`storage_object_id`、`usage_type`、`display_order` 和逻辑删除字段
+- **AND** 未删除绑定 SHALL 通过 `(archive_item_id, storage_object_id, usage_type)` 保持唯一
+- **AND** 系统 SHALL NOT 在绑定表中复制 `storage_type`、`bucket_name`、`object_key`、文件名、大小或校验值
+
 #### Scenario: 绑定文件记录
 
 - **WHEN** 客户端为档案条目绑定文件
-- **THEN** 系统 SHALL 保存档案条目与本地文件记录的关系
+- **THEN** 客户端 SHALL 调用 `POST /api/v1/archive-items/{archiveItem}/electronic-files`
+- **AND** 请求 SHALL 至少包含 `storageObjectId`
+- **AND** 请求 MAY 包含 `usageType` 和 `displayOrder`
+- **AND** 系统 SHALL 保存档案条目与存储对象记录的关系
 - **AND** 系统 SHALL NOT 仅保存对象存储裸路径作为业务真相
+
+#### Scenario: 查询档案条目文件绑定
+
+- **WHEN** 客户端查询档案条目已绑定文件
+- **THEN** 客户端 SHALL 调用 `GET /api/v1/archive-items/{archiveItem}/electronic-files`
+- **AND** 响应 SHALL 使用 `CollectionResponse`，并在 `items` 中返回绑定 ID、档案条目 ID、存储对象记录 ID、用途、排序、原始文件名、文件大小、内容类型、SHA-256 和创建时间
+- **AND** 响应 SHALL NOT 暴露 `bucket_name` 或 `object_key`
+
+#### Scenario: 解绑档案条目文件
+
+- **WHEN** 客户端解绑档案条目文件
+- **THEN** 客户端 SHALL 调用 `DELETE /api/v1/archive-items/{archiveItem}/electronic-files/{electronicFile}`
+- **AND** 系统 SHALL 逻辑删除绑定记录
+- **AND** 系统 SHALL NOT 删除 `am_storage_object` 文件记录或底层对象
 
 #### Scenario: 下载档案文件
 
 - **WHEN** 客户端下载档案条目文件
-- **THEN** 系统 SHALL 根据文件记录中的 `storage_type`、`bucket_name` 和 `object_key` 路由读取文件
+- **THEN** 客户端 SHALL 调用 `GET /api/v1/archive-items/{archiveItem}/electronic-files/{electronicFile}/content`
+- **AND** 系统 SHALL 根据文件记录中的 `storage_type`、`bucket_name` 和 `object_key` 路由读取文件
+- **AND** 系统 SHALL NOT 根据客户端提交的对象存储路径读取文件
 - **AND** 系统 SHALL 写入下载审计
 
 ### Requirement: 基础导入导出
