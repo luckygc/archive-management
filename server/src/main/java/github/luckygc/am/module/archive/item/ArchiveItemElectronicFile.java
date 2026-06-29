@@ -1,4 +1,4 @@
-package github.luckygc.am.module.archive.record;
+package github.luckygc.am.module.archive.item;
 
 import java.time.LocalDateTime;
 
@@ -17,19 +17,19 @@ import lombok.Data;
 
 @Data
 @Entity
-@Table(name = "am_archive_record_electronic_file")
-public class ArchiveRecordElectronicFile implements CreationAuditable {
+@Table(name = "am_archive_item_electronic_file")
+public class ArchiveItemElectronicFile implements CreationAuditable {
 
     @Id
-    @GeneratedValue(generator = "am_archive_record_electronic_file_id_seq")
+    @GeneratedValue(generator = "am_archive_item_electronic_file_id_seq")
     @SequenceGenerator(
-            name = "am_archive_record_electronic_file_id_seq",
-            sequenceName = "am_archive_record_electronic_file_id_seq",
+            name = "am_archive_item_electronic_file_id_seq",
+            sequenceName = "am_archive_item_electronic_file_id_seq",
             allocationSize = 1000)
     private Long id;
 
-    @Column(name = "archive_record_id", nullable = false)
-    private Long archiveRecordId;
+    @Column(name = "archive_item_id", nullable = false)
+    private Long archiveItemId;
 
     @Column(name = "storage_object_id", nullable = false)
     private Long storageObjectId;

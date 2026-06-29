@@ -27,7 +27,7 @@ class GlobalExceptionHandlerTests {
     @DisplayName("ResponseStatusException 转为 ProblemDetail 错误结构")
     void responseStatusExceptionUsesProblemDetailShape() {
         MockHttpServletRequest request =
-                new MockHttpServletRequest("GET", "/api/v1/archive-records/1");
+                new MockHttpServletRequest("GET", "/api/v1/archive-items/1");
         MDC.put(TraceIdFilter.TRACE_ID, "trace-20260622");
         try {
             var response =
@@ -43,7 +43,7 @@ class GlobalExceptionHandlerTests {
                     .containsEntry("code", "NOT_FOUND")
                     .containsEntry("reason", "NOT_FOUND_ERROR")
                     .containsEntry("traceId", "trace-20260622")
-                    .containsEntry("path", "/api/v1/archive-records/1");
+                    .containsEntry("path", "/api/v1/archive-items/1");
         } finally {
             MDC.remove(TraceIdFilter.TRACE_ID);
         }
@@ -53,7 +53,7 @@ class GlobalExceptionHandlerTests {
     @DisplayName("BadRequestException 输出字段级错误明细")
     void badRequestExceptionIncludesFieldViolations() {
         MockHttpServletRequest request =
-                new MockHttpServletRequest("POST", "/api/v1/archive-records");
+                new MockHttpServletRequest("POST", "/api/v1/archive-items");
 
         var response =
                 handler.handleBadRequestException(

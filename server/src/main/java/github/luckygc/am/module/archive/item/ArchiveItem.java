@@ -1,4 +1,4 @@
-package github.luckygc.am.module.archive.record;
+package github.luckygc.am.module.archive.item;
 
 import java.time.LocalDateTime;
 
@@ -20,22 +20,19 @@ import lombok.Data;
 
 @Data
 @Entity
-@Table(name = "am_archive_record")
-public class ArchiveRecord implements CreationAuditable, UpdateAuditable {
+@Table(name = "am_archive_item")
+public class ArchiveItem implements CreationAuditable, UpdateAuditable {
 
     @Id
-    @GeneratedValue(generator = "am_archive_record_id_seq")
+    @GeneratedValue(generator = "am_archive_item_id_seq")
     @SequenceGenerator(
-            name = "am_archive_record_id_seq",
-            sequenceName = "am_archive_record_id_seq",
+            name = "am_archive_item_id_seq",
+            sequenceName = "am_archive_item_id_seq",
             allocationSize = 1000)
     private Long id;
 
-    @Column(name = "archive_level", nullable = false, length = 30)
-    private String archiveLevel;
-
-    @Column(name = "parent_id")
-    private Long parentId;
+    @Column(name = "volume_id")
+    private Long volumeId;
 
     @Column(name = "fonds_code", nullable = false, length = 100)
     private String fondsCode;

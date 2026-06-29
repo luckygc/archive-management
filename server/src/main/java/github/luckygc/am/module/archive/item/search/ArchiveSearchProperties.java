@@ -1,11 +1,11 @@
-package github.luckygc.am.module.archive.record.search;
+package github.luckygc.am.module.archive.item.search;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import lombok.Getter;
 import lombok.Setter;
 
-/** 档案记录搜索配置。 */
+/** 档案条目搜索配置。 */
 @Getter
 @Setter
 @ConfigurationProperties(prefix = "archive.search")
@@ -23,7 +23,7 @@ public class ArchiveSearchProperties {
         private String provider = "postgresql";
 
         /** provider 内部使用的索引名或逻辑索引标识。 */
-        private String indexName = "archive_records";
+        private String indexName = "archive_items";
 
         /** 单次全文检索结果上限。 */
         private int resultLimit = 1000;

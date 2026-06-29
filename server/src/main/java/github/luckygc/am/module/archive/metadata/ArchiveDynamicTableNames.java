@@ -9,7 +9,7 @@ import org.apache.commons.lang3.StringUtils;
 import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.metadata.ArchiveMetadataService.ArchiveCategoryDto;
 
-/** 动态档案表命名和层级规则。 */
+/** 动态档案表命名规则。 */
 public final class ArchiveDynamicTableNames {
 
     private static final int POSTGRESQL_IDENTIFIER_LIMIT = 63;
@@ -52,13 +52,13 @@ public final class ArchiveDynamicTableNames {
         if (StringUtils.isNotBlank(configuredName)) {
             return configuredName;
         }
+        String objectType = normalizedLevel == ArchiveLevel.volume ? "volume" : "item";
         String suffix =
                 normalizedScope == ArchiveFieldScope.metadata
-                        ? ""
-                        : "_" + normalizedScope.value().toLowerCase();
+                        ? "data"
+                        : normalizedScope.value().toLowerCase();
         return stableIdentifier(
-                "am_archive_record_" + normalizedLevel.value().toLowerCase() + suffix + "_",
-                category.categoryCode());
+                "am_archive_" + objectType + "_" + suffix + "_", category.categoryCode());
     }
 
     public static ArchiveFieldScope normalizeFieldScope(ArchiveFieldScope fieldScope) {

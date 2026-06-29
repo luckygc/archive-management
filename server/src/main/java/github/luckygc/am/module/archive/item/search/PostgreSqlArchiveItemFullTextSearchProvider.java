@@ -1,8 +1,8 @@
-package github.luckygc.am.module.archive.record.search;
+package github.luckygc.am.module.archive.item.search;
 
 import github.luckygc.am.common.search.FullTextSearchProvider;
 
-class PostgreSqlArchiveRecordFullTextSearchProvider implements FullTextSearchProvider {
+class PostgreSqlArchiveItemFullTextSearchProvider implements FullTextSearchProvider {
 
     @Override
     public String provider() {

@@ -54,10 +54,9 @@
         where id = #{id} and deleted_flag = false
     </update>
 
-    <select id="listRecordOverview" resultType="map">
+    <select id="listItemOverview" resultType="map">
         select id,
-               archive_level,
-               parent_id,
+               volume_id,
                fonds_code,
                fonds_name,
                category_code,
@@ -71,15 +70,14 @@
                lock_reason,
                locked_by,
                locked_at
-        from am_archive_record
+        from am_archive_item
         where deleted_flag = false
         order by sort_order, id desc
     </select>
 
-    <select id="listDynamicRecords" resultType="map">
+    <select id="listDynamicItems" resultType="map">
         select r.id,
-               r.archive_level,
-               r.parent_id,
+               r.volume_id,
                r.fonds_code,
                r.fonds_name,
                r.category_code,
@@ -94,11 +92,10 @@
                r.locked_by,
                r.locked_at
                ${selectColumns}
-        from am_archive_record r
+        from am_archive_item r
         join ${tableName} d on d.id = r.id
         where r.deleted_flag = false
           and d.deleted_flag = false
-          and r.archive_level = #{archiveLevel}
         <if test="requireAuthenticatedUser">
             and #{userId} is not null
         </if>
@@ -123,8 +120,8 @@
         <if test="fullTextKeyword != null and fullTextKeyword != ''">
             and exists (
                 select 1
-                from am_archive_record_search s
-                where s.archive_record_id = r.id
+                from am_archive_item_search s
+                where s.archive_item_id = r.id
                   and (
                       s.search_text ilike '%' || replace(replace(#{fullTextKeyword}, '%', '\%'), '_', '\_') || '%' escape '\'
                       or s.search_text % #{fullTextKeyword}
@@ -138,24 +135,23 @@
         limit #{limit}
     </select>
 
-    <select id="listRecordsForSearchRebuild" resultType="map">
+    <select id="listItemsForSearchRebuild" resultType="map">
         select r.id,
                r.fonds_code
                ${selectColumns}
-        from am_archive_record r
+        from am_archive_item r
         join ${tableName} d on d.id = r.id
         where r.deleted_flag = false
           and d.deleted_flag = false
-          and r.archive_level = #{archiveLevel}
         order by r.id
     </select>
 
-    <select id="insertArchiveRecord" resultType="long">
-        insert into am_archive_record
-            (archive_level, parent_id, fonds_code, fonds_name, category_code, category_name,
+    <select id="insertArchiveItem" resultType="long">
+        insert into am_archive_item
+            (volume_id, fonds_code, fonds_name, category_code, category_name,
              archive_no, electronic_status, archive_year, created_by, updated_by)
         values
-            (#{archiveLevel}, #{parentId}, #{fondsCode}, #{fondsName}, #{categoryCode}, #{categoryName},
+            (#{volumeId}, #{fondsCode}, #{fondsName}, #{categoryCode}, #{categoryName},
              #{archiveNo}, #{electronicStatus}, #{archiveYear}, #{userId}, #{userId})
         returning id
     </select>
@@ -168,10 +164,10 @@
         </foreach>
     </insert>
 
-    <update id="updateArchiveRecord">
-        update am_archive_record
+    <update id="updateArchiveItem">
+        update am_archive_item
         set archive_no = #{archiveNo},
-            parent_id = #{parentId},
+            volume_id = #{volumeId},
             fonds_code = #{fondsCode},
             fonds_name = #{fondsName},
             electronic_status = #{electronicStatus},
@@ -204,10 +200,9 @@
         where id = #{id} and deleted_flag = false
     </select>
 
-    <select id="getArchiveRecord" resultType="map">
+    <select id="getArchiveItem" resultType="map">
         select id,
-               archive_level,
-               parent_id,
+               volume_id,
                fonds_code,
                fonds_name,
                category_code,
@@ -219,21 +214,72 @@
                lock_reason,
                locked_by,
                locked_at
-        from am_archive_record
+        from am_archive_item
         where id = #{id} and deleted_flag = false
     </select>
 
-    <insert id="insertRecordAudit">
-        insert into am_archive_record_audit
-            (source_table_name, source_record_id, archive_record_id, fonds_code,
+    <select id="listArchiveVolumes" resultType="map">
+        select id,
+               fonds_code,
+               fonds_name,
+               category_code,
+               category_name,
+               archive_no,
+               electronic_status,
+               archive_year,
+               locked_flag,
+               lock_reason,
+               locked_by,
+               locked_at
+        from am_archive_volume
+        where deleted_flag = false
+        <if test="fondsCode != null and fondsCode != ''">
+            and fonds_code = #{fondsCode}
+        </if>
+        <if test="categoryCode != null and categoryCode != ''">
+            and category_code = #{categoryCode}
+        </if>
+        order by sort_order, id desc
+    </select>
+
+    <select id="getArchiveVolume" resultType="map">
+        select id,
+               fonds_code,
+               fonds_name,
+               category_code,
+               category_name,
+               archive_no,
+               electronic_status,
+               archive_year,
+               locked_flag,
+               lock_reason,
+               locked_by,
+               locked_at
+        from am_archive_volume
+        where id = #{id} and deleted_flag = false
+    </select>
+
+    <select id="insertArchiveVolume" resultType="long">
+        insert into am_archive_volume
+            (fonds_code, fonds_name, category_code, category_name,
+             archive_no, electronic_status, archive_year, created_by, updated_by)
+        values
+            (#{fondsCode}, #{fondsName}, #{categoryCode}, #{categoryName},
+             #{archiveNo}, #{electronicStatus}, #{archiveYear}, #{userId}, #{userId})
+        returning id
+    </select>
+
+    <insert id="insertItemAudit">
+        insert into am_archive_item_audit
+            (source_table_name, source_item_id, archive_item_id, fonds_code,
              category_code, operation_type, operation_reason, operated_by)
         values
-            (#{sourceTableName}, #{sourceRecordId}, #{archiveRecordId}, #{fondsCode},
+            (#{sourceTableName}, #{sourceRecordId}, #{archiveItemId}, #{fondsCode},
              #{categoryCode}, #{operationType}, #{operationReason}, #{operatedBy})
     </insert>
 
-    <update id="markArchiveRecordDeleted">
-        update am_archive_record
+    <update id="markArchiveItemDeleted">
+        update am_archive_item
         set deleted_flag = true,
             updated_by = #{userId},
             version = version + 1,
@@ -241,8 +287,8 @@
         where id = #{id} and deleted_flag = false and locked_flag = false
     </update>
 
-    <update id="lockArchiveRecord">
-        update am_archive_record
+    <update id="lockArchiveItem">
+        update am_archive_item
         set locked_flag = true,
             lock_reason = #{lockReason},
             locked_by = #{lockedBy},
@@ -253,8 +299,8 @@
         where id = #{id} and deleted_flag = false
     </update>
 
-    <update id="unlockArchiveRecord">
-        update am_archive_record
+    <update id="unlockArchiveItem">
+        update am_archive_item
         set locked_flag = false,
             lock_reason = null,
             locked_by = null,
@@ -266,31 +312,31 @@
     </update>
 
     <insert id="insertSearchProjection">
-        insert into am_archive_record_search
-            (archive_record_id, search_text, index_version)
+        insert into am_archive_item_search
+            (archive_item_id, search_text, index_version)
         values
-            (#{archiveRecordId}, #{searchText}, #{indexVersion})
-        on conflict (archive_record_id)
+            (#{archiveItemId}, #{searchText}, #{indexVersion})
+        on conflict (archive_item_id)
         do update set search_text = excluded.search_text,
                       index_version = excluded.index_version,
                       updated_at = localtimestamp
     </insert>
 
     <delete id="deleteSearchProjection">
-        delete from am_archive_record_search
-        where archive_record_id = #{archiveRecordId}
+        delete from am_archive_item_search
+        where archive_item_id = #{archiveItemId}
     </delete>
 
     <insert id="insertSearchOutbox">
-        insert into am_archive_record_search_outbox (archive_record_id, event_type)
-        values (#{archiveRecordId}, #{eventType})
+        insert into am_archive_item_search_outbox (archive_item_id, event_type)
+        values (#{archiveItemId}, #{eventType})
     </insert>
 
     <select id="listPendingSearchOutbox" resultType="map">
         select id,
-               archive_record_id,
+               archive_item_id,
                event_type
-        from am_archive_record_search_outbox
+        from am_archive_item_search_outbox
         where status = 'PENDING'
           and (next_retry_at is null or next_retry_at &lt;= localtimestamp)
         order by id
@@ -298,7 +344,7 @@
     </select>
 
     <update id="markSearchOutboxProcessed">
-        update am_archive_record_search_outbox
+        update am_archive_item_search_outbox
         set status = 'PROCESSED',
             processed_at = localtimestamp,
             updated_at = localtimestamp
@@ -306,7 +352,7 @@
     </update>
 
     <update id="markSearchOutboxFailed">
-        update am_archive_record_search_outbox
+        update am_archive_item_search_outbox
         set status = 'PENDING',
             attempts = attempts + 1,
             last_error = #{lastError},
@@ -412,16 +458,132 @@
           </foreach>
     </update>
 
-    <update id="moveRecordToVolume">
-        update am_archive_record
-        set parent_id = #{volumeId},
+    <update id="moveItemToVolume">
+        update am_archive_item
+        set volume_id = #{volumeId},
             display_order = #{displayOrder},
             updated_by = #{userId},
             version = version + 1,
             updated_at = localtimestamp
-        where id = #{archiveRecordId}
-          and archive_level = 'item'
+        where id = #{archiveItemId}
           and deleted_flag = false
           and locked_flag = false
     </update>
+
+    <select id="listItemRelations" resultType="map">
+        select rel.id,
+               rel.source_item_id,
+               rel.target_item_id,
+               rel.relation_type,
+               rel.remark,
+               rel.sort_order,
+               target.fonds_code as target_fonds_code,
+               target.fonds_name as target_fonds_name,
+               target.category_code as target_category_code,
+               target.category_name as target_category_name,
+               target.archive_no as target_archive_no
+        from am_archive_item_relation rel
+        join am_archive_item target on target.id = rel.target_item_id
+          and target.deleted_flag = false
+        where rel.source_item_id = #{sourceItemId}
+          and rel.deleted_flag = false
+        order by rel.sort_order, rel.id
+    </select>
+
+    <select id="insertItemRelation" resultType="long">
+        insert into am_archive_item_relation
+            (source_item_id, target_item_id, relation_type, remark, sort_order, created_by, updated_by)
+        values
+            (#{sourceItemId}, #{targetItemId}, #{relationType}, #{remark}, #{sortOrder}, #{userId}, #{userId})
+        returning id
+    </select>
+
+    <update id="deleteItemRelation">
+        update am_archive_item_relation
+        set deleted_flag = true,
+            updated_by = #{userId},
+            updated_at = localtimestamp
+        where id = #{id}
+          and source_item_id = #{sourceItemId}
+          and deleted_flag = false
+    </update>
+
+    <select id="listItemLineTables" resultType="map">
+        select id,
+               category_id,
+               table_code,
+               table_name,
+               physical_table_name,
+               sort_order,
+               enabled
+        from am_archive_item_line_table
+        where category_id = #{categoryId}
+          and deleted_flag = false
+        order by sort_order, id
+    </select>
+
+    <select id="getItemLineTable" resultType="map">
+        select id,
+               category_id,
+               table_code,
+               table_name,
+               physical_table_name,
+               sort_order,
+               enabled
+        from am_archive_item_line_table
+        where id = #{id}
+          and deleted_flag = false
+    </select>
+
+    <select id="insertItemLineTable" resultType="long">
+        insert into am_archive_item_line_table
+            (category_id, table_code, table_name, physical_table_name, sort_order, created_by, updated_by)
+        values
+            (#{categoryId}, #{tableCode}, #{tableName}, #{physicalTableName}, #{sortOrder}, #{userId}, #{userId})
+        returning id
+    </select>
+
+    <update id="updateItemLineTablePhysicalName">
+        update am_archive_item_line_table
+        set physical_table_name = #{physicalTableName},
+            updated_by = #{userId},
+            version = version + 1,
+            updated_at = localtimestamp
+        where id = #{id}
+          and deleted_flag = false
+    </update>
+
+    <select id="listItemLineFields" resultType="map">
+        select id,
+               line_table_id,
+               field_code,
+               field_name,
+               field_type,
+               column_name,
+               exact_searchable,
+               sort_order,
+               enabled
+        from am_archive_item_line_field
+        where line_table_id = #{lineTableId}
+          and deleted_flag = false
+        order by sort_order, id
+    </select>
+
+    <select id="insertItemLineField" resultType="long">
+        insert into am_archive_item_line_field
+            (line_table_id, field_code, field_name, field_type, column_name,
+             exact_searchable, sort_order, created_by, updated_by)
+        values
+            (#{lineTableId}, #{fieldCode}, #{fieldName}, #{fieldType}, #{columnName},
+             #{exactSearchable}, #{sortOrder}, #{userId}, #{userId})
+        returning id
+    </select>
+
+    <select id="listItemLineRows" resultType="map">
+        select *
+        from ${tableName}
+        where item_id = #{itemId}
+          and deleted_flag = false
+        order by line_order, id
+    </select>
 </mapper>

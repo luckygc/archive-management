@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import github.luckygc.am.common.api.CollectionResponse;
 import github.luckygc.am.common.security.AuthenticatedUser;
 import github.luckygc.am.module.archive.ArchiveLevel;
+import github.luckygc.am.module.archive.item.ArchiveItemRoutingService;
 import github.luckygc.am.module.archive.metadata.ArchiveMetadataService.ArchiveCategoryDto;
 import github.luckygc.am.module.archive.metadata.ArchiveMetadataService.ArchiveCategoryRequest;
 import github.luckygc.am.module.archive.metadata.ArchiveMetadataService.ArchiveFieldDto;
@@ -25,19 +26,18 @@ import github.luckygc.am.module.archive.metadata.ArchiveMetadataService.ArchiveF
 import github.luckygc.am.module.archive.metadata.ArchiveMetadataService.ArchiveFondsRequest;
 import github.luckygc.am.module.archive.metadata.ArchiveMetadataService.ArchiveUniqueConstraintDto;
 import github.luckygc.am.module.archive.metadata.ArchiveMetadataService.ArchiveUniqueConstraintRequest;
-import github.luckygc.am.module.archive.record.ArchiveRecordRoutingService;
 
 @RestController
 public class ArchiveMetadataController {
 
     private final ArchiveMetadataService archiveMetadataService;
-    private final ArchiveRecordRoutingService archiveRecordRoutingService;
+    private final ArchiveItemRoutingService archiveItemRoutingService;
 
     public ArchiveMetadataController(
             ArchiveMetadataService archiveMetadataService,
-            ArchiveRecordRoutingService archiveRecordRoutingService) {
+            ArchiveItemRoutingService archiveItemRoutingService) {
         this.archiveMetadataService = archiveMetadataService;
-        this.archiveRecordRoutingService = archiveRecordRoutingService;
+        this.archiveItemRoutingService = archiveItemRoutingService;
     }
 
     @GetMapping("/api/v1/archive-fonds")
@@ -163,9 +163,9 @@ public class ArchiveMetadataController {
     }
 
     @PostMapping("/api/v1/archive-categories/{id}:rebuildSearchProjection")
-    public ArchiveRecordRoutingService.SearchProjectionRebuildResult rebuildSearchProjection(
+    public ArchiveItemRoutingService.SearchProjectionRebuildResult rebuildSearchProjection(
             @PathVariable Long id) {
-        return archiveRecordRoutingService.rebuildSearchProjection(id);
+        return archiveItemRoutingService.rebuildSearchProjection(id);
     }
 
     @GetMapping("/api/v1/archive-categories/{categoryId}/unique-constraints")

@@ -29,9 +29,9 @@ public interface ArchiveMapper {
             @Param("tableStatus") String tableStatus,
             @Param("userId") Long userId);
 
-    List<Map<String, Object>> listRecordOverview();
+    List<Map<String, Object>> listItemOverview();
 
-    List<Map<String, Object>> listDynamicRecords(
+    List<Map<String, Object>> listDynamicItems(
             @Param("tableName") String tableName,
             @Param("selectColumns") String selectColumns,
             @Param("archiveLevel") String archiveLevel,
@@ -45,14 +45,14 @@ public interface ArchiveMapper {
             @Param("cursorValues") List<Object> cursorValues,
             @Param("limit") int limit);
 
-    List<Map<String, Object>> listRecordsForSearchRebuild(
+    List<Map<String, Object>> listItemsForSearchRebuild(
             @Param("tableName") String tableName,
             @Param("selectColumns") String selectColumns,
             @Param("archiveLevel") String archiveLevel);
 
-    Long insertArchiveRecord(
+    Long insertArchiveItem(
             @Param("archiveLevel") String archiveLevel,
-            @Param("parentId") Long parentId,
+            @Param("volumeId") Long volumeId,
             @Param("fondsCode") String fondsCode,
             @Param("fondsName") String fondsName,
             @Param("categoryCode") String categoryCode,
@@ -67,9 +67,9 @@ public interface ArchiveMapper {
             @Param("columns") String columns,
             @Param("values") List<Object> values);
 
-    int updateArchiveRecord(
+    int updateArchiveItem(
             @Param("id") Long id,
-            @Param("parentId") Long parentId,
+            @Param("volumeId") Long volumeId,
             @Param("fondsCode") String fondsCode,
             @Param("fondsName") String fondsName,
             @Param("archiveNo") String archiveNo,
@@ -87,36 +87,51 @@ public interface ArchiveMapper {
     Map<String, Object> loadDynamicRecord(
             @Param("tableName") String tableName, @Param("id") Long id);
 
-    Map<String, Object> getArchiveRecord(@Param("id") Long id);
+    Map<String, Object> getArchiveItem(@Param("id") Long id);
 
-    int insertRecordAudit(
+    List<Map<String, Object>> listArchiveVolumes(
+            @Param("fondsCode") String fondsCode, @Param("categoryCode") String categoryCode);
+
+    Map<String, Object> getArchiveVolume(@Param("id") Long id);
+
+    Long insertArchiveVolume(
+            @Param("fondsCode") String fondsCode,
+            @Param("fondsName") String fondsName,
+            @Param("categoryCode") String categoryCode,
+            @Param("categoryName") String categoryName,
+            @Param("archiveNo") String archiveNo,
+            @Param("electronicStatus") String electronicStatus,
+            @Param("archiveYear") int archiveYear,
+            @Param("userId") Long userId);
+
+    int insertItemAudit(
             @Param("sourceTableName") String sourceTableName,
             @Param("sourceRecordId") Long sourceRecordId,
-            @Param("archiveRecordId") Long archiveRecordId,
+            @Param("archiveItemId") Long archiveItemId,
             @Param("fondsCode") String fondsCode,
             @Param("categoryCode") String categoryCode,
             @Param("operationType") String operationType,
             @Param("operationReason") String operationReason,
             @Param("operatedBy") Long operatedBy);
 
-    int markArchiveRecordDeleted(@Param("id") Long id, @Param("userId") Long userId);
+    int markArchiveItemDeleted(@Param("id") Long id, @Param("userId") Long userId);
 
-    int lockArchiveRecord(
+    int lockArchiveItem(
             @Param("id") Long id,
             @Param("lockReason") String lockReason,
             @Param("lockedBy") Long lockedBy);
 
-    int unlockArchiveRecord(@Param("id") Long id, @Param("userId") Long userId);
+    int unlockArchiveItem(@Param("id") Long id, @Param("userId") Long userId);
 
     int insertSearchProjection(
-            @Param("archiveRecordId") Long archiveRecordId,
+            @Param("archiveItemId") Long archiveItemId,
             @Param("searchText") String searchText,
             @Param("indexVersion") int indexVersion);
 
-    int deleteSearchProjection(@Param("archiveRecordId") Long archiveRecordId);
+    int deleteSearchProjection(@Param("archiveItemId") Long archiveItemId);
 
     int insertSearchOutbox(
-            @Param("archiveRecordId") Long archiveRecordId, @Param("eventType") String eventType);
+            @Param("archiveItemId") Long archiveItemId, @Param("eventType") String eventType);
 
     List<Map<String, Object>> listPendingSearchOutbox(@Param("limit") int limit);
 
@@ -166,9 +181,56 @@ public interface ArchiveMapper {
             @Param("fieldIds") List<Long> fieldIds,
             @Param("userId") Long userId);
 
-    int moveRecordToVolume(
+    int moveItemToVolume(
             @Param("volumeId") Long volumeId,
-            @Param("archiveRecordId") Long archiveRecordId,
+            @Param("archiveItemId") Long archiveItemId,
             @Param("displayOrder") int displayOrder,
             @Param("userId") Long userId);
+
+    List<Map<String, Object>> listItemRelations(@Param("sourceItemId") Long sourceItemId);
+
+    Long insertItemRelation(
+            @Param("sourceItemId") Long sourceItemId,
+            @Param("targetItemId") Long targetItemId,
+            @Param("relationType") String relationType,
+            @Param("remark") String remark,
+            @Param("sortOrder") int sortOrder,
+            @Param("userId") Long userId);
+
+    int deleteItemRelation(
+            @Param("id") Long id,
+            @Param("sourceItemId") Long sourceItemId,
+            @Param("userId") Long userId);
+
+    List<Map<String, Object>> listItemLineTables(@Param("categoryId") Long categoryId);
+
+    Map<String, Object> getItemLineTable(@Param("id") Long id);
+
+    Long insertItemLineTable(
+            @Param("categoryId") Long categoryId,
+            @Param("tableCode") String tableCode,
+            @Param("tableName") String tableName,
+            @Param("physicalTableName") String physicalTableName,
+            @Param("sortOrder") int sortOrder,
+            @Param("userId") Long userId);
+
+    int updateItemLineTablePhysicalName(
+            @Param("id") Long id,
+            @Param("physicalTableName") String physicalTableName,
+            @Param("userId") Long userId);
+
+    List<Map<String, Object>> listItemLineFields(@Param("lineTableId") Long lineTableId);
+
+    Long insertItemLineField(
+            @Param("lineTableId") Long lineTableId,
+            @Param("fieldCode") String fieldCode,
+            @Param("fieldName") String fieldName,
+            @Param("fieldType") String fieldType,
+            @Param("columnName") String columnName,
+            @Param("exactSearchable") boolean exactSearchable,
+            @Param("sortOrder") int sortOrder,
+            @Param("userId") Long userId);
+
+    List<Map<String, Object>> listItemLineRows(
+            @Param("tableName") String tableName, @Param("itemId") Long itemId);
 }

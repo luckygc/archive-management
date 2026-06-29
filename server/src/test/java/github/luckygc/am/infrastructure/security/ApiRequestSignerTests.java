@@ -23,7 +23,7 @@ class ApiRequestSignerTests {
         CanonicalRequest request =
                 new CanonicalRequest(
                         "get",
-                        "/api/v1/archive-records",
+                        "/api/v1/archive-items",
                         "fondsCode=A&categoryId=1",
                         "2026-06-25T10:20:30Z",
                         "nonce-1",
@@ -41,7 +41,7 @@ class ApiRequestSignerTests {
         CanonicalRequest first =
                 new CanonicalRequest(
                         "GET",
-                        "/api/v1/archive-records",
+                        "/api/v1/archive-items",
                         "fondsCode=A&categoryId=1",
                         "2026-06-25T10:20:30Z",
                         "nonce-1",
@@ -49,7 +49,7 @@ class ApiRequestSignerTests {
         CanonicalRequest second =
                 new CanonicalRequest(
                         "GET",
-                        "/api/v1/archive-records",
+                        "/api/v1/archive-items",
                         "categoryId=1&fondsCode=A",
                         "2026-06-25T10:20:30Z",
                         "nonce-1",
@@ -64,7 +64,7 @@ class ApiRequestSignerTests {
         CanonicalRequest request =
                 new CanonicalRequest(
                         "GET",
-                        "/api/v1/archive-records",
+                        "/api/v1/archive-items",
                         "categoryId=1",
                         "2026-06-25T10:20:30Z",
                         "nonce-1",
@@ -73,7 +73,7 @@ class ApiRequestSignerTests {
         CanonicalRequest tampered =
                 new CanonicalRequest(
                         "GET",
-                        "/api/v1/archive-records",
+                        "/api/v1/archive-items",
                         "categoryId=2",
                         "2026-06-25T10:20:30Z",
                         "nonce-1",
@@ -90,7 +90,7 @@ class ApiRequestSignerTests {
         CanonicalRequest request =
                 new CanonicalRequest(
                         "POST",
-                        "/api/v1/archive-records",
+                        "/api/v1/archive-items",
                         "",
                         "2026-06-25T10:20:30Z",
                         "nonce-1",
@@ -99,7 +99,7 @@ class ApiRequestSignerTests {
         CanonicalRequest tampered =
                 new CanonicalRequest(
                         "POST",
-                        "/api/v1/archive-records",
+                        "/api/v1/archive-items",
                         "",
                         "2026-06-25T10:20:30Z",
                         "nonce-1",

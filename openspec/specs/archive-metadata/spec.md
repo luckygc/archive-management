@@ -2,7 +2,7 @@
 
 ## Purpose
 
-定义档案元数据、分类动态表、动态字段、唯一规则、项目自有表命名和逻辑删除相关业务数据合同，作为档案记录建表、保存、删除和约束维护的验收真相源。
+定义档案元数据、分类动态表、动态字段、唯一规则、项目自有表命名和逻辑删除相关业务数据合同，作为档案条目建表、保存、删除和约束维护的验收真相源。
 
 ## Requirements
 
@@ -68,10 +68,55 @@
 
 系统 SHALL 在每张分类动态数据表中固定保存动态表删除标记和动态行维护时间。
 
+### Requirement: 条目与案卷分对象
+
+系统 SHALL 使用独立 archive item 和 archive volume 对象表达卷内条目与案卷。
+
+#### Scenario: 条目主表不保存层级字段
+
+- **WHEN** Flyway 创建档案条目主表
+- **THEN** 系统 SHALL 使用 `am_archive_item` 保存条目固定字段
+- **AND** `am_archive_item` SHALL 使用 `volume_id` 引用所属案卷
+- **AND** `am_archive_item` SHALL NOT 保存 `archive_level` 或 `parent_id`
+
+#### Scenario: 案卷独立保存
+
+- **WHEN** Flyway 创建案卷主表
+- **THEN** 系统 SHALL 使用 `am_archive_volume` 保存案卷固定字段
+- **AND** 系统 SHALL NOT 将案卷作为 `am_archive_item` 中的一行保存
+
+### Requirement: 条目关联
+
+系统 SHALL 仅支持 archive item 到 archive item 的结构化关联。
+
+#### Scenario: 创建条目关联
+
+- **WHEN** 客户端为条目创建关联档案
+- **THEN** 系统 SHALL 保存 `source_item_id`、`target_item_id`、关联类型、备注和排序
+- **AND** 系统 SHALL 拒绝条目关联自身
+- **AND** 系统 SHALL 使用部分唯一索引防止未删除的重复关联
+
+### Requirement: 条目明细表定义
+
+系统 SHALL 支持在档案分类下定义 archive item 明细表。
+
+#### Scenario: 定义条目明细表
+
+- **WHEN** 客户端为分类创建条目明细表定义
+- **THEN** 系统 SHALL 保存明细表编码、名称、动态物理表名和排序
+- **AND** 明细表 SHALL 归属于分类，不作为独立档案分类
+
+#### Scenario: 构建条目明细动态表
+
+- **WHEN** 客户端对有字段的条目明细表执行建表动作
+- **THEN** 系统 SHALL 创建动态明细表
+- **AND** 动态明细表 SHALL 使用 `item_id` 引用 `am_archive_item`
+- **AND** 动态明细表 SHALL 支持同一条目下多行明细
+
 #### Scenario: 动态表名使用稳定业务键
 
 - **WHEN** 系统为档案分类、档案层级和字段域生成默认动态表名
-- **THEN** 表名 SHALL 基于分类编码、`archive_level` 和 `field_scope` 这些稳定业务键生成
+- **THEN** 表名 SHALL 基于分类编码、item/volume 对象类型和 `field_scope` 这些稳定业务键生成
 - **AND** 表名 SHALL NOT 使用数据库自增 ID 作为必要组成部分
 - **AND** 表名 SHALL 使用小写 snake_case 且不超过 PostgreSQL 63 字节标识符限制
 - **AND** 当稳定业务键过长时，系统 SHALL 使用稳定哈希后缀生成可重复的短表名
@@ -81,7 +126,7 @@
 - **WHEN** 客户端对有启用字段的档案分类执行建表动作
 - **THEN** 系统 SHALL 创建该分类对应的动态数据表
 - **AND** 动态表 SHALL 固定包含 `id`、`deleted_flag`、`created_at` 和 `updated_at`
-- **AND** 动态表 SHALL 使用 `id` 作为主键并引用统一档案记录主表 ID
+- **AND** 动态表 SHALL 使用 `id` 作为主键并引用 `am_archive_item` 或 `am_archive_volume` 对象 ID
 
 #### Scenario: 分层创建电子和实物动态表
 
@@ -95,9 +140,9 @@
 
 #### Scenario: 逻辑删除释放动态表唯一值
 
-- **WHEN** 客户端删除档案记录
-- **THEN** 系统 SHALL 将统一档案记录主表 `deleted_flag` 标记为 `true`
-- **AND** 系统 SHALL 将该记录对应分类动态表行的 `deleted_flag` 标记为 `true`
+- **WHEN** 客户端删除档案条目
+- **THEN** 系统 SHALL 将`am_archive_item.deleted_flag` 标记为 `true`
+- **AND** 系统 SHALL 将该条目对应分类动态表行的 `deleted_flag` 标记为 `true`
 - **AND** 系统 SHALL 允许动态表部分唯一索引释放该记录占用的唯一值
 
 ### Requirement: 字段检索标记
@@ -107,7 +152,7 @@
 #### Scenario: 字段定义区分字段域
 
 - **WHEN** 客户端为档案分类新增字段
-- **THEN** 字段定义 SHALL 保存 `archive_level`
+- **THEN** 字段定义 SHALL 保存 item/volume 适用对象
 - **AND** 字段定义 SHALL 保存 `field_scope`
 - **AND** `field_scope=metadata` SHALL 表示案卷或卷内电子字段
 - **AND** `field_scope=physical` SHALL 表示案卷或卷内实物信息字段
@@ -127,9 +172,9 @@
 
 #### Scenario: 使用固定记录字段编码创建动态字段
 
-- **WHEN** 客户端使用 `fonds_code`、`fonds_name`、`archive_no`、`archive_year`、`archive_status`、`process_status` 等统一档案记录主表字段编码创建分类字段
+- **WHEN** 客户端使用 `fonds_code`、`fonds_name`、`archive_no`、`archive_year`、`archive_status`、`process_status` 等档案条目主表字段编码创建分类字段
 - **THEN** 系统 SHALL 拒绝保存
-- **AND** 响应 SHALL 说明该字段编码属于档案记录固定字段，不能作为动态字段
+- **AND** 响应 SHALL 说明该字段编码属于档案条目固定字段，不能作为动态字段
 
 ### Requirement: 精确筛选索引维护
 
@@ -172,7 +217,7 @@
 #### Scenario: 动态唯一索引名使用稳定业务键
 
 - **WHEN** 系统为分类唯一规则创建动态唯一索引
-- **THEN** 索引名 SHALL 基于分类编码、`archive_level` 和唯一规则编码这些稳定业务键生成
+- **THEN** 索引名 SHALL 基于分类编码、item/volume 对象类型 和唯一规则编码这些稳定业务键生成
 - **AND** 索引名 SHALL NOT 使用数据库自增 ID 作为必要组成部分
 - **AND** 索引名 SHALL 不超过 PostgreSQL 63 字节标识符限制
 - **AND** 当稳定业务键过长时，系统 SHALL 使用稳定哈希后缀生成可重复的短索引名
@@ -197,10 +242,10 @@
 
 ### Requirement: 唯一冲突响应
 
-系统 SHALL 在档案记录保存时返回明确的唯一冲突错误。
+系统 SHALL 在档案条目保存时返回明确的唯一冲突错误。
 
 #### Scenario: 创建记录触发唯一冲突
 
-- **WHEN** 客户端创建档案记录导致分类动态表唯一索引冲突
+- **WHEN** 客户端创建档案条目导致分类动态表唯一索引冲突
 - **THEN** 系统 SHALL 拒绝保存
 - **AND** 响应 SHALL 说明违反唯一规则

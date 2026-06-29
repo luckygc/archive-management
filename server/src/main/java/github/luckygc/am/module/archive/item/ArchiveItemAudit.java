@@ -1,4 +1,4 @@
-package github.luckygc.am.module.archive.record;
+package github.luckygc.am.module.archive.item;
 
 import java.time.LocalDateTime;
 
@@ -15,8 +15,8 @@ import lombok.Data;
 
 @Data
 @Entity
-@Table(name = "am_archive_record_audit")
-public class ArchiveRecordAudit {
+@Table(name = "am_archive_item_audit")
+public class ArchiveItemAudit {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -25,11 +25,11 @@ public class ArchiveRecordAudit {
     @Column(name = "source_table_name", nullable = false, length = 100)
     private String sourceTableName;
 
-    @Column(name = "source_record_id", nullable = false)
+    @Column(name = "source_item_id", nullable = false)
     private Long sourceRecordId;
 
-    @Column(name = "archive_record_id")
-    private Long archiveRecordId;
+    @Column(name = "archive_item_id")
+    private Long archiveItemId;
 
     @Column(name = "fonds_code", length = 100)
     private String fondsCode;

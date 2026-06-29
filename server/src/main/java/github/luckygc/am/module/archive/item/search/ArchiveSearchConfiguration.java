@@ -1,4 +1,4 @@
-package github.luckygc.am.module.archive.record.search;
+package github.luckygc.am.module.archive.item.search;
 
 import java.util.List;
 
@@ -11,8 +11,8 @@ import github.luckygc.am.common.search.FullTextSearchProvider;
 class ArchiveSearchConfiguration {
 
     @Bean
-    FullTextSearchProvider postgreSqlArchiveRecordFullTextSearchProvider() {
-        return new PostgreSqlArchiveRecordFullTextSearchProvider();
+    FullTextSearchProvider postgreSqlArchiveItemFullTextSearchProvider() {
+        return new PostgreSqlArchiveItemFullTextSearchProvider();
     }
 
     @Bean

@@ -1,4 +1,4 @@
-package github.luckygc.am.module.archive.record.search;
+package github.luckygc.am.module.archive.item.search;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;

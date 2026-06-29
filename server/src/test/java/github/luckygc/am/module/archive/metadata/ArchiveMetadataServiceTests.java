@@ -170,7 +170,7 @@ class ArchiveMetadataServiceTests {
         row.put("archiveLevel", archiveLevel.value());
         row.put("constraintCode", "doc_no_unique");
         row.put("constraintName", "文号唯一");
-        row.put("indexName", "uk_archive_record_contract_item_doc_no_unique_048ef3fc8efa");
+        row.put("indexName", "uk_archive_item_contract_item_doc_no_unique_048ef3fc8efa");
         row.put("enabled", true);
         return row;
     }

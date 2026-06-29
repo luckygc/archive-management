@@ -388,6 +388,8 @@ public class ArchiveMetadataService {
         validateIdentifier(tableName, "动态表名非法");
 
         if (archiveMapper.tableExists(tableName) == 0) {
+            String ownerTable =
+                    archiveLevel == ArchiveLevel.volume ? "am_archive_volume" : "am_archive_item";
             String columns =
                     fields.stream()
                             .map(field -> field.columnName() + " " + sqlType(field))
@@ -396,13 +398,13 @@ public class ArchiveMetadataService {
                     """
                     create table %s
                     (
-                        id bigint primary key references am_archive_record (id),
+                        id bigint primary key references %s (id),
                         deleted_flag boolean not null default false,
                         created_at timestamp not null default localtimestamp,
                         updated_at timestamp not null default localtimestamp%s
                     )
                     """
-                            .formatted(tableName, columns));
+                            .formatted(tableName, ownerTable, columns));
         } else {
             ensureColumn(tableName, "deleted_flag", "boolean not null default false");
             for (ArchiveFieldDto field : fields) {

@@ -107,7 +107,7 @@ class ApiRequestSignatureFilterTests {
 
     private MockHttpServletRequest request(String body) {
         MockHttpServletRequest request =
-                new MockHttpServletRequest("POST", "/api/v1/archive-records");
+                new MockHttpServletRequest("POST", "/api/v1/archive-items");
         request.setQueryString("categoryId=1&fondsCode=A");
         request.setContent(body.getBytes(StandardCharsets.UTF_8));
         request.setContentType("application/json");

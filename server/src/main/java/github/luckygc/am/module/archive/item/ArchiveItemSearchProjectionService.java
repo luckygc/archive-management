@@ -1,10 +1,11 @@
-package github.luckygc.am.module.archive.record;
+package github.luckygc.am.module.archive.item;
 
 import java.sql.Date;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -20,7 +21,7 @@ import github.luckygc.am.module.archive.metadata.ArchiveMetadataService.ArchiveC
 import github.luckygc.am.module.archive.metadata.ArchiveMetadataService.ArchiveFieldDto;
 
 @Service
-class ArchiveRecordSearchProjectionService {
+class ArchiveItemSearchProjectionService {
 
     private static final String SEARCH_EVENT_UPSERT = "UPSERT";
     private static final String SEARCH_EVENT_DELETE = "DELETE";
@@ -31,7 +32,7 @@ class ArchiveRecordSearchProjectionService {
     private final ArchiveMetadataService archiveMetadataService;
     private final ArchiveMapper archiveMapper;
 
-    ArchiveRecordSearchProjectionService(
+    ArchiveItemSearchProjectionService(
             ArchiveMetadataService archiveMetadataService, ArchiveMapper archiveMapper) {
         this.archiveMetadataService = archiveMetadataService;
         this.archiveMapper = archiveMapper;
@@ -64,13 +65,42 @@ class ArchiveRecordSearchProjectionService {
             delete(recordId);
             return;
         }
-        upsert(recordId, fields, dynamicFieldsByCode(dynamicRecord, fields));
+        upsert(recordId, category, fields, dynamicFieldsByCode(dynamicRecord, fields));
     }
 
     void upsert(Long recordId, List<ArchiveFieldDto> fields, Map<String, Object> dynamicFields) {
+        upsert(recordId, null, fields, dynamicFields);
+    }
+
+    void upsert(
+            Long recordId,
+            ArchiveCategoryDto category,
+            List<ArchiveFieldDto> fields,
+            Map<String, Object> dynamicFields) {
         StringBuilder searchText = new StringBuilder();
+        appendFieldText(searchText, fields, dynamicFields);
+        if (category != null) {
+            for (String lineText : itemLineTexts(recordId, category.id())) {
+                if (StringUtils.isBlank(lineText)) {
+                    continue;
+                }
+                if (!searchText.isEmpty()) {
+                    searchText.append('\n');
+                }
+                searchText.append(lineText);
+            }
+        }
+        if (searchText.isEmpty()) {
+            delete(recordId);
+            return;
+        }
+        archiveMapper.insertSearchProjection(recordId, searchText.toString(), 1);
+    }
+
+    private void appendFieldText(
+            StringBuilder searchText, List<ArchiveFieldDto> fields, Map<String, Object> values) {
         for (ArchiveFieldDto field : fields) {
-            Object value = normalizeDynamicFieldValue(field, dynamicFields.get(field.fieldCode()));
+            Object value = normalizeDynamicFieldValue(field, values.get(field.fieldCode()));
             if (value == null || StringUtils.isBlank(value.toString())) {
                 continue;
             }
@@ -82,11 +112,39 @@ class ArchiveRecordSearchProjectionService {
             }
             searchText.append(value);
         }
-        if (searchText.isEmpty()) {
-            delete(recordId);
-            return;
+    }
+
+    private List<String> itemLineTexts(Long itemId, Long categoryId) {
+        List<String> lines = new ArrayList<>();
+        for (Map<String, Object> lineTable : archiveMapper.listItemLineTables(categoryId)) {
+            String tableName = string(lineTable, "physicalTableName");
+            if (StringUtils.isBlank(tableName) || archiveMapper.tableExists(tableName) == 0) {
+                continue;
+            }
+            List<Map<String, Object>> fields =
+                    archiveMapper.listItemLineFields(number(lineTable, "id").longValue());
+            List<Map<String, Object>> rows = archiveMapper.listItemLineRows(tableName, itemId);
+            for (Map<String, Object> row : rows) {
+                StringBuilder lineText = new StringBuilder();
+                for (Map<String, Object> field : fields) {
+                    Object value = value(row, string(field, "columnName"));
+                    if (value == null || StringUtils.isBlank(value.toString())) {
+                        continue;
+                    }
+                    if (!lineText.isEmpty()) {
+                        lineText.append(' ');
+                    }
+                    if (StringUtils.isNotBlank(string(field, "fieldName"))) {
+                        lineText.append(string(field, "fieldName")).append(' ');
+                    }
+                    lineText.append(value);
+                }
+                if (!lineText.isEmpty()) {
+                    lines.add(lineText.toString());
+                }
+            }
         }
-        archiveMapper.insertSearchProjection(recordId, searchText.toString(), 1);
+        return lines;
     }
 
     void delete(Long recordId) {
@@ -94,20 +152,20 @@ class ArchiveRecordSearchProjectionService {
     }
 
     private void processOutbox(Map<String, Object> outbox) {
-        Long recordId = number(outbox, "archiveRecordId").longValue();
+        Long recordId = number(outbox, "archiveItemId").longValue();
         String eventType = string(outbox, "eventType");
         if (SEARCH_EVENT_DELETE.equals(eventType)) {
             delete(recordId);
             return;
         }
 
-        Map<String, Object> recordRow = archiveMapper.getArchiveRecord(recordId);
+        Map<String, Object> recordRow = archiveMapper.getArchiveItem(recordId);
         if (recordRow == null) {
             delete(recordId);
             return;
         }
         ArchiveCategoryDto category = getCategoryByCode(string(recordRow, "categoryCode"));
-        ArchiveLevel archiveLevel = ArchiveLevel.fromValue(string(recordRow, "archiveLevel"));
+        ArchiveLevel archiveLevel = ArchiveLevel.item;
         if (!isDynamicTableBuilt(category, archiveLevel)) {
             delete(recordId);
             return;

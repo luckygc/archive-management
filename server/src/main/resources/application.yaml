@@ -242,7 +242,7 @@ archive:
             # postgresql 使用 pg_trgm + GIN + ILIKE；也可配置后续注册的 opensearch、solr、meilisearch 等 provider。
             provider: postgresql
             # 全文检索索引名称，供具体 provider 使用。
-            index-name: archive_records
+            index-name: archive_items
             # 全文检索结果上限。
             result-limit: 1000
     storage:

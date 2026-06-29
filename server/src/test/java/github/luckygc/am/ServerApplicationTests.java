@@ -90,14 +90,37 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
                                 + "where version = '20260622.0100' and success = true",
                         Integer.class));
         Assertions.assertEquals(
-                "am_archive_record_search",
+                "am_archive_item_search",
                 jdbcTemplate.queryForObject(
-                        "select to_regclass('am_archive_record_search')::text", String.class));
+                        "select to_regclass('am_archive_item_search')::text", String.class));
         Assertions.assertEquals(
-                "idx_am_archive_record_search_trgm",
+                "idx_am_archive_item_search_trgm",
                 jdbcTemplate.queryForObject(
-                        "select to_regclass('idx_am_archive_record_search_trgm')::text",
+                        "select to_regclass('idx_am_archive_item_search_trgm')::text",
                         String.class));
+        Assertions.assertNull(
+                jdbcTemplate.queryForObject(
+                        "select to_regclass('am_archive_record')::text", String.class));
+        Assertions.assertEquals(
+                "am_archive_item",
+                jdbcTemplate.queryForObject(
+                        "select to_regclass('am_archive_item')::text", String.class));
+        Assertions.assertEquals(
+                "am_archive_volume",
+                jdbcTemplate.queryForObject(
+                        "select to_regclass('am_archive_volume')::text", String.class));
+        Assertions.assertEquals(
+                "am_archive_item_relation",
+                jdbcTemplate.queryForObject(
+                        "select to_regclass('am_archive_item_relation')::text", String.class));
+        Assertions.assertEquals(
+                "am_archive_item_line_table",
+                jdbcTemplate.queryForObject(
+                        "select to_regclass('am_archive_item_line_table')::text", String.class));
+        Assertions.assertEquals(
+                "am_archive_item_line_field",
+                jdbcTemplate.queryForObject(
+                        "select to_regclass('am_archive_item_line_field')::text", String.class));
         Assertions.assertEquals(
                 1,
                 jdbcTemplate.queryForObject(
@@ -152,8 +175,9 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
     @Test
     @DisplayName("高增长业务 ID 使用 PostgreSQL sequence 预留内置数据区间")
     void highGrowthBusinessIdsUseReservedPostgreSqlSequences() {
-        assertSequence("am_archive_record_id_seq");
-        assertSequence("am_archive_record_electronic_file_id_seq");
+        assertSequence("am_archive_item_id_seq");
+        assertSequence("am_archive_volume_id_seq");
+        assertSequence("am_archive_item_electronic_file_id_seq");
         assertSequence("am_storage_object_id_seq");
     }
 

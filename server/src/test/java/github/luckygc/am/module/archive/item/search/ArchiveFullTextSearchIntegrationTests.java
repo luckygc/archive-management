@@ -1,4 +1,4 @@
-package github.luckygc.am.module.archive.record.search;
+package github.luckygc.am.module.archive.item.search;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -18,10 +18,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import github.luckygc.am.app.ArchiveManagementApplication;
-import github.luckygc.am.module.archive.ArchiveLevel;
-import github.luckygc.am.module.archive.record.ArchiveRecordRoutingService;
-import github.luckygc.am.module.archive.record.ArchiveRecordRoutingService.ArchiveRecordOrderBy;
-import github.luckygc.am.module.archive.record.ArchiveRecordRoutingService.ArchiveRecordQueryRequest;
+import github.luckygc.am.module.archive.item.ArchiveItemRoutingService;
+import github.luckygc.am.module.archive.item.ArchiveItemRoutingService.ArchiveItemOrderBy;
+import github.luckygc.am.module.archive.item.ArchiveItemRoutingService.ArchiveItemQueryRequest;
 
 @Testcontainers(disabledWithoutDocker = true)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
@@ -37,7 +36,7 @@ import github.luckygc.am.module.archive.record.ArchiveRecordRoutingService.Archi
             "flowable.check-process-definitions=false",
             "flowable.eventregistry.enabled=false"
         })
-@DisplayName("档案记录全文检索集成")
+@DisplayName("档案条目全文检索集成")
 class ArchiveFullTextSearchIntegrationTests {
 
     @Container
@@ -47,7 +46,7 @@ class ArchiveFullTextSearchIntegrationTests {
                     .withUsername("postgres")
                     .withPassword("postgres");
 
-    @Autowired private ArchiveRecordRoutingService archiveRecordRoutingService;
+    @Autowired private ArchiveItemRoutingService archiveItemRoutingService;
 
     @Autowired private JdbcTemplate jdbcTemplate;
 
@@ -61,24 +60,16 @@ class ArchiveFullTextSearchIntegrationTests {
 
     @Test
     @DisplayName("全文检索与结构化过滤在同一查询语义中生效")
-    void discoverRecordsCombinesFullTextAndDatabaseFilteringInOneQuery() {
+    void discoverItemsCombinesFullTextAndDatabaseFilteringInOneQuery() {
         Long categoryId =
                 jdbcTemplate.queryForObject(
                         "select id from am_archive_category where category_code = 'HT'",
                         Long.class);
 
         var result =
-                archiveRecordRoutingService.discoverRecords(
-                        new ArchiveRecordQueryRequest(
-                                categoryId,
-                                ArchiveLevel.item,
-                                "Z001",
-                                "档案管理系统",
-                                null,
-                                List.of(),
-                                50,
-                                null,
-                                null),
+                archiveItemRoutingService.discoverItems(
+                        new ArchiveItemQueryRequest(
+                                categoryId, "Z001", "档案管理系统", null, List.of(), 50, null, null),
                         1L);
 
         assertThat(result.items())
@@ -88,24 +79,23 @@ class ArchiveFullTextSearchIntegrationTests {
 
     @Test
     @DisplayName("键集分页使用用户排序并追加兜底排序")
-    void searchRecordsUsesCursorWithUserOrderAndFallbackOrder() {
+    void searchItemsUsesCursorWithUserOrderAndFallbackOrder() {
         Long categoryId =
                 jdbcTemplate.queryForObject(
                         "select id from am_archive_category where category_code = 'GW'",
                         Long.class);
 
         var firstPage =
-                archiveRecordRoutingService.searchRecords(
-                        new ArchiveRecordQueryRequest(
+                archiveItemRoutingService.searchItems(
+                        new ArchiveItemQueryRequest(
                                 categoryId,
-                                ArchiveLevel.item,
                                 null,
                                 null,
                                 null,
                                 List.of(),
                                 1,
                                 null,
-                                List.of(new ArchiveRecordOrderBy("archiveNo", "ASC"))),
+                                List.of(new ArchiveItemOrderBy("archiveNo", "ASC"))),
                         1L);
 
         assertThat(firstPage.items())
@@ -114,17 +104,16 @@ class ArchiveFullTextSearchIntegrationTests {
         assertThat(firstPage.next()).isNotBlank();
 
         var secondPage =
-                archiveRecordRoutingService.searchRecords(
-                        new ArchiveRecordQueryRequest(
+                archiveItemRoutingService.searchItems(
+                        new ArchiveItemQueryRequest(
                                 categoryId,
-                                ArchiveLevel.item,
                                 null,
                                 null,
                                 null,
                                 List.of(),
                                 1,
                                 firstPage.next(),
-                                List.of(new ArchiveRecordOrderBy("archiveNo", "ASC"))),
+                                List.of(new ArchiveItemOrderBy("archiveNo", "ASC"))),
                         1L);
 
         assertThat(secondPage.items())
@@ -133,17 +122,16 @@ class ArchiveFullTextSearchIntegrationTests {
         assertThat(secondPage.prev()).isNotBlank();
 
         var previousPage =
-                archiveRecordRoutingService.searchRecords(
-                        new ArchiveRecordQueryRequest(
+                archiveItemRoutingService.searchItems(
+                        new ArchiveItemQueryRequest(
                                 categoryId,
-                                ArchiveLevel.item,
                                 null,
                                 null,
                                 null,
                                 List.of(),
                                 1,
                                 secondPage.prev(),
-                                List.of(new ArchiveRecordOrderBy("archiveNo", "ASC"))),
+                                List.of(new ArchiveItemOrderBy("archiveNo", "ASC"))),
                         1L);
 
         assertThat(previousPage.items())
@@ -152,10 +140,9 @@ class ArchiveFullTextSearchIntegrationTests {
 
         assertThatThrownBy(
                         () ->
-                                archiveRecordRoutingService.searchRecords(
-                                        new ArchiveRecordQueryRequest(
+                                archiveItemRoutingService.searchItems(
+                                        new ArchiveItemQueryRequest(
                                                 categoryId,
-                                                ArchiveLevel.item,
                                                 "Z001",
                                                 null,
                                                 null,
@@ -163,7 +150,7 @@ class ArchiveFullTextSearchIntegrationTests {
                                                 1,
                                                 firstPage.next(),
                                                 List.of(
-                                                        new ArchiveRecordOrderBy(
+                                                        new ArchiveItemOrderBy(
                                                                 "archiveNo", "ASC"))),
                                         1L))
                 .hasMessageContaining("分页条件已变化");

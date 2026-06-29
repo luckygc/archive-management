@@ -1,8 +1,8 @@
-# archive-record-search Specification
+# archive-item-search Specification
 
 ## Purpose
 
-定义档案记录查询、后台管理筛选、普通用户全文发现、全文投影维护和全文 provider 选择的业务合同，确保不同入口共享清晰的一致性、权限和逻辑删除语义。
+定义档案条目查询、后台管理筛选、普通用户全文发现、全文投影维护和全文 provider 选择的业务合同，确保不同入口共享清晰的一致性、权限和逻辑删除语义。
 
 ## Requirements
 
@@ -28,7 +28,7 @@
 - **WHEN** 查档、借阅或利用服务类入口提交全文关键词、全宗、结构化字段、权限和逻辑删除条件
 - **THEN** 系统 SHALL 在同一查询语义中合并全文条件、结构化筛选、权限判断和逻辑删除判断
 - **AND** 系统 SHALL NOT 先从全文 provider 召回裸 ID 再由业务代码二次过滤
-- **AND** 最终结果 SHALL 排除已逻辑删除记录和当前用户不可见记录
+- **AND** 最终结果 SHALL 排除已逻辑删除条目和当前用户不可见记录
 
 ### Requirement: 全文检索 provider
 
@@ -55,13 +55,13 @@
 - **WHEN** 配置的 provider 未注册
 - **THEN** 系统 SHALL 在启动阶段 fail-fast
 
-### Requirement: 档案记录精确筛选
+### Requirement: 档案条目精确筛选
 
 系统 SHALL 支持按分类动态字段进行精确筛选。
 
 #### Scenario: 使用允许精确筛选的字段过滤
 
-- **WHEN** 客户端提交包含 `exactFilters` 的档案记录查询请求
+- **WHEN** 客户端提交包含 `exactFilters` 的档案条目查询请求
 - **THEN** 系统 SHALL 只接受字段定义中 `exact_searchable=true` 的字段编码
 - **AND** 系统 SHALL 使用字段定义解析出的动态列名构造查询条件
 - **AND** 系统 SHALL 使用参数绑定传递筛选值
@@ -75,22 +75,22 @@
 #### Scenario: 按全宗固定字段过滤
 
 - **WHEN** 客户端提交全宗编码筛选条件
-- **THEN** 系统 SHALL 通过统一档案记录主表固定字段 `fonds_code` 过滤记录
+- **THEN** 系统 SHALL 通过 `am_archive_item` 固定字段 `fonds_code` 过滤记录
 - **AND** 系统 SHALL NOT 要求 `fonds_code` 在字段定义表中存在
 
-### Requirement: 档案记录全文投影
+### Requirement: 条目全文投影
 
 系统 SHALL 为全文检索维护独立投影表，并以所有启用动态字段生成投影文本。
 
-#### Scenario: 创建档案记录后维护投影
+#### Scenario: 创建档案条目后维护投影
 
-- **WHEN** 客户端创建档案记录且分类存在启用的动态字段
+- **WHEN** 客户端创建档案条目且分类存在启用的动态字段
 - **THEN** 系统 SHALL 将所有启用动态字段的字段名称和值拼接为 `search_text`
-- **AND** 全文投影表 SHALL 只保存记录 ID、`search_text`、索引版本和投影维护时间
+- **AND** 全文投影表 SHALL 只保存条目 ID、`search_text`、索引版本和投影维护时间
 
-#### Scenario: 删除档案记录后删除投影
+#### Scenario: 删除档案条目后删除投影
 
-- **WHEN** 客户端删除档案记录
+- **WHEN** 客户端删除档案条目
 - **THEN** 系统 SHALL 删除该记录对应的全文投影行
 - **AND** 系统 SHALL NOT 依赖全文投影表保存删除状态
 
