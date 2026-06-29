@@ -516,7 +516,7 @@ public class ArchiveItemRoutingService {
         if (StringUtils.isBlank(request.fondsCode())) {
             throw badRequest("全宗不能为空", "fondsCode", "全宗不能为空");
         }
-        ArchiveFondsDto fonds = archiveMetadataService.getFondsByCode(request.fondsCode());
+        ArchiveFondsDto fonds = archiveMetadataService.getEnabledFondsByCode(request.fondsCode());
         Long volumeId =
                 validateParentForWrite(
                         archiveLevel,
@@ -643,7 +643,7 @@ public class ArchiveItemRoutingService {
         if (StringUtils.isBlank(request.fondsCode())) {
             throw badRequest("全宗不能为空", "fondsCode", "全宗不能为空");
         }
-        ArchiveFondsDto fonds = archiveMetadataService.getFondsByCode(request.fondsCode());
+        ArchiveFondsDto fonds = archiveMetadataService.getEnabledFondsByCode(request.fondsCode());
         Long volumeId =
                 validateParentForWrite(
                         ArchiveLevel.ITEM,

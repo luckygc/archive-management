@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.metadata.ArchiveCategory;
@@ -143,6 +144,18 @@ public class ArchiveMetadataService {
                 .find(fondsCode.trim())
                 .map(this::mapFonds)
                 .orElseThrow(() -> notFound("全宗不存在"));
+    }
+
+    public ArchiveFondsDto getEnabledFondsByCode(String fondsCode) {
+        String normalizedCode = StringUtils.trimToNull(fondsCode);
+        if (normalizedCode == null) {
+            throw new BadRequestException("全宗不可用");
+        }
+        return fondsRepository
+                .find(normalizedCode)
+                .filter(ArchiveFonds::isEnabled)
+                .map(this::mapFonds)
+                .orElseThrow(() -> new BadRequestException("全宗不可用"));
     }
 
     public List<ArchiveCategoryDto> listCategories(@Nullable Boolean enabled) {

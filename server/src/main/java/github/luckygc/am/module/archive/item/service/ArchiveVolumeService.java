@@ -68,7 +68,7 @@ public class ArchiveVolumeService {
         if (category.managementMode() != ArchiveManagementMode.VOLUME_ITEM) {
             throw new BadRequestException("该分类未启用案卷管理");
         }
-        ArchiveFondsDto fonds = archiveMetadataService.getFondsByCode(request.fondsCode());
+        ArchiveFondsDto fonds = archiveMetadataService.getEnabledFondsByCode(request.fondsCode());
         int archiveYear =
                 request.archiveYear() == null ? Year.now().getValue() : request.archiveYear();
         Long id =

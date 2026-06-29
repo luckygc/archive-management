@@ -33,6 +33,7 @@ import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.
 class ArchiveMetadataServiceTests {
 
     private ArchiveMapper archiveMapper;
+    private ArchiveFondsDataRepository fondsRepository;
     private ArchiveCategoryDataRepository categoryRepository;
     private ArchiveFieldDataRepository fieldRepository;
     private ArchiveMetadataService service;
@@ -40,7 +41,7 @@ class ArchiveMetadataServiceTests {
     @BeforeEach
     void setUp() {
         archiveMapper = mock(ArchiveMapper.class);
-        ArchiveFondsDataRepository fondsRepository = mock(ArchiveFondsDataRepository.class);
+        fondsRepository = mock(ArchiveFondsDataRepository.class);
         categoryRepository = mock(ArchiveCategoryDataRepository.class);
         fieldRepository = mock(ArchiveFieldDataRepository.class);
         ArchiveFieldLayoutDataRepository fieldLayoutRepository =
@@ -52,6 +53,31 @@ class ArchiveMetadataServiceTests {
                         categoryRepository,
                         fieldRepository,
                         fieldLayoutRepository);
+    }
+
+    @Test
+    @DisplayName("获取可用全宗时拒绝停用全宗")
+    void getEnabledFondsByCodeShouldRejectDisabledFonds() {
+        ArchiveFonds fonds = new ArchiveFonds();
+        fonds.setId(1L);
+        fonds.setFondsCode("F001");
+        fonds.setFondsName("停用全宗");
+        fonds.setEnabled(false);
+        when(fondsRepository.find("F001")).thenReturn(Optional.of(fonds));
+
+        assertThatThrownBy(() -> service.getEnabledFondsByCode(" F001 "))
+                .isInstanceOf(github.luckygc.am.common.exception.BadRequestException.class)
+                .hasMessageContaining("全宗不可用");
+    }
+
+    @Test
+    @DisplayName("获取可用全宗时将不存在全宗视为不可用")
+    void getEnabledFondsByCodeShouldRejectMissingFonds() {
+        when(fondsRepository.find("F001")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.getEnabledFondsByCode("F001"))
+                .isInstanceOf(github.luckygc.am.common.exception.BadRequestException.class)
+                .hasMessageContaining("全宗不可用");
     }
 
     @Test
