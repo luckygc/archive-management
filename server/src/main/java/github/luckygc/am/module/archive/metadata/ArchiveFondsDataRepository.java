@@ -20,19 +20,15 @@ public interface ArchiveFondsDataRepository extends CrudRepository<ArchiveFonds,
     @Find
     @OrderBy("sortOrder")
     @OrderBy("id")
-    List<ArchiveFonds> list(boolean deletedFlag);
+    List<ArchiveFonds> list();
 
     @Transactional(readOnly = true)
     @Find
     @OrderBy("sortOrder")
     @OrderBy("id")
-    List<ArchiveFonds> list(boolean deletedFlag, boolean enabled);
+    List<ArchiveFonds> list(boolean enabled);
 
     @Transactional(readOnly = true)
     @Find
-    Optional<ArchiveFonds> find(Long id, boolean deletedFlag);
-
-    @Transactional(readOnly = true)
-    @Find
-    Optional<ArchiveFonds> find(@Nonnull String fondsCode, boolean deletedFlag);
+    Optional<ArchiveFonds> find(@Nonnull String fondsCode);
 }

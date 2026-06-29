@@ -54,8 +54,8 @@ class ArchiveMetadataServiceTests {
     void createUniqueConstraintShouldAcceptItemMetadataFields() {
         ArchiveCategory category = category(1L, ArchiveManagementMode.VOLUME_ITEM);
         ArchiveField field = field(11L, ArchiveLevel.ITEM, ArchiveFieldScope.METADATA);
-        when(categoryRepository.find(1L, false)).thenReturn(Optional.of(category));
-        when(fieldRepository.list(1L, false)).thenReturn(List.of(field));
+        when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
+        when(fieldRepository.list(1L)).thenReturn(List.of(field));
         when(archiveMapper.insertUniqueConstraint(
                         eq(1L),
                         eq(ArchiveLevel.ITEM.value()),
@@ -87,8 +87,8 @@ class ArchiveMetadataServiceTests {
     void createUniqueConstraintShouldRejectPhysicalFields() {
         ArchiveCategory category = category(1L, ArchiveManagementMode.VOLUME_ITEM);
         ArchiveField field = field(11L, ArchiveLevel.ITEM, ArchiveFieldScope.PHYSICAL);
-        when(categoryRepository.find(1L, false)).thenReturn(Optional.of(category));
-        when(fieldRepository.list(1L, false)).thenReturn(List.of(field));
+        when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
+        when(fieldRepository.list(1L)).thenReturn(List.of(field));
 
         assertThatThrownBy(
                         () ->
@@ -112,8 +112,8 @@ class ArchiveMetadataServiceTests {
     void createUniqueConstraintShouldRejectVolumeRuleWhenCategoryDoesNotUseVolumes() {
         ArchiveCategory category = category(1L, ArchiveManagementMode.ITEM_ONLY);
         ArchiveField field = field(11L, ArchiveLevel.VOLUME, ArchiveFieldScope.METADATA);
-        when(categoryRepository.find(1L, false)).thenReturn(Optional.of(category));
-        when(fieldRepository.list(1L, false)).thenReturn(List.of(field));
+        when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
+        when(fieldRepository.list(1L)).thenReturn(List.of(field));
 
         assertThatThrownBy(
                         () ->

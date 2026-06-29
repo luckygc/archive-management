@@ -1,7 +1,6 @@
 package github.luckygc.am.module.archive.metadata;
 
 import java.util.List;
-import java.util.Optional;
 
 import jakarta.data.repository.CrudRepository;
 import jakarta.data.repository.Find;
@@ -20,16 +19,12 @@ public interface ArchiveCategoryDataRepository extends CrudRepository<ArchiveCat
     @OrderBy("parentId")
     @OrderBy("sortOrder")
     @OrderBy("id")
-    List<ArchiveCategory> list(boolean deletedFlag);
+    List<ArchiveCategory> list();
 
     @Transactional(readOnly = true)
     @Find
     @OrderBy("parentId")
     @OrderBy("sortOrder")
     @OrderBy("id")
-    List<ArchiveCategory> list(boolean deletedFlag, boolean enabled);
-
-    @Transactional(readOnly = true)
-    @Find
-    Optional<ArchiveCategory> find(Long id, boolean deletedFlag);
+    List<ArchiveCategory> list(boolean enabled);
 }

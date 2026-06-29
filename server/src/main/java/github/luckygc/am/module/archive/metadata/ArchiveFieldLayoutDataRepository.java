@@ -20,6 +20,5 @@ public interface ArchiveFieldLayoutDataRepository extends CrudRepository<Archive
     @OrderBy("rowOrder")
     @OrderBy("colOrder")
     @OrderBy("id")
-    List<ArchiveFieldLayout> list(
-            @Nonnull Long categoryId, @Nonnull ArchiveLayoutSurface surface, boolean deletedFlag);
+    List<ArchiveFieldLayout> list(@Nonnull Long categoryId, @Nonnull ArchiveLayoutSurface surface);
 }

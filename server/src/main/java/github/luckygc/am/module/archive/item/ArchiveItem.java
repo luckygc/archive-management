@@ -11,6 +11,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.SoftDelete;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import github.luckygc.am.common.audit.CreationAuditable;
@@ -21,6 +22,7 @@ import lombok.Data;
 @Data
 @Entity
 @Table(name = "am_archive_item")
+@SoftDelete(columnName = "deleted_flag")
 public class ArchiveItem implements CreationAuditable, UpdateAuditable {
 
     @Id
@@ -78,9 +80,6 @@ public class ArchiveItem implements CreationAuditable, UpdateAuditable {
 
     @Column(name = "locked_at")
     private LocalDateTime lockedAt;
-
-    @Column(name = "deleted_flag", nullable = false)
-    private boolean deletedFlag;
 
     @Version
     @Column(nullable = false)

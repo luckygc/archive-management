@@ -10,6 +10,7 @@ import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.SoftDelete;
 
 import github.luckygc.am.common.audit.CreationAuditable;
 
@@ -18,6 +19,7 @@ import lombok.Data;
 @Data
 @Entity
 @Table(name = "am_archive_item_electronic_file")
+@SoftDelete(columnName = "deleted_flag")
 public class ArchiveItemElectronicFile implements CreationAuditable {
 
     @Id
@@ -39,9 +41,6 @@ public class ArchiveItemElectronicFile implements CreationAuditable {
 
     @Column(name = "display_order", nullable = false)
     private int displayOrder;
-
-    @Column(name = "deleted_flag", nullable = false)
-    private boolean deletedFlag;
 
     @Column(name = "created_by")
     private Long createdBy;

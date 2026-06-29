@@ -13,6 +13,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.SoftDelete;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import github.luckygc.am.common.audit.CreationAuditable;
@@ -23,6 +24,7 @@ import lombok.Data;
 @Data
 @Entity
 @Table(name = "am_archive_category")
+@SoftDelete(columnName = "deleted_flag")
 public class ArchiveCategory implements CreationAuditable, UpdateAuditable {
 
     @Id
@@ -66,9 +68,6 @@ public class ArchiveCategory implements CreationAuditable, UpdateAuditable {
 
     @Column(name = "sort_order", nullable = false)
     private int sortOrder;
-
-    @Column(name = "deleted_flag", nullable = false)
-    private boolean deletedFlag;
 
     @Version
     @Column(nullable = false)

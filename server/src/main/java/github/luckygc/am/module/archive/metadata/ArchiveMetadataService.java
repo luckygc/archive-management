@@ -71,9 +71,7 @@ public class ArchiveMetadataService {
 
     public List<ArchiveFondsDto> listFonds(@Nullable Boolean enabled) {
         List<ArchiveFonds> fonds =
-                enabled == null
-                        ? fondsRepository.list(false)
-                        : fondsRepository.list(false, enabled);
+                enabled == null ? fondsRepository.list() : fondsRepository.list(enabled);
         return fonds.stream().map(this::mapFonds).toList();
     }
 
@@ -96,7 +94,7 @@ public class ArchiveMetadataService {
         requireId(id);
         validateRequired(request.fondsCode(), "全宗编码不能为空");
         validateRequired(request.fondsName(), "全宗名称不能为空");
-        ArchiveFonds fonds = fondsRepository.find(id, false).orElseThrow(() -> notFound("全宗不存在"));
+        ArchiveFonds fonds = fondsRepository.findById(id).orElseThrow(() -> notFound("全宗不存在"));
         fonds.setFondsCode(request.fondsCode().trim());
         fonds.setFondsName(request.fondsName().trim());
         fonds.setEnabled(request.enabled() == null || request.enabled());
@@ -108,16 +106,16 @@ public class ArchiveMetadataService {
     @Transactional
     public void deleteFonds(Long id, Long userId) {
         requireId(id);
-        ArchiveFonds fonds = fondsRepository.find(id, false).orElseThrow(() -> notFound("全宗不存在"));
-        fonds.setDeletedFlag(true);
+        ArchiveFonds fonds = fondsRepository.findById(id).orElseThrow(() -> notFound("全宗不存在"));
         fonds.setUpdatedBy(userId);
         fondsRepository.update(fonds);
+        fondsRepository.delete(fonds);
     }
 
     public ArchiveFondsDto getFonds(Long id) {
         requireId(id);
         return fondsRepository
-                .find(id, false)
+                .findById(id)
                 .map(this::mapFonds)
                 .orElseThrow(() -> notFound("全宗不存在"));
     }
@@ -125,16 +123,14 @@ public class ArchiveMetadataService {
     public ArchiveFondsDto getFondsByCode(String fondsCode) {
         validateRequired(fondsCode, "全宗编码不能为空");
         return fondsRepository
-                .find(fondsCode.trim(), false)
+                .find(fondsCode.trim())
                 .map(this::mapFonds)
                 .orElseThrow(() -> notFound("全宗不存在"));
     }
 
     public List<ArchiveCategoryDto> listCategories(@Nullable Boolean enabled) {
         List<ArchiveCategory> categories =
-                enabled == null
-                        ? categoryRepository.list(false)
-                        : categoryRepository.list(false, enabled);
+                enabled == null ? categoryRepository.list() : categoryRepository.list(enabled);
         return categories.stream().map(this::mapCategory).toList();
     }
 
@@ -162,7 +158,7 @@ public class ArchiveMetadataService {
         validateRequired(request.categoryName(), "分类名称不能为空");
         validateParentCategory(id, request.parentId());
         ArchiveCategory category =
-                categoryRepository.find(id, false).orElseThrow(() -> notFound("档案分类不存在"));
+                categoryRepository.findById(id).orElseThrow(() -> notFound("档案分类不存在"));
         category.setParentId(request.parentId());
         category.setCategoryCode(request.categoryCode().trim());
         category.setCategoryName(request.categoryName().trim());
@@ -180,23 +176,23 @@ public class ArchiveMetadataService {
             throw badRequest("存在子分类，不能删除");
         }
         ArchiveCategory category =
-                categoryRepository.find(id, false).orElseThrow(() -> notFound("档案分类不存在"));
-        category.setDeletedFlag(true);
+                categoryRepository.findById(id).orElseThrow(() -> notFound("档案分类不存在"));
         category.setUpdatedBy(userId);
         categoryRepository.update(category);
+        categoryRepository.delete(category);
     }
 
     public ArchiveCategoryDto getCategory(Long id) {
         requireId(id);
         return categoryRepository
-                .find(id, false)
+                .findById(id)
                 .map(this::mapCategory)
                 .orElseThrow(() -> notFound("档案分类不存在"));
     }
 
     public List<ArchiveFieldDto> listFields(Long categoryId) {
         requireId(categoryId);
-        return fieldRepository.list(categoryId, false).stream().map(this::mapField).toList();
+        return fieldRepository.list(categoryId).stream().map(this::mapField).toList();
     }
 
     public List<ArchiveFieldDto> listEnabledFields(Long categoryId) {
@@ -215,7 +211,6 @@ public class ArchiveMetadataService {
                         categoryId,
                         normalizeArchiveLevel(archiveLevel),
                         normalizeFieldScope(fieldScope),
-                        false,
                         true)
                 .stream()
                 .map(this::mapField)
@@ -325,7 +320,7 @@ public class ArchiveMetadataService {
             throw badRequest("已建字段不允许修改适用层级");
         }
         ArchiveField field =
-                fieldRepository.find(fieldId, false).orElseThrow(() -> notFound("字段定义不存在"));
+                fieldRepository.findById(fieldId).orElseThrow(() -> notFound("字段定义不存在"));
         applyFieldValues(field, categoryId, values);
         field.setUpdatedBy(userId);
         ArchiveFieldDto updatedField = mapField(fieldRepository.update(field));
@@ -338,19 +333,19 @@ public class ArchiveMetadataService {
         requireId(categoryId);
         requireId(fieldId);
         ArchiveField field =
-                fieldRepository.find(fieldId, false).orElseThrow(() -> notFound("字段定义不存在"));
+                fieldRepository.findById(fieldId).orElseThrow(() -> notFound("字段定义不存在"));
         if (!field.getCategoryId().equals(categoryId)) {
             throw notFound("字段定义不存在");
         }
-        field.setDeletedFlag(true);
         field.setUpdatedBy(userId);
         fieldRepository.update(field);
+        fieldRepository.delete(field);
     }
 
     public ArchiveFieldDto getField(Long id) {
         requireId(id);
         return fieldRepository
-                .find(id, false)
+                .findById(id)
                 .map(this::mapField)
                 .orElseThrow(() -> notFound("字段定义不存在"));
     }
@@ -891,7 +886,7 @@ public class ArchiveMetadataService {
                 fields.isEmpty() ? ArchiveLevel.ITEM : fields.getFirst().archiveLevel();
         ArchiveFieldScope fieldScope =
                 fields.isEmpty() ? ArchiveFieldScope.METADATA : fields.getFirst().fieldScope();
-        return fieldLayoutRepository.list(categoryId, surface, false).stream()
+        return fieldLayoutRepository.list(categoryId, surface).stream()
                 .filter(layout -> fieldsById.containsKey(layout.getFieldId()))
                 .filter(
                         layout ->
@@ -945,13 +940,13 @@ public class ArchiveMetadataService {
                                 java.util.stream.Collectors.toMap(
                                         ArchiveFieldDto::id, field -> field));
         Set<Long> seenFieldIds = new HashSet<>();
-        fieldLayoutRepository.list(categoryId, surface, false).stream()
+        fieldLayoutRepository.list(categoryId, surface).stream()
                 .filter(layout -> fieldsById.containsKey(layout.getFieldId()))
                 .forEach(
                         layout -> {
-                            layout.setDeletedFlag(true);
                             layout.setUpdatedBy(userId);
                             fieldLayoutRepository.update(layout);
+                            fieldLayoutRepository.delete(layout);
                         });
         for (@Nullable ArchiveFieldLayoutItemRequest item : items) {
             if (item == null || item.fieldId() == null || !fieldsById.containsKey(item.fieldId())) {

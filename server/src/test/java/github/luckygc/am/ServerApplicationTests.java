@@ -307,7 +307,7 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
                                             java.util.List.of()),
                                     "N/A",
                                     java.util.List.of()));
-            ArchiveFonds saved = archiveFondsDataRepository.find("AUDIT_TEST", false).orElseThrow();
+            ArchiveFonds saved = archiveFondsDataRepository.find("AUDIT_TEST").orElseThrow();
             saved.setFondsName("审计测试全宗-更新");
             archiveFondsDataRepository.update(saved);
 

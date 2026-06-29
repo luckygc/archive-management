@@ -1,7 +1,6 @@
 package github.luckygc.am.module.archive.metadata;
 
 import java.util.List;
-import java.util.Optional;
 
 import jakarta.annotation.Nonnull;
 import jakarta.data.repository.CrudRepository;
@@ -22,17 +21,14 @@ public interface ArchiveFieldDataRepository extends CrudRepository<ArchiveField,
     @Find
     @OrderBy("sortOrder")
     @OrderBy("id")
-    List<ArchiveField> list(@Nonnull Long categoryId, boolean deletedFlag);
+    List<ArchiveField> list(@Nonnull Long categoryId);
 
     @Transactional(readOnly = true)
     @Find
     @OrderBy("sortOrder")
     @OrderBy("id")
     List<ArchiveField> list(
-            @Nonnull Long categoryId,
-            @Nonnull ArchiveLevel archiveLevel,
-            boolean deletedFlag,
-            boolean enabled);
+            @Nonnull Long categoryId, @Nonnull ArchiveLevel archiveLevel, boolean enabled);
 
     @Transactional(readOnly = true)
     @Find
@@ -42,10 +38,5 @@ public interface ArchiveFieldDataRepository extends CrudRepository<ArchiveField,
             @Nonnull Long categoryId,
             @Nonnull ArchiveLevel archiveLevel,
             @Nonnull ArchiveFieldScope fieldScope,
-            boolean deletedFlag,
             boolean enabled);
-
-    @Transactional(readOnly = true)
-    @Find
-    Optional<ArchiveField> find(Long id, boolean deletedFlag);
 }

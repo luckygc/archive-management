@@ -14,7 +14,9 @@ import jakarta.data.repository.Insert;
 import jakarta.data.repository.Query;
 import jakarta.data.repository.Save;
 import jakarta.data.repository.Update;
+import jakarta.persistence.Entity;
 
+import org.hibernate.annotations.SoftDelete;
 import org.hibernate.annotations.processing.HQL;
 import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.DisplayName;
@@ -36,6 +38,15 @@ import github.luckygc.am.app.ArchiveManagementApplication;
 @AnalyzeClasses(packages = "github.luckygc.am", importOptions = DoNotIncludeTests.class)
 @DisplayName("架构边界规则")
 class ArchitectureRulesTest {
+
+    private static final Set<String> SOFT_DELETE_ENTITY_NAMES =
+            Set.of(
+                    "github.luckygc.am.module.archive.metadata.ArchiveFonds",
+                    "github.luckygc.am.module.archive.metadata.ArchiveCategory",
+                    "github.luckygc.am.module.archive.metadata.ArchiveField",
+                    "github.luckygc.am.module.archive.metadata.ArchiveFieldLayout",
+                    "github.luckygc.am.module.archive.item.ArchiveItem",
+                    "github.luckygc.am.module.archive.item.ArchiveItemElectronicFile");
 
     @ArchTest
     static final ArchRule common_should_not_depend_on_business_or_infrastructure =
@@ -150,6 +161,43 @@ class ArchitectureRulesTest {
                 () ->
                         "有 Java 类的包必须提供 package-info.java 并标注 @NullMarked: "
                                 + packagesWithProjectClasses);
+    }
+
+    @ArchTest
+    static void soft_delete_entities_should_use_hibernate_soft_delete(JavaClasses classes) {
+        List<String> missingSoftDelete =
+                classes.stream()
+                        .filter(javaClass -> SOFT_DELETE_ENTITY_NAMES.contains(javaClass.getName()))
+                        .filter(javaClass -> !javaClass.isAnnotatedWith(SoftDelete.class))
+                        .map(JavaClass::getName)
+                        .sorted()
+                        .toList();
+        List<String> explicitDeletedFlagFields =
+                classes.stream()
+                        .filter(javaClass -> javaClass.isAnnotatedWith(Entity.class))
+                        .flatMap(
+                                javaClass ->
+                                        javaClass.getFields().stream()
+                                                .filter(
+                                                        field ->
+                                                                field.getName()
+                                                                        .equals("deletedFlag"))
+                                                .map(
+                                                        field ->
+                                                                javaClass.getName()
+                                                                        + "#"
+                                                                        + field.getName()))
+                        .sorted()
+                        .toList();
+
+        assertTrue(
+                missingSoftDelete.isEmpty(),
+                () -> "软删除固定实体必须标注 Hibernate @SoftDelete: " + missingSoftDelete);
+        assertTrue(
+                explicitDeletedFlagFields.isEmpty(),
+                () ->
+                        "软删除字段由 Hibernate @SoftDelete 管理，实体不应显式映射 deletedFlag: "
+                                + explicitDeletedFlagFields);
     }
 
     @Test
