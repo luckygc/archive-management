@@ -40,6 +40,8 @@ public class ArchiveMetadataService {
                     "locked_by",
                     "locked_at",
                     "deleted_flag",
+                    "deleted_at",
+                    "deleted_by",
                     "created_by",
                     "created_at",
                     "updated_by",
@@ -396,6 +398,8 @@ public class ArchiveMetadataService {
                     (
                         id bigint primary key references %s (id),
                         deleted_flag boolean not null default false,
+                        deleted_at timestamp,
+                        deleted_by bigint,
                         created_at timestamp not null default localtimestamp,
                         updated_at timestamp not null default localtimestamp%s
                     )
@@ -403,6 +407,8 @@ public class ArchiveMetadataService {
                             .formatted(tableName, ownerTable, columns));
         } else {
             ensureColumn(tableName, "deleted_flag", "boolean not null default false");
+            ensureColumn(tableName, "deleted_at", "timestamp");
+            ensureColumn(tableName, "deleted_by", "bigint");
             for (ArchiveFieldDto field : fields) {
                 validateIdentifier(field.columnName(), "字段列名非法");
                 if (archiveMapper.columnExists(tableName, field.columnName()) == 0) {

@@ -169,11 +169,6 @@ create sequence am_archive_volume_id_seq
     start with 1000000
     increment by 1000;
 
-create sequence am_archive_item_electronic_file_id_seq
-    as bigint
-    start with 1000000
-    increment by 1000;
-
 create table am_archive_volume
 (
     id             bigint primary key default nextval('am_archive_volume_id_seq'),
@@ -193,6 +188,8 @@ create table am_archive_volume
     locked_by      bigint,
     locked_at      timestamp,
     deleted_flag   boolean      not null default false,
+    deleted_at     timestamp,
+    deleted_by     bigint,
     version        integer      not null default 0,
     created_by     bigint,
     created_at     timestamp    not null default localtimestamp,
@@ -213,6 +210,9 @@ create index idx_am_archive_volume_sort_active
     on am_archive_volume (sort_order, id)
     where deleted_flag = false;
 create index idx_am_archive_volume_created_at on am_archive_volume (created_at);
+create index idx_am_archive_volume_deleted_at
+    on am_archive_volume (deleted_at desc, id desc)
+    where deleted_flag = true;
 
 comment on table am_archive_volume is '档案案卷主表';
 comment on column am_archive_volume.id is '主键';
@@ -231,6 +231,8 @@ comment on column am_archive_volume.lock_reason is '锁定原因';
 comment on column am_archive_volume.locked_by is '锁定人用户 ID';
 comment on column am_archive_volume.locked_at is '锁定时间';
 comment on column am_archive_volume.deleted_flag is '删除标记';
+comment on column am_archive_volume.deleted_at is '删除时间';
+comment on column am_archive_volume.deleted_by is '删除人用户 ID';
 comment on column am_archive_volume.version is '乐观锁版本号';
 comment on column am_archive_volume.created_by is '创建人用户 ID';
 comment on column am_archive_volume.created_at is '创建时间';
@@ -257,6 +259,8 @@ create table am_archive_item
     locked_by      bigint,
     locked_at      timestamp,
     deleted_flag   boolean      not null default false,
+    deleted_at     timestamp,
+    deleted_by     bigint,
     version        integer      not null default 0,
     created_by     bigint,
     created_at     timestamp    not null default localtimestamp,
@@ -280,6 +284,9 @@ create index idx_am_archive_item_sort_active
     on am_archive_item (sort_order, id)
     where deleted_flag = false;
 create index idx_am_archive_item_created_at on am_archive_item (created_at);
+create index idx_am_archive_item_deleted_at
+    on am_archive_item (deleted_at desc, id desc)
+    where deleted_flag = true;
 
 comment on table am_archive_item is '档案条目主表';
 comment on column am_archive_item.id is '主键';
@@ -300,6 +307,8 @@ comment on column am_archive_item.lock_reason is '锁定原因';
 comment on column am_archive_item.locked_by is '锁定人用户 ID';
 comment on column am_archive_item.locked_at is '锁定时间';
 comment on column am_archive_item.deleted_flag is '删除标记';
+comment on column am_archive_item.deleted_at is '删除时间';
+comment on column am_archive_item.deleted_by is '删除人用户 ID';
 comment on column am_archive_item.version is '乐观锁版本号';
 comment on column am_archive_item.created_by is '创建人用户 ID';
 comment on column am_archive_item.created_at is '创建时间';
@@ -308,12 +317,14 @@ comment on column am_archive_item.updated_at is '更新时间';
 
 create table am_archive_item_electronic_file
 (
-    id                bigint primary key default nextval('am_archive_item_electronic_file_id_seq'),
+    id                bigserial primary key,
     archive_item_id bigint      not null references am_archive_item (id),
     storage_object_id bigint      not null references am_storage_object (id),
     usage_type        varchar(50) not null default 'DEFAULT',
     display_order     integer     not null default 0,
     deleted_flag      boolean     not null default false,
+    deleted_at        timestamp,
+    deleted_by        bigint,
     created_by        bigint,
     created_at        timestamp   not null default localtimestamp
 );
@@ -332,6 +343,8 @@ comment on column am_archive_item_electronic_file.storage_object_id is '存储�
 comment on column am_archive_item_electronic_file.usage_type is '文件用途类型';
 comment on column am_archive_item_electronic_file.display_order is '文件排序';
 comment on column am_archive_item_electronic_file.deleted_flag is '删除标记';
+comment on column am_archive_item_electronic_file.deleted_at is '删除时间';
+comment on column am_archive_item_electronic_file.deleted_by is '删除人用户 ID';
 comment on column am_archive_item_electronic_file.created_by is '创建人用户 ID';
 comment on column am_archive_item_electronic_file.created_at is '创建时间';
 

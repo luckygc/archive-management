@@ -8,6 +8,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.List;
 
+import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -145,7 +146,7 @@ class DelegatingFileStorageServiceTests {
 
             @Override
             public StorageObjectInfo putObject(
-                    String objectKey,
+                    @NonNull String objectKey,
                     java.io.InputStream inputStream,
                     long contentLength,
                     String contentType) {

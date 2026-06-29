@@ -7,8 +7,8 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 
 import org.hibernate.annotations.CreationTimestamp;
@@ -24,11 +24,7 @@ import lombok.Data;
 public class StorageObject implements CreationAuditable {
 
     @Id
-    @GeneratedValue(generator = "am_storage_object_id_seq")
-    @SequenceGenerator(
-            name = "am_storage_object_id_seq",
-            sequenceName = "am_storage_object_id_seq",
-            allocationSize = 1000)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(name = "storage_type", nullable = false, length = 20)

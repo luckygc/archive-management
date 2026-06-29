@@ -3,6 +3,9 @@ package github.luckygc.am.module.archive.item.search;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.util.Base64;
 import java.util.List;
 
 import org.junit.jupiter.api.DisplayName;
@@ -154,5 +157,180 @@ class ArchiveFullTextSearchIntegrationTests {
                                                                 "archiveNo", "ASC"))),
                                         1L))
                 .hasMessageContaining("分页条件已变化");
+    }
+
+    @Test
+    @DisplayName("默认键集分页使用创建时间和 ID，并以微秒精度编码 cursor")
+    void searchItemsCursorUsesCreatedAtMicrosAndIdFallbackOrder() {
+        Long categoryId =
+                jdbcTemplate.queryForObject(
+                        "select id from am_archive_category where category_code = 'GW'",
+                        Long.class);
+        jdbcTemplate.update(
+                """
+                update am_archive_item
+                set created_at = timestamp '2026-06-29 10:00:00.123456'
+                where archive_no = 'GW-2026-001'
+                """);
+        jdbcTemplate.update(
+                """
+                update am_archive_item
+                set created_at = timestamp '2026-06-29 10:00:00.123455'
+                where archive_no = 'GW-2026-002'
+                """);
+
+        var firstPage =
+                archiveItemRoutingService.searchItems(
+                        new ArchiveItemQueryRequest(
+                                categoryId, null, null, null, List.of(), 1, null, null),
+                        1L);
+
+        assertThat(firstPage.items())
+                .extracting(row -> row.get("archive_no"))
+                .containsExactly("GW-2026-001");
+        assertThat(cursorPayload(firstPage.next())).contains("|U:");
+
+        var secondPage =
+                archiveItemRoutingService.searchItems(
+                        new ArchiveItemQueryRequest(
+                                categoryId, null, null, null, List.of(), 1, firstPage.next(), null),
+                        1L);
+
+        assertThat(secondPage.items())
+                .extracting(row -> row.get("archive_no"))
+                .containsExactly("GW-2026-002");
+    }
+
+    @Test
+    @DisplayName("删除档案条目时写入删除时间和删除人")
+    void deleteItemWritesDeletedAtAndDeletedByOnItemAndDynamicRows() {
+        Long categoryId =
+                jdbcTemplate.queryForObject(
+                        "select id from am_archive_category where category_code = 'GW'",
+                        Long.class);
+        String itemTableName =
+                jdbcTemplate.queryForObject(
+                        "select item_table_name from am_archive_category where id = ?",
+                        String.class,
+                        categoryId);
+        String physicalTableName =
+                jdbcTemplate.queryForObject(
+                        "select item_physical_table_name from am_archive_category where id = ?",
+                        String.class,
+                        categoryId);
+        Long itemId =
+                jdbcTemplate.queryForObject(
+                        """
+                        insert into am_archive_item
+                            (fonds_code, fonds_name, category_code, category_name, archive_no, electronic_status, archive_year)
+                        values
+                            ('Z000', '集团全宗', 'GW', '公文档案', 'GW-DELETE-META', 'DRAFT', 2026)
+                        returning id
+                        """,
+                        Long.class);
+        jdbcTemplate.update(
+                "insert into " + itemTableName + " (id, f_title) values (?, ?)", itemId, "待删除条目");
+        jdbcTemplate.update(
+                "insert into " + physicalTableName + " (id, f_box_no) values (?, ?)",
+                itemId,
+                "D-001");
+
+        archiveItemRoutingService.deleteItem(
+                itemId, 99L, new ArchiveItemRoutingService.DeleteItemRequest("测试删除"));
+
+        assertDeletedMetadata("am_archive_item", itemId, 99L);
+        assertDeletedMetadata(itemTableName, itemId, 99L);
+        assertDeletedMetadata(physicalTableName, itemId, 99L);
+    }
+
+    @Test
+    @DisplayName("回收站按删除时间和 ID 稳定分页")
+    void searchDeletedItemsUsesDeletedAtAndIdFallbackOrder() {
+        Long categoryId =
+                jdbcTemplate.queryForObject(
+                        "select id from am_archive_category where category_code = 'GW'",
+                        Long.class);
+        String itemTableName =
+                jdbcTemplate.queryForObject(
+                        "select item_table_name from am_archive_category where id = ?",
+                        String.class,
+                        categoryId);
+        insertDeletedItem(itemTableName, "GW-TRASH-001", "2099-06-29 11:00:00.123456");
+        insertDeletedItem(itemTableName, "GW-TRASH-002", "2099-06-29 11:00:00.123455");
+
+        var firstPage =
+                archiveItemRoutingService.searchDeletedItems(
+                        new ArchiveItemQueryRequest(
+                                categoryId, null, null, null, List.of(), 1, null, null),
+                        1L);
+
+        assertThat(firstPage.items())
+                .extracting(row -> row.get("archive_no"))
+                .containsExactly("GW-TRASH-001");
+        assertThat(cursorPayload(firstPage.next())).contains("|U:");
+
+        var secondPage =
+                archiveItemRoutingService.searchDeletedItems(
+                        new ArchiveItemQueryRequest(
+                                categoryId, null, null, null, List.of(), 1, firstPage.next(), null),
+                        1L);
+
+        assertThat(secondPage.items())
+                .extracting(row -> row.get("archive_no"))
+                .containsExactly("GW-TRASH-002");
+    }
+
+    private Long insertDeletedItem(String itemTableName, String archiveNo, String deletedAt) {
+        Long itemId =
+                jdbcTemplate.queryForObject(
+                        """
+                        insert into am_archive_item
+                            (fonds_code, fonds_name, category_code, category_name, archive_no, electronic_status,
+                             archive_year, deleted_flag, deleted_at, deleted_by)
+                        values
+                            ('Z000', '集团全宗', 'GW', '公文档案', ?, 'DRAFT',
+                             2026, true, timestamp '%s', 99)
+                        returning id
+                        """
+                                .formatted(deletedAt),
+                        Long.class,
+                        archiveNo);
+        jdbcTemplate.update(
+                "insert into "
+                        + itemTableName
+                        + " (id, f_title, deleted_flag, deleted_at, deleted_by) values (?, ?, true, timestamp '"
+                        + deletedAt
+                        + "', 99)",
+                itemId,
+                archiveNo);
+        return itemId;
+    }
+
+    private void assertDeletedMetadata(String tableName, Long id, Long expectedDeletedBy) {
+        Boolean deleted =
+                jdbcTemplate.queryForObject(
+                        "select deleted_flag from " + tableName + " where id = ?",
+                        Boolean.class,
+                        id);
+        LocalDateTime deletedAt =
+                jdbcTemplate.queryForObject(
+                        "select deleted_at from " + tableName + " where id = ?",
+                        LocalDateTime.class,
+                        id);
+        assertThat(deleted).isTrue();
+        assertThat(deletedAt).isNotNull();
+        if (expectedDeletedBy != null) {
+            Long deletedBy =
+                    jdbcTemplate.queryForObject(
+                            "select deleted_by from " + tableName + " where id = ?",
+                            Long.class,
+                            id);
+            assertThat(deletedBy).isEqualTo(expectedDeletedBy);
+        }
+    }
+
+    private String cursorPayload(String cursor) {
+        return new String(
+                Base64.getUrlDecoder().decode(cursor.split("\\.", 2)[0]), StandardCharsets.UTF_8);
     }
 }

@@ -21,20 +21,17 @@ import lombok.Data;
 
 @Data
 @Entity
-@Table(name = "am_archive_item")
+@Table(name = "am_archive_volume")
 @SoftDelete(columnName = "deleted_flag")
-public class ArchiveItem implements CreationAuditable, UpdateAuditable {
+public class ArchiveVolume implements CreationAuditable, UpdateAuditable {
 
     @Id
-    @GeneratedValue(generator = "am_archive_item_id_seq")
+    @GeneratedValue(generator = "am_archive_volume_id_seq")
     @SequenceGenerator(
-            name = "am_archive_item_id_seq",
-            sequenceName = "am_archive_item_id_seq",
+            name = "am_archive_volume_id_seq",
+            sequenceName = "am_archive_volume_id_seq",
             allocationSize = 1000)
     private Long id;
-
-    @Column(name = "volume_id")
-    private Long volumeId;
 
     @Column(name = "fonds_code", nullable = false, length = 100)
     private String fondsCode;

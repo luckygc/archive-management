@@ -87,6 +87,8 @@
                r.archive_year,
                r.display_order,
                r.created_at,
+               r.deleted_at,
+               r.deleted_by,
                r.locked_flag,
                r.lock_reason,
                r.locked_by,
@@ -94,8 +96,8 @@
                ${selectColumns}
         from am_archive_item r
         join ${tableName} d on d.id = r.id
-        where r.deleted_flag = false
-          and d.deleted_flag = false
+        where r.deleted_flag = #{deleted}
+          and d.deleted_flag = #{deleted}
         <if test="requireAuthenticatedUser">
             and #{userId} is not null
         </if>
@@ -190,7 +192,10 @@
 
     <update id="markDynamicRecordDeleted">
         update ${tableName}
-        set deleted_flag = true, updated_at = localtimestamp
+        set deleted_flag = true,
+            deleted_at = localtimestamp,
+            deleted_by = #{userId},
+            updated_at = localtimestamp
         where id = #{id} and deleted_flag = false
     </update>
 
@@ -281,6 +286,8 @@
     <update id="markArchiveItemDeleted">
         update am_archive_item
         set deleted_flag = true,
+            deleted_at = localtimestamp,
+            deleted_by = #{userId},
             updated_by = #{userId},
             version = version + 1,
             updated_at = localtimestamp

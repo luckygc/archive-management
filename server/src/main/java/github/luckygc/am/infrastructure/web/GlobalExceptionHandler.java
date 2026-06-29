@@ -143,7 +143,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         if (responseBody instanceof ProblemDetail problem) {
             completeProblem(problem, statusCode, request);
         } else if (responseBody == null) {
-            ProblemDetail problem =
+            responseBody =
                     problem(
                             statusCode,
                             title(statusCode),
@@ -151,7 +151,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                             canonicalCode(statusCode),
                             canonicalCode(statusCode) + "_ERROR",
                             request);
-            responseBody = problem;
         }
         return super.createResponseEntity(responseBody, headers, statusCode, request);
     }

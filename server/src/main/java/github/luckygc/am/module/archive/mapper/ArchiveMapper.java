@@ -35,6 +35,7 @@ public interface ArchiveMapper {
             @Param("tableName") String tableName,
             @Param("selectColumns") String selectColumns,
             @Param("archiveLevel") String archiveLevel,
+            @Param("deleted") boolean deleted,
             @Param("fondsCode") String fondsCode,
             @Param("conditions") List<ArchiveSqlCondition> conditions,
             @Param("fullTextKeyword") String fullTextKeyword,
@@ -82,7 +83,10 @@ public interface ArchiveMapper {
             @Param("id") Long id,
             @Param("assignments") List<ArchiveSqlAssignment> assignments);
 
-    int markDynamicRecordDeleted(@Param("tableName") String tableName, @Param("id") Long id);
+    int markDynamicRecordDeleted(
+            @Param("tableName") String tableName,
+            @Param("id") Long id,
+            @Param("userId") Long userId);
 
     Map<String, Object> loadDynamicRecord(
             @Param("tableName") String tableName, @Param("id") Long id);

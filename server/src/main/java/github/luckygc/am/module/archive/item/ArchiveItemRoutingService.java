@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 import java.time.Year;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.LinkedHashMap;
@@ -60,6 +61,7 @@ public class ArchiveItemRoutingService {
     private static final int DEFAULT_PAGE_LIMIT = 100;
     private static final int MAX_PAGE_LIMIT = 1000;
     private static final String CURSOR_HMAC_KEY = "archive-item-cursor-v1";
+    private static final LocalDateTime CURSOR_TIME_EPOCH = LocalDateTime.of(1970, 1, 1, 0, 0);
 
     private final ArchiveMetadataService archiveMetadataService;
     private final ArchiveMapper archiveMapper;
@@ -92,19 +94,25 @@ public class ArchiveItemRoutingService {
 
     public ArchiveItemListDto searchItems(
             @Nullable ArchiveItemQueryRequest request, @Nullable Long userId) {
-        return queryItems(request, userId, false, false);
+        return queryItems(request, userId, false, false, false);
     }
 
     public ArchiveItemListDto discoverItems(
             @Nullable ArchiveItemQueryRequest request, @Nullable Long userId) {
-        return queryItems(request, userId, true, true);
+        return queryItems(request, userId, true, true, false);
+    }
+
+    public ArchiveItemListDto searchDeletedItems(
+            @Nullable ArchiveItemQueryRequest request, @Nullable Long userId) {
+        return queryItems(request, userId, false, false, true);
     }
 
     private ArchiveItemListDto queryItems(
             @Nullable ArchiveItemQueryRequest request,
             @Nullable Long userId,
             boolean allowKeyword,
-            boolean requireAuthenticatedUser) {
+            boolean requireAuthenticatedUser,
+            boolean deleted) {
         String keyword = StringUtils.trimToNull(request == null ? null : request.keyword());
         if (StringUtils.isNotBlank(keyword) && !allowKeyword) {
             throw badRequest(
@@ -139,7 +147,7 @@ public class ArchiveItemRoutingService {
                     category, fields, false, null, null, null, null, List.of());
         }
         int limit = pageLimit(request.limit());
-        List<ArchiveSqlOrder> orderBy = orderBy(request.orderBy());
+        List<ArchiveSqlOrder> orderBy = deleted ? deletedOrderBy() : orderBy(request.orderBy());
         Cursor cursor = decodeCursor(request.cursor(), queryFingerprint(request, orderBy));
         List<ArchiveSqlCondition> conditions =
                 buildSearchConditions(
@@ -155,6 +163,7 @@ public class ArchiveItemRoutingService {
                         tableName,
                         selectColumns(visibleFields),
                         archiveLevel.value(),
+                        deleted,
                         StringUtils.trimToNull(request.fondsCode()),
                         conditions,
                         keyword,
@@ -221,6 +230,12 @@ public class ArchiveItemRoutingService {
         appendFallbackOrder(orders, new ArchiveSqlOrder("r.created_at", Direction.DESC));
         appendFallbackOrder(orders, new ArchiveSqlOrder("r.id", Direction.DESC));
         return orders;
+    }
+
+    private List<ArchiveSqlOrder> deletedOrderBy() {
+        return List.of(
+                new ArchiveSqlOrder("r.deleted_at", Direction.DESC),
+                new ArchiveSqlOrder("r.id", Direction.DESC));
     }
 
     private void appendFallbackOrder(List<ArchiveSqlOrder> orders, ArchiveSqlOrder fallback) {
@@ -329,8 +344,8 @@ public class ArchiveItemRoutingService {
         if (value.startsWith("I:")) {
             return Integer.valueOf(value.substring(2));
         }
-        if (value.startsWith("T:")) {
-            return LocalDateTime.parse(value.substring(2));
+        if (value.startsWith("U:")) {
+            return CURSOR_TIME_EPOCH.plus(Long.parseLong(value.substring(2)), ChronoUnit.MICROS);
         }
         return value.substring(2);
     }
@@ -362,6 +377,7 @@ public class ArchiveItemRoutingService {
     private @Nullable Object cursorRowValue(Map<String, @Nullable Object> row, String expression) {
         return switch (expression) {
             case "r.created_at" -> value(row, "createdAt");
+            case "r.deleted_at" -> value(row, "deletedAt");
             case "r.id" -> longCursorValue(row, "id");
             case "r.archive_no" -> value(row, "archiveNo");
             case "r.archive_year" -> integerCursorValue(row, "archiveYear");
@@ -393,10 +409,15 @@ public class ArchiveItemRoutingService {
             case Long longValue -> "L:" + longValue;
             case Integer intValue -> "I:" + intValue;
             case Number number -> "L:" + number.longValue();
-            case LocalDateTime dateTime -> "T:" + dateTime;
-            case Timestamp timestamp -> "T:" + timestamp.toLocalDateTime();
+            case LocalDateTime dateTime -> "U:" + cursorTimeMicros(dateTime);
+            case Timestamp timestamp -> "U:" + cursorTimeMicros(timestamp.toLocalDateTime());
             default -> "S:" + value;
         };
+    }
+
+    private long cursorTimeMicros(LocalDateTime dateTime) {
+        return ChronoUnit.MICROS.between(
+                CURSOR_TIME_EPOCH, dateTime.truncatedTo(ChronoUnit.MICROS));
     }
 
     private String queryFingerprint(
@@ -625,12 +646,12 @@ public class ArchiveItemRoutingService {
                 request == null ? null : StringUtils.trimToNull(request.reason()),
                 userId);
         if (isDynamicTableBuilt(category, ArchiveLevel.ITEM)) {
-            archiveMapper.markDynamicRecordDeleted(tableName, id);
+            archiveMapper.markDynamicRecordDeleted(tableName, id, userId);
         }
         String physicalTableName =
                 dynamicTableName(category, ArchiveLevel.ITEM, ArchiveFieldScope.PHYSICAL);
         if (isDynamicTableBuilt(category, ArchiveLevel.ITEM, ArchiveFieldScope.PHYSICAL)) {
-            archiveMapper.markDynamicRecordDeleted(physicalTableName, id);
+            archiveMapper.markDynamicRecordDeleted(physicalTableName, id, userId);
         }
         int updated = archiveMapper.markArchiveItemDeleted(id, userId);
         if (updated == 0) {

@@ -46,7 +46,7 @@ class ArchitectureRulesTest {
                     "github.luckygc.am.module.archive.metadata.ArchiveField",
                     "github.luckygc.am.module.archive.metadata.ArchiveFieldLayout",
                     "github.luckygc.am.module.archive.item.ArchiveItem",
-                    "github.luckygc.am.module.archive.item.ArchiveItemElectronicFile");
+                    "github.luckygc.am.module.archive.item.ArchiveVolume");
 
     @ArchTest
     static final ArchRule common_should_not_depend_on_business_or_infrastructure =

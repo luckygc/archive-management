@@ -143,6 +143,8 @@ public class ArchiveItemLineTableService {
                         item_id bigint not null references am_archive_item (id),
                         line_order integer not null default 0,
                         deleted_flag boolean not null default false,
+                        deleted_at timestamp,
+                        deleted_by bigint,
                         created_at timestamp not null default localtimestamp,
                         updated_at timestamp not null default localtimestamp%s
                     )

@@ -125,7 +125,7 @@
 
 - **WHEN** 客户端对有启用字段的档案分类执行建表动作
 - **THEN** 系统 SHALL 创建该分类对应的动态数据表
-- **AND** 动态表 SHALL 固定包含 `id`、`deleted_flag`、`created_at` 和 `updated_at`
+- **AND** 动态表 SHALL 固定包含 `id`、`deleted_flag`、`deleted_at`、`deleted_by`、`created_at` 和 `updated_at`
 - **AND** 动态表 SHALL 使用 `id` 作为主键并引用 `am_archive_item` 或 `am_archive_volume` 对象 ID
 
 #### Scenario: 分层创建电子和实物动态表
@@ -142,8 +142,11 @@
 
 - **WHEN** 客户端删除档案条目
 - **THEN** 系统 SHALL 将`am_archive_item.deleted_flag` 标记为 `true`
+- **AND** 系统 SHALL 写入 `am_archive_item.deleted_at` 和 `am_archive_item.deleted_by`
 - **AND** 系统 SHALL 将该条目对应分类动态表行的 `deleted_flag` 标记为 `true`
+- **AND** 系统 SHALL 写入该条目对应分类动态表行的 `deleted_at` 和 `deleted_by`
 - **AND** 系统 SHALL 允许动态表部分唯一索引释放该记录占用的唯一值
+- **AND** 回收站查询 SHALL 使用 `deleted_at DESC, id DESC` 作为稳定默认排序
 
 ### Requirement: 字段检索标记
 

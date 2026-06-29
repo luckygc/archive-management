@@ -427,6 +427,8 @@ begin
             f_end_date date,
             f_retention_period varchar(500),
             deleted_flag boolean not null default false,
+            deleted_at timestamp,
+            deleted_by bigint,
             created_at timestamp not null default localtimestamp,
             updated_at timestamp not null default localtimestamp
         )',
@@ -438,6 +440,8 @@ begin
             f_volume_box_no varchar(500),
             f_shelf_no varchar(500),
             deleted_flag boolean not null default false,
+            deleted_at timestamp,
+            deleted_by bigint,
             created_at timestamp not null default localtimestamp,
             updated_at timestamp not null default localtimestamp
         )',
@@ -454,6 +458,8 @@ begin
             f_secret_level varchar(500),
             f_summary varchar(500),
             deleted_flag boolean not null default false,
+            deleted_at timestamp,
+            deleted_by bigint,
             created_at timestamp not null default localtimestamp,
             updated_at timestamp not null default localtimestamp
         )',
@@ -465,6 +471,8 @@ begin
             f_box_no varchar(500),
             f_item_location_no varchar(500),
             deleted_flag boolean not null default false,
+            deleted_at timestamp,
+            deleted_by bigint,
             created_at timestamp not null default localtimestamp,
             updated_at timestamp not null default localtimestamp
         )',
@@ -480,6 +488,8 @@ begin
             f_owner_dept varchar(500),
             f_contract_scope varchar(500),
             deleted_flag boolean not null default false,
+            deleted_at timestamp,
+            deleted_by bigint,
             created_at timestamp not null default localtimestamp,
             updated_at timestamp not null default localtimestamp
         )',
@@ -491,6 +501,8 @@ begin
             f_storage_box_no varchar(500),
             f_location_no varchar(500),
             deleted_flag boolean not null default false,
+            deleted_at timestamp,
+            deleted_by bigint,
             created_at timestamp not null default localtimestamp,
             updated_at timestamp not null default localtimestamp
         )',
@@ -506,6 +518,8 @@ begin
             f_attachment_count integer,
             f_remark varchar(500),
             deleted_flag boolean not null default false,
+            deleted_at timestamp,
+            deleted_by bigint,
             created_at timestamp not null default localtimestamp,
             updated_at timestamp not null default localtimestamp
         )',
@@ -521,6 +535,8 @@ begin
             f_budget numeric(18, 2),
             f_milestone varchar(500),
             deleted_flag boolean not null default false,
+            deleted_at timestamp,
+            deleted_by bigint,
             created_at timestamp not null default localtimestamp,
             updated_at timestamp not null default localtimestamp
         )',
@@ -536,6 +552,8 @@ begin
             f_people_count integer,
             f_scene_description varchar(500),
             deleted_flag boolean not null default false,
+            deleted_at timestamp,
+            deleted_by bigint,
             created_at timestamp not null default localtimestamp,
             updated_at timestamp not null default localtimestamp
         )',

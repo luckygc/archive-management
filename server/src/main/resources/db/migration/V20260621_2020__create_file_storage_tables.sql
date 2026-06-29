@@ -1,11 +1,6 @@
-create sequence am_storage_object_id_seq
-    as bigint
-    start with 1000000
-    increment by 1000;
-
 create table am_storage_object
 (
-    id                bigint primary key default nextval('am_storage_object_id_seq'),
+    id                bigserial primary key,
     storage_type      varchar(20)   not null,
     bucket_name       varchar(255)  not null,
     object_key        varchar(1024) not null,

@@ -55,6 +55,12 @@ public class ArchiveItemController {
         return archiveItemRoutingService.discoverItems(request, currentUserId(authentication));
     }
 
+    @PostMapping("/api/v1/archive-items:searchDeleted")
+    public ArchiveItemListDto searchDeletedItems(
+            @RequestBody ArchiveItemQueryRequest request, Authentication authentication) {
+        return archiveItemRoutingService.searchDeletedItems(request, currentUserId(authentication));
+    }
+
     @PostMapping("/api/v1/archive-items")
     @ResponseStatus(HttpStatus.CREATED)
     public ArchiveItemDto createItem(
