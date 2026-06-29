@@ -46,7 +46,7 @@
 - 控制器请求/响应 DTO 如果只服务本模块 HTTP 接口，可放在模块内的 `dto` 或 `web` 相关包下；只有确实跨多个模块复用时再提升为模块根下稳定类型。
 - 后端对象命名和拆分遵循奥卡姆剃刀原则：不采用 `DO` / `BO` / `VO` 作为默认分层后缀，不为每一层机械复制对象；固定表 Jakarta Persistence 实体在模块内部 Service、Repository 协作中可直接流转。跨越 HTTP 合同边界时使用语义明确的 `Request` / `Response`，并避免把持久化实体直接作为 HTTP 响应合同。
 - HTTP 请求 DTO 统一以 `Request` 结尾，但类名必须表达具体动作或场景，不使用泛化的 `XxxRequest` 承载新增、修改、查询、批量操作等多种语义。正例：`CreateArchiveCategoryRequest`、`UpdateArchiveCategoryRequest`、`SearchArchiveRecordsRequest`、`ListArchiveCategoriesRequest`、`BatchDeleteArchiveItemsRequest`、`ImportArchiveItemsRequest`、`ExportArchiveRecordsRequest`、`PreviewArchiveImportRequest`、`ValidateArchiveRuleRequest`。反例：`ArchiveCategoryRequest`、`ArchiveRecordRequest`、`ArchiveRequest`、`SaveArchiveCategoryRequest`、`QueryRequest`、`BaseArchiveRequest`。
-- 新增请求使用 `CreateXxxRequest`；整体修改或语义明确的编辑使用 `UpdateXxxRequest`；如果接口合同明确采用部分更新语义且需要区分字段是否出现，可使用 `PatchXxxRequest`。不要用 `SaveXxxRequest` 混合 create/update/upsert，除非 OpenSpec 已明确该接口就是 upsert，并说明并发、审计和唯一约束影响。
+- 新增请求使用 `CreateXxxRequest`；整体修改或语义明确的编辑使用 `UpdateXxxRequest`；如果接口合同明确采用部分更新语义且需要区分字段是否出现，可使用 `PatchXxxRequest`。不要用 `SaveXxxRequest` 混合 create/update，也不要在项目自有写入接口中引入 upsert 语义。
 - 查询请求按接口语义命名：搜索型、条件多或使用 custom method 的接口使用 `SearchXxxRequest`；普通列表筛选可使用 `ListXxxRequest`；简单 `GET` 查询只有少量 `@RequestParam` 且不会复用校验、不会导致 Controller 参数膨胀时，可以不新增请求 DTO。不要用 `QueryXxxRequest` 或 `XxxQueryRequest` 作为默认命名，除非已有上下文中 `query` 是明确业务概念。
 - 批量、导入导出、预览、校验等动作请求使用动作前缀，例如 `BatchApproveTransferTasksRequest`、`ImportArchiveItemsRequest`、`ExportArchiveRecordsRequest`、`PreviewArchiveImportRequest`、`ValidateArchiveUniqueRuleRequest`；不要把这些字段塞进创建或修改请求，也不要靠大量可选字段和 `operationType` 在一个 DTO 内分流。
 - HTTP 响应 DTO 统一以 `Response` 结尾，并按前端视图语义拆分。正例：`ArchiveCategoryResponse`、`ArchiveCategoryListItemResponse`、`ArchiveCategoryOptionResponse`、`ArchiveCategoryTreeNodeResponse`、`ArchiveItemDetailResponse`。反例：直接返回 `ArchiveCategory` 实体、`ArchiveCategoryVO`、字段大量可选的 `ArchiveCategoryResponse` 同时服务列表/详情/选择器/树节点。
@@ -73,9 +73,9 @@
 - Flowable 使用 `flowable-spring-boot-starter-process` 的流程引擎能力，流程引擎由 starter 默认启用；不要配置无法被元数据解析的 `flowable.process.enabled`。默认禁用 Flowable IDM 与 Event Registry，只使用 `flowable.idm.enabled=false` 和 `flowable.eventregistry.enabled=false`，不要使用已弃用的 `flowable.db-identity-used`。
 - Flowable 原生表由 Flyway 管理，运行期 `flowable.database-schema-update=false`。迁移脚本应从当前 Flowable 版本随包 PostgreSQL DDL 复制，当前只纳入 common、process engine、history 表；不要纳入 IDM 的 `ACT_ID_*` 表或 Event Registry 的 `FLW_EVENT_*` 表，除非明确启用对应引擎。
 - 当前持久化入口是 Jakarta Data 和 MyBatis：固定 CRUD 表优先使用 Jakarta Data Repository；动态表、复杂 SQL、批处理、报表和认证适配查询统一使用 MyBatis；不要在项目代码里使用 JdbcClient 作为持久化入口，不要引入 Spring Data JPA。当前 Jakarta Data Repository 必须通过 Hibernate `StatelessSession` / `EntityAgent` 执行，不允许切换为普通有状态 `Session` 或引入依赖一级缓存、脏检查、延迟会话生命周期的写法。业务代码不得直接使用 Hibernate 有状态 `Session`、Hibernate `Query` 或其他依赖 Session 生命周期的对象；如确需 Hibernate 底层适配，只能封装在基础设施层，不能外泄为业务模块合同。Repository 对外不得返回 `Stream`、游标等依赖会话生命周期的对象，必须在 `@Transactional` 方法内消费完查询结果。
-- Jakarta Data Repository 自定义方法必须显式标注 `@Find`、`@Insert`、`@Update`、`@Delete`、`@Save`、`@Query` 或 Hibernate `@HQL` 等操作注解，避免缺失注解后由 provider 按方法名派生实现。方法名可以保留必要业务可读性，但不能把 Query-by-method-name 当成查询合同来源。
-- 固定实体写入不要默认调用 Repository `save` 或定义 `@Save` 方法；新增、修改、删除应优先使用语义明确的 `insert` / `update` / `delete` 生命周期方法，Service 层先判断业务分支再调用对应方法。只有明确需要 upsert 语义且已说明并发、审计和唯一约束影响时，才允许使用 `save`。
-- 固定实体的 `created_at`、`updated_at`、`created_by`、`updated_by` 应通过基础设施层无状态会话审计拦截器统一填充；其中操作人字段从 Spring Security 上下文读取当前 `AuthenticatedUser`。`@CreationTimestamp`、`@UpdateTimestamp` 可以保留为 Hibernate 实体写入路径的辅助生成注解，但不要把它们当成 `save`/upsert 或 MyBatis 写入路径的审计真相源。无状态会话 `onUpsert` 只能维护 `updated_at`、`updated_by`，不得覆盖 `created_at`、`created_by`；需要创建语义时必须走显式 `insert`。需要保留业务语义的操作流水继续写业务审计表。MyBatis 写入路径不会触发该拦截器，必须在 SQL 或调用方显式维护审计字段。
+- Jakarta Data Repository 自定义方法必须显式标注 `@Find`、`@Insert`、`@Update`、`@Delete`、`@Query` 或 Hibernate `@HQL` 等操作注解，避免缺失注解后由 provider 按方法名派生实现。方法名可以保留必要业务可读性，但不能把 Query-by-method-name 当成查询合同来源。
+- 固定实体写入禁止调用 Repository `save` 或定义 `@Save` 方法；项目自有写入不使用 upsert 语义。新增、修改、删除必须使用语义明确的 `insert` / `update` / `delete` 生命周期方法，Service 层先判断业务分支再调用对应方法。
+- 固定实体的 `created_at`、`updated_at` 默认通过 Hibernate `@CreationTimestamp`、`@UpdateTimestamp` 生成；需要时间审计字段的固定实体应显式标注对应注解。`created_by`、`updated_by` 通过基础设施层无状态会话审计拦截器统一填充，操作人字段从 Spring Security 上下文读取当前 `AuthenticatedUser`。无状态会话拦截器只维护用户审计字段，不写时间字段；需要创建语义时必须走显式 `insert`，需要修改语义时必须走显式 `update`。需要保留业务语义的操作流水继续写业务审计表。MyBatis 写入路径不会触发 Hibernate 时间戳注解或无状态会话拦截器，必须在 SQL 或调用方显式维护审计字段。
 - StringUtils.removeStart已过时，替换为Strings.CS.removeStart
 
 ## API 设计约定
@@ -136,3 +136,5 @@ Ant Design 生态例外：当问题涉及 Ant Design、Ant Design Pro、Pro Comp
 - 如果 setup、运行时或包管理行为异常，运行 `vp env doctor` 并保留输出。
 - 后端 Maven 项目根目录是 `server/`，仓库根目录没有聚合 POM；运行 `mvn ...` 验证时必须以 `server/` 为工作目录，例如 `cd server && mvn -q -DskipTests test-compile`。
 - 后端改动至少运行对应 Maven 编译或测试；如果测试需要本机数据库，说明依赖和结果。
+- Java 过时 API 批量迁移优先使用 OpenRewrite；仓库根目录 `rewrite.yml` 维护可复用 recipe，后端先运行 `make server-rewrite-dry-run` 审查 `server/target/rewrite/rewrite.patch`，确认后再运行 `make server-rewrite-run`。
+- OpenRewrite recipe 只沉淀能语义化迁移的安全规则；涉及参数重排、条件改写、补 import 或复杂框架升级时，先 dry run 和编译验证，YAML 不足时新增自定义 recipe，不用正则批改 Java 源码。

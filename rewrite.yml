@@ -1,0 +1,35 @@
+---
+type: specs.openrewrite.org/v1beta/recipe
+name: github.luckygc.am.JavaDeprecatedApiMigrations
+displayName: 迁移 Java 过时 API
+description: 汇总本仓库可自动迁移的 Java 过时 API，执行前先 dryRun 审查 patch。
+recipeList:
+    - github.luckygc.am.MigrateCommonsLangStringUtils
+
+---
+type: specs.openrewrite.org/v1beta/recipe
+name: github.luckygc.am.MigrateCommonsLangStringUtils
+displayName: 迁移 Apache Commons Lang StringUtils 过时方法
+description: 将 Commons Lang 3.20 已标记过时且可机械替换的 StringUtils 方法迁移到新 API。
+recipeList:
+    - org.openrewrite.java.ChangeMethodName:
+          methodPattern: org.apache.commons.lang3.StringUtils equalsIgnoreCase(..)
+          newMethodName: equals
+    - org.openrewrite.java.ChangeMethodTargetToVariable:
+          methodPattern: org.apache.commons.lang3.StringUtils equals(..)
+          variableName: Strings.CI
+          variableType: org.apache.commons.lang3.Strings
+    - org.openrewrite.java.ChangeMethodName:
+          methodPattern: org.apache.commons.lang3.StringUtils equalsAnyIgnoreCase(..)
+          newMethodName: equalsAny
+    - org.openrewrite.java.ChangeMethodTargetToVariable:
+          methodPattern: org.apache.commons.lang3.StringUtils equalsAny(..)
+          variableName: Strings.CI
+          variableType: org.apache.commons.lang3.Strings
+    - org.openrewrite.java.ChangeMethodName:
+          methodPattern: org.apache.commons.lang3.StringUtils removeStart(java.lang.String, java.lang.String)
+          newMethodName: removeStart
+    - org.openrewrite.java.ChangeMethodTargetToVariable:
+          methodPattern: org.apache.commons.lang3.StringUtils removeStart(java.lang.String, java.lang.String)
+          variableName: Strings.CS
+          variableType: org.apache.commons.lang3.Strings

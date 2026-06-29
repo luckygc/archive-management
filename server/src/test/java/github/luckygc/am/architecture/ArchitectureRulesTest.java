@@ -12,7 +12,6 @@ import jakarta.data.repository.Delete;
 import jakarta.data.repository.Find;
 import jakarta.data.repository.Insert;
 import jakarta.data.repository.Query;
-import jakarta.data.repository.Save;
 import jakarta.data.repository.Update;
 import jakarta.persistence.Entity;
 
@@ -190,6 +189,13 @@ class ArchitectureRulesTest {
                     .haveFullyQualifiedName("org.springframework.jdbc.core.simple.JdbcClient");
 
     @ArchTest
+    static final ArchRule project_should_not_use_jakarta_data_save_annotation =
+            noClasses()
+                    .should()
+                    .dependOnClassesThat()
+                    .haveFullyQualifiedName("jakarta.data.repository.Save");
+
+    @ArchTest
     static void repository_custom_methods_should_declare_operation_annotation(JavaClasses classes) {
         List<String> violations =
                 classes.stream()
@@ -216,6 +222,40 @@ class ArchitectureRulesTest {
         assertTrue(
                 violations.isEmpty(),
                 () -> "Repository 自定义方法必须显式标注 Jakarta Data/HQL 操作注解: " + violations);
+    }
+
+    @ArchTest
+    static void repository_upsert_methods_should_not_be_declared(JavaClasses classes) {
+        List<String> violations =
+                classes.stream()
+                        .filter(ArchitectureRulesTest::isProjectDataRepository)
+                        .flatMap(
+                                repository ->
+                                        repository.getMethods().stream()
+                                                .filter(
+                                                        method ->
+                                                                method.getOwner()
+                                                                        .equals(repository))
+                                                .filter(
+                                                        method ->
+                                                                method.isAnnotatedWith(
+                                                                                "jakarta.data.repository.Save")
+                                                                        || method.getName()
+                                                                                .equals("save")
+                                                                        || method.getName()
+                                                                                .toLowerCase()
+                                                                                .contains("upsert"))
+                                                .map(
+                                                        method ->
+                                                                repository.getName()
+                                                                        + "#"
+                                                                        + method.getName()))
+                        .sorted()
+                        .toList();
+
+        assertTrue(
+                violations.isEmpty(),
+                () -> "Repository 禁止定义 save/upsert 或 @Save 方法: " + violations);
     }
 
     @ArchTest
@@ -298,7 +338,6 @@ class ArchitectureRulesTest {
                 || method.isAnnotatedWith(HQL.class)
                 || method.isAnnotatedWith(Insert.class)
                 || method.isAnnotatedWith(Update.class)
-                || method.isAnnotatedWith(Delete.class)
-                || method.isAnnotatedWith(Save.class);
+                || method.isAnnotatedWith(Delete.class);
     }
 }

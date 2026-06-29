@@ -3,6 +3,7 @@ package github.luckygc.am.module.authentication;
 import jakarta.servlet.http.HttpServletRequest;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.springframework.stereotype.Component;
 
 import nl.basjes.parse.useragent.UserAgent;
@@ -58,13 +59,13 @@ public class ClientRequestContextResolver {
 
     private String normalizedDeviceType(String value) {
         String normalized = normalized(value);
-        if (StringUtils.equalsIgnoreCase(normalized, "Desktop")) {
+        if (Strings.CI.equals(normalized, "Desktop")) {
             return "desktop";
         }
-        if (StringUtils.equalsAnyIgnoreCase(normalized, "Phone", "Mobile")) {
+        if (Strings.CI.equalsAny(normalized, "Phone", "Mobile")) {
             return "mobile";
         }
-        if (StringUtils.equalsIgnoreCase(normalized, "Tablet")) {
+        if (Strings.CI.equals(normalized, "Tablet")) {
             return "tablet";
         }
         return StringUtils.defaultIfBlank(normalized.toLowerCase(), "unknown");

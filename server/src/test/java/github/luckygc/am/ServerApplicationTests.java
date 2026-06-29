@@ -30,7 +30,6 @@ import org.springframework.test.annotation.DirtiesContext;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import github.luckygc.am.app.ArchiveManagementApplication;
-import github.luckygc.am.infrastructure.hibernate.SecurityAuditingInterceptor;
 import github.luckygc.am.module.archive.metadata.ArchiveFonds;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveFondsDataRepository;
 import github.luckygc.am.module.authentication.ArchiveUserDetails;
@@ -329,44 +328,6 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
                     jdbcTemplate.queryForObject(
                             "select updated_by from am_archive_fonds where fonds_code = 'AUDIT_TEST'",
                             Long.class));
-        } finally {
-            SecurityContextHolder.clearContext();
-        }
-    }
-
-    @Test
-    @DisplayName("无状态 upsert 不覆盖创建审计字段")
-    void statelessUpsertDoesNotOverwriteCreationAuditFields() {
-        SecurityContextHolder.getContext()
-                .setAuthentication(
-                        new UsernamePasswordAuthenticationToken(
-                                new ArchiveUserDetails(
-                                        101L,
-                                        "audit-upsert",
-                                        "N/A",
-                                        true,
-                                        "审计 upsert 用户",
-                                        java.util.List.of()),
-                                "N/A",
-                                java.util.List.of()));
-        try {
-            LocalDateTime createdAt = LocalDateTime.now().minusDays(1);
-            ArchiveFonds fonds = new ArchiveFonds();
-            fonds.setCreatedAt(createdAt);
-            fonds.setCreatedBy(77L);
-
-            new SecurityAuditingInterceptor()
-                    .onUpsert(
-                            fonds,
-                            1L,
-                            new Object[] {createdAt, 77L, null, null},
-                            new String[] {"createdAt", "createdBy", "updatedAt", "updatedBy"},
-                            new org.hibernate.type.Type[4]);
-
-            Assertions.assertEquals(createdAt, fonds.getCreatedAt());
-            Assertions.assertEquals(77L, fonds.getCreatedBy());
-            Assertions.assertNotNull(fonds.getUpdatedAt());
-            Assertions.assertEquals(101L, fonds.getUpdatedBy());
         } finally {
             SecurityContextHolder.clearContext();
         }

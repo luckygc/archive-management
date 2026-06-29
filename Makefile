@@ -7,7 +7,8 @@ PNPM := pnpm
 	web-check web-test web-build web-dev \
 	mobile-check mobile-test mobile-build mobile-dev \
 	frontend-core-check frontend-core-test frontend-core-build \
-	server-java server-deps server-format-check server-format server-compile server-test server-package server-run
+	server-java server-deps server-format-check server-format server-rewrite-dry-run server-rewrite-run \
+	server-compile server-test server-package server-run
 
 help:
 	@echo "可用命令:"
@@ -32,6 +33,8 @@ help:
 	@echo "  make server-deps            下载 Maven 依赖"
 	@echo "  make server-format-check    检查 server 格式"
 	@echo "  make server-format          自动格式化 server"
+	@echo "  make server-rewrite-dry-run 预览 server OpenRewrite 迁移"
+	@echo "  make server-rewrite-run     执行 server OpenRewrite 迁移"
 	@echo "  make server-compile         编译 server"
 	@echo "  make server-test            测试 server"
 	@echo "  make server-package         打包 server"
@@ -100,6 +103,12 @@ server-format-check:
 
 server-format:
 	cd $(SERVER_DIR) && $(MVN) spotless:apply
+
+server-rewrite-dry-run:
+	cd $(SERVER_DIR) && $(MVN) rewrite:dryRun
+
+server-rewrite-run:
+	cd $(SERVER_DIR) && $(MVN) rewrite:run
 
 server-compile:
 	cd $(SERVER_DIR) && $(MVN) compile

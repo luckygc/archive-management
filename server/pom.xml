@@ -25,6 +25,7 @@
         <spring-ai.version>2.0.0</spring-ai.version>
         <spring-modulith.version>2.1.0</spring-modulith.version>
         <maven-enforcer-plugin.version>3.6.2</maven-enforcer-plugin.version>
+        <rewrite-maven-plugin.version>6.42.0</rewrite-maven-plugin.version>
         <spotless.version>3.7.0</spotless.version>
         <testcontainers.version>2.0.3</testcontainers.version>
     </properties>
@@ -373,6 +374,17 @@
                         <removeUnusedImports/>
                         <formatAnnotations/>
                     </java>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.openrewrite.maven</groupId>
+                <artifactId>rewrite-maven-plugin</artifactId>
+                <version>${rewrite-maven-plugin.version}</version>
+                <configuration>
+                    <configLocation>${project.basedir}/../rewrite.yml</configLocation>
+                    <activeRecipes>
+                        <recipe>github.luckygc.am.JavaDeprecatedApiMigrations</recipe>
+                    </activeRecipes>
                 </configuration>
             </plugin>
         </plugins>
