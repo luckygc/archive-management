@@ -1,108 +1,162 @@
-import { Button, Card, Form, Input, Select, Space, Table, Tag, Typography } from "antd";
-import type { TableColumnsType } from "antd";
+import { useMutation, useQueries, useQuery } from "@tanstack/react-query";
+import { Card, Collapse, Empty, Form, Typography, message } from "antd";
+import { useEffect, useRef, useState } from "react";
 
-interface ArchiveRecordRow {
-    id: number;
-    archiveNo: string;
-    title: string;
-    category: string;
-    status: "已入库" | "待整理" | "待同步";
-    owner: string;
-}
+import {
+    discoverArchiveRecords,
+    listArchiveCategories,
+    listArchiveFields,
+    listArchiveRelatedFilterCategories,
+} from "@/shared/api/archive";
+import type {
+    ArchiveFieldDto,
+    ArchiveRecordOrderBy,
+    ArchiveRecordQuery,
+} from "@/shared/types/archive";
 
-const records: ArchiveRecordRow[] = [
-    {
-        id: 190001,
-        archiveNo: "AM-2026-001",
-        title: "项目建设审批材料",
-        category: "项目档案",
-        status: "已入库",
-        owner: "档案室",
-    },
-    {
-        id: 190002,
-        archiveNo: "AM-2026-002",
-        title: "财务凭证归档批次",
-        category: "会计档案",
-        status: "待整理",
-        owner: "财务部",
-    },
-    {
-        id: 190003,
-        archiveNo: "AM-2026-003",
-        title: "外部系统同步记录",
-        category: "异构数据归档",
-        status: "待同步",
-        owner: "信息中心",
-    },
-];
-
-const columns: TableColumnsType<ArchiveRecordRow> = [
-    { title: "档号", dataIndex: "archiveNo", key: "archiveNo", width: 150 },
-    { title: "题名", dataIndex: "title", key: "title" },
-    { title: "分类", dataIndex: "category", key: "category", width: 150 },
-    {
-        title: "状态",
-        dataIndex: "status",
-        key: "status",
-        width: 110,
-        render: (status: ArchiveRecordRow["status"]) => {
-            const color = status === "已入库" ? "green" : status === "待整理" ? "gold" : "blue";
-            return <Tag color={color}>{status}</Tag>;
-        },
-    },
-    { title: "责任部门", dataIndex: "owner", key: "owner", width: 130 },
-];
+import {
+    ArchiveAdvancedQueryPanel,
+    type ArchiveQueryFormValues,
+} from "./ArchiveAdvancedQueryPanel";
+import { ArchiveResultTable } from "./ArchiveResultTable";
+import { toSearchQuery } from "./archiveQuery";
 
 export function ArchiveLibraryPage() {
+    const [form] = Form.useForm<ArchiveQueryFormValues>();
+    const [committedQuery, setCommittedQuery] = useState<ArchiveRecordQuery>();
+    const [orderBy, setOrderBy] = useState<ArchiveRecordOrderBy[]>([]);
+    const previousCategoryIdRef = useRef<number | undefined>(undefined);
+    const categoriesQuery = useQuery({
+        queryKey: ["archive-categories", "enabled"],
+        queryFn: () => listArchiveCategories(true),
+    });
+    const categoryId = Form.useWatch("categoryId", form);
+    const fieldsQuery = useQuery({
+        enabled: typeof categoryId === "number",
+        queryKey: ["archive-fields", categoryId, "ITEM"],
+        queryFn: () => listArchiveFields(categoryId as number, "ITEM"),
+    });
+    const relatedCategoriesQuery = useQuery({
+        enabled: typeof categoryId === "number",
+        queryKey: ["archive-related-filter-categories", categoryId],
+        queryFn: () => listArchiveRelatedFilterCategories(categoryId as number),
+    });
+
+    const relatedCategories = relatedCategoriesQuery.data?.items ?? [];
+    const relatedFieldQueries = useQueries({
+        queries: uniqueCategoryIds(relatedCategories).map((id) => ({
+            enabled: typeof id === "number",
+            queryKey: ["archive-fields", id, "ITEM"],
+            queryFn: () => listArchiveFields(id, "ITEM"),
+        })),
+    });
+    const relatedFieldsByCategory = new Map<number, ArchiveFieldDto[]>();
+    uniqueCategoryIds(relatedCategories).forEach((id, index) => {
+        relatedFieldsByCategory.set(id, relatedFieldQueries[index]?.data?.items ?? []);
+    });
+
+    const searchMutation = useMutation({
+        mutationFn: (query: ArchiveRecordQuery) => discoverArchiveRecords(query),
+        onError: (error) => {
+            void message.error(error instanceof Error ? error.message : "查询失败");
+        },
+    });
+
+    useEffect(() => {
+        if (typeof categoryId !== "number") {
+            previousCategoryIdRef.current = undefined;
+            return;
+        }
+
+        const previousCategoryId = previousCategoryIdRef.current;
+        previousCategoryIdRef.current = categoryId;
+        if (previousCategoryId === undefined || previousCategoryId === categoryId) {
+            return;
+        }
+
+        form.resetFields(["conditions", "fondsCode", "keyword", "relatedGroups"]);
+        form.setFieldsValue({ categoryId, conditions: [], relatedGroups: [] });
+        setCommittedQuery(undefined);
+        setOrderBy([]);
+        searchMutation.reset();
+    }, [categoryId, form, searchMutation]);
+
+    function submit(values: ArchiveQueryFormValues) {
+        const query = toSearchQuery(values);
+        setCommittedQuery(query);
+        setOrderBy([]);
+        searchMutation.mutate(query);
+    }
+
+    function orderResults(nextOrderBy: ArchiveRecordOrderBy[]) {
+        if (!committedQuery) {
+            return;
+        }
+        setOrderBy(nextOrderBy);
+        searchMutation.mutate({
+            ...committedQuery,
+            orderBy: nextOrderBy.length > 0 ? nextOrderBy : undefined,
+        });
+    }
+
+    function reset() {
+        form.resetFields();
+        setCommittedQuery(undefined);
+        setOrderBy([]);
+        searchMutation.reset();
+    }
+
+    const result = searchMutation.data;
+    const fields = fieldsQuery.data?.items ?? result?.fields ?? [];
+
     return (
         <section className="am-page">
             <div className="am-page__header">
-                <Typography.Title level={1}>档案库</Typography.Title>
-                <Space>
-                    <Button type="primary">新建档案</Button>
-                    <Button>批量导入</Button>
-                </Space>
+                <Typography.Title level={1}>档案搜索</Typography.Title>
             </div>
-            <Card className="am-page__filter">
-                <Form layout="inline">
-                    <Form.Item label="关键词">
-                        <Input placeholder="档号 / 题名" />
-                    </Form.Item>
-                    <Form.Item label="分类">
-                        <Select
-                            allowClear
-                            placeholder="全部分类"
-                            style={{ width: 180 }}
-                            options={[
-                                { label: "项目档案", value: "project" },
-                                { label: "会计档案", value: "accounting" },
-                                { label: "异构数据归档", value: "integration" },
-                            ]}
-                        />
-                    </Form.Item>
-                    <Form.Item label="备注">
-                        <Input.TextArea aria-label="当前列表备注" rows={1} />
-                    </Form.Item>
-                    <Form.Item>
-                        <Space>
-                            <Button type="primary">查询</Button>
-                            <Button>重置</Button>
-                        </Space>
-                    </Form.Item>
-                </Form>
-            </Card>
-            <Card>
-                <Table<ArchiveRecordRow>
-                    columns={columns}
-                    dataSource={records}
-                    pagination={false}
-                    rowKey="id"
-                    scroll={{ x: 820, y: 520 }}
-                    size="middle"
-                    virtual
-                />
+            <Collapse
+                className="am-page__filter am-query-collapse"
+                defaultActiveKey={["query"]}
+                items={[
+                    {
+                        key: "query",
+                        label: "高级筛选条件",
+                        children: (
+                            <ArchiveAdvancedQueryPanel
+                                categories={categoriesQuery.data?.items ?? []}
+                                fields={fields}
+                                form={form}
+                                relatedCategories={relatedCategories}
+                                relatedFieldsByCategory={relatedFieldsByCategory}
+                                showKeyword
+                                submitting={searchMutation.isPending}
+                                onReset={reset}
+                                onSubmit={submit}
+                            />
+                        ),
+                    },
+                ]}
+            />
+            <Card className="am-page__result">
+                {result ? (
+                    <ArchiveResultTable
+                        result={result}
+                        loading={searchMutation.isPending}
+                        orderBy={orderBy}
+                        onOrderChange={orderResults}
+                    />
+                ) : (
+                    <Empty description="选择分类并提交高级查询后显示结果" />
+                )}
             </Card>
         </section>
     );
+}
+
+function uniqueCategoryIds(groups: Array<{ categoryId?: number }>) {
+    return [...new Set(groups.map((group) => group.categoryId).filter(isNumber))];
+}
+
+function isNumber(value: unknown): value is number {
+    return typeof value === "number";
 }

@@ -33,13 +33,13 @@ form.setFieldsValue({ dynamicFields: record.dynamicFields });
 
 ## 真实后端接入
 
-React 子应用沿用 Vue 端的认证合同：
+React 子应用沿用后端认证合同：
 
-- 当前会话：`GET /api/v1/auth/session`
-- 登录：`POST /api/v1/auth:login`
-- 登出：`POST /api/v1/auth:logout`
-- CAP 创建挑战：`POST /api/v1/auth/cap-challenges`
-- CAP 兑换令牌：`POST /api/v1/auth/cap-tokens`
-- CAP 校验令牌：`POST /api/v1/auth/cap-tokens:validate`
+- 当前用户：`GET /api/v1/me`
+- 登录：`POST /api/v1/login-sessions`
+- 登出当前会话：`DELETE /api/v1/login-sessions/{session}`
+- CAP 创建挑战：`POST /api/v1/cap-challenges`
+- CAP 兑换令牌：`POST /api/v1/cap-tokens`
+- CAP 校验令牌：`POST /api/v1/cap-tokens:validate`
 
-非登录页会先校验 session；后端返回 401 时跳转到 `/login?redirect=...`。登录页使用 `cap-widget` 获取 `powToken`，浏览器端通过 `CAP_CUSTOM_FETCH` 将 widget 内部请求改写到项目 AIP 风格 CAP API，登录成功后返回 redirect 指向的业务页面。请求层遇到 401 会广播未登录事件，路由守卫清理会话和页签状态。
+非登录页会先校验 session；后端返回 401 时跳转到 `/login?redirect=...`。登录页使用 `cap-widget` 获取 `powToken`，浏览器端通过 `CAP_CUSTOM_FETCH` 将 widget 内部请求改写到项目 REST CAP API，登录成功后返回 redirect 指向的业务页面。请求层遇到 401 会广播未登录事件，路由守卫清理会话和页签状态。

@@ -28,7 +28,7 @@ beforeEach(() => {
     vi.stubGlobal(
         "fetch",
         vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-            if (requestUrl(input) === "/api/v1/auth:login") {
+            if (requestUrl(input) === "/api/v1/login-sessions") {
                 expect(init?.method).toBe("POST");
                 expect(init?.body).toBeInstanceOf(URLSearchParams);
                 const body = init?.body as URLSearchParams;
@@ -36,9 +36,26 @@ beforeEach(() => {
                 expect(body.get("password")).toBe("secret");
                 expect(body.get("powToken")).toBe("pow-token-1");
                 return jsonResponse({
+                    sessionId: "session-1",
                     username: "admin",
                     displayName: "系统管理员",
                     roles: ["admin"],
+                    current: true,
+                    client: {
+                        userAgent: "",
+                        browserName: "",
+                        browserVersion: "",
+                        osName: "",
+                        osVersion: "",
+                        deviceType: "",
+                    },
+                    request: {
+                        remoteAddress: "",
+                        host: "",
+                        forwarded: "",
+                        xForwardedFor: "",
+                        xRealIp: "",
+                    },
                 });
             }
             return jsonResponse({}, 404);

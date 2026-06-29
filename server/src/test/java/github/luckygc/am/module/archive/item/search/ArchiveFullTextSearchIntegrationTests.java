@@ -72,7 +72,7 @@ class ArchiveFullTextSearchIntegrationTests {
         var result =
                 archiveItemRoutingService.discoverItems(
                         new ArchiveItemQueryRequest(
-                                categoryId, "Z001", "档案管理系统", null, List.of(), 50, null, null),
+                                categoryId, "Z001", "档案管理系统", null, null, 50, null, null),
                         1L);
 
         assertThat(result.items())
@@ -95,7 +95,7 @@ class ArchiveFullTextSearchIntegrationTests {
                                 null,
                                 null,
                                 null,
-                                List.of(),
+                                null,
                                 1,
                                 null,
                                 List.of(new ArchiveItemOrderBy("archiveNo", "ASC"))),
@@ -113,7 +113,7 @@ class ArchiveFullTextSearchIntegrationTests {
                                 null,
                                 null,
                                 null,
-                                List.of(),
+                                null,
                                 1,
                                 firstPage.next(),
                                 List.of(new ArchiveItemOrderBy("archiveNo", "ASC"))),
@@ -131,7 +131,7 @@ class ArchiveFullTextSearchIntegrationTests {
                                 null,
                                 null,
                                 null,
-                                List.of(),
+                                null,
                                 1,
                                 secondPage.prev(),
                                 List.of(new ArchiveItemOrderBy("archiveNo", "ASC"))),
@@ -149,7 +149,7 @@ class ArchiveFullTextSearchIntegrationTests {
                                                 "Z001",
                                                 null,
                                                 null,
-                                                List.of(),
+                                                null,
                                                 1,
                                                 firstPage.next(),
                                                 List.of(
@@ -182,7 +182,7 @@ class ArchiveFullTextSearchIntegrationTests {
         var firstPage =
                 archiveItemRoutingService.searchItems(
                         new ArchiveItemQueryRequest(
-                                categoryId, null, null, null, List.of(), 1, null, null),
+                                categoryId, null, null, null, null, 1, null, null),
                         1L);
 
         assertThat(firstPage.items())
@@ -193,12 +193,56 @@ class ArchiveFullTextSearchIntegrationTests {
         var secondPage =
                 archiveItemRoutingService.searchItems(
                         new ArchiveItemQueryRequest(
-                                categoryId, null, null, null, List.of(), 1, firstPage.next(), null),
+                                categoryId, null, null, null, null, 1, firstPage.next(), null),
                         1L);
 
         assertThat(secondPage.items())
                 .extracting(row -> row.get("archive_no"))
                 .containsExactly("GW-2026-002");
+    }
+
+    @Test
+    @DisplayName("可搜索动态字段可以作为远程排序字段")
+    void searchItemsSupportsIndexedDynamicFieldOrder() {
+        Long categoryId =
+                jdbcTemplate.queryForObject(
+                        "select id from am_archive_category where category_code = 'GW'",
+                        Long.class);
+
+        var firstPage =
+                archiveItemRoutingService.searchItems(
+                        new ArchiveItemQueryRequest(
+                                categoryId,
+                                null,
+                                null,
+                                null,
+                                null,
+                                1,
+                                null,
+                                List.of(new ArchiveItemOrderBy("formed_date", "DESC"))),
+                        1L);
+
+        assertThat(firstPage.items())
+                .extracting(row -> row.get("archive_no"))
+                .containsExactly("GW-2026-002");
+        assertThat(firstPage.next()).isNotBlank();
+
+        var secondPage =
+                archiveItemRoutingService.searchItems(
+                        new ArchiveItemQueryRequest(
+                                categoryId,
+                                null,
+                                null,
+                                null,
+                                null,
+                                1,
+                                firstPage.next(),
+                                List.of(new ArchiveItemOrderBy("formed_date", "DESC"))),
+                        1L);
+
+        assertThat(secondPage.items())
+                .extracting(row -> row.get("archive_no"))
+                .containsExactly("GW-2026-001");
     }
 
     @Test
@@ -261,7 +305,7 @@ class ArchiveFullTextSearchIntegrationTests {
         var firstPage =
                 archiveItemRoutingService.searchDeletedItems(
                         new ArchiveItemQueryRequest(
-                                categoryId, null, null, null, List.of(), 1, null, null),
+                                categoryId, null, null, null, null, 1, null, null),
                         1L);
 
         assertThat(firstPage.items())
@@ -272,7 +316,7 @@ class ArchiveFullTextSearchIntegrationTests {
         var secondPage =
                 archiveItemRoutingService.searchDeletedItems(
                         new ArchiveItemQueryRequest(
-                                categoryId, null, null, null, List.of(), 1, firstPage.next(), null),
+                                categoryId, null, null, null, null, 1, firstPage.next(), null),
                         1L);
 
         assertThat(secondPage.items())

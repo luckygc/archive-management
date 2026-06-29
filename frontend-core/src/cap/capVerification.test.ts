@@ -24,9 +24,9 @@ describe("capFetch", () => {
         await capFetch(`${capWidgetApiEndpoint()}validateToken`, { method: "POST" });
 
         expect(requests).toEqual([
-            "/api/v1/auth/cap-challenges",
-            "/api/v1/auth/cap-tokens",
-            "/api/v1/auth/cap-tokens:validate",
+            "/api/v1/cap-challenges",
+            "/api/v1/cap-tokens",
+            "/api/v1/cap-tokens:validate",
         ]);
     });
 
@@ -42,9 +42,9 @@ describe("capFetch", () => {
             }),
         );
 
-        await capFetch("/api/v1/auth/session");
+        await capFetch("/api/v1/me");
 
-        expect(requests).toEqual(["/api/v1/auth/session"]);
+        expect(requests).toEqual(["/api/v1/me"]);
     });
 });
 

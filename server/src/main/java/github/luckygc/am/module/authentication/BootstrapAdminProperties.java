@@ -1,0 +1,22 @@
+package github.luckygc.am.module.authentication;
+
+import java.util.List;
+
+import org.springframework.boot.context.properties.ConfigurationProperties;
+
+import lombok.Data;
+
+@Data
+@ConfigurationProperties(prefix = "archive.authentication.bootstrap-admin")
+public class BootstrapAdminProperties {
+
+    private boolean enabled = false;
+
+    private String username = "admin";
+
+    private String password = "";
+
+    private String displayName = "系统管理员";
+
+    private List<String> roleNames = List.of();
+}

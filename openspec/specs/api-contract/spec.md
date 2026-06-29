@@ -153,14 +153,16 @@ Controller SHALL 显式声明完整 URL。
 - **AND** 没有上一页或下一页时，`prev` 或 `next` MAY 省略或返回 `null`
 - **AND** 响应 MAY 包含 `first` token
 - **AND** 大数据量集合 SHOULD NOT 提供 `last`
-- **AND** 响应 SHALL NOT 返回 `total`
+- **AND** 响应默认 SHALL NOT 返回 `total`
+- **AND** 当接口明确支持 `requestTotal=true` 且请求未提交 `cursor` 时，响应 MAY 返回与本次筛选条件一致的 `total`
 - **AND** 服务端 SHALL NOT 为键集分页默认执行 count 查询
 - **AND** `POST /api/v1/{resources}:search` 返回的分页响应 MAY 包含 `query`，用于回显本次查询条件
 
 #### Scenario: 校验键集分页 cursor
 
 - **WHEN** 客户端提交带 `cursor` 的键集分页请求
-- **THEN** 服务端 SHALL 校验 cursor 的签名、版本、方向、边界值和查询指纹
+- **THEN** 服务端 SHALL 校验 cursor 的版本、方向、边界值和查询指纹
+- **AND** 需要防篡改的外部接口 SHALL 额外校验 cursor 签名
 - **AND** 查询指纹 SHALL 覆盖首次请求的筛选、搜索、排序、分页大小和业务范围参数
 - **AND** 如果当前请求参数与 cursor 绑定的查询指纹不一致，服务端 SHALL 拒绝请求
 - **AND** 服务端 SHALL 返回 `INVALID_ARGUMENT` 或 `FAILED_PRECONDITION` 类 ProblemDetail 错误
@@ -239,7 +241,7 @@ Controller SHALL 显式声明完整 URL。
 
 - **WHEN** CAP widget 要求固定回调路径
 - **THEN** 浏览器端 SHALL 通过 CAP 自定义 fetch 将 widget 内部请求改写为项目 REST API
-- **AND** 服务端 SHALL 暴露 `POST /api/v1/auth/cap-challenges`、`POST /api/v1/auth/cap-tokens` 和 `POST /api/v1/auth/cap-tokens:validate`
-- **AND** 服务端 SHALL NOT 暴露 `/api/v1/auth/cap/challenge`、`/api/v1/auth/cap/redeem` 或 `/api/v1/auth/cap/validateToken`
+- **AND** 服务端 SHALL 暴露 `POST /api/v1/cap-challenges`、`POST /api/v1/cap-tokens` 和 `POST /api/v1/cap-tokens:validate`
+- **AND** 服务端 SHALL NOT 暴露 `/api/v1/cap/challenge`、`/api/v1/cap/redeem` 或 `/api/v1/cap/validateToken`
 - **AND** 服务端错误响应仍 SHALL 使用项目统一 `ProblemDetail` 结构
 - **AND** 浏览器端 MAY 将 `ProblemDetail` 转换为 cap-widget 可识别的错误 JSON

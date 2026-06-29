@@ -68,6 +68,12 @@
 
 系统 SHALL 在每张分类动态数据表中固定保存动态表删除标记和动态行维护时间。
 
+#### Scenario: 创建分类动态表固定列
+
+- **WHEN** 系统创建分类动态数据表
+- **THEN** 动态表 SHALL 固定包含 `deleted_flag`、`deleted_at`、`deleted_by`、`created_at` 和 `updated_at`
+- **AND** 业务动态字段 SHALL NOT 复用这些固定维护列名
+
 ### Requirement: 条目与案卷分对象
 
 系统 SHALL 使用独立 archive item 和 archive volume 对象表达卷内条目与案卷。
@@ -92,9 +98,9 @@
 #### Scenario: 创建条目关联
 
 - **WHEN** 客户端为条目创建关联档案
-- **THEN** 系统 SHALL 保存 `source_item_id`、`target_item_id`、关联类型、备注和排序
+- **THEN** 系统 SHALL 保存 `id`、`source_item_id`、`target_item_id` 和 `created_at`
 - **AND** 系统 SHALL 拒绝条目关联自身
-- **AND** 系统 SHALL 使用部分唯一索引防止未删除的重复关联
+- **AND** 系统 SHALL 使用唯一索引防止重复关联
 
 ### Requirement: 条目明细表定义
 

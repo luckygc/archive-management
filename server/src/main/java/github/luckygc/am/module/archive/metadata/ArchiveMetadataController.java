@@ -93,8 +93,13 @@ public class ArchiveMetadataController {
     }
 
     @GetMapping("/api/v1/archive-categories/{categoryId}/fields")
-    public CollectionResponse<ArchiveFieldDto> listFields(@PathVariable Long categoryId) {
-        return CollectionResponse.of(archiveMetadataService.listFields(categoryId));
+    public CollectionResponse<ArchiveFieldDto> listFields(
+            @PathVariable Long categoryId,
+            @RequestParam(required = false) ArchiveLevel archiveLevel) {
+        return CollectionResponse.of(
+                archiveLevel == null
+                        ? archiveMetadataService.listFields(categoryId)
+                        : archiveMetadataService.listFields(categoryId, archiveLevel));
     }
 
     @PostMapping("/api/v1/archive-categories/{categoryId}/fields")

@@ -2,15 +2,17 @@ import {
     ApartmentOutlined,
     AppstoreOutlined,
     DatabaseOutlined,
+    FileSearchOutlined,
     FolderOpenOutlined,
     HomeOutlined,
     ImportOutlined,
     LockOutlined,
+    MonitorOutlined,
     ReloadOutlined,
     SettingOutlined,
     UserOutlined,
 } from "@ant-design/icons";
-import { Button, Dropdown, Layout, Menu, Space, Tabs, Tag, Tooltip, Typography } from "antd";
+import { Button, Dropdown, Layout, Menu, Space, Tabs, Tooltip, Typography } from "antd";
 import { useSessionStore } from "@archive-management/frontend-core/auth";
 import type { MenuProps } from "antd";
 import { useKeepAliveRef } from "keepalive-for-react";
@@ -29,7 +31,12 @@ const menuItems: MenuProps["items"] = [
     { key: "/", label: <Link to="/">工作台</Link>, icon: <HomeOutlined /> },
     {
         key: "/archive/library",
-        label: <Link to="/archive/library">档案库</Link>,
+        label: <Link to="/archive/library">档案搜索</Link>,
+        icon: <FileSearchOutlined />,
+    },
+    {
+        key: "/archive/items",
+        label: <Link to="/archive/items">档案管理</Link>,
         icon: <FolderOpenOutlined />,
     },
     {
@@ -73,6 +80,16 @@ const menuItems: MenuProps["items"] = [
                 key: "/system/storage",
                 label: <Link to="/system/storage">存储配置</Link>,
                 icon: <DatabaseOutlined />,
+            },
+            {
+                key: "/system/login-sessions",
+                label: <Link to="/system/login-sessions">登录会话</Link>,
+                icon: <MonitorOutlined />,
+            },
+            {
+                key: "/system/authentication-events",
+                label: <Link to="/system/authentication-events">认证审计</Link>,
+                icon: <LockOutlined />,
             },
         ],
     },
@@ -159,8 +176,6 @@ export function AppShell() {
             <Layout>
                 <Header className="am-shell__header">
                     <Space size={8}>
-                        <Tag color="blue">React / AntD 6</Tag>
-                        <Tag color="default">Ant Design Pro v6 结构参考</Tag>
                         <Dropdown
                             menu={{
                                 items: [{ key: "logout", label: "退出登录" }],
@@ -231,6 +246,8 @@ export function AppShell() {
                     <KeepAliveRouteOutlet
                         activeCacheKey={activeFullPath}
                         aliveRef={aliveRef}
+                        cacheNodeClassName="am-shell__cache-node"
+                        containerClassName="am-shell__cache"
                         exclude={excludedCacheKeys}
                         max={12}
                         wrapperComponent={PageSuspense}

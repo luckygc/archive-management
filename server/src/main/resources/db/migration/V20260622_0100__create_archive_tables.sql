@@ -353,38 +353,22 @@ create table am_archive_item_relation
     id             bigserial primary key,
     source_item_id bigint       not null references am_archive_item (id),
     target_item_id bigint       not null references am_archive_item (id),
-    relation_type  varchar(50)  not null,
-    remark         varchar(500),
-    sort_order     integer      not null default 0,
-    deleted_flag   boolean      not null default false,
-    created_by     bigint,
-    created_at     timestamp    not null default localtimestamp,
-    updated_by     bigint,
-    updated_at     timestamp    not null default localtimestamp
+    created_at     timestamp    not null default localtimestamp
 );
 
-create unique index uk_am_archive_item_relation_active
-    on am_archive_item_relation (source_item_id, target_item_id, relation_type)
-    where deleted_flag = false;
-create index idx_am_archive_item_relation_source_active
-    on am_archive_item_relation (source_item_id, sort_order, id)
-    where deleted_flag = false;
-create index idx_am_archive_item_relation_target_active
+create unique index uk_am_archive_item_relation_pair
+    on am_archive_item_relation (source_item_id, target_item_id);
+create index idx_am_archive_item_relation_source
+    on am_archive_item_relation (source_item_id, id);
+create index idx_am_archive_item_relation_target
     on am_archive_item_relation (target_item_id, id)
-    where deleted_flag = false;
+;
 
 comment on table am_archive_item_relation is '档案条目关联表';
 comment on column am_archive_item_relation.id is '主键';
 comment on column am_archive_item_relation.source_item_id is '来源条目 ID';
 comment on column am_archive_item_relation.target_item_id is '目标条目 ID';
-comment on column am_archive_item_relation.relation_type is '关联类型';
-comment on column am_archive_item_relation.remark is '备注';
-comment on column am_archive_item_relation.sort_order is '排序字段';
-comment on column am_archive_item_relation.deleted_flag is '删除标记';
-comment on column am_archive_item_relation.created_by is '创建人用户 ID';
 comment on column am_archive_item_relation.created_at is '创建时间';
-comment on column am_archive_item_relation.updated_by is '更新人用户 ID';
-comment on column am_archive_item_relation.updated_at is '更新时间';
 
 create table am_archive_item_line_table
 (

@@ -197,6 +197,13 @@ public class ArchiveMetadataService {
         return fieldRepository.list(categoryId).stream().map(this::mapField).toList();
     }
 
+    public List<ArchiveFieldDto> listFields(Long categoryId, ArchiveLevel archiveLevel) {
+        requireId(categoryId);
+        return fieldRepository.list(categoryId, normalizeArchiveLevel(archiveLevel), true).stream()
+                .map(this::mapField)
+                .toList();
+    }
+
     public List<ArchiveFieldDto> listEnabledFields(Long categoryId) {
         return listEnabledFields(categoryId, ArchiveLevel.ITEM);
     }

@@ -9,7 +9,8 @@ public record CursorPageResponse<T>(
         @Nullable String self,
         @Nullable String prev,
         @Nullable String next,
-        @Nullable String first) {
+        @Nullable String first,
+        @Nullable Long total) {
 
     public CursorPageResponse {
         items = List.copyOf(items);

@@ -16,7 +16,7 @@ import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.exception.BadRequestException;
-import github.luckygc.am.module.auth.PowChallengeException;
+import github.luckygc.am.module.authentication.PowChallengeException;
 
 @DisplayName("全局异常处理器")
 class GlobalExceptionHandlerTests {
@@ -81,7 +81,7 @@ class GlobalExceptionHandlerTests {
     @DisplayName("CAP 验证异常输出未认证 ProblemDetail")
     void powChallengeExceptionUsesUnauthenticatedProblemDetail() {
         MockHttpServletRequest request =
-                new MockHttpServletRequest("POST", "/api/v1/auth/cap-tokens:validate");
+                new MockHttpServletRequest("POST", "/api/v1/cap-tokens:validate");
 
         var response =
                 handler.handleResponseStatusException(
@@ -94,7 +94,7 @@ class GlobalExceptionHandlerTests {
         assertThat(response.getBody().getProperties())
                 .containsEntry("code", "UNAUTHENTICATED")
                 .containsEntry("reason", "UNAUTHENTICATED_ERROR")
-                .containsEntry("path", "/api/v1/auth/cap-tokens:validate");
+                .containsEntry("path", "/api/v1/cap-tokens:validate");
     }
 
     @Test

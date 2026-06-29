@@ -17,6 +17,7 @@ import type {
     ArchiveRecordListDto,
     ArchiveRecordQuery,
     ArchiveRecordUpdateCommand,
+    ArchiveRelatedFilterCategoryDto,
     ArchiveUniqueConstraintCommand,
     ArchiveUniqueConstraintDto,
 } from "../types/archive";
@@ -64,6 +65,12 @@ export function listArchiveCategories(enabled?: boolean) {
     );
 }
 
+export function listArchiveRelatedFilterCategories(categoryId: number) {
+    return request<CollectionResponse<ArchiveRelatedFilterCategoryDto>>(
+        `/api/v1/archive-categories/${categoryId}/related-filter-categories`,
+    );
+}
+
 export function createArchiveCategory(command: ArchiveCategoryCommand) {
     return request<ArchiveCategoryDto>("/api/v1/archive-categories", {
         method: "POST",
@@ -84,9 +91,9 @@ export function deleteArchiveCategory(id: number) {
     });
 }
 
-export function listArchiveFields(categoryId: number) {
+export function listArchiveFields(categoryId: number, archiveLevel?: ArchiveLevel) {
     return request<CollectionResponse<ArchiveFieldDto>>(
-        `/api/v1/archive-categories/${categoryId}/fields`,
+        `/api/v1/archive-categories/${categoryId}/fields${queryString({ archiveLevel })}`,
     );
 }
 
@@ -190,30 +197,26 @@ export function deleteArchiveUniqueConstraint(categoryId: number, constraintId: 
     );
 }
 
-export function listArchiveRecords(params: {
-    categoryId?: number;
-    archiveLevel?: ArchiveLevel;
-    fondsCode?: string;
-}) {
-    return request<ArchiveRecordListDto>(`/api/v1/archive-records${queryString(params)}`);
+export function listArchiveRecords(params: { categoryId?: number; fondsCode?: string }) {
+    return request<ArchiveRecordListDto>(`/api/v1/archive-items${queryString(params)}`);
 }
 
 export function searchArchiveRecords(query: ArchiveRecordQuery) {
-    return request<ArchiveRecordListDto>("/api/v1/archive-records:search", {
+    return request<ArchiveRecordListDto>("/api/v1/archive-items:search", {
         method: "POST",
         body: JSON.stringify(query),
     });
 }
 
 export function discoverArchiveRecords(query: ArchiveRecordQuery) {
-    return request<ArchiveRecordListDto>("/api/v1/archive-records:discover", {
+    return request<ArchiveRecordListDto>("/api/v1/archive-items:discover", {
         method: "POST",
         body: JSON.stringify(query),
     });
 }
 
 export function createArchiveRecord(command: ArchiveRecordCommand) {
-    return request<ArchiveRecordDto>("/api/v1/archive-records", {
+    return request<ArchiveRecordDto>("/api/v1/archive-items", {
         method: "POST",
         body: JSON.stringify(command),
     });
@@ -221,26 +224,26 @@ export function createArchiveRecord(command: ArchiveRecordCommand) {
 
 export function getArchiveRecord(id: number, surface?: ArchiveLayoutSurface) {
     return request<ArchiveRecordDetailDto>(
-        `/api/v1/archive-records/${id}${queryString({ surface })}`,
+        `/api/v1/archive-items/${id}${queryString({ surface })}`,
     );
 }
 
 export function updateArchiveRecord(id: number, command: ArchiveRecordUpdateCommand) {
-    return request<ArchiveRecordDetailDto>(`/api/v1/archive-records/${id}`, {
+    return request<ArchiveRecordDetailDto>(`/api/v1/archive-items/${id}`, {
         method: "PATCH",
         body: JSON.stringify(command),
     });
 }
 
 export function lockArchiveRecord(id: number, reason?: string) {
-    return request<ArchiveRecordDto>(`/api/v1/archive-records/${id}:lock`, {
+    return request<ArchiveRecordDto>(`/api/v1/archive-items/${id}:lock`, {
         method: "POST",
         body: JSON.stringify({ reason }),
     });
 }
 
 export function unlockArchiveRecord(id: number) {
-    return request<ArchiveRecordDto>(`/api/v1/archive-records/${id}:unlock`, {
+    return request<ArchiveRecordDto>(`/api/v1/archive-items/${id}:unlock`, {
         method: "POST",
     });
 }

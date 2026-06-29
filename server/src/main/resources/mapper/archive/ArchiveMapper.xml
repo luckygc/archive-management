@@ -75,55 +75,160 @@
         order by sort_order, id desc
     </select>
 
+    <select id="listRelatedFilterCategories" resultType="map">
+        select related_category_id,
+               related_category_code,
+               related_category_name,
+               case when has_reverse then 'BOTH' else 'OUTGOING' end as direction
+        from (
+            select distinct
+                   tc.id as related_category_id,
+                   tc.category_code as related_category_code,
+                   tc.category_name as related_category_name,
+                   exists (
+                       select 1
+                       from am_archive_item_relation rrel
+                       join am_archive_item rsi on rsi.id = rrel.source_item_id
+                         and rsi.deleted_flag = false
+                       join am_archive_item rti on rti.id = rrel.target_item_id
+                         and rti.deleted_flag = false
+                       where rsi.category_code = tc.category_code
+                         and rti.category_code = sc.category_code
+                   ) as has_reverse
+            from am_archive_item_relation rel
+            join am_archive_item si on si.id = rel.source_item_id
+              and si.deleted_flag = false
+            join am_archive_category sc on sc.category_code = si.category_code
+              and sc.deleted_flag = false
+            join am_archive_item ti on ti.id = rel.target_item_id
+              and ti.deleted_flag = false
+            join am_archive_category tc on tc.category_code = ti.category_code
+              and tc.deleted_flag = false
+              and tc.enabled = true
+            where sc.id = #{categoryId}
+        ) related_categories
+        order by related_category_name, related_category_id
+    </select>
+
     <select id="listDynamicItems" resultType="map">
-        select r.id,
-               r.volume_id,
-               r.fonds_code,
-               r.fonds_name,
-               r.category_code,
-               r.category_name,
-               r.archive_no,
-               r.electronic_status,
-               r.archive_year,
-               r.display_order,
-               r.created_at,
-               r.deleted_at,
-               r.deleted_by,
-               r.locked_flag,
-               r.lock_reason,
-               r.locked_by,
-               r.locked_at
+        select i.id,
+               i.volume_id,
+               i.fonds_code,
+               i.fonds_name,
+               i.category_code,
+               i.category_name,
+               i.archive_no,
+               i.electronic_status,
+               i.archive_year,
+               i.display_order,
+               i.created_at,
+               i.deleted_at,
+               i.deleted_by,
+               i.locked_flag,
+               i.lock_reason,
+               i.locked_by,
+               i.locked_at
                ${selectColumns}
-        from am_archive_item r
-        join ${tableName} d on d.id = r.id
-        where r.deleted_flag = #{deleted}
+        from am_archive_item i
+        join ${tableName} d on d.id = i.id
+        where i.deleted_flag = #{deleted}
           and d.deleted_flag = #{deleted}
         <if test="requireAuthenticatedUser">
             and #{userId} is not null
         </if>
         <if test="fondsCode != null and fondsCode != ''">
-            and r.fonds_code = #{fondsCode}
+            and i.fonds_code = #{fondsCode}
         </if>
         <if test="conditions != null">
             <foreach collection="conditions" item="condition">
                 <choose>
-                    <when test="condition.operator == 'EQ'">
+                    <when test="condition.operatorName == 'EQ'">
                         and d.${condition.columnName} = #{condition.value}
                     </when>
-                    <when test="condition.operator == 'GTE'">
+                    <when test="condition.operatorName == 'CONTAINS'">
+                        and d.${condition.columnName} like #{condition.value} escape '\'
+                    </when>
+                    <when test="condition.operatorName == 'STARTS_WITH'">
+                        and d.${condition.columnName} like #{condition.value} escape '\'
+                    </when>
+                    <when test="condition.operatorName == 'GTE'">
                         and d.${condition.columnName} &gt;= #{condition.value}
                     </when>
-                    <when test="condition.operator == 'LTE'">
+                    <when test="condition.operatorName == 'LTE'">
                         and d.${condition.columnName} &lt;= #{condition.value}
                     </when>
+                    <when test="condition.operatorName == 'BETWEEN'">
+                        and d.${condition.columnName} between #{condition.value} and #{condition.endValue}
+                    </when>
+                    <when test="condition.operatorName == 'IS_EMPTY'">
+                        and (d.${condition.columnName} is null or d.${condition.columnName} = '')
+                    </when>
+                    <when test="condition.operatorName == 'IS_NOT_EMPTY'">
+                        and d.${condition.columnName} is not null and d.${condition.columnName} != ''
+                    </when>
                 </choose>
+            </foreach>
+        </if>
+        <if test="relatedGroups != null">
+            <foreach collection="relatedGroups" item="group">
+                and exists (
+                    select 1
+                    from am_archive_item_relation rel
+                    join am_archive_item ri on ri.deleted_flag = false
+                      and (
+                          (#{group.directionName} = 'OUTGOING'
+                           and rel.source_item_id = i.id
+                           and ri.id = rel.target_item_id)
+                          or (#{group.directionName} = 'INCOMING'
+                              and rel.target_item_id = i.id
+                              and ri.id = rel.source_item_id)
+                          or (#{group.directionName} = 'BOTH'
+                              and (
+                                  (rel.source_item_id = i.id and ri.id = rel.target_item_id)
+                                  or (rel.target_item_id = i.id and ri.id = rel.source_item_id)
+                              ))
+                      )
+                    join ${group.tableName} rd on rd.id = ri.id
+                      and rd.deleted_flag = false
+                    where ri.category_code = #{group.categoryCode}
+                    <if test="group.conditions != null">
+                        <foreach collection="group.conditions" item="condition">
+                            <choose>
+                                <when test="condition.operatorName == 'EQ'">
+                                    and rd.${condition.columnName} = #{condition.value}
+                                </when>
+                                <when test="condition.operatorName == 'CONTAINS'">
+                                    and rd.${condition.columnName} like #{condition.value} escape '\'
+                                </when>
+                                <when test="condition.operatorName == 'STARTS_WITH'">
+                                    and rd.${condition.columnName} like #{condition.value} escape '\'
+                                </when>
+                                <when test="condition.operatorName == 'GTE'">
+                                    and rd.${condition.columnName} &gt;= #{condition.value}
+                                </when>
+                                <when test="condition.operatorName == 'LTE'">
+                                    and rd.${condition.columnName} &lt;= #{condition.value}
+                                </when>
+                                <when test="condition.operatorName == 'BETWEEN'">
+                                    and rd.${condition.columnName} between #{condition.value} and #{condition.endValue}
+                                </when>
+                                <when test="condition.operatorName == 'IS_EMPTY'">
+                                    and (rd.${condition.columnName} is null or rd.${condition.columnName} = '')
+                                </when>
+                                <when test="condition.operatorName == 'IS_NOT_EMPTY'">
+                                    and rd.${condition.columnName} is not null and rd.${condition.columnName} != ''
+                                </when>
+                            </choose>
+                        </foreach>
+                    </if>
+                )
             </foreach>
         </if>
         <if test="fullTextKeyword != null and fullTextKeyword != ''">
             and exists (
                 select 1
                 from am_archive_item_search s
-                where s.archive_item_id = r.id
+                where s.archive_item_id = i.id
                   and (
                       s.search_text ilike '%' || replace(replace(#{fullTextKeyword}, '%', '\%'), '_', '\_') || '%' escape '\'
                       or s.search_text % #{fullTextKeyword}
@@ -138,14 +243,14 @@
     </select>
 
     <select id="listItemsForSearchRebuild" resultType="map">
-        select r.id,
-               r.fonds_code
+        select i.id,
+               i.fonds_code
                ${selectColumns}
-        from am_archive_item r
-        join ${tableName} d on d.id = r.id
-        where r.deleted_flag = false
+        from am_archive_item i
+        join ${tableName} d on d.id = i.id
+        where i.deleted_flag = false
           and d.deleted_flag = false
-        order by r.id
+        order by i.id
     </select>
 
     <select id="insertArchiveItem" resultType="long">
@@ -481,39 +586,32 @@
         select rel.id,
                rel.source_item_id,
                rel.target_item_id,
-               rel.relation_type,
-               rel.remark,
-               rel.sort_order,
-               target.fonds_code as target_fonds_code,
-               target.fonds_name as target_fonds_name,
-               target.category_code as target_category_code,
-               target.category_name as target_category_name,
-               target.archive_no as target_archive_no
+               rel.created_at,
+               ti.fonds_code as target_fonds_code,
+               ti.fonds_name as target_fonds_name,
+               ti.category_code as target_category_code,
+               ti.category_name as target_category_name,
+               ti.archive_no as target_archive_no
         from am_archive_item_relation rel
-        join am_archive_item target on target.id = rel.target_item_id
-          and target.deleted_flag = false
+        join am_archive_item ti on ti.id = rel.target_item_id
+          and ti.deleted_flag = false
         where rel.source_item_id = #{sourceItemId}
-          and rel.deleted_flag = false
-        order by rel.sort_order, rel.id
+        order by rel.id
     </select>
 
     <select id="insertItemRelation" resultType="long">
         insert into am_archive_item_relation
-            (source_item_id, target_item_id, relation_type, remark, sort_order, created_by, updated_by)
+            (source_item_id, target_item_id)
         values
-            (#{sourceItemId}, #{targetItemId}, #{relationType}, #{remark}, #{sortOrder}, #{userId}, #{userId})
+            (#{sourceItemId}, #{targetItemId})
         returning id
     </select>
 
-    <update id="deleteItemRelation">
-        update am_archive_item_relation
-        set deleted_flag = true,
-            updated_by = #{userId},
-            updated_at = localtimestamp
+    <delete id="deleteItemRelation">
+        delete from am_archive_item_relation
         where id = #{id}
           and source_item_id = #{sourceItemId}
-          and deleted_flag = false
-    </update>
+    </delete>
 
     <select id="listItemLineTables" resultType="map">
         select id,

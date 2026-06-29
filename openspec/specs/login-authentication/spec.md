@@ -2,7 +2,7 @@
 
 ## Purpose
 
-提供 PC 端账号密码登录、登录前安全验证、基于服务端会话的认证状态保持，以及当前登录用户查询和退出登录能力。
+提供 PC 端账号密码登录、登录前安全验证、基于服务端会话的认证状态保持，以及当前主体查询和退出登录能力。
 
 ## Requirements
 
@@ -12,8 +12,8 @@
 
 #### Scenario: 创建安全验证挑战
 
-- **WHEN** 客户端请求 `POST /api/v1/auth/cap-challenges`
-- **THEN** 系统 SHALL 创建一条 `am_auth_cap_challenge` 挑战记录
+- **WHEN** 客户端请求 `POST /api/v1/cap-challenges`
+- **THEN** 系统 SHALL 创建一条 `am_authentication_cap_challenge` 挑战记录
 - **AND** 响应 SHALL 包含 `challenge`、`token` 和 `expires`
 - **AND** `challenge` SHALL 包含挑战数量 `c`、挑战尺寸 `s` 和难度 `d`
 - **AND** challenge 默认有效期 SHALL 为 10 分钟
@@ -21,10 +21,10 @@
 #### Scenario: 兑换安全验证令牌
 
 - **GIVEN** 客户端持有未过期的 challenge token
-- **WHEN** 客户端请求 `POST /api/v1/auth/cap-tokens` 并提交 token 与完整 solutions
+- **WHEN** 客户端请求 `POST /api/v1/cap-tokens` 并提交 token 与完整 solutions
 - **THEN** 系统 SHALL 校验每个 solution 是否匹配 challenge 规则
 - **AND** 系统 SHALL 删除已提交的 challenge token
-- **AND** 校验成功时 SHALL 创建一条 `am_auth_cap_token` 令牌记录
+- **AND** 校验成功时 SHALL 创建一条 `am_authentication_cap_token` 令牌记录
 - **AND** 响应 SHALL 包含 `success: true`、一次性登录令牌 `token` 和 `expires`
 - **AND** 令牌默认有效期 SHALL 为 20 分钟
 
@@ -37,7 +37,7 @@
 
 #### Scenario: 校验安全验证令牌
 
-- **WHEN** 客户端请求 `POST /api/v1/auth/cap-tokens:validate`
+- **WHEN** 客户端请求 `POST /api/v1/cap-tokens:validate`
 - **THEN** 系统 SHALL 按提交的 token 返回 `{ "success": true }` 或 `{ "success": false }`
 - **AND** 当 `keepToken` 为 `true` 时，系统 SHALL 只检查令牌有效性，不消费令牌
 - **AND** 当 `keepToken` 不为 `true` 时，系统 SHALL 消费一次性令牌
@@ -45,8 +45,8 @@
 #### Scenario: CAP widget 请求适配
 
 - **WHEN** CAP widget 按内部协议请求 `challenge`、`redeem` 或 `validateToken`
-- **THEN** 浏览器端 SHALL 通过 CAP 自定义 fetch 改写到 `/api/v1/auth/cap-challenges`、`/api/v1/auth/cap-tokens` 或 `/api/v1/auth/cap-tokens:validate`
-- **AND** 服务端 SHALL NOT 暴露 `/api/v1/auth/cap/challenge`、`/api/v1/auth/cap/redeem` 或 `/api/v1/auth/cap/validateToken`
+- **THEN** 浏览器端 SHALL 通过 CAP 自定义 fetch 改写到 `/api/v1/cap-challenges`、`/api/v1/cap-tokens` 或 `/api/v1/cap-tokens:validate`
+- **AND** 服务端 SHALL NOT 暴露 `/api/v1/cap/challenge`、`/api/v1/cap/redeem` 或 `/api/v1/cap/validateToken`
 
 ### Requirement: 账号密码登录
 
@@ -55,13 +55,13 @@
 #### Scenario: 登录请求格式
 
 - **WHEN** 客户端提交登录请求
-- **THEN** 请求 SHALL 使用 `POST /api/v1/auth:login`
+- **THEN** 请求 SHALL 使用 `POST /api/v1/login-sessions`
 - **AND** 请求体 SHALL 使用 `application/x-www-form-urlencoded`
 - **AND** 请求参数 SHALL 包含 `username`、`password` 和 `powToken`
 
 #### Scenario: 登录前消费安全验证令牌
 
-- **GIVEN** 客户端提交 `POST /api/v1/auth:login`
+- **GIVEN** 客户端提交 `POST /api/v1/login-sessions`
 - **WHEN** `powToken` 为空、格式错误、已过期或不存在
 - **THEN** 系统 SHALL 拒绝登录
 - **AND** 响应状态 SHALL 为 `401 Unauthorized`
@@ -74,8 +74,8 @@
 - **WHEN** 系统处理登录请求
 - **THEN** 系统 SHALL 保存 Spring Security 上下文到服务端会话
 - **AND** 响应状态 SHALL 为 `200 OK`
-- **AND** 响应体 SHALL 为当前用户 JSON
-- **AND** 当前用户 JSON SHALL 包含 `username`、`displayName` 和 `roles`
+- **AND** 响应体 SHALL 为创建出的登录会话资源
+- **AND** 登录会话资源 SHALL 包含 `sessionId`、`username`、`displayName`、`roles`、`client`、`request` 和会话时间信息
 
 #### Scenario: 登录失败
 
@@ -92,19 +92,19 @@
 #### Scenario: 加载启用用户
 
 - **WHEN** 系统按用户名加载用户
-- **THEN** 系统 SHALL 从 `am_auth_user` 读取用户账号、密码密文、显示名称和启用状态
+- **THEN** 系统 SHALL 从 `am_authentication_user` 读取用户账号、密码密文、显示名称和启用状态
 - **AND** 系统 SHALL 只允许启用用户通过认证
 
 #### Scenario: 加载用户角色
 
 - **WHEN** 系统构造登录用户权限
-- **THEN** 系统 SHALL 从 `am_auth_user_role_rel` 和 `am_auth_role` 读取用户角色名称
+- **THEN** 系统 SHALL 从 `am_authorization_user_role_rel` 和 `am_authorization_role` 读取用户角色名称
 - **AND** 写入 Spring Security 权限时 SHALL 自动添加 `ROLE_` 前缀
 - **AND** 对外返回当前用户时 SHALL 去除 `ROLE_` 前缀
 
 #### Scenario: 显式初始化管理员账号
 
-- **GIVEN** 配置 `archive.auth.bootstrap-admin.enabled` 为 `true`
+- **GIVEN** 配置 `archive.authentication.bootstrap-admin.enabled` 为 `true`
 - **AND** 配置提供非空管理员账号、密码和显示名称
 - **WHEN** 应用启动且管理员账号不存在
 - **THEN** 系统 SHALL 创建该管理员用户
@@ -113,20 +113,20 @@
 
 #### Scenario: 不创建固定默认管理员
 
-- **GIVEN** 配置 `archive.auth.bootstrap-admin.enabled` 不为 `true`
+- **GIVEN** 配置 `archive.authentication.bootstrap-admin.enabled` 不为 `true`
 - **WHEN** 应用启动
 - **THEN** 系统 SHALL NOT 创建固定账号密码的默认管理员
 
-### Requirement: 当前用户查询
+### Requirement: 当前主体查询
 
-系统 SHALL 提供当前登录用户查询接口。
+系统 SHALL 提供当前主体查询接口。
 
 #### Scenario: 查询当前用户
 
 - **GIVEN** 客户端已登录
-- **WHEN** 客户端请求 `GET /api/v1/auth/session`
-- **THEN** 系统 SHALL 返回当前用户 JSON
-- **AND** 当前用户 JSON SHALL 包含 `username`、`displayName` 和 `roles`
+- **WHEN** 客户端请求 `GET /api/v1/me`
+- **THEN** 系统 SHALL 返回当前主体 JSON
+- **AND** 当前主体 JSON SHALL 包含 `sessionId`、`username`、`displayName` 和 `roles`
 
 #### Scenario: 未登录访问 API
 
@@ -141,7 +141,7 @@
 #### Scenario: 退出当前会话
 
 - **GIVEN** 客户端已登录
-- **WHEN** 客户端请求 `POST /api/v1/auth:logout`
+- **WHEN** 客户端请求 `DELETE /api/v1/login-sessions/{session}` 且 `{session}` 为当前会话 ID
 - **THEN** 系统 SHALL 清理当前 SecurityContext
 - **AND** 系统 SHALL 使当前 HTTP session 失效
 - **AND** 响应状态 SHALL 为 `204 No Content`

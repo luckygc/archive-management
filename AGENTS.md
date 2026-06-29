@@ -37,7 +37,7 @@
 ## 后端约定
 
 - 后端当前按单 Spring Boot 应用起步；应用启动和总装配入口放在 `server/src/main/java/github/luckygc/am/app` 下，只承载启动类、应用级装配和启动期编排，不承载业务逻辑或具体技术适配。
-- 业务功能统一放在 `server/src/main/java/github/luckygc/am/module` 下，并按业务边界拆子包，例如 `module/auth`；`module` 表示业务模块集合，不改名为 `business` 这类容易被理解成横切业务层的包名。
+- 业务功能统一放在 `server/src/main/java/github/luckygc/am/module` 下，并按业务边界拆子包，例如 `module/authentication`；`module` 表示业务模块集合，不改名为 `business` 这类容易被理解成横切业务层的包名。
 - 基础设施能力统一放在 `server/src/main/java/github/luckygc/am/infrastructure` 下，只承载技术适配，例如 Spring Security、Hibernate、文件存储、外部系统客户端、缓存和调度适配。
 - `common` 只放跨业务模块共享的应用基础约定，不承载业务模块，也不承载具体外部技术适配；认证、用户、权限、档案、存储对象等业务语义不得放入 `common`。
 - 业务模块不按 `api` / `internal` 继续拆包；当前是单体应用，不按微服务式模块合同组织代码。单个业务模块根包下，同一业务子域相关类达到 5 个及以上时，应按业务子域分包；分包依据是业务边界，不是机械按数量或按 Controller/Service/Repository 横切分层。子域包内部再次变大时，才继续按 `web`、`service`、`dto`、`repository`、`mapper` 等实现形态拆包。

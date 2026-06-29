@@ -84,7 +84,8 @@ class ApiRequestSignatureFilterTests {
     @DisplayName("登录前置接口不校验请求签名")
     void loginBootstrapRequestSkipsVerification() throws Exception {
         ApiRequestSignatureFilter filter = filter(true);
-        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/auth:login");
+        MockHttpServletRequest request =
+                new MockHttpServletRequest("POST", "/api/v1/login-sessions");
         MockHttpServletResponse response = new MockHttpServletResponse();
         AtomicReference<Boolean> invoked = new AtomicReference<>(false);
 

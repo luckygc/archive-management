@@ -16,12 +16,12 @@ import org.springframework.security.config.annotation.web.configurers.AuthorizeH
 import org.springframework.security.config.annotation.web.configurers.CorsConfigurer;
 import org.springframework.security.config.annotation.web.configurers.ExceptionHandlingConfigurer;
 import org.springframework.security.config.annotation.web.configurers.FormLoginConfigurer;
-import org.springframework.security.config.annotation.web.configurers.LogoutConfigurer;
 import org.springframework.security.config.annotation.web.configurers.SecurityContextConfigurer;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -32,8 +32,6 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import github.luckygc.am.infrastructure.security.ApiRequestSignatureFilter;
-import github.luckygc.am.infrastructure.security.util.FormLoginAuthenticationFailureHandler;
-import github.luckygc.am.infrastructure.security.util.HttpStatusLogoutSuccessHandler;
 
 @Configuration
 @EnableWebSecurity
@@ -43,8 +41,7 @@ public class SecurityConfig {
     private final ApiRequestSignatureFilter apiRequestSignatureFilter;
     private final OncePerRequestFilter powLoginFilter;
     private final AuthenticationSuccessHandler authenticationSuccessHandler;
-    private final FormLoginAuthenticationFailureHandler authenticationFailureHandler;
-    private final HttpStatusLogoutSuccessHandler logoutSuccessHandler;
+    private final AuthenticationFailureHandler authenticationFailureHandler;
     private final SecurityCorsProperties corsProperties;
     private final SecurityAuthorizationProperties authorizationProperties;
 
@@ -53,8 +50,7 @@ public class SecurityConfig {
             ApiRequestSignatureFilter apiRequestSignatureFilter,
             @Qualifier("powLoginFilter") OncePerRequestFilter powLoginFilter,
             @Qualifier("formLoginAuthenticationSuccessHandler") AuthenticationSuccessHandler authenticationSuccessHandler,
-            FormLoginAuthenticationFailureHandler authenticationFailureHandler,
-            HttpStatusLogoutSuccessHandler logoutSuccessHandler,
+            @Qualifier("formLoginAuthenticationFailureHandler") AuthenticationFailureHandler authenticationFailureHandler,
             SecurityCorsProperties corsProperties,
             SecurityAuthorizationProperties authorizationProperties) {
         this.securityContextRepository = securityContextRepository;
@@ -62,7 +58,6 @@ public class SecurityConfig {
         this.powLoginFilter = powLoginFilter;
         this.authenticationSuccessHandler = authenticationSuccessHandler;
         this.authenticationFailureHandler = authenticationFailureHandler;
-        this.logoutSuccessHandler = logoutSuccessHandler;
         this.corsProperties = corsProperties;
         this.authorizationProperties = authorizationProperties;
     }
@@ -74,9 +69,9 @@ public class SecurityConfig {
                         csrf ->
                                 csrf.spa()
                                         .ignoringRequestMatchers(
-                                                "/api/v1/auth/cap-challenges",
-                                                "/api/v1/auth/cap-tokens",
-                                                "/api/v1/auth/cap-tokens:validate"))
+                                                "/api/v1/cap-challenges",
+                                                "/api/v1/cap-tokens",
+                                                "/api/v1/cap-tokens:validate"))
                 .securityContext(this::configureSecurityContext)
                 .authorizeHttpRequests(this::configureAuthorization)
                 .addFilterBefore(
@@ -84,7 +79,7 @@ public class SecurityConfig {
                 .addFilterBefore(powLoginFilter, UsernamePasswordAuthenticationFilter.class)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .formLogin(this::configureFormLogin)
-                .logout(this::configureLogout)
+                .logout(AbstractHttpConfigurer::disable)
                 .exceptionHandling(this::configureExceptionHandling)
                 .build();
     }
@@ -105,13 +100,13 @@ public class SecurityConfig {
                 .permitAll()
                 .requestMatchers("/", "/index.html", "/favicon.svg", "/assets/**")
                 .permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/v1/auth:login")
+                .requestMatchers(HttpMethod.POST, "/api/v1/login-sessions")
                 .permitAll()
                 .requestMatchers(
                         HttpMethod.POST,
-                        "/api/v1/auth/cap-challenges",
-                        "/api/v1/auth/cap-tokens",
-                        "/api/v1/auth/cap-tokens:validate")
+                        "/api/v1/cap-challenges",
+                        "/api/v1/cap-tokens",
+                        "/api/v1/cap-tokens:validate")
                 .permitAll()
                 .requestMatchers("/actuator/**")
                 .hasRole(authorizationProperties.getActuatorRoleName())
@@ -122,15 +117,11 @@ public class SecurityConfig {
     private void configureFormLogin(FormLoginConfigurer<HttpSecurity> formLogin) {
         formLogin
                 .loginPage("/login")
-                .loginProcessingUrl("/api/v1/auth:login")
+                .loginProcessingUrl("/api/v1/login-sessions")
                 .securityContextRepository(securityContextRepository)
                 .successHandler(authenticationSuccessHandler)
                 .failureHandler(authenticationFailureHandler)
                 .permitAll();
-    }
-
-    private void configureLogout(LogoutConfigurer<HttpSecurity> logout) {
-        logout.logoutUrl("/api/v1/auth:logout").logoutSuccessHandler(logoutSuccessHandler);
     }
 
     private void configureExceptionHandling(

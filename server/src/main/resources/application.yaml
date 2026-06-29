@@ -71,6 +71,8 @@ spring:
             org.quartz.scheduler.instanceName: archiveManagementScheduler
             # Quartz 实例 ID，AUTO 由 Quartz 自动生成。
             org.quartz.scheduler.instanceId: AUTO
+            # PostgreSQL BYTEA Quartz 表需要使用 PostgreSQL delegate。
+            org.quartz.jobStore.driverDelegateClass: org.quartz.impl.jdbcjobstore.PostgreSQLDelegate
             # Quartz 工作线程数量。
             org.quartz.threadPool.threadCount: 16
             # Quartz 工作线程优先级。
@@ -187,7 +189,7 @@ archive:
     flyway:
         # 启动迁移前是否先执行 Flyway clean。仅允许本地重建或演示环境临时开启。
         clean-before-migrate: false
-    auth:
+    authentication:
         bootstrap-admin:
             # 是否在启动时初始化管理员账号；仅在本地初始化或部署初始化时显式开启。
             enabled: false

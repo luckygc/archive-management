@@ -23,6 +23,7 @@ import github.luckygc.am.module.archive.item.ArchiveItemRoutingService.ArchiveIt
 import github.luckygc.am.module.archive.item.ArchiveItemRoutingService.ArchiveItemRelationRequest;
 import github.luckygc.am.module.archive.item.ArchiveItemRoutingService.ArchiveItemRequest;
 import github.luckygc.am.module.archive.item.ArchiveItemRoutingService.ArchiveItemUpdateRequest;
+import github.luckygc.am.module.archive.item.ArchiveItemRoutingService.ArchiveRelatedFilterCategoryDto;
 import github.luckygc.am.module.archive.item.ArchiveItemRoutingService.DeleteItemRequest;
 import github.luckygc.am.module.archive.item.ArchiveItemRoutingService.LockItemRequest;
 import github.luckygc.am.module.archive.metadata.ArchiveLayoutSurface;
@@ -59,6 +60,12 @@ public class ArchiveItemController {
     public ArchiveItemListDto searchDeletedItems(
             @RequestBody ArchiveItemQueryRequest request, Authentication authentication) {
         return archiveItemRoutingService.searchDeletedItems(request, currentUserId(authentication));
+    }
+
+    @GetMapping("/api/v1/archive-categories/{id}/related-filter-categories")
+    public CollectionResponse<ArchiveRelatedFilterCategoryDto> listRelatedFilterCategories(
+            @PathVariable Long id) {
+        return CollectionResponse.of(archiveItemRoutingService.listRelatedFilterCategories(id));
     }
 
     @PostMapping("/api/v1/archive-items")

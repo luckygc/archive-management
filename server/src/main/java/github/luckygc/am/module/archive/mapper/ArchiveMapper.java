@@ -31,6 +31,8 @@ public interface ArchiveMapper {
 
     List<Map<String, Object>> listItemOverview();
 
+    List<Map<String, Object>> listRelatedFilterCategories(@Param("categoryId") Long categoryId);
+
     List<Map<String, Object>> listDynamicItems(
             @Param("tableName") String tableName,
             @Param("selectColumns") String selectColumns,
@@ -38,6 +40,7 @@ public interface ArchiveMapper {
             @Param("deleted") boolean deleted,
             @Param("fondsCode") String fondsCode,
             @Param("conditions") List<ArchiveSqlCondition> conditions,
+            @Param("relatedGroups") List<ArchiveSqlRelatedGroup> relatedGroups,
             @Param("fullTextKeyword") String fullTextKeyword,
             @Param("userId") Long userId,
             @Param("requireAuthenticatedUser") boolean requireAuthenticatedUser,
@@ -194,17 +197,9 @@ public interface ArchiveMapper {
     List<Map<String, Object>> listItemRelations(@Param("sourceItemId") Long sourceItemId);
 
     Long insertItemRelation(
-            @Param("sourceItemId") Long sourceItemId,
-            @Param("targetItemId") Long targetItemId,
-            @Param("relationType") String relationType,
-            @Param("remark") String remark,
-            @Param("sortOrder") int sortOrder,
-            @Param("userId") Long userId);
+            @Param("sourceItemId") Long sourceItemId, @Param("targetItemId") Long targetItemId);
 
-    int deleteItemRelation(
-            @Param("id") Long id,
-            @Param("sourceItemId") Long sourceItemId,
-            @Param("userId") Long userId);
+    int deleteItemRelation(@Param("id") Long id, @Param("sourceItemId") Long sourceItemId);
 
     List<Map<String, Object>> listItemLineTables(@Param("categoryId") Long categoryId);
 

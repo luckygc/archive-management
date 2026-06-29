@@ -2,10 +2,12 @@ import {
     ApartmentOutlined,
     AppstoreOutlined,
     DatabaseOutlined,
+    FileSearchOutlined,
     FolderOpenOutlined,
     HomeOutlined,
     ImportOutlined,
     LockOutlined,
+    MonitorOutlined,
     SettingOutlined,
     UserOutlined,
 } from "@ant-design/icons";
@@ -15,10 +17,13 @@ import { createHashRouter } from "react-router";
 import { AppShell } from "@/layout/AppShell";
 import { ArchiveCategoriesPage } from "@/pages/archive-categories/ArchiveCategoriesPage";
 import { ArchiveFondsPage } from "@/pages/archive-fonds/ArchiveFondsPage";
+import { ArchiveItemManagementPage } from "@/pages/archive-items/ArchiveItemManagementPage";
 import { ArchiveLibraryPage } from "@/pages/archive-library/ArchiveLibraryPage";
+import { AuthenticationEventsPage } from "@/pages/authentication-events/AuthenticationEventsPage";
 import { DashboardPage } from "@/pages/dashboard/DashboardPage";
 import { IntakePage } from "@/pages/intake/IntakePage";
 import { LoginPage } from "@/pages/login/LoginPage";
+import { LoginSessionsPage } from "@/pages/login-sessions/LoginSessionsPage";
 import { PlaceholderPage } from "@/pages/placeholder/PlaceholderPage";
 import { AuthGate } from "@/shared/auth/AuthGate";
 
@@ -61,7 +66,17 @@ export function createAppRouter() {
                             path: "archive/library",
                             element: <ArchiveLibraryPage />,
                             handle: {
-                                title: "档案库",
+                                title: "档案搜索",
+                                icon: <FileSearchOutlined />,
+                                isMenu: true,
+                                keepAlive: true,
+                            } satisfies AppRouteHandle,
+                        },
+                        {
+                            path: "archive/items",
+                            element: <ArchiveItemManagementPage />,
+                            handle: {
+                                title: "档案管理",
                                 icon: <FolderOpenOutlined />,
                                 isMenu: true,
                                 keepAlive: true,
@@ -122,6 +137,26 @@ export function createAppRouter() {
                                 title: "存储配置",
                                 icon: <DatabaseOutlined />,
                                 isMenu: true,
+                            } satisfies AppRouteHandle,
+                        },
+                        {
+                            path: "system/login-sessions",
+                            element: <LoginSessionsPage />,
+                            handle: {
+                                title: "登录会话",
+                                icon: <MonitorOutlined />,
+                                isMenu: true,
+                                keepAlive: true,
+                            } satisfies AppRouteHandle,
+                        },
+                        {
+                            path: "system/authentication-events",
+                            element: <AuthenticationEventsPage />,
+                            handle: {
+                                title: "认证审计",
+                                icon: <LockOutlined />,
+                                isMenu: true,
+                                keepAlive: true,
                             } satisfies AppRouteHandle,
                         },
                         {

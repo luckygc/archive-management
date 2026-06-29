@@ -12,6 +12,16 @@ export type ArchivePhysicalStatus =
     | "TRANSFERRING"
     | "IN_STORAGE"
     | "BORROWED";
+export type ArchiveItemQueryOperator =
+    | "EQ"
+    | "CONTAINS"
+    | "STARTS_WITH"
+    | "GTE"
+    | "LTE"
+    | "BETWEEN"
+    | "IS_EMPTY"
+    | "IS_NOT_EMPTY";
+export type ArchiveItemRelationDirection = "OUTGOING" | "INCOMING" | "BOTH";
 
 export interface CollectionResponse<T> {
     items: T[];
@@ -174,11 +184,10 @@ export interface ArchiveUniqueConstraintCommand {
 
 export interface ArchiveRecordQuery {
     categoryId?: number;
-    archiveLevel?: ArchiveLevel;
     fondsCode?: string;
     keyword?: string;
-    exactFilters?: Record<string, unknown>;
-    filters?: ArchiveRecordFieldFilter[];
+    where?: ArchiveItemWhere;
+    relatedGroups?: ArchiveItemRelatedGroup[];
     limit?: number;
     cursor?: string;
     orderBy?: ArchiveRecordOrderBy[];
@@ -196,19 +205,38 @@ export type ArchiveRecordSortField =
     | "fondsCode"
     | "categoryCode"
     | "electronicStatus"
-    | "id";
+    | "id"
+    | (string & {});
 
-export interface ArchiveRecordFieldFilter {
+export interface ArchiveItemWhere {
+    logic?: "AND";
+    conditions?: ArchiveItemQueryCondition[];
+}
+
+export interface ArchiveItemQueryCondition {
     fieldCode: string;
+    op?: ArchiveItemQueryOperator;
     value?: unknown;
     startValue?: unknown;
     endValue?: unknown;
 }
 
+export interface ArchiveItemRelatedGroup {
+    categoryId: number;
+    direction?: ArchiveItemRelationDirection;
+    where?: ArchiveItemWhere;
+}
+
+export interface ArchiveRelatedFilterCategoryDto {
+    categoryId: number;
+    categoryCode: string;
+    categoryName: string;
+    direction: ArchiveItemRelationDirection;
+}
+
 export interface ArchiveRecordCommand {
     categoryId: number;
-    archiveLevel?: ArchiveLevel;
-    parentId?: number;
+    volumeId?: number;
     fondsCode: string;
     archiveNo?: string;
     archiveYear?: number;
@@ -218,7 +246,7 @@ export interface ArchiveRecordCommand {
 }
 
 export interface ArchiveRecordUpdateCommand {
-    parentId?: number;
+    volumeId?: number;
     fondsCode: string;
     archiveNo?: string;
     archiveYear?: number;
@@ -237,8 +265,7 @@ export interface ArchivePhysicalObjectCommand {
 
 export interface ArchiveRecordDto {
     id: number;
-    archiveLevel: ArchiveLevel;
-    parentId?: number;
+    volumeId?: number;
     fondsCode: string;
     fondsName: string;
     categoryCode: string;

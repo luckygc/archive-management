@@ -4,12 +4,12 @@ import type { CapErrorEvent, CapSolveEvent, CapWidget } from "cap-widget";
 
 const CSRF_COOKIE_NAME = "XSRF-TOKEN";
 const CSRF_HEADER_NAME = "X-XSRF-TOKEN";
-const CAP_WIDGET_API_ENDPOINT = "/api/v1/auth/cap-challenges/";
-const CAP_WIDGET_ENDPOINT_PREFIX = "/api/v1/auth/cap-challenges/";
+const CAP_WIDGET_API_ENDPOINT = "/api/v1/cap-challenges/";
+const CAP_WIDGET_ENDPOINT_PREFIX = "/api/v1/cap-challenges/";
 const CAP_WIDGET_ACTION_PATHS: Record<string, string> = {
-    challenge: "/api/v1/auth/cap-challenges",
-    redeem: "/api/v1/auth/cap-tokens",
-    validateToken: "/api/v1/auth/cap-tokens:validate",
+    challenge: "/api/v1/cap-challenges",
+    redeem: "/api/v1/cap-tokens",
+    validateToken: "/api/v1/cap-tokens:validate",
 };
 
 interface ProblemDetailBody {

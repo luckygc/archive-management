@@ -33,8 +33,8 @@ import github.luckygc.am.app.ArchiveManagementApplication;
 import github.luckygc.am.infrastructure.hibernate.SecurityAuditingInterceptor;
 import github.luckygc.am.module.archive.metadata.ArchiveFonds;
 import github.luckygc.am.module.archive.metadata.ArchiveFondsDataRepository;
-import github.luckygc.am.module.auth.ArchiveUserDetails;
-import github.luckygc.am.module.auth.PowChallengeService;
+import github.luckygc.am.module.authentication.ArchiveUserDetails;
+import github.luckygc.am.module.authentication.PowChallengeService;
 import github.luckygc.am.test.PostgreSqlContainerTest;
 
 import tools.jackson.databind.JsonNode;
@@ -205,7 +205,7 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
 
         Assertions.assertNotNull(
                 jdbcTemplate.queryForObject(
-                        "select created_at from am_auth_cap_challenge where token = ?",
+                        "select created_at from am_authentication_cap_challenge where token = ?",
                         java.time.LocalDateTime.class,
                         response.token()));
     }

@@ -43,12 +43,21 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         }
     },
     loginWithPassword: async (command) => {
-        const currentUser = await login(command);
+        const loginSession = await login(command);
+        const currentUser = {
+            sessionId: loginSession.sessionId,
+            username: loginSession.username,
+            displayName: loginSession.displayName,
+            roles: loginSession.roles,
+        };
         set({ currentUser, initialized: true });
         return currentUser;
     },
     logoutCurrentUser: async () => {
-        await logout();
+        const sessionId = get().currentUser?.sessionId;
+        if (sessionId) {
+            await logout(sessionId);
+        }
         get().clearSession();
     },
     clearSession: () => {

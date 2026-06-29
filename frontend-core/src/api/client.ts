@@ -89,7 +89,7 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
 }
 
 function shouldNotifyUnauthenticated(path: string, error: HttpClientError) {
-    return error.status === 401 && path !== "/api/v1/auth/session" && path !== "/api/v1/auth:login";
+    return error.status === 401 && path !== "/api/v1/me" && path !== "/api/v1/login-sessions";
 }
 
 async function toHttpClientError(response: Response) {

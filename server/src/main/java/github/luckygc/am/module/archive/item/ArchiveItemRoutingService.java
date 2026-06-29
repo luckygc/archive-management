@@ -16,7 +16,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.TreeMap;
 
 import org.apache.commons.codec.digest.HmacAlgorithms;
 import org.apache.commons.codec.digest.HmacUtils;
@@ -37,6 +36,7 @@ import github.luckygc.am.module.archive.mapper.ArchiveSqlAssignment;
 import github.luckygc.am.module.archive.mapper.ArchiveSqlCondition;
 import github.luckygc.am.module.archive.mapper.ArchiveSqlOrder;
 import github.luckygc.am.module.archive.mapper.ArchiveSqlOrder.Direction;
+import github.luckygc.am.module.archive.mapper.ArchiveSqlRelatedGroup;
 import github.luckygc.am.module.archive.metadata.ArchiveDynamicTableNames;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldScope;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldType;
@@ -107,6 +107,20 @@ public class ArchiveItemRoutingService {
         return queryItems(request, userId, false, false, true);
     }
 
+    public List<ArchiveRelatedFilterCategoryDto> listRelatedFilterCategories(Long categoryId) {
+        archiveMetadataService.getCategory(categoryId);
+        return archiveMapper.listRelatedFilterCategories(categoryId).stream()
+                .map(
+                        row ->
+                                new ArchiveRelatedFilterCategoryDto(
+                                        number(row, "relatedCategoryId").longValue(),
+                                        string(row, "relatedCategoryCode"),
+                                        string(row, "relatedCategoryName"),
+                                        ArchiveItemRelationDirection.fromValue(
+                                                string(row, "direction"))))
+                .toList();
+    }
+
     private ArchiveItemListDto queryItems(
             @Nullable ArchiveItemQueryRequest request,
             @Nullable Long userId,
@@ -147,15 +161,14 @@ public class ArchiveItemRoutingService {
                     category, fields, false, null, null, null, null, List.of());
         }
         int limit = pageLimit(request.limit());
-        List<ArchiveSqlOrder> orderBy = deleted ? deletedOrderBy() : orderBy(request.orderBy());
+        List<String> indexedFieldCodes = indexedFieldCodes(request.categoryId(), archiveLevel);
+        List<ArchiveSqlOrder> orderBy =
+                deleted ? deletedOrderBy() : orderBy(request.orderBy(), fields, indexedFieldCodes);
         Cursor cursor = decodeCursor(request.cursor(), queryFingerprint(request, orderBy));
         List<ArchiveSqlCondition> conditions =
-                buildSearchConditions(
-                        request.categoryId(),
-                        archiveLevel,
-                        fields,
-                        request.exactFilters(),
-                        request.filters());
+                buildSearchConditions(request.categoryId(), archiveLevel, fields, request.where());
+        List<ArchiveSqlRelatedGroup> relatedGroups =
+                buildRelatedGroups(request.relatedGroups(), userId);
         List<ArchiveSqlOrder> queryOrderBy =
                 cursor != null && "prev".equals(cursor.direction()) ? invert(orderBy) : orderBy;
         List<Map<String, @Nullable Object>> rows =
@@ -166,6 +179,7 @@ public class ArchiveItemRoutingService {
                         deleted,
                         StringUtils.trimToNull(request.fondsCode()),
                         conditions,
+                        relatedGroups,
                         keyword,
                         userId,
                         requireAuthenticatedUser,
@@ -173,24 +187,23 @@ public class ArchiveItemRoutingService {
                         cursorPredicateSql(queryOrderBy, cursor),
                         cursorValues(cursor),
                         limit + 1);
-        List<Map<String, @Nullable Object>> normalizedRows =
-                normalizeDynamicFieldValues(rows, visibleFields);
-        boolean hasMore = normalizedRows.size() > limit;
-        List<Map<String, @Nullable Object>> pageItems =
-                hasMore ? normalizedRows.subList(0, limit) : normalizedRows;
+        boolean hasMore = rows.size() > limit;
+        List<Map<String, @Nullable Object>> rawPageItems = hasMore ? rows.subList(0, limit) : rows;
         if (cursor != null && "prev".equals(cursor.direction())) {
-            pageItems = pageItems.reversed();
+            rawPageItems = rawPageItems.reversed();
         }
+        List<Map<String, @Nullable Object>> pageItems =
+                normalizeDynamicFieldValues(rawPageItems, visibleFields);
         String fingerprint = queryFingerprint(request, orderBy);
         String prev =
-                cursor == null || pageItems.isEmpty()
+                cursor == null || rawPageItems.isEmpty()
                         ? null
-                        : encodeCursor("prev", fingerprint, orderBy, pageItems.getFirst());
+                        : encodeCursor("prev", fingerprint, orderBy, rawPageItems.getFirst());
         String next =
-                pageItems.isEmpty()
+                rawPageItems.isEmpty()
                                 || (cursor != null && "prev".equals(cursor.direction()) && !hasMore)
                         ? null
-                        : encodeCursor("next", fingerprint, orderBy, pageItems.getLast());
+                        : encodeCursor("next", fingerprint, orderBy, rawPageItems.getLast());
         if ((cursor == null || "next".equals(cursor.direction())) && !hasMore) {
             next = null;
         }
@@ -202,7 +215,7 @@ public class ArchiveItemRoutingService {
                         "self",
                         fingerprint,
                         orderBy,
-                        pageItems.isEmpty() ? null : pageItems.getFirst()),
+                        rawPageItems.isEmpty() ? null : rawPageItems.getFirst()),
                 prev,
                 next,
                 null,
@@ -220,22 +233,29 @@ public class ArchiveItemRoutingService {
     }
 
     private List<ArchiveSqlOrder> orderBy(
-            @Nullable List<@Nullable ArchiveItemOrderBy> requestOrderBy) {
+            @Nullable List<@Nullable ArchiveItemOrderBy> requestOrderBy,
+            List<ArchiveFieldDto> fields,
+            List<String> indexedFieldCodes) {
         List<ArchiveSqlOrder> orders = new ArrayList<>();
         if (requestOrderBy != null) {
+            Map<String, ArchiveFieldDto> fieldsByCode =
+                    fields.stream()
+                            .collect(
+                                    java.util.stream.Collectors.toMap(
+                                            ArchiveFieldDto::fieldCode, field -> field));
             for (ArchiveItemOrderBy order : requestOrderBy) {
-                orders.add(toSqlOrder(order));
+                orders.add(toSqlOrder(order, fieldsByCode, indexedFieldCodes));
             }
         }
-        appendFallbackOrder(orders, new ArchiveSqlOrder("r.created_at", Direction.DESC));
-        appendFallbackOrder(orders, new ArchiveSqlOrder("r.id", Direction.DESC));
+        appendFallbackOrder(orders, new ArchiveSqlOrder("i.created_at", Direction.DESC));
+        appendFallbackOrder(orders, new ArchiveSqlOrder("i.id", Direction.DESC));
         return orders;
     }
 
     private List<ArchiveSqlOrder> deletedOrderBy() {
         return List.of(
-                new ArchiveSqlOrder("r.deleted_at", Direction.DESC),
-                new ArchiveSqlOrder("r.id", Direction.DESC));
+                new ArchiveSqlOrder("i.deleted_at", Direction.DESC),
+                new ArchiveSqlOrder("i.id", Direction.DESC));
     }
 
     private void appendFallbackOrder(List<ArchiveSqlOrder> orders, ArchiveSqlOrder fallback) {
@@ -248,33 +268,62 @@ public class ArchiveItemRoutingService {
         }
     }
 
-    private ArchiveSqlOrder toSqlOrder(@Nullable ArchiveItemOrderBy order) {
-        if (order == null || StringUtils.isBlank(order.field())) {
+    private ArchiveSqlOrder toSqlOrder(
+            @Nullable ArchiveItemOrderBy order,
+            Map<String, ArchiveFieldDto> fieldsByCode,
+            List<String> indexedFieldCodes) {
+        String field = order == null ? null : StringUtils.trimToNull(order.field());
+        if (field == null) {
             throw badRequest("排序字段不能为空", "orderBy.field", "排序字段不能为空");
         }
         Direction direction =
                 "ASC".equalsIgnoreCase(order.direction()) ? Direction.ASC : Direction.DESC;
-        return new ArchiveSqlOrder(sortExpression(order.field()), direction);
+        return new ArchiveSqlOrder(
+                sortExpression(field, fieldsByCode, indexedFieldCodes), direction);
     }
 
-    private String sortExpression(String field) {
-        return switch (field) {
-            case "createdAt" -> "r.created_at";
-            case "archiveNo" -> "r.archive_no";
-            case "archiveYear" -> "r.archive_year";
-            case "fondsCode" -> "r.fonds_code";
-            case "categoryCode" -> "r.category_code";
-            case "electronicStatus" -> "r.electronic_status";
-            case "id" -> "r.id";
-            default -> throw badRequest("不支持的排序字段", "orderBy.field", "不支持的排序字段：" + field);
-        };
+    private String sortExpression(
+            String field,
+            Map<String, ArchiveFieldDto> fieldsByCode,
+            List<String> indexedFieldCodes) {
+        String fixedExpression =
+                switch (field) {
+                    case "createdAt" -> "i.created_at";
+                    case "archiveNo" -> "i.archive_no";
+                    case "archiveYear" -> "i.archive_year";
+                    case "fondsCode" -> "i.fonds_code";
+                    case "categoryCode" -> "i.category_code";
+                    case "electronicStatus" -> "i.electronic_status";
+                    case "id" -> "i.id";
+                    default -> null;
+                };
+        if (fixedExpression != null) {
+            return fixedExpression;
+        }
+        ArchiveFieldDto dynamicField = fieldsByCode.get(field);
+        if (dynamicField != null
+                && (dynamicField.exactSearchable()
+                        || indexedFieldCodes.contains(dynamicField.fieldCode()))) {
+            return "d." + dynamicField.columnName();
+        }
+        throw badRequest("不支持的排序字段", "orderBy.field", "不支持的排序字段：" + field);
+    }
+
+    private List<String> indexedFieldCodes(Long categoryId, ArchiveLevel archiveLevel) {
+        return archiveMetadataService.listUniqueConstraints(categoryId).stream()
+                .filter(ArchiveUniqueConstraintDto::enabled)
+                .filter(constraint -> constraint.archiveLevel() == archiveLevel)
+                .flatMap(constraint -> constraint.fields().stream())
+                .map(ArchiveUniqueConstraintFieldDto::fieldCode)
+                .distinct()
+                .toList();
     }
 
     private String orderBySql(List<ArchiveSqlOrder> orders) {
         return orders.stream()
                 .map(ArchiveSqlOrder::sql)
                 .reduce((left, right) -> left + ", " + right)
-                .orElse("r.created_at desc, r.id desc");
+                .orElse("i.created_at desc, i.id desc");
     }
 
     private List<ArchiveSqlOrder> invert(List<ArchiveSqlOrder> orders) {
@@ -347,6 +396,9 @@ public class ArchiveItemRoutingService {
         if (value.startsWith("U:")) {
             return CURSOR_TIME_EPOCH.plus(Long.parseLong(value.substring(2)), ChronoUnit.MICROS);
         }
+        if (value.startsWith("D:")) {
+            return Date.valueOf(value.substring(2));
+        }
         return value.substring(2);
     }
 
@@ -376,16 +428,24 @@ public class ArchiveItemRoutingService {
 
     private @Nullable Object cursorRowValue(Map<String, @Nullable Object> row, String expression) {
         return switch (expression) {
-            case "r.created_at" -> value(row, "createdAt");
-            case "r.deleted_at" -> value(row, "deletedAt");
-            case "r.id" -> longCursorValue(row, "id");
-            case "r.archive_no" -> value(row, "archiveNo");
-            case "r.archive_year" -> integerCursorValue(row, "archiveYear");
-            case "r.fonds_code" -> value(row, "fondsCode");
-            case "r.category_code" -> value(row, "categoryCode");
-            case "r.electronic_status" -> value(row, "electronicStatus");
-            default -> throw new IllegalStateException("不支持的 cursor 排序字段：" + expression);
+            case "i.created_at" -> value(row, "createdAt");
+            case "i.deleted_at" -> value(row, "deletedAt");
+            case "i.id" -> longCursorValue(row, "id");
+            case "i.archive_no" -> value(row, "archiveNo");
+            case "i.archive_year" -> integerCursorValue(row, "archiveYear");
+            case "i.fonds_code" -> value(row, "fondsCode");
+            case "i.category_code" -> value(row, "categoryCode");
+            case "i.electronic_status" -> value(row, "electronicStatus");
+            default -> dynamicCursorRowValue(row, expression);
         };
+    }
+
+    private @Nullable Object dynamicCursorRowValue(
+            Map<String, @Nullable Object> row, String expression) {
+        if (!expression.startsWith("d.")) {
+            throw new IllegalStateException("不支持的 cursor 排序字段：" + expression);
+        }
+        return value(row, expression.substring(2));
     }
 
     private Long longCursorValue(Map<String, @Nullable Object> row, String key) {
@@ -411,6 +471,8 @@ public class ArchiveItemRoutingService {
             case Number number -> "L:" + number.longValue();
             case LocalDateTime dateTime -> "U:" + cursorTimeMicros(dateTime);
             case Timestamp timestamp -> "U:" + cursorTimeMicros(timestamp.toLocalDateTime());
+            case LocalDate date -> "D:" + date;
+            case Date date -> "D:" + date.toLocalDate();
             default -> "S:" + value;
         };
     }
@@ -422,16 +484,14 @@ public class ArchiveItemRoutingService {
 
     private String queryFingerprint(
             ArchiveItemQueryRequest request, List<ArchiveSqlOrder> orderBy) {
-        Map<String, @Nullable Object> exactFilters =
-                request.exactFilters() == null ? Map.of() : new TreeMap<>(request.exactFilters());
         return Integer.toHexString(
                 Objects.hash(
                         request.categoryId(),
                         ArchiveLevel.ITEM,
                         StringUtils.trimToNull(request.fondsCode()),
                         StringUtils.trimToNull(request.keyword()),
-                        exactFilters,
-                        request.filters(),
+                        request.where(),
+                        request.relatedGroups(),
                         request.limit(),
                         orderBy.stream().map(ArchiveSqlOrder::sql).toList()));
     }
@@ -714,9 +774,7 @@ public class ArchiveItemRoutingService {
                                         number(row, "id").longValue(),
                                         number(row, "sourceItemId").longValue(),
                                         number(row, "targetItemId").longValue(),
-                                        string(row, "relationType"),
-                                        string(row, "remark"),
-                                        number(row, "sortOrder").intValue(),
+                                        dateTime(row, "createdAt"),
                                         new ArchiveItemRelationTargetDto(
                                                 number(row, "targetItemId").longValue(),
                                                 string(row, "targetFondsCode"),
@@ -741,23 +799,13 @@ public class ArchiveItemRoutingService {
         }
         getItem(itemId);
         getItem(request.targetItemId());
-        String relationType = StringUtils.defaultIfBlank(request.relationType(), "related");
         try {
-            archiveMapper.insertItemRelation(
-                    itemId,
-                    request.targetItemId(),
-                    relationType,
-                    StringUtils.trimToNull(request.remark()),
-                    request.sortOrder() == null ? 0 : request.sortOrder(),
-                    userId);
+            archiveMapper.insertItemRelation(itemId, request.targetItemId());
         } catch (DuplicateKeyException exception) {
             throw badRequest("关联档案已存在", "targetItemId", "关联档案已存在");
         }
         return listRelations(itemId).stream()
-                .filter(
-                        relation ->
-                                relation.targetItemId().equals(request.targetItemId())
-                                        && relation.relationType().equals(relationType))
+                .filter(relation -> relation.targetItemId().equals(request.targetItemId()))
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("关联档案创建后不可见"));
     }
@@ -768,7 +816,7 @@ public class ArchiveItemRoutingService {
             throw badRequest("关联 ID 不合法");
         }
         getItem(itemId);
-        int updated = archiveMapper.deleteItemRelation(relationId, itemId, userId);
+        int updated = archiveMapper.deleteItemRelation(relationId, itemId);
         if (updated == 0) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "关联档案不存在");
         }
@@ -921,8 +969,7 @@ public class ArchiveItemRoutingService {
             Long categoryId,
             ArchiveLevel archiveLevel,
             List<ArchiveFieldDto> fields,
-            @Nullable Map<String, @Nullable Object> exactFilters,
-            @Nullable List<@Nullable ArchiveItemFieldFilter> filters) {
+            @Nullable ArchiveItemWhere where) {
         Map<String, ArchiveFieldDto> fieldsByCode =
                 fields.stream()
                         .collect(
@@ -937,24 +984,38 @@ public class ArchiveItemRoutingService {
                         .distinct()
                         .toList();
         List<ArchiveSqlCondition> conditions = new ArrayList<>();
-        if (exactFilters != null) {
-            for (Map.Entry<String, Object> entry : exactFilters.entrySet()) {
-                ArchiveFieldDto field = fieldsByCode.get(entry.getKey());
-                validateSearchableField(field, entry.getKey(), uniqueFieldCodes);
-                Object value = convertValue(field, entry.getValue());
-                if (value != null) {
-                    conditions.add(new ArchiveSqlCondition(field.columnName(), "EQ", value));
-                }
-            }
+        conditions.addAll(
+                buildWhereConditions(fieldsByCode, uniqueFieldCodes, where, "where.conditions"));
+        return conditions;
+    }
+
+    private List<ArchiveSqlCondition> buildWhereConditions(
+            Map<String, ArchiveFieldDto> fieldsByCode,
+            List<String> uniqueFieldCodes,
+            @Nullable ArchiveItemWhere where,
+            String fieldPath) {
+        if (where == null || where.conditions() == null || where.conditions().isEmpty()) {
+            return List.of();
         }
-        if (filters != null) {
-            for (ArchiveItemFieldFilter filter : filters) {
-                if (filter == null || StringUtils.isBlank(filter.fieldCode())) {
-                    continue;
-                }
-                ArchiveFieldDto field = fieldsByCode.get(filter.fieldCode());
-                validateSearchableField(field, filter.fieldCode(), uniqueFieldCodes);
-                conditions.addAll(toSearchConditions(field, filter));
+        String logic = StringUtils.defaultIfBlank(where.logic(), "and");
+        if (!"and".equalsIgnoreCase(logic)) {
+            throw badRequest("暂不支持 OR 查询条件", fieldPath + ".logic", "当前只支持 AND 条件组合");
+        }
+        List<ArchiveSqlCondition> conditions = new ArrayList<>();
+        for (ArchiveItemQueryCondition condition : where.conditions()) {
+            String fieldCode =
+                    condition == null ? null : StringUtils.trimToNull(condition.fieldCode());
+            if (fieldCode == null) {
+                continue;
+            }
+            ArchiveFieldDto field = fieldsByCode.get(fieldCode);
+            validateSearchableField(field, fieldCode, uniqueFieldCodes);
+            ArchiveSqlCondition sqlCondition = toSqlCondition(field, condition, fieldPath);
+            if (sqlCondition.value() != null
+                    || sqlCondition.endValue() != null
+                    || sqlCondition.operator() == ArchiveItemQueryOperator.IS_EMPTY
+                    || sqlCondition.operator() == ArchiveItemQueryOperator.IS_NOT_EMPTY) {
+                conditions.add(sqlCondition);
             }
         }
         return conditions;
@@ -968,32 +1029,139 @@ public class ArchiveItemRoutingService {
         }
     }
 
-    private List<ArchiveSqlCondition> toSearchConditions(
-            ArchiveFieldDto field, ArchiveItemFieldFilter filter) {
-        List<ArchiveSqlCondition> conditions = new ArrayList<>();
-        if (field.fieldType() == ArchiveFieldType.TEXT) {
-            Object value = convertValue(field, filter.value());
-            if (value != null) {
-                conditions.add(new ArchiveSqlCondition(field.columnName(), "EQ", value));
+    private ArchiveSqlCondition toSqlCondition(
+            ArchiveFieldDto field, ArchiveItemQueryCondition condition, String fieldPath) {
+        ArchiveItemQueryOperator operator =
+                condition.op() == null ? ArchiveItemQueryOperator.EQ : condition.op();
+        return switch (operator) {
+            case EQ ->
+                    new ArchiveSqlCondition(
+                            field.columnName(),
+                            ArchiveItemQueryOperator.EQ,
+                            convertValue(field, condition.value()));
+            case CONTAINS -> {
+                ensureTextOperator(field, operator, fieldPath);
+                String value = convertSearchTextValue(field, condition.value());
+                yield new ArchiveSqlCondition(
+                        field.columnName(),
+                        ArchiveItemQueryOperator.CONTAINS,
+                        value == null ? null : "%" + escapeLike(value) + "%");
             }
-            return conditions;
-        }
+            case STARTS_WITH -> {
+                ensureTextOperator(field, operator, fieldPath);
+                String value = convertSearchTextValue(field, condition.value());
+                yield new ArchiveSqlCondition(
+                        field.columnName(),
+                        ArchiveItemQueryOperator.STARTS_WITH,
+                        value == null ? null : escapeLike(value) + "%");
+            }
+            case GTE ->
+                    new ArchiveSqlCondition(
+                            field.columnName(),
+                            ArchiveItemQueryOperator.GTE,
+                            convertValue(field, condition.value()));
+            case LTE ->
+                    new ArchiveSqlCondition(
+                            field.columnName(),
+                            ArchiveItemQueryOperator.LTE,
+                            convertValue(field, condition.value()));
+            case BETWEEN ->
+                    new ArchiveSqlCondition(
+                            field.columnName(),
+                            ArchiveItemQueryOperator.BETWEEN,
+                            convertValue(field, condition.startValue()),
+                            convertValue(field, condition.endValue()));
+            case IS_EMPTY -> {
+                ensureTextOperator(field, operator, fieldPath);
+                yield new ArchiveSqlCondition(
+                        field.columnName(), ArchiveItemQueryOperator.IS_EMPTY, null);
+            }
+            case IS_NOT_EMPTY -> {
+                ensureTextOperator(field, operator, fieldPath);
+                yield new ArchiveSqlCondition(
+                        field.columnName(), ArchiveItemQueryOperator.IS_NOT_EMPTY, null);
+            }
+        };
+    }
 
-        Object exactValue = convertValue(field, filter.value());
-        if (exactValue != null) {
-            conditions.add(new ArchiveSqlCondition(field.columnName(), "EQ", exactValue));
-            return conditions;
+    private List<ArchiveSqlRelatedGroup> buildRelatedGroups(
+            @Nullable List<@Nullable ArchiveItemRelatedGroup> relatedGroups,
+            @Nullable Long userId) {
+        if (relatedGroups == null || relatedGroups.isEmpty()) {
+            return List.of();
         }
+        List<ArchiveSqlRelatedGroup> compiled = new ArrayList<>();
+        for (ArchiveItemRelatedGroup group : relatedGroups) {
+            if (group == null) {
+                continue;
+            }
+            if (group.categoryId() == null) {
+                throw badRequest("关联分类不能为空", "relatedGroups.categoryId", "关联分类不能为空");
+            }
+            ArchiveCategoryDto category = archiveMetadataService.getCategory(group.categoryId());
+            ArchiveLevel archiveLevel = ArchiveLevel.ITEM;
+            ensureArchiveLevelAllowed(category, archiveLevel);
+            if (!isDynamicTableBuilt(category, archiveLevel)) {
+                throw badRequest("关联分类尚未建表", "relatedGroups.categoryId", "关联分类尚未建表");
+            }
+            List<ArchiveFieldDto> fields =
+                    archiveMetadataService.listEffectiveFields(
+                            group.categoryId(), archiveLevel, ArchiveLayoutSurface.TABLE, userId);
+            Map<String, ArchiveFieldDto> fieldsByCode =
+                    fields.stream()
+                            .collect(
+                                    java.util.stream.Collectors.toMap(
+                                            ArchiveFieldDto::fieldCode, field -> field));
+            List<String> uniqueFieldCodes =
+                    archiveMetadataService.listUniqueConstraints(group.categoryId()).stream()
+                            .filter(ArchiveUniqueConstraintDto::enabled)
+                            .filter(constraint -> constraint.archiveLevel() == archiveLevel)
+                            .flatMap(constraint -> constraint.fields().stream())
+                            .map(ArchiveUniqueConstraintFieldDto::fieldCode)
+                            .distinct()
+                            .toList();
+            compiled.add(
+                    new ArchiveSqlRelatedGroup(
+                            dynamicTableName(category, archiveLevel),
+                            category.categoryCode(),
+                            normalizeRelationDirection(group.direction()),
+                            buildWhereConditions(
+                                    fieldsByCode,
+                                    uniqueFieldCodes,
+                                    group.where(),
+                                    "relatedGroups.where")));
+        }
+        return compiled;
+    }
 
-        Object startValue = convertValue(field, filter.startValue());
-        if (startValue != null) {
-            conditions.add(new ArchiveSqlCondition(field.columnName(), "GTE", startValue));
+    private ArchiveItemRelationDirection normalizeRelationDirection(
+            @Nullable ArchiveItemRelationDirection direction) {
+        return direction == null ? ArchiveItemRelationDirection.OUTGOING : direction;
+    }
+
+    private void ensureTextOperator(
+            ArchiveFieldDto field, ArchiveItemQueryOperator operator, String fieldPath) {
+        if (field.fieldType() != ArchiveFieldType.TEXT) {
+            throw badRequest(
+                    field.fieldName() + "不支持操作符：" + operator,
+                    fieldPath + ".op",
+                    field.fieldName() + "不支持操作符：" + operator);
         }
-        Object endValue = convertValue(field, filter.endValue());
-        if (endValue != null) {
-            conditions.add(new ArchiveSqlCondition(field.columnName(), "LTE", endValue));
+    }
+
+    private @Nullable String convertSearchTextValue(ArchiveFieldDto field, @Nullable Object value) {
+        if (value == null) {
+            return null;
         }
-        return conditions;
+        String text = StringUtils.trimToNull(value.toString());
+        if (text == null) {
+            return null;
+        }
+        return convertTextValue(field, text);
+    }
+
+    private String escapeLike(String value) {
+        return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
     }
 
     private String selectColumns(List<ArchiveFieldDto> fields) {
@@ -1112,7 +1280,10 @@ public class ArchiveItemRoutingService {
     }
 
     private @Nullable Object convertValue(ArchiveFieldDto field, @Nullable Object value) {
-        if (value == null || (value instanceof String text && StringUtils.isBlank(text))) {
+        if (value instanceof String text) {
+            value = StringUtils.trimToNull(text);
+        }
+        if (value == null) {
             return null;
         }
         try {
@@ -1144,7 +1315,10 @@ public class ArchiveItemRoutingService {
     }
 
     private String convertTextValue(ArchiveFieldDto field, Object value) {
-        String text = value.toString();
+        String text = StringUtils.trimToNull(value.toString());
+        if (text == null) {
+            return "";
+        }
         if (field.textLength() != null && text.length() > field.textLength()) {
             String message = field.fieldName() + "长度不能超过 " + field.textLength();
             throw badRequest(message, "dynamicFields." + field.fieldCode(), message);
@@ -1212,19 +1386,35 @@ public class ArchiveItemRoutingService {
             @Nullable Long categoryId,
             @Nullable String fondsCode,
             @Nullable String keyword,
-            @Nullable Map<String, @Nullable Object> exactFilters,
-            @Nullable List<@Nullable ArchiveItemFieldFilter> filters,
+            @Nullable ArchiveItemWhere where,
+            @Nullable List<@Nullable ArchiveItemRelatedGroup> relatedGroups,
             @Nullable Integer limit,
             @Nullable String cursor,
             @Nullable List<@Nullable ArchiveItemOrderBy> orderBy) {}
 
     public record ArchiveItemOrderBy(@Nullable String field, @Nullable String direction) {}
 
-    public record ArchiveItemFieldFilter(
+    public record ArchiveItemWhere(
+            @Nullable String logic,
+            @Nullable List<@Nullable ArchiveItemQueryCondition> conditions) {}
+
+    public record ArchiveItemQueryCondition(
             @Nullable String fieldCode,
+            @Nullable ArchiveItemQueryOperator op,
             @Nullable Object value,
             @Nullable Object startValue,
             @Nullable Object endValue) {}
+
+    public record ArchiveItemRelatedGroup(
+            @Nullable Long categoryId,
+            @Nullable ArchiveItemRelationDirection direction,
+            @Nullable ArchiveItemWhere where) {}
+
+    public record ArchiveRelatedFilterCategoryDto(
+            Long categoryId,
+            String categoryCode,
+            String categoryName,
+            ArchiveItemRelationDirection direction) {}
 
     public record ArchiveItemRequest(
             @Nullable Long categoryId,
@@ -1249,11 +1439,7 @@ public class ArchiveItemRoutingService {
 
     public record LockItemRequest(@Nullable String reason) {}
 
-    public record ArchiveItemRelationRequest(
-            @Nullable Long targetItemId,
-            @Nullable String relationType,
-            @Nullable String remark,
-            @Nullable Integer sortOrder) {}
+    public record ArchiveItemRelationRequest(@Nullable Long targetItemId) {}
 
     public record ArchiveItemRelationTargetDto(
             Long itemId,
@@ -1267,9 +1453,7 @@ public class ArchiveItemRoutingService {
             Long id,
             Long sourceItemId,
             Long targetItemId,
-            String relationType,
-            @Nullable String remark,
-            int sortOrder,
+            @Nullable LocalDateTime createdAt,
             ArchiveItemRelationTargetDto target) {}
 
     public record ArchiveItemDto(
