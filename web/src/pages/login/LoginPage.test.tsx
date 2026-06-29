@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { resetSessionStore } from "@archive-management/frontend-core/auth";
+import { resetSessionStore } from "@archive-management/frontend-core/authentication";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import { AppProviders } from "@/app/AppProviders";

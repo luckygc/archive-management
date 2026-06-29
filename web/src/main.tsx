@@ -1,5 +1,5 @@
 import { StrictMode } from "react";
-import { registerSessionResetHandler } from "@archive-management/frontend-core/auth";
+import { registerSessionResetHandler } from "@archive-management/frontend-core/authentication";
 import { createRoot } from "react-dom/client";
 import capWasmUrl from "@cap.js/wasm/browser/cap_wasm_bg.wasm?url";
 

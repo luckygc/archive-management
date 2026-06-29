@@ -13,7 +13,7 @@ import {
     UserOutlined,
 } from "@ant-design/icons";
 import { Button, Dropdown, Layout, Menu, Space, Tabs, Tooltip, Typography } from "antd";
-import { useSessionStore } from "@archive-management/frontend-core/auth";
+import { useSessionStore } from "@archive-management/frontend-core/authentication";
 import type { MenuProps } from "antd";
 import { useKeepAliveRef } from "keepalive-for-react";
 import KeepAliveRouteOutlet from "keepalive-for-react-router";

@@ -25,7 +25,7 @@ import { IntakePage } from "@/pages/intake/IntakePage";
 import { LoginPage } from "@/pages/login/LoginPage";
 import { LoginSessionsPage } from "@/pages/login-sessions/LoginSessionsPage";
 import { PlaceholderPage } from "@/pages/placeholder/PlaceholderPage";
-import { AuthGate } from "@/shared/auth/AuthGate";
+import { AuthenticationGate } from "@/shared/authentication/AuthenticationGate";
 
 export interface AppRouteHandle {
     title: string;
@@ -46,7 +46,7 @@ export function createAppRouter() {
         },
         {
             path: "/",
-            element: <AuthGate />,
+            element: <AuthenticationGate />,
             children: [
                 {
                     element: <AppShell />,

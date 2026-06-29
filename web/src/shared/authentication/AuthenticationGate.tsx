@@ -1,22 +1,22 @@
 import { Spin, Typography } from "antd";
 import { UNAUTHENTICATED_EVENT, errorMessage } from "@archive-management/frontend-core/api";
-import { useSessionStore } from "@archive-management/frontend-core/auth";
+import { useSessionStore } from "@archive-management/frontend-core/authentication";
 import { useEffect, useMemo, useState } from "react";
 import { Navigate, Outlet, useLocation, useNavigate } from "react-router";
 
-export function AuthGate() {
+export function AuthenticationGate() {
     const location = useLocation();
     const navigate = useNavigate();
     const initialized = useSessionStore((state) => state.initialized);
     const currentUser = useSessionStore((state) => state.currentUser);
     const fetchCurrentUser = useSessionStore((state) => state.fetchCurrentUser);
     const clearSession = useSessionStore((state) => state.clearSession);
-    const [authError, setAuthError] = useState<unknown>();
+    const [authenticationError, setAuthenticationError] = useState<unknown>();
 
     useEffect(() => {
         if (!initialized) {
-            setAuthError(undefined);
-            void fetchCurrentUser().catch(setAuthError);
+            setAuthenticationError(undefined);
+            void fetchCurrentUser().catch(setAuthenticationError);
         }
     }, [fetchCurrentUser, initialized]);
 
@@ -37,15 +37,15 @@ export function AuthGate() {
 
     if (!initialized) {
         return (
-            <main className="am-auth-loading">
+            <main className="am-authentication-loading">
                 <Spin />
                 <Typography.Text>正在校验登录状态</Typography.Text>
             </main>
         );
     }
 
-    if (authError) {
-        return <AuthError error={authError} />;
+    if (authenticationError) {
+        return <AuthenticationError error={authenticationError} />;
     }
 
     if (!currentUser) {
@@ -60,9 +60,9 @@ function loginPath(location: ReturnType<typeof useLocation>) {
     return `/login?redirect=${encodeURIComponent(fullPath)}`;
 }
 
-export function AuthError({ error }: { error: unknown }) {
+export function AuthenticationError({ error }: { error: unknown }) {
     return (
-        <main className="am-auth-loading">
+        <main className="am-authentication-loading">
             <Typography.Text type="danger">{errorMessage(error, "会话校验失败")}</Typography.Text>
         </main>
     );
