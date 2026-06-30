@@ -1,6 +1,7 @@
 package github.luckygc.am.module.archive.item.service;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -15,18 +16,24 @@ import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import github.luckygc.am.module.archive.ArchiveLevel;
-import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveItemRequest;
-import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveItemUpdateRequest;
+import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
+import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService.ArchiveDataScopeFilter;
+import github.luckygc.am.module.archive.item.ArchiveItemAudit;
+import github.luckygc.am.module.archive.item.repository.ArchiveItemAuditDataRepository;
+import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.CreateArchiveItemRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.DeleteItemRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.LockItemRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.UpdateArchiveItemRequest;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.metadata.ArchiveManagementMode;
 import github.luckygc.am.module.archive.metadata.ArchiveTableStatus;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFondsDto;
+import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
 
 @DisplayName("档案条目操作审计写入")
 class ArchiveItemAuditWriteTests {
@@ -34,6 +41,7 @@ class ArchiveItemAuditWriteTests {
     private ArchiveMapper archiveMapper;
     private ArchiveMetadataService archiveMetadataService;
     private ArchiveItemSearchProjectionService searchProjectionService;
+    private ArchiveItemAuditDataRepository auditRepository;
     private ArchiveItemRoutingService archiveItemRoutingService;
 
     @BeforeEach
@@ -41,9 +49,21 @@ class ArchiveItemAuditWriteTests {
         archiveMapper = mock(ArchiveMapper.class);
         archiveMetadataService = mock(ArchiveMetadataService.class);
         searchProjectionService = mock(ArchiveItemSearchProjectionService.class);
+        auditRepository = mock(ArchiveItemAuditDataRepository.class);
+        ArchiveDataScopeService dataScopeService = mock(ArchiveDataScopeService.class);
+        when(dataScopeService.buildItemFilter(anyLong(), anyLong(), anyString()))
+                .thenReturn(ArchiveDataScopeFilter.all());
+        AuthorizationPermissionService permissionService =
+                mock(AuthorizationPermissionService.class);
+        when(permissionService.hasPermission(anyLong(), anyString())).thenReturn(true);
         archiveItemRoutingService =
                 new ArchiveItemRoutingService(
-                        archiveMetadataService, archiveMapper, searchProjectionService);
+                        archiveMetadataService,
+                        archiveMapper,
+                        searchProjectionService,
+                        dataScopeService,
+                        permissionService,
+                        auditRepository);
     }
 
     @Test
@@ -66,18 +86,19 @@ class ArchiveItemAuditWriteTests {
                         eq("合同档案"),
                         eq("A-001"),
                         eq("DRAFT"),
+                        isNull(),
+                        isNull(),
                         eq(2026),
                         eq(9L)))
                 .thenReturn(10L);
         when(archiveMapper.getArchiveItem(10L)).thenReturn(itemRow(false));
 
         archiveItemRoutingService.createItem(
-                new ArchiveItemRequest(1L, null, "F001", "A-001", 2026, "DRAFT", null, Map.of()),
+                new CreateArchiveItemRequest(
+                        1L, null, "F001", "A-001", 2026, "DRAFT", null, null, null, Map.of()),
                 9L);
 
-        verify(archiveMapper)
-                .insertItemAudit(
-                        "am_archive_item", 10L, 10L, "F001", "contract", "CREATE", null, 9L);
+        verifyAudit("CREATE", null);
     }
 
     @Test
@@ -94,18 +115,19 @@ class ArchiveItemAuditWriteTests {
                         eq("启用全宗"),
                         eq("A-002"),
                         eq("DRAFT"),
+                        isNull(),
+                        isNull(),
                         eq(2026),
                         eq(9L)))
                 .thenReturn(1);
 
         archiveItemRoutingService.updateItem(
                 10L,
-                new ArchiveItemUpdateRequest(null, "F001", "A-002", 2026, "DRAFT", null, Map.of()),
+                new UpdateArchiveItemRequest(
+                        null, "F001", "A-002", 2026, "DRAFT", null, null, null, Map.of()),
                 9L);
 
-        verify(archiveMapper)
-                .insertItemAudit(
-                        "am_archive_item", 10L, 10L, "F001", "contract", "UPDATE", null, 9L);
+        verifyAudit("UPDATE", null);
     }
 
     @Test
@@ -118,9 +140,7 @@ class ArchiveItemAuditWriteTests {
 
         archiveItemRoutingService.deleteItem(10L, 9L, new DeleteItemRequest("  清理重复件  "));
 
-        verify(archiveMapper)
-                .insertItemAudit(
-                        "am_archive_item", 10L, 10L, "F001", "contract", "DELETE", "清理重复件", 9L);
+        verifyAudit("DELETE", "清理重复件");
     }
 
     @Test
@@ -128,12 +148,11 @@ class ArchiveItemAuditWriteTests {
     void lockItemShouldWriteAudit() {
         when(archiveMapper.lockArchiveItem(10L, "借阅冻结", 9L)).thenReturn(1);
         when(archiveMapper.getArchiveItem(10L)).thenReturn(itemRow(true));
+        when(archiveMetadataService.listCategories(null)).thenReturn(List.of(category()));
 
         archiveItemRoutingService.lockItem(10L, 9L, new LockItemRequest(" 借阅冻结 "));
 
-        verify(archiveMapper)
-                .insertItemAudit(
-                        "am_archive_item", 10L, 10L, "F001", "contract", "LOCK", "借阅冻结", 9L);
+        verifyAudit("LOCK", "借阅冻结");
     }
 
     @Test
@@ -141,12 +160,28 @@ class ArchiveItemAuditWriteTests {
     void unlockItemShouldWriteAudit() {
         when(archiveMapper.unlockArchiveItem(10L, 9L)).thenReturn(1);
         when(archiveMapper.getArchiveItem(10L)).thenReturn(itemRow(false));
+        when(archiveMetadataService.listCategories(null)).thenReturn(List.of(category()));
 
         archiveItemRoutingService.unlockItem(10L, 9L);
 
-        verify(archiveMapper)
-                .insertItemAudit(
-                        "am_archive_item", 10L, 10L, "F001", "contract", "UNLOCK", null, 9L);
+        verifyAudit("UNLOCK", null);
+    }
+
+    private void verifyAudit(String operationType, String operationReason) {
+        ArgumentCaptor<ArchiveItemAudit> captor = ArgumentCaptor.forClass(ArchiveItemAudit.class);
+        verify(auditRepository).insert(captor.capture());
+        ArchiveItemAudit audit = captor.getValue();
+        org.assertj.core.api.Assertions.assertThat(audit.getSourceTableName())
+                .isEqualTo("am_archive_item");
+        org.assertj.core.api.Assertions.assertThat(audit.getSourceRecordId()).isEqualTo(10L);
+        org.assertj.core.api.Assertions.assertThat(audit.getArchiveItemId()).isEqualTo(10L);
+        org.assertj.core.api.Assertions.assertThat(audit.getFondsCode()).isEqualTo("F001");
+        org.assertj.core.api.Assertions.assertThat(audit.getCategoryCode()).isEqualTo("contract");
+        org.assertj.core.api.Assertions.assertThat(audit.getOperationType())
+                .isEqualTo(operationType);
+        org.assertj.core.api.Assertions.assertThat(audit.getOperationReason())
+                .isEqualTo(operationReason);
+        org.assertj.core.api.Assertions.assertThat(audit.getOperatedBy()).isEqualTo(9L);
     }
 
     private void stubItemDetailLoad(boolean locked) {

@@ -11,23 +11,23 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
-import github.luckygc.am.common.api.OffsetPageResponse;
+import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.common.security.AuthenticatedUser;
-import github.luckygc.am.module.archive.item.service.ArchiveItemAuditQueryService;
-import github.luckygc.am.module.archive.item.service.ArchiveItemAuditQueryService.ArchiveItemAuditQuery;
-import github.luckygc.am.module.archive.item.service.ArchiveItemAuditQueryService.ArchiveItemAuditResponse;
+import github.luckygc.am.module.archive.item.service.ArchiveItemAuditSearchService;
+import github.luckygc.am.module.archive.item.service.ArchiveItemAuditSearchService.ArchiveItemAuditResponse;
+import github.luckygc.am.module.archive.item.service.ArchiveItemAuditSearchService.ListArchiveItemAuditsRequest;
 
 @RestController
 public class ArchiveItemAuditController {
 
-    private final ArchiveItemAuditQueryService auditQueryService;
+    private final ArchiveItemAuditSearchService auditSearchService;
 
-    public ArchiveItemAuditController(ArchiveItemAuditQueryService auditQueryService) {
-        this.auditQueryService = auditQueryService;
+    public ArchiveItemAuditController(ArchiveItemAuditSearchService auditSearchService) {
+        this.auditSearchService = auditSearchService;
     }
 
     @GetMapping("/api/v1/archive-item-audits")
-    public OffsetPageResponse<ArchiveItemAuditResponse> listAudits(
+    public CursorPageResponse<ArchiveItemAuditResponse> listAudits(
             @RequestParam(required = false) @Nullable Long archiveItemId,
             @RequestParam(required = false) @Nullable String fondsCode,
             @RequestParam(required = false) @Nullable String categoryCode,
@@ -37,11 +37,12 @@ public class ArchiveItemAuditController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
                     @Nullable LocalDateTime operatedBefore,
             @RequestParam(required = false) @Nullable Integer limit,
-            @RequestParam(required = false) @Nullable Long offset,
+            @RequestParam(required = false) @Nullable String cursor,
+            @RequestParam(defaultValue = "false") boolean requestTotal,
             @Nullable Authentication authentication) {
-        currentUserId(authentication);
-        return auditQueryService.listAudits(
-                new ArchiveItemAuditQuery(
+        Long userId = currentUserId(authentication);
+        return auditSearchService.listAudits(
+                new ListArchiveItemAuditsRequest(
                         archiveItemId,
                         fondsCode,
                         categoryCode,
@@ -49,7 +50,9 @@ public class ArchiveItemAuditController {
                         operatedAfter,
                         operatedBefore,
                         limit,
-                        offset));
+                        cursor,
+                        requestTotal),
+                userId);
     }
 
     private Long currentUserId(@Nullable Authentication authentication) {

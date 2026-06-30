@@ -9,7 +9,7 @@ beforeEach(() => {
         "fetch",
         vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
             const url = requestUrl(input);
-            if (url === "/api/v1/archive-fonds" && !init?.method) {
+            if (url === "/api/v1/archive-fonds" && (!init?.method || init.method === "GET")) {
                 return jsonResponse({
                     items: [
                         createFonds({
@@ -71,7 +71,9 @@ describe("ArchiveFondsPage", () => {
 });
 
 function requestUrl(input: RequestInfo | URL) {
-    return input instanceof Request ? input.url : input.toString();
+    const value = input instanceof Request ? input.url : input.toString();
+    const url = new URL(value, window.location.origin);
+    return `${url.pathname}${url.search}`;
 }
 
 function requestBodyText(body: BodyInit | null | undefined) {

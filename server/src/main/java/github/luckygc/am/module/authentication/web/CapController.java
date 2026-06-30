@@ -18,19 +18,20 @@ public class CapController {
     }
 
     @PostMapping("/api/v1/cap-challenges")
-    public PowChallengeService.CapChallengeResponse challenge() {
-        return powChallengeService.createChallenge();
+    public PowChallengeService.CapChallengeResponse challenge(
+            @RequestBody(required = false) PowChallengeService.CapChallengeRequest request) {
+        return powChallengeService.createChallenge(request);
     }
 
     @PostMapping("/api/v1/cap-tokens")
-    public Map<String, Object> redeem(@RequestBody PowChallengeService.CapRedeemCommand command) {
-        return powChallengeService.redeemChallenge(command);
+    public Map<String, Object> redeem(@RequestBody PowChallengeService.CapRedeemRequest request) {
+        return powChallengeService.redeemChallenge(request);
     }
 
     @PostMapping("/api/v1/cap-tokens:validate")
     public Map<String, Object> validateToken(
-            @RequestBody PowChallengeService.CapValidateCommand command) {
+            @RequestBody PowChallengeService.CapValidateRequest request) {
         return powChallengeService.validateToken(
-                command.token(), Boolean.TRUE.equals(command.keepToken()));
+                request.token(), Boolean.TRUE.equals(request.keepToken()));
     }
 }

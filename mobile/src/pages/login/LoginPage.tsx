@@ -1,7 +1,7 @@
 import { Button, Form, Input, Toast } from "antd-mobile";
 import { errorMessage } from "@archive-management/frontend-core/api";
 import { capWidgetApiEndpoint, useCapVerification } from "@archive-management/frontend-core/cap";
-import { useSessionStore } from "@archive-management/frontend-core/auth";
+import { useSessionStore } from "@archive-management/frontend-core/authentication";
 import { createElement, forwardRef, useEffect, useRef, useState } from "react";
 import type { HTMLAttributes } from "react";
 import { useLocation, useNavigate } from "react-router";

@@ -12,10 +12,20 @@ const CAP_WIDGET_ACTION_PATHS: Record<string, string> = {
     validateToken: "/api/v1/cap-tokens:validate",
 };
 
+interface CapChallengeContext {
+    username?: string;
+}
+
 interface ProblemDetailBody {
     title?: string;
     detail?: string;
     fieldViolations?: Array<{ message?: string }>;
+}
+
+let capChallengeContext: CapChallengeContext = {};
+
+export function setCapChallengeContext(context: CapChallengeContext) {
+    capChallengeContext = context;
 }
 
 export function useCapVerification(capWidgetRef: RefObject<CapWidget | null>) {
@@ -62,7 +72,10 @@ export function useCapVerification(capWidgetRef: RefObject<CapWidget | null>) {
 }
 
 export async function capFetch(input: RequestInfo | URL, init: RequestInit = {}) {
-    const response = await fetch(rewriteCapWidgetRequest(input), withCredentialsAndCsrf(init));
+    const response = await fetch(
+        rewriteCapWidgetRequest(input),
+        withCredentialsAndCsrf(withCapChallengeContext(input, init)),
+    );
     if (response.ok) {
         return response;
     }
@@ -124,6 +137,30 @@ function rewriteCapWidgetUrl(input: string | URL) {
     return input instanceof URL
         ? parsedUrl
         : `${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
+}
+
+function withCapChallengeContext(input: RequestInfo | URL, init: RequestInit) {
+    if (!isCapWidgetAction(input, "challenge") || init.body) {
+        return init;
+    }
+    const body = {
+        username: capChallengeContext.username,
+    };
+    if (!body.username) {
+        return init;
+    }
+    return {
+        ...init,
+        method: init.method ?? "POST",
+        body: JSON.stringify(body),
+    };
+}
+
+function isCapWidgetAction(input: RequestInfo | URL, action: string) {
+    const url = input instanceof Request ? input.url : input;
+    const origin = typeof window === "undefined" ? "http://localhost" : window.location.origin;
+    const parsedUrl = new URL(url, origin);
+    return parsedUrl.pathname === `${CAP_WIDGET_ENDPOINT_PREFIX}${action}`;
 }
 
 async function capErrorResponse(response: Response) {

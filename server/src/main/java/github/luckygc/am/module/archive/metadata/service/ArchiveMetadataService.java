@@ -28,11 +28,15 @@ import github.luckygc.am.module.archive.metadata.ArchiveFieldType;
 import github.luckygc.am.module.archive.metadata.ArchiveFonds;
 import github.luckygc.am.module.archive.metadata.ArchiveLayoutSurface;
 import github.luckygc.am.module.archive.metadata.ArchiveManagementMode;
+import github.luckygc.am.module.archive.metadata.ArchiveRetentionPeriod;
+import github.luckygc.am.module.archive.metadata.ArchiveSecurityLevel;
 import github.luckygc.am.module.archive.metadata.ArchiveTableStatus;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveCategoryDataRepository;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveFieldDataRepository;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveFieldLayoutDataRepository;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveFondsDataRepository;
+import github.luckygc.am.module.archive.metadata.repository.ArchiveRetentionPeriodDataRepository;
+import github.luckygc.am.module.archive.metadata.repository.ArchiveSecurityLevelDataRepository;
 
 @Service
 public class ArchiveMetadataService {
@@ -47,7 +51,8 @@ public class ArchiveMetadataService {
                     "category_name",
                     "archive_no",
                     "electronic_status",
-                    "security_level",
+                    "security_level_id",
+                    "retention_period_id",
                     "sort_order",
                     "archived_at",
                     "archive_year",
@@ -73,18 +78,24 @@ public class ArchiveMetadataService {
     private final ArchiveCategoryDataRepository categoryRepository;
     private final ArchiveFieldDataRepository fieldRepository;
     private final ArchiveFieldLayoutDataRepository fieldLayoutRepository;
+    private final ArchiveSecurityLevelDataRepository securityLevelRepository;
+    private final ArchiveRetentionPeriodDataRepository retentionPeriodRepository;
 
     public ArchiveMetadataService(
             ArchiveMapper archiveMapper,
             ArchiveFondsDataRepository fondsRepository,
             ArchiveCategoryDataRepository categoryRepository,
             ArchiveFieldDataRepository fieldRepository,
-            ArchiveFieldLayoutDataRepository fieldLayoutRepository) {
+            ArchiveFieldLayoutDataRepository fieldLayoutRepository,
+            ArchiveSecurityLevelDataRepository securityLevelRepository,
+            ArchiveRetentionPeriodDataRepository retentionPeriodRepository) {
         this.archiveMapper = archiveMapper;
         this.fondsRepository = fondsRepository;
         this.categoryRepository = categoryRepository;
         this.fieldRepository = fieldRepository;
         this.fieldLayoutRepository = fieldLayoutRepository;
+        this.securityLevelRepository = securityLevelRepository;
+        this.retentionPeriodRepository = retentionPeriodRepository;
     }
 
     public List<ArchiveFondsDto> listFonds(@Nullable Boolean enabled) {
@@ -156,6 +167,50 @@ public class ArchiveMetadataService {
                 .filter(ArchiveFonds::isEnabled)
                 .map(this::mapFonds)
                 .orElseThrow(() -> new BadRequestException("全宗不可用"));
+    }
+
+    public List<ArchiveSecurityLevelDto> listSecurityLevels(@Nullable Boolean enabled) {
+        List<ArchiveSecurityLevel> levels =
+                enabled == null
+                        ? securityLevelRepository.list()
+                        : securityLevelRepository.list(enabled);
+        return levels.stream().map(this::mapSecurityLevel).toList();
+    }
+
+    @Transactional
+    public ArchiveSecurityLevelDto updateSecurityLevel(
+            Long id, UpdateArchiveSecurityLevelRequest request) {
+        requireId(id);
+        String name = StringUtils.trimToNull(request.levelName());
+        if (name == null) {
+            throw new BadRequestException("密级名称不能为空", "levelName", "密级名称不能为空");
+        }
+        ArchiveSecurityLevel level =
+                securityLevelRepository.findById(id).orElseThrow(() -> notFound("密级不存在"));
+        level.setLevelName(name);
+        return mapSecurityLevel(securityLevelRepository.update(level));
+    }
+
+    public List<ArchiveRetentionPeriodDto> listRetentionPeriods(@Nullable Boolean enabled) {
+        List<ArchiveRetentionPeriod> periods =
+                enabled == null
+                        ? retentionPeriodRepository.list()
+                        : retentionPeriodRepository.list(enabled);
+        return periods.stream().map(this::mapRetentionPeriod).toList();
+    }
+
+    @Transactional
+    public ArchiveRetentionPeriodDto updateRetentionPeriod(
+            Long id, UpdateArchiveRetentionPeriodRequest request) {
+        requireId(id);
+        String name = StringUtils.trimToNull(request.periodName());
+        if (name == null) {
+            throw new BadRequestException("保管期限名称不能为空", "periodName", "保管期限名称不能为空");
+        }
+        ArchiveRetentionPeriod period =
+                retentionPeriodRepository.findById(id).orElseThrow(() -> notFound("保管期限不存在"));
+        period.setPeriodName(name);
+        return mapRetentionPeriod(retentionPeriodRepository.update(period));
     }
 
     public List<ArchiveCategoryDto> listCategories(@Nullable Boolean enabled) {
@@ -297,12 +352,6 @@ public class ArchiveMetadataService {
 
     @Transactional
     public ArchiveFieldLayoutDto savePublicFieldLayout(
-            Long categoryId, ArchiveLayoutSurface surface, ArchiveFieldLayoutRequest request) {
-        return savePublicFieldLayout(categoryId, ArchiveLevel.ITEM, surface, request, null);
-    }
-
-    @Transactional
-    public ArchiveFieldLayoutDto savePublicFieldLayout(
             Long categoryId,
             ArchiveLevel archiveLevel,
             ArchiveLayoutSurface surface,
@@ -319,8 +368,10 @@ public class ArchiveMetadataService {
             ArchiveFieldScope fieldScope,
             ArchiveLayoutSurface surface,
             @Nullable ArchiveFieldLayoutRequest request,
-            @Nullable Long userId) {
-        saveFieldLayout(categoryId, archiveLevel, fieldScope, surface, request, userId);
+            Long userId) {
+        saveFieldLayout(
+                new UpdateFieldLayoutRequest(
+                        categoryId, archiveLevel, fieldScope, surface, request, userId));
         return getFieldLayout(categoryId, archiveLevel, fieldScope, surface);
     }
 
@@ -783,6 +834,7 @@ public class ArchiveMetadataService {
                         ? layoutOrder(request.sortOrder())
                         : request.editSortOrder(),
                 request.exactSearchable() != null && request.exactSearchable(),
+                request.dataScopeFilterable() != null && request.dataScopeFilterable(),
                 request.enabled() == null || request.enabled(),
                 request.sortOrder() == null ? 0 : request.sortOrder());
     }
@@ -838,6 +890,7 @@ public class ArchiveMetadataService {
         field.setEditColSpan(values.editColSpan());
         field.setEditSortOrder(values.editSortOrder());
         field.setExactSearchable(values.exactSearchable());
+        field.setDataScopeFilterable(values.dataScopeFilterable());
         field.setEnabled(values.enabled());
         field.setSortOrder(values.sortOrder());
     }
@@ -961,31 +1014,27 @@ public class ArchiveMetadataService {
                 .toList();
     }
 
-    private void saveFieldLayout(
-            Long categoryId,
-            ArchiveLevel archiveLevel,
-            ArchiveFieldScope fieldScope,
-            ArchiveLayoutSurface surface,
-            ArchiveFieldLayoutRequest request,
-            Long userId) {
-        requireId(categoryId);
-        ArchiveCategoryDto category = getCategory(categoryId);
-        ArchiveLevel normalizedLevel = normalizeArchiveLevel(archiveLevel);
-        ArchiveFieldScope normalizedScope = normalizeFieldScope(fieldScope);
+    private void saveFieldLayout(UpdateFieldLayoutRequest request) {
+        requireId(request.categoryId());
+        ArchiveCategoryDto category = getCategory(request.categoryId());
+        ArchiveLevel normalizedLevel = normalizeArchiveLevel(request.archiveLevel());
+        ArchiveFieldScope normalizedScope = normalizeFieldScope(request.fieldScope());
         ensureArchiveLevelAllowed(category, normalizedLevel);
         List<@Nullable ArchiveFieldLayoutItemRequest> items =
-                request == null || request.items() == null ? List.of() : request.items();
+                request.request() == null || request.request().items() == null
+                        ? List.of()
+                        : request.request().items();
         Map<Long, ArchiveFieldDto> fieldsById =
-                listEnabledFields(categoryId, normalizedLevel, normalizedScope).stream()
+                listEnabledFields(request.categoryId(), normalizedLevel, normalizedScope).stream()
                         .collect(
                                 java.util.stream.Collectors.toMap(
                                         ArchiveFieldDto::id, field -> field));
         Set<Long> seenFieldIds = new HashSet<>();
-        fieldLayoutRepository.list(categoryId, surface).stream()
+        fieldLayoutRepository.list(request.categoryId(), request.surface()).stream()
                 .filter(layout -> fieldsById.containsKey(layout.getFieldId()))
                 .forEach(
                         layout -> {
-                            layout.setUpdatedBy(userId);
+                            layout.setUpdatedBy(request.userId());
                             fieldLayoutRepository.update(layout);
                             fieldLayoutRepository.delete(layout);
                         });
@@ -997,22 +1046,30 @@ public class ArchiveMetadataService {
                 throw badRequest("布局字段不能重复");
             }
             ArchiveFieldLayout layout = new ArchiveFieldLayout();
-            layout.setCategoryId(categoryId);
-            layout.setSurface(surface);
+            layout.setCategoryId(request.categoryId());
+            layout.setSurface(request.surface());
             layout.setFieldId(item.fieldId());
             layout.setVisible(item.visible() == null || item.visible());
             layout.setListWidth(
-                    surface == ArchiveLayoutSurface.TABLE
+                    request.surface() == ArchiveLayoutSurface.TABLE
                             ? normalizeListWidth(item.listWidth())
                             : null);
             layout.setColSpan(normalizeColSpan(item.colSpan()));
             layout.setRowOrder(item.rowOrder() == null ? 0 : item.rowOrder());
             layout.setColOrder(item.colOrder() == null ? 0 : item.colOrder());
-            layout.setCreatedBy(userId);
-            layout.setUpdatedBy(userId);
+            layout.setCreatedBy(request.userId());
+            layout.setUpdatedBy(request.userId());
             fieldLayoutRepository.insert(layout);
         }
     }
+
+    private record UpdateFieldLayoutRequest(
+            Long categoryId,
+            ArchiveLevel archiveLevel,
+            ArchiveFieldScope fieldScope,
+            ArchiveLayoutSurface surface,
+            @Nullable ArchiveFieldLayoutRequest request,
+            Long userId) {}
 
     private ArchiveFieldDto applyLayout(
             ArchiveFieldDto field,
@@ -1095,6 +1152,7 @@ public class ArchiveMetadataService {
                 editColSpan,
                 editSortOrder,
                 field.exactSearchable(),
+                field.dataScopeFilterable(),
                 field.enabled(),
                 field.sortOrder(),
                 field.createdAt(),
@@ -1265,6 +1323,26 @@ public class ArchiveMetadataService {
                 fonds.getUpdatedAt());
     }
 
+    private ArchiveSecurityLevelDto mapSecurityLevel(ArchiveSecurityLevel level) {
+        return new ArchiveSecurityLevelDto(
+                level.getId(),
+                level.getLevelName(),
+                level.isEnabled(),
+                level.getSortOrder(),
+                level.getCreatedAt(),
+                level.getUpdatedAt());
+    }
+
+    private ArchiveRetentionPeriodDto mapRetentionPeriod(ArchiveRetentionPeriod period) {
+        return new ArchiveRetentionPeriodDto(
+                period.getId(),
+                period.getPeriodName(),
+                period.isEnabled(),
+                period.getSortOrder(),
+                period.getCreatedAt(),
+                period.getUpdatedAt());
+    }
+
     private ArchiveCategoryDto mapCategory(Map<String, Object> row) {
         Number parentId = numberOrNull(row, "parentId");
         return new ArchiveCategoryDto(
@@ -1328,6 +1406,7 @@ public class ArchiveMetadataService {
                 field.getEditColSpan(),
                 field.getEditSortOrder(),
                 field.isExactSearchable(),
+                field.isDataScopeFilterable(),
                 field.isEnabled(),
                 field.getSortOrder(),
                 field.getCreatedAt(),
@@ -1430,6 +1509,26 @@ public class ArchiveMetadataService {
             LocalDateTime createdAt,
             LocalDateTime updatedAt) {}
 
+    public record UpdateArchiveSecurityLevelRequest(@Nullable String levelName) {}
+
+    public record ArchiveSecurityLevelDto(
+            Long id,
+            String levelName,
+            boolean enabled,
+            int sortOrder,
+            LocalDateTime createdAt,
+            LocalDateTime updatedAt) {}
+
+    public record UpdateArchiveRetentionPeriodRequest(@Nullable String periodName) {}
+
+    public record ArchiveRetentionPeriodDto(
+            Long id,
+            String periodName,
+            boolean enabled,
+            int sortOrder,
+            LocalDateTime createdAt,
+            LocalDateTime updatedAt) {}
+
     public record ArchiveCategoryRequest(
             @Nullable String categoryCode,
             @Nullable String categoryName,
@@ -1475,6 +1574,7 @@ public class ArchiveMetadataService {
             @Nullable Integer editColSpan,
             @Nullable Integer editSortOrder,
             @Nullable Boolean exactSearchable,
+            @Nullable Boolean dataScopeFilterable,
             @Nullable Boolean enabled,
             @Nullable Integer sortOrder) {}
 
@@ -1501,6 +1601,7 @@ public class ArchiveMetadataService {
             int editColSpan,
             int editSortOrder,
             boolean exactSearchable,
+            boolean dataScopeFilterable,
             boolean enabled,
             int sortOrder,
             @Nullable LocalDateTime createdAt,
@@ -1579,6 +1680,7 @@ public class ArchiveMetadataService {
             int editColSpan,
             int editSortOrder,
             boolean exactSearchable,
+            boolean dataScopeFilterable,
             boolean enabled,
             int sortOrder) {}
 

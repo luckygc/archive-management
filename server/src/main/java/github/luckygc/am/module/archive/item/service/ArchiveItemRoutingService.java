@@ -31,8 +31,12 @@ import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.archive.ArchiveLevel;
+import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
+import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService.ArchiveDataScopeFilter;
+import github.luckygc.am.module.archive.item.ArchiveItemAudit;
 import github.luckygc.am.module.archive.item.ArchiveItemQueryOperator;
 import github.luckygc.am.module.archive.item.ArchiveItemRelationDirection;
+import github.luckygc.am.module.archive.item.repository.ArchiveItemAuditDataRepository;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.mapper.ArchiveSqlAssignment;
 import github.luckygc.am.module.archive.mapper.ArchiveSqlCondition;
@@ -49,6 +53,7 @@ import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFondsDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveUniqueConstraintDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveUniqueConstraintFieldDto;
+import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
 
 @Service
 public class ArchiveItemRoutingService {
@@ -68,44 +73,45 @@ public class ArchiveItemRoutingService {
     private final ArchiveMetadataService archiveMetadataService;
     private final ArchiveMapper archiveMapper;
     private final ArchiveItemSearchProjectionService searchProjectionService;
+    private final ArchiveDataScopeService dataScopeService;
+    private final AuthorizationPermissionService permissionService;
+    private final ArchiveItemAuditDataRepository auditRepository;
 
     public ArchiveItemRoutingService(
             ArchiveMetadataService archiveMetadataService,
             ArchiveMapper archiveMapper,
-            ArchiveItemSearchProjectionService searchProjectionService) {
+            ArchiveItemSearchProjectionService searchProjectionService,
+            ArchiveDataScopeService dataScopeService,
+            AuthorizationPermissionService permissionService,
+            ArchiveItemAuditDataRepository auditRepository) {
         this.archiveMetadataService = archiveMetadataService;
         this.archiveMapper = archiveMapper;
         this.searchProjectionService = searchProjectionService;
-    }
-
-    public ArchiveItemListDto listItems(@Nullable Long categoryId, @Nullable String fondsCode) {
-        return listItems(categoryId, fondsCode, null);
+        this.dataScopeService = dataScopeService;
+        this.permissionService = permissionService;
+        this.auditRepository = auditRepository;
     }
 
     public ArchiveItemListDto listItems(
-            @Nullable Long categoryId, @Nullable String fondsCode, @Nullable Long userId) {
+            @Nullable Long categoryId, @Nullable String fondsCode, Long userId) {
         return searchItems(
-                new ArchiveItemQueryRequest(
+                new SearchArchiveItemsRequest(
                         categoryId, fondsCode, null, null, null, null, null, null),
                 userId);
     }
 
-    public ArchiveItemListDto searchItems(@Nullable ArchiveItemQueryRequest request) {
-        return searchItems(request, null);
-    }
-
     public ArchiveItemListDto searchItems(
-            @Nullable ArchiveItemQueryRequest request, @Nullable Long userId) {
+            @Nullable SearchArchiveItemsRequest request, Long userId) {
         return queryItems(request, userId, false, false, false);
     }
 
     public ArchiveItemListDto discoverItems(
-            @Nullable ArchiveItemQueryRequest request, @Nullable Long userId) {
+            @Nullable SearchArchiveItemsRequest request, Long userId) {
         return queryItems(request, userId, true, true, false);
     }
 
     public ArchiveItemListDto searchDeletedItems(
-            @Nullable ArchiveItemQueryRequest request, @Nullable Long userId) {
+            @Nullable SearchArchiveItemsRequest request, Long userId) {
         return queryItems(request, userId, false, false, true);
     }
 
@@ -124,11 +130,12 @@ public class ArchiveItemRoutingService {
     }
 
     private ArchiveItemListDto queryItems(
-            @Nullable ArchiveItemQueryRequest request,
-            @Nullable Long userId,
+            @Nullable SearchArchiveItemsRequest request,
+            Long userId,
             boolean allowKeyword,
             boolean requireAuthenticatedUser,
             boolean deleted) {
+        requirePermission(userId, "archive:item:read");
         String keyword = StringUtils.trimToNull(request == null ? null : request.keyword());
         if (StringUtils.isNotBlank(keyword) && !allowKeyword) {
             throw badRequest(
@@ -137,6 +144,10 @@ public class ArchiveItemRoutingService {
         if (request == null || request.categoryId() == null) {
             if (StringUtils.isNotBlank(keyword)) {
                 throw badRequest("全文检索必须选择档案分类", "categoryId", "全文检索必须选择档案分类");
+            }
+            if (!dataScopeService.resolveUserDataScope(userId).allData()) {
+                return new ArchiveItemListDto(
+                        null, List.of(), true, null, null, null, null, List.of());
             }
             int limit = pageLimit(request == null ? null : request.limit());
             List<Map<String, @Nullable Object>> rows =
@@ -171,6 +182,13 @@ public class ArchiveItemRoutingService {
                 buildSearchConditions(request.categoryId(), archiveLevel, fields, request.where());
         List<ArchiveSqlRelatedGroup> relatedGroups =
                 buildRelatedGroups(request.relatedGroups(), userId);
+        ArchiveDataScopeFilter dataScopeFilter =
+                dataScopeService.buildItemFilter(
+                        userId, request.categoryId(), StringUtils.trimToNull(request.fondsCode()));
+        if (dataScopeFilter.empty()) {
+            return new ArchiveItemListDto(
+                    category, fields, true, null, null, null, null, List.of());
+        }
         List<ArchiveSqlOrder> queryOrderBy =
                 cursor != null && "prev".equals(cursor.direction()) ? invert(orderBy) : orderBy;
         List<Map<String, @Nullable Object>> rows =
@@ -180,6 +198,7 @@ public class ArchiveItemRoutingService {
                         archiveLevel.value(),
                         deleted,
                         StringUtils.trimToNull(request.fondsCode()),
+                        dataScopeFilter.allData() ? List.of() : dataScopeFilter.groups(),
                         conditions,
                         relatedGroups,
                         keyword,
@@ -485,7 +504,7 @@ public class ArchiveItemRoutingService {
     }
 
     private String queryFingerprint(
-            ArchiveItemQueryRequest request, List<ArchiveSqlOrder> orderBy) {
+            SearchArchiveItemsRequest request, List<ArchiveSqlOrder> orderBy) {
         return Integer.toHexString(
                 Objects.hash(
                         request.categoryId(),
@@ -499,7 +518,8 @@ public class ArchiveItemRoutingService {
     }
 
     @Transactional
-    public ArchiveItemDto createItem(@Nullable ArchiveItemRequest request, @Nullable Long userId) {
+    public ArchiveItemDto createItem(@Nullable CreateArchiveItemRequest request, Long userId) {
+        requirePermission(userId, "archive:item:create");
         if (request == null) {
             throw badRequest("请求体不能为空");
         }
@@ -542,6 +562,13 @@ public class ArchiveItemRoutingService {
                 requestPhysicalFields == null
                         ? Map.of()
                         : convertDynamicFields(physicalFields, requestPhysicalFields);
+        assertProposedItemInDataScope(
+                userId,
+                category,
+                fonds.fondsCode(),
+                request.securityLevelId(),
+                fields,
+                convertedDynamicFields);
 
         Long recordId;
         try {
@@ -555,6 +582,8 @@ public class ArchiveItemRoutingService {
                             category.categoryName(),
                             archiveNo,
                             StringUtils.defaultIfBlank(request.electronicStatus(), "DRAFT"),
+                            request.securityLevelId(),
+                            request.retentionPeriodId(),
                             archiveYear,
                             userId);
         } catch (DuplicateKeyException exception) {
@@ -600,14 +629,21 @@ public class ArchiveItemRoutingService {
         return new SearchProjectionRebuildResult(categoryId, rebuilt);
     }
 
-    public ArchiveItemDetailDto getItemDetail(Long id) {
-        return getItemDetail(id, null, ArchiveLayoutSurface.DETAIL);
+    public void assertItemInDataScope(Long id, Long userId) {
+        if (userId == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "请先登录");
+        }
+        ArchiveItemDto record = getItem(id);
+        ArchiveCategoryDto category = getCategoryByCode(record.categoryCode());
+        assertItemInDataScope(userId, category, record);
     }
 
     public ArchiveItemDetailDto getItemDetail(
-            Long id, @Nullable Long userId, @Nullable ArchiveLayoutSurface surface) {
+            Long id, Long userId, @Nullable ArchiveLayoutSurface surface) {
+        requirePermission(userId, "archive:item:read");
         ArchiveItemDto record = getItem(id);
         ArchiveCategoryDto category = getCategoryByCode(record.categoryCode());
+        assertItemInDataScope(userId, category, record);
         List<ArchiveFieldDto> fields =
                 archiveMetadataService.listEffectiveFields(
                         category.id(),
@@ -636,11 +672,13 @@ public class ArchiveItemRoutingService {
 
     @Transactional
     public ArchiveItemDetailDto updateItem(
-            Long id, @Nullable ArchiveItemUpdateRequest request, @Nullable Long userId) {
+            Long id, @Nullable UpdateArchiveItemRequest request, Long userId) {
+        requirePermission(userId, "archive:item:update");
         if (request == null) {
             throw badRequest("请求体不能为空");
         }
-        ArchiveItemDetailDto before = getItemDetail(id);
+        ArchiveItemDetailDto before = getItemDetail(id, userId, ArchiveLayoutSurface.EDIT);
+        assertItemInDataScope(userId, before.category(), before.item());
         ensureItemEditable(before.item());
         ArchiveCategoryDto category = before.category();
         String tableName = dynamicTableName(category, ArchiveLevel.ITEM);
@@ -671,6 +709,15 @@ public class ArchiveItemRoutingService {
                 requestPhysicalFields == null
                         ? Map.of()
                         : convertDynamicFields(before.physicalFields(), requestPhysicalFields);
+        assertProposedItemInDataScope(
+                userId,
+                category,
+                fonds.fondsCode(),
+                request.securityLevelId() == null
+                        ? before.item().securityLevelId()
+                        : request.securityLevelId(),
+                before.fields(),
+                convertedDynamicFields);
         int updated;
         try {
             updated =
@@ -682,6 +729,12 @@ public class ArchiveItemRoutingService {
                             archiveNo,
                             StringUtils.defaultIfBlank(
                                     request.electronicStatus(), before.item().electronicStatus()),
+                            request.securityLevelId() == null
+                                    ? before.item().securityLevelId()
+                                    : request.securityLevelId(),
+                            request.retentionPeriodId() == null
+                                    ? before.item().retentionPeriodId()
+                                    : request.retentionPeriodId(),
                             archiveYear,
                             userId);
         } catch (DuplicateKeyException exception) {
@@ -711,10 +764,12 @@ public class ArchiveItemRoutingService {
     }
 
     @Transactional
-    public void deleteItem(Long id, @Nullable Long userId, @Nullable DeleteItemRequest request) {
+    public void deleteItem(Long id, Long userId, @Nullable DeleteItemRequest request) {
+        requirePermission(userId, "archive:item:delete");
         ArchiveItemDto record = getItem(id);
-        ensureItemEditable(record);
         ArchiveCategoryDto category = getCategoryByCode(record.categoryCode());
+        assertItemInDataScope(userId, category, record);
+        ensureItemEditable(record);
         String tableName = dynamicTableName(category, ArchiveLevel.ITEM);
         insertItemAudit(
                 AUDIT_OPERATION_DELETE,
@@ -737,11 +792,14 @@ public class ArchiveItemRoutingService {
     }
 
     @Transactional
-    public ArchiveItemDto lockItem(
-            Long id, @Nullable Long userId, @Nullable LockItemRequest request) {
+    public ArchiveItemDto lockItem(Long id, Long userId, @Nullable LockItemRequest request) {
+        requirePermission(userId, "archive:item:lock");
         if (id == null || id <= 0) {
             throw badRequest("档案条目 ID 不合法");
         }
+        ArchiveItemDto before = getItem(id);
+        ArchiveCategoryDto category = getCategoryByCode(before.categoryCode());
+        assertItemInDataScope(userId, category, before);
         int updated =
                 archiveMapper.lockArchiveItem(
                         id,
@@ -760,10 +818,14 @@ public class ArchiveItemRoutingService {
     }
 
     @Transactional
-    public ArchiveItemDto unlockItem(Long id, @Nullable Long userId) {
+    public ArchiveItemDto unlockItem(Long id, Long userId) {
+        requirePermission(userId, "archive:item:lock");
         if (id == null || id <= 0) {
             throw badRequest("档案条目 ID 不合法");
         }
+        ArchiveItemDto before = getItem(id);
+        ArchiveCategoryDto category = getCategoryByCode(before.categoryCode());
+        assertItemInDataScope(userId, category, before);
         int updated = archiveMapper.unlockArchiveItem(id, userId);
         if (updated == 0) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "档案条目不存在");
@@ -803,7 +865,7 @@ public class ArchiveItemRoutingService {
 
     @Transactional
     public ArchiveItemRelationDto createRelation(
-            Long itemId, @Nullable ArchiveItemRelationRequest request, @Nullable Long userId) {
+            Long itemId, @Nullable ArchiveItemRelationRequest request, Long userId) {
         if (request == null) {
             throw badRequest("请求体不能为空");
         }
@@ -827,7 +889,7 @@ public class ArchiveItemRoutingService {
     }
 
     @Transactional
-    public void deleteRelation(Long itemId, @Nullable Long relationId, @Nullable Long userId) {
+    public void deleteRelation(Long itemId, @Nullable Long relationId, Long userId) {
         if (relationId == null || relationId <= 0) {
             throw badRequest("关联 ID 不合法");
         }
@@ -855,6 +917,8 @@ public class ArchiveItemRoutingService {
                 string(row, "categoryName"),
                 string(row, "archiveNo"),
                 string(row, "electronicStatus"),
+                longOrNull(row, "securityLevelId"),
+                longOrNull(row, "retentionPeriodId"),
                 number(row, "archiveYear").intValue(),
                 bool(row, "lockedFlag"),
                 string(row, "lockReason"),
@@ -1097,12 +1161,13 @@ public class ArchiveItemRoutingService {
                 yield new ArchiveSqlCondition(
                         field.columnName(), ArchiveItemQueryOperator.IS_NOT_EMPTY, null);
             }
+            case IN, IS_NULL, IS_NOT_NULL ->
+                    throw badRequest("不支持的筛选操作符", fieldPath + ".op", "不支持的筛选操作符");
         };
     }
 
     private List<ArchiveSqlRelatedGroup> buildRelatedGroups(
-            @Nullable List<@Nullable ArchiveItemRelatedGroup> relatedGroups,
-            @Nullable Long userId) {
+            @Nullable List<@Nullable ArchiveItemRelatedGroup> relatedGroups, Long userId) {
         if (relatedGroups == null || relatedGroups.isEmpty()) {
             return List.of();
         }
@@ -1358,15 +1423,16 @@ public class ArchiveItemRoutingService {
 
     private void insertItemAudit(
             String operationType, ArchiveItemDto record, String operationReason, Long operatedBy) {
-        archiveMapper.insertItemAudit(
-                "am_archive_item",
-                record.id(),
-                record.id(),
-                record.fondsCode(),
-                record.categoryCode(),
-                operationType,
-                operationReason,
-                operatedBy);
+        ArchiveItemAudit audit = new ArchiveItemAudit();
+        audit.setSourceTableName("am_archive_item");
+        audit.setSourceRecordId(record.id());
+        audit.setArchiveItemId(record.id());
+        audit.setFondsCode(record.fondsCode());
+        audit.setCategoryCode(record.categoryCode());
+        audit.setOperationType(operationType);
+        audit.setOperationReason(operationReason);
+        audit.setOperatedBy(operatedBy);
+        auditRepository.insert(audit);
     }
 
     private BadRequestException badRequest(String message) {
@@ -1375,6 +1441,62 @@ public class ArchiveItemRoutingService {
 
     private BadRequestException badRequest(String message, String field, String description) {
         return new BadRequestException(message, field, description);
+    }
+
+    private void requirePermission(Long userId, String permissionCode) {
+        if (userId == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "请先登录");
+        }
+        if (!permissionService.hasPermission(userId, permissionCode)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "权限不足");
+        }
+    }
+
+    private void assertItemInDataScope(
+            Long userId, ArchiveCategoryDto category, ArchiveItemDto record) {
+        if (userId == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "请先登录");
+        }
+        ArchiveDataScopeFilter filter =
+                dataScopeService.buildItemFilter(userId, category.id(), record.fondsCode());
+        if (filter.empty()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "数据范围不足");
+        }
+        if (filter.allData()) {
+            return;
+        }
+        Map<String, @Nullable Object> dynamicRecord = loadDynamicRecord(category, record.id());
+        if (!dataScopeService.matchesItemFilter(
+                filter, record.fondsCode(), record.securityLevelId(), dynamicRecord)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "数据范围不足");
+        }
+    }
+
+    private void assertProposedItemInDataScope(
+            Long userId,
+            ArchiveCategoryDto category,
+            String fondsCode,
+            @Nullable Long securityLevelId,
+            List<ArchiveFieldDto> fields,
+            Map<String, @Nullable Object> dynamicFieldsByCode) {
+        if (userId == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "请先登录");
+        }
+        ArchiveDataScopeFilter filter =
+                dataScopeService.buildItemFilter(userId, category.id(), fondsCode);
+        if (filter.empty()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "数据范围不足");
+        }
+        if (filter.allData()) {
+            return;
+        }
+        Map<String, @Nullable Object> dynamicRow = new LinkedHashMap<>();
+        for (ArchiveFieldDto field : fields) {
+            dynamicRow.put(field.columnName(), dynamicFieldsByCode.get(field.fieldCode()));
+        }
+        if (!dataScopeService.matchesItemFilter(filter, fondsCode, securityLevelId, dynamicRow)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "数据范围不足");
+        }
     }
 
     private @Nullable String string(Map<String, @Nullable Object> row, String key) {
@@ -1412,7 +1534,7 @@ public class ArchiveItemRoutingService {
         return row.get(JdbcUtils.convertPropertyNameToUnderscoreName(key));
     }
 
-    public record ArchiveItemQueryRequest(
+    public record SearchArchiveItemsRequest(
             @Nullable Long categoryId,
             @Nullable String fondsCode,
             @Nullable String keyword,
@@ -1446,22 +1568,26 @@ public class ArchiveItemRoutingService {
             String categoryName,
             ArchiveItemRelationDirection direction) {}
 
-    public record ArchiveItemRequest(
+    public record CreateArchiveItemRequest(
             @Nullable Long categoryId,
             @Nullable Long volumeId,
             @Nullable String fondsCode,
             @Nullable String archiveNo,
             @Nullable Integer archiveYear,
             @Nullable String electronicStatus,
+            @Nullable Long securityLevelId,
+            @Nullable Long retentionPeriodId,
             @Nullable Map<String, @Nullable Object> physicalFields,
             @Nullable Map<String, @Nullable Object> dynamicFields) {}
 
-    public record ArchiveItemUpdateRequest(
+    public record UpdateArchiveItemRequest(
             @Nullable Long volumeId,
             @Nullable String fondsCode,
             @Nullable String archiveNo,
             @Nullable Integer archiveYear,
             @Nullable String electronicStatus,
+            @Nullable Long securityLevelId,
+            @Nullable Long retentionPeriodId,
             @Nullable Map<String, @Nullable Object> physicalFields,
             @Nullable Map<String, @Nullable Object> dynamicFields) {}
 
@@ -1495,6 +1621,8 @@ public class ArchiveItemRoutingService {
             String categoryName,
             @Nullable String archiveNo,
             String electronicStatus,
+            @Nullable Long securityLevelId,
+            @Nullable Long retentionPeriodId,
             int archiveYear,
             boolean lockedFlag,
             @Nullable String lockReason,

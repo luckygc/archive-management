@@ -10,15 +10,15 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
-import github.luckygc.am.module.archive.item.service.ArchiveItemAuditQueryService;
+import github.luckygc.am.module.archive.item.service.ArchiveItemAuditSearchService;
 
 @DisplayName("档案条目操作审计 HTTP 入口")
 class ArchiveItemAuditControllerTests {
 
-    private final ArchiveItemAuditQueryService auditQueryService =
-            mock(ArchiveItemAuditQueryService.class);
+    private final ArchiveItemAuditSearchService auditSearchService =
+            mock(ArchiveItemAuditSearchService.class);
     private final ArchiveItemAuditController controller =
-            new ArchiveItemAuditController(auditQueryService);
+            new ArchiveItemAuditController(auditSearchService);
 
     @Test
     @DisplayName("未认证用户不能查询审计")
@@ -26,7 +26,8 @@ class ArchiveItemAuditControllerTests {
         assertThatThrownBy(
                         () ->
                                 controller.listAudits(
-                                        null, null, null, null, null, null, null, null, null))
+                                        null, null, null, null, null, null, null, null, false,
+                                        null))
                 .isInstanceOfSatisfying(
                         ResponseStatusException.class,
                         exception -> {
@@ -35,6 +36,6 @@ class ArchiveItemAuditControllerTests {
                             assertThat(exception.getReason()).isEqualTo("请先登录");
                         });
 
-        verifyNoInteractions(auditQueryService);
+        verifyNoInteractions(auditSearchService);
     }
 }

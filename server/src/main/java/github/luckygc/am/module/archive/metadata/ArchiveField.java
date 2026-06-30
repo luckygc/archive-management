@@ -99,6 +99,9 @@ public class ArchiveField implements CreationAuditable, UpdateAuditable {
     @Column(name = "exact_searchable", nullable = false)
     private boolean exactSearchable;
 
+    @Column(name = "data_scope_filterable", nullable = false)
+    private boolean dataScopeFilterable;
+
     @Column(nullable = false)
     private boolean enabled = true;
 

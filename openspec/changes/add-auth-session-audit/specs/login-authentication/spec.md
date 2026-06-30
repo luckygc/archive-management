@@ -68,31 +68,22 @@
 - **AND** 请求 SHALL 支持按事件类型、用户名、关键字和时间范围筛选
 - **AND** 日志 SHALL 按发生时间倒序、ID 倒序稳定排序
 
-### Requirement: 登录失败限制
+### Requirement: 登录失败 PoW 风控
 
-系统 SHALL 对同一登录名在时间窗口内连续登录失败进行限制，并按指数退避计算锁定时长。
+系统 SHALL 对同一登录名在时间窗口内连续登录失败进行风险记录，并按风险动态提高 CAP 难度，不因失败次数直接锁定账号。
 
-#### Scenario: 失败次数达到阈值后锁定登录名
+#### Scenario: 失败次数提高 CAP 难度
 
-- **GIVEN** 登录名在 10 分钟内连续登录失败达到 5 次
-- **WHEN** 客户端再次请求 `POST /api/v1/login-sessions`
-- **THEN** 系统 SHALL 拒绝登录请求
-- **AND** 系统 SHALL NOT 消费 CAP token
-- **AND** 系统 SHALL NOT 校验密码
-- **AND** 响应 SHALL 提示登录失败次数过多以及可再次登录时间
-
-#### Scenario: 指数退避增长锁定时长
-
-- **GIVEN** 同一登录名重复触发登录失败限制
-- **WHEN** 系统计算新的锁定截止时间
-- **THEN** 锁定时长 SHALL 以 5 分钟为基准按 3 倍指数退避增长
-- **AND** 锁定时长 SHALL NOT 超过 24 小时
+- **GIVEN** 同一登录名存在失败风险
+- **WHEN** 客户端请求 `POST /api/v1/cap-challenges` 并提交登录名
+- **THEN** 系统 SHALL 返回高于默认难度的 CAP challenge
+- **AND** 兑换出的 CAP token SHALL 绑定该登录名
 
 #### Scenario: 登录成功清除失败限制
 
 - **GIVEN** 登录名存在历史失败限制状态但当前未处于锁定期
 - **WHEN** 用户通过 `POST /api/v1/login-sessions` 成功登录
-- **THEN** 系统 SHALL 清除该登录名的失败限制状态
+- **THEN** 系统 SHALL 清除该登录名的失败风险状态
 
 ### Requirement: 短生命周期数据统一清理
 

@@ -32,6 +32,7 @@ catalog:
     "@vitejs/plugin-react": ^6.0.3
     antd: ^6.4.5
     antd-mobile: ^5.42.0
+    axios: ^1.18.1
     cap-widget: ^0.1.56
     dayjs: ^1.11.19
     jsdom: ^29.1.1

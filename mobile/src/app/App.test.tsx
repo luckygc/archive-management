@@ -1,5 +1,5 @@
 import { cleanup, render, screen } from "@testing-library/react";
-import { resetSessionStore } from "@archive-management/frontend-core/auth";
+import { resetSessionStore } from "@archive-management/frontend-core/authentication";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import { App } from "./App";
@@ -14,7 +14,7 @@ beforeEach(() => {
     vi.stubGlobal(
         "fetch",
         vi.fn(async (input: RequestInfo | URL) => {
-            if (requestUrl(input) === "/api/v1/auth/session") {
+            if (requestUrl(input) === "/api/v1/me") {
                 return jsonResponse(currentUser);
             }
             return jsonResponse({}, 404);
@@ -42,7 +42,7 @@ describe("移动端门户", () => {
 
     it("未登录时跳转到移动端登录页", async () => {
         vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL) => {
-            if (requestUrl(input) === "/api/v1/auth/session") {
+            if (requestUrl(input) === "/api/v1/me") {
                 return jsonResponse({ detail: "未登录" }, 401);
             }
             return jsonResponse({}, 404);

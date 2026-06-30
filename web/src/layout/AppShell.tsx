@@ -77,6 +77,11 @@ const menuItems: MenuProps["items"] = [
                 icon: <LockOutlined />,
             },
             {
+                key: "/system/data-scopes",
+                label: <Link to="/system/data-scopes">数据范围</Link>,
+                icon: <LockOutlined />,
+            },
+            {
                 key: "/system/storage",
                 label: <Link to="/system/storage">存储配置</Link>,
                 icon: <DatabaseOutlined />,

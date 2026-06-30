@@ -43,9 +43,12 @@ Use this skill before changing archive-management API contracts. The project def
 
 - Large or user-facing collection APIs must be paginated. Do not return unbounded bare lists unless the resource set is intentionally tiny and documented.
 - Do not serialize Jakarta Data, Hibernate, MyBatis, or other persistence pagination objects directly as HTTP responses. Define project-owned response records/types.
-- Use parallel project-owned records instead of inheritance or polymorphic JSON contracts: `CollectionResponse<T>` for small unpaged collections, `OffsetPageResponse<T>` for offset pages, and `CursorPageResponse<T>` for keyset/cursor pages.
-- Offset pagination is for bounded or count-oriented lists: request `limit`, `offset`; response fixed `items`, `limit`, `offset`, and `total`. Run `total` as a separate count query.
-- Keyset/cursor pagination is for large or complex lists: request `limit`, `cursor`; response `self`, optional `prev`, optional `next`, optional `first`, rarely `last`, and fixed `items`. These navigation fields are opaque tokens, not URLs. Do not return `total` and do not run count by default.
+- Use parallel project-owned records instead of inheritance or polymorphic JSON contracts: `CollectionResponse<T>` for small unpaged collections, `CursorPageResponse<T>` for default paged collections, and `OffsetPageResponse<T>` only when a concrete business spec explicitly permits offset pagination.
+- Default to keyset/cursor pagination for growing collection APIs. Do not add `offset` or default `total` unless the business spec explicitly requires offset/page-jump/count-oriented behavior.
+- Offset pagination is only for explicitly specified bounded or count-oriented lists: request `limit`, `offset`; response fixed `items`, `limit`, `offset`, and `total`. Run `total` as a separate count query.
+- Keyset/cursor pagination is for the default paged list shape and for large or complex lists: request `limit`, `cursor`; response `self`, optional `prev`, optional `next`, optional `first`, rarely `last`, and fixed `items`. These navigation fields are opaque tokens, not URLs. Do not return `total` and do not run count by default.
+- If a cursor endpoint explicitly supports `requestTotal=true`, run count only on the first request without `cursor`. Follow-up requests with `cursor` must not count and must not return `total`.
+- Treat list and count as separate concerns. For expensive totals, expose a separate `:count` method or async job instead of making the default list request wait for count. `requestTotal=true` is only for explicitly allowed first-page count cases.
 - Cursor pagination defaults to `limit=100`, common frontend options are `100`, `200`, `500`, and `1000`, and the default maximum is `1000` unless a concrete spec declares a special limit.
 - When the user changes page size, start a fresh first-page query with the committed query state and no old cursor.
 - Cursor page turns must repeat the first request's effective filters, search terms, sorting, page size, and business scope; only `cursor` changes to the returned `next` or `prev` token. Changing any of those parameters requires a fresh search without the old cursor.
@@ -94,6 +97,6 @@ Use this skill before changing archive-management API contracts. The project def
 1. Identify the resource and whether the operation is standard CRUD or a custom method.
 2. Verify the URL includes `/api/v1`, follows Zalando REST style for normal resources, and each Controller method declares the complete path.
 3. Ensure response DTO IDs use numeric contracts unless a concrete spec explicitly requires string IDs.
-4. Ensure growing collection APIs use the unified page contract: offset returns `items` plus `total`, keyset/cursor returns `items` and cursors without `total`.
+4. Ensure growing collection APIs default to keyset/cursor pagination; use offset only when a concrete spec explicitly permits it. Offset returns `items` plus `total`, keyset/cursor returns `items` and cursors without `total`.
 5. Map validation, not-found, conflict, and precondition failures to ProblemDetail error bodies.
 6. Update OpenSpec, frontend types, and API clients together when changing a contract.

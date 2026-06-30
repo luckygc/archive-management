@@ -22,14 +22,18 @@ import org.junit.jupiter.api.Test;
 
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.archive.ArchiveLevel;
-import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveItemRequest;
-import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveItemUpdateRequest;
-import github.luckygc.am.module.archive.item.service.ArchiveVolumeService.ArchiveVolumeRequest;
+import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
+import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService.ArchiveDataScopeFilter;
+import github.luckygc.am.module.archive.item.repository.ArchiveItemAuditDataRepository;
+import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.CreateArchiveItemRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.UpdateArchiveItemRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveVolumeService.CreateArchiveVolumeRequest;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.metadata.ArchiveManagementMode;
 import github.luckygc.am.module.archive.metadata.ArchiveTableStatus;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryDto;
+import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
 
 @DisplayName("档案写入全宗校验")
 class ArchiveItemFondsValidationTests {
@@ -45,9 +49,21 @@ class ArchiveItemFondsValidationTests {
         archiveMetadataService = mock(ArchiveMetadataService.class);
         ArchiveItemSearchProjectionService searchProjectionService =
                 mock(ArchiveItemSearchProjectionService.class);
+        ArchiveDataScopeService dataScopeService = mock(ArchiveDataScopeService.class);
+        when(dataScopeService.buildItemFilter(anyLong(), anyLong(), anyString()))
+                .thenReturn(ArchiveDataScopeFilter.all());
+        AuthorizationPermissionService permissionService =
+                mock(AuthorizationPermissionService.class);
+        ArchiveItemAuditDataRepository auditRepository = mock(ArchiveItemAuditDataRepository.class);
+        when(permissionService.hasPermission(anyLong(), anyString())).thenReturn(true);
         archiveItemRoutingService =
                 new ArchiveItemRoutingService(
-                        archiveMetadataService, archiveMapper, searchProjectionService);
+                        archiveMetadataService,
+                        archiveMapper,
+                        searchProjectionService,
+                        dataScopeService,
+                        permissionService,
+                        auditRepository);
         archiveVolumeService =
                 new ArchiveVolumeService(
                         archiveMapper, archiveMetadataService, archiveItemRoutingService);
@@ -65,9 +81,9 @@ class ArchiveItemFondsValidationTests {
         assertThatThrownBy(
                         () ->
                                 archiveItemRoutingService.createItem(
-                                        new ArchiveItemRequest(
+                                        new CreateArchiveItemRequest(
                                                 1L, null, "F001", "A-001", 2026, "DRAFT", null,
-                                                Map.of()),
+                                                null, null, Map.of()),
                                         9L))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("全宗不可用");
@@ -82,6 +98,8 @@ class ArchiveItemFondsValidationTests {
                         anyString(),
                         any(),
                         anyString(),
+                        any(),
+                        any(),
                         anyInt(),
                         any());
         verify(archiveMetadataService).getEnabledFondsByCode("F001");
@@ -106,9 +124,9 @@ class ArchiveItemFondsValidationTests {
                         () ->
                                 archiveItemRoutingService.updateItem(
                                         10L,
-                                        new ArchiveItemUpdateRequest(
-                                                null, "F001", "A-002", 2026, "DRAFT", null,
-                                                Map.of()),
+                                        new UpdateArchiveItemRequest(
+                                                null, "F001", "A-002", 2026, "DRAFT", null, null,
+                                                null, Map.of()),
                                         9L))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("全宗不可用");
@@ -121,6 +139,8 @@ class ArchiveItemFondsValidationTests {
                         anyString(),
                         any(),
                         anyString(),
+                        any(),
+                        any(),
                         anyInt(),
                         any());
         verify(archiveMetadataService).getEnabledFondsByCode("F001");
@@ -137,7 +157,7 @@ class ArchiveItemFondsValidationTests {
         assertThatThrownBy(
                         () ->
                                 archiveVolumeService.createVolume(
-                                        new ArchiveVolumeRequest(
+                                        new CreateArchiveVolumeRequest(
                                                 1L, "F001", "V-001", 2026, "DRAFT"),
                                         9L))
                 .isInstanceOf(BadRequestException.class)

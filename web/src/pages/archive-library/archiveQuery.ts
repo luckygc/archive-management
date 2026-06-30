@@ -1,7 +1,7 @@
 import type {
     ArchiveItemRelatedGroup,
     ArchiveItemWhere,
-    ArchiveRecordQuery,
+    SearchArchiveRecordsRequest,
 } from "@/shared/types/archive";
 import dayjs from "dayjs";
 
@@ -11,7 +11,7 @@ import type {
     RelatedGroupDraft,
 } from "./ArchiveAdvancedQueryPanel";
 
-export function toSearchQuery(values: ArchiveQueryFormValues): ArchiveRecordQuery {
+export function toSearchQuery(values: ArchiveQueryFormValues): SearchArchiveRecordsRequest {
     return {
         categoryId: values.categoryId,
         fondsCode: trimToUndefined(values.fondsCode),

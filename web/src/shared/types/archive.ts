@@ -14,11 +14,14 @@ export type ArchivePhysicalStatus =
     | "BORROWED";
 export type ArchiveItemQueryOperator =
     | "EQ"
+    | "IN"
     | "CONTAINS"
     | "STARTS_WITH"
     | "GTE"
     | "LTE"
     | "BETWEEN"
+    | "IS_NULL"
+    | "IS_NOT_NULL"
     | "IS_EMPTY"
     | "IS_NOT_EMPTY";
 export type ArchiveItemRelationDirection = "OUTGOING" | "INCOMING" | "BOTH";
@@ -37,11 +40,37 @@ export interface ArchiveFondsDto {
     updatedAt: string;
 }
 
-export interface ArchiveFondsCommand {
+export interface ArchiveFondsRequest {
     fondsCode: string;
     fondsName: string;
     enabled: boolean;
     sortOrder: number;
+}
+
+export interface ArchiveSecurityLevelDto {
+    id: number;
+    levelName: string;
+    enabled: boolean;
+    sortOrder: number;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface ArchiveSecurityLevelRequest {
+    levelName: string;
+}
+
+export interface ArchiveRetentionPeriodDto {
+    id: number;
+    periodName: string;
+    enabled: boolean;
+    sortOrder: number;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface ArchiveRetentionPeriodRequest {
+    periodName: string;
 }
 
 export interface ArchiveCategoryDto {
@@ -60,7 +89,7 @@ export interface ArchiveCategoryDto {
     updatedAt: string;
 }
 
-export interface ArchiveCategoryCommand {
+export interface ArchiveCategoryRequest {
     categoryCode: string;
     categoryName: string;
     parentId?: number;
@@ -91,13 +120,14 @@ export interface ArchiveFieldDto {
     editColSpan: number;
     editSortOrder: number;
     exactSearchable: boolean;
+    dataScopeFilterable: boolean;
     enabled: boolean;
     sortOrder: number;
     createdAt: string;
     updatedAt: string;
 }
 
-export interface ArchiveFieldCommand {
+export interface ArchiveFieldRequest {
     archiveLevel: ArchiveLevel;
     fieldCode: string;
     fieldName: string;
@@ -116,6 +146,7 @@ export interface ArchiveFieldCommand {
     editColSpan: number;
     editSortOrder: number;
     exactSearchable: boolean;
+    dataScopeFilterable: boolean;
     enabled: boolean;
     sortOrder: number;
 }
@@ -139,11 +170,11 @@ export interface ArchiveFieldLayoutItemDto {
     colOrder: number;
 }
 
-export interface ArchiveFieldLayoutCommand {
-    items: ArchiveFieldLayoutItemCommand[];
+export interface ArchiveFieldLayoutRequest {
+    items: ArchiveFieldLayoutItemRequest[];
 }
 
-export interface ArchiveFieldLayoutItemCommand {
+export interface ArchiveFieldLayoutItemRequest {
     fieldId: number;
     visible: boolean;
     listWidth?: number;
@@ -174,7 +205,7 @@ export interface ArchiveUniqueConstraintDto {
     updatedAt: string;
 }
 
-export interface ArchiveUniqueConstraintCommand {
+export interface ArchiveUniqueConstraintRequest {
     archiveLevel: ArchiveLevel;
     constraintCode: string;
     constraintName: string;
@@ -182,7 +213,7 @@ export interface ArchiveUniqueConstraintCommand {
     fieldIds: number[];
 }
 
-export interface ArchiveRecordQuery {
+export interface SearchArchiveRecordsRequest {
     categoryId?: number;
     fondsCode?: string;
     keyword?: string;
@@ -234,28 +265,32 @@ export interface ArchiveRelatedFilterCategoryDto {
     direction: ArchiveItemRelationDirection;
 }
 
-export interface ArchiveRecordCommand {
+export interface CreateArchiveRecordRequest {
     categoryId: number;
     volumeId?: number;
     fondsCode: string;
     archiveNo?: string;
     archiveYear?: number;
     electronicStatus?: ArchiveElectronicStatus;
-    physicalObject: ArchivePhysicalObjectCommand;
+    securityLevelId?: number;
+    retentionPeriodId?: number;
+    physicalObject: ArchivePhysicalObjectRequest;
     dynamicFields: Record<string, unknown>;
 }
 
-export interface ArchiveRecordUpdateCommand {
+export interface UpdateArchiveRecordRequest {
     volumeId?: number;
     fondsCode: string;
     archiveNo?: string;
     archiveYear?: number;
     electronicStatus?: ArchiveElectronicStatus;
-    physicalObject: ArchivePhysicalObjectCommand;
+    securityLevelId?: number;
+    retentionPeriodId?: number;
+    physicalObject: ArchivePhysicalObjectRequest;
     dynamicFields: Record<string, unknown>;
 }
 
-export interface ArchivePhysicalObjectCommand {
+export interface ArchivePhysicalObjectRequest {
     physicalStatus: ArchivePhysicalStatus;
     boxNo?: string;
     locationNo?: string;
@@ -272,6 +307,8 @@ export interface ArchiveRecordDto {
     categoryName: string;
     archiveNo?: string;
     electronicStatus: ArchiveElectronicStatus;
+    securityLevelId?: number;
+    retentionPeriodId?: number;
     archiveYear: number;
     lockedFlag: boolean;
     lockReason?: string;
@@ -311,4 +348,144 @@ export interface ArchiveRecordDetailDto {
 export interface SearchProjectionRebuildResult {
     categoryId: number;
     rebuiltCount: number;
+}
+
+export interface ArchiveImportResult {
+    importedCount: number;
+    errors: ArchiveImportRowError[];
+}
+
+export interface ArchiveImportRowError {
+    rowNumber: number;
+    fieldName: string;
+    message: string;
+}
+
+export type ArchiveDataScopeType = "ALL" | "CONDITIONAL";
+export type ArchiveDataScopeDimensionType = "FONDS" | "CATEGORY" | "SECURITY_LEVEL";
+
+export interface ArchiveDataScopeDto {
+    id: number;
+    scopeCode: string;
+    scopeName: string;
+    scopeType: ArchiveDataScopeType;
+    dimensions: ArchiveDataScopeDimensionDto[];
+    dynamicCondition?: ArchiveDataScopeDynamicCondition;
+    enabled: boolean;
+    description?: string;
+}
+
+export interface ArchiveDataScopeDimensionDto {
+    dimensionType: ArchiveDataScopeDimensionType;
+    targetId?: number;
+    targetCode?: string;
+    includeDescendants: boolean;
+    sortOrder: number;
+}
+
+export interface ArchiveDataScopeDynamicCondition {
+    dynamicFields: ArchiveDataScopeDynamicFieldCondition[];
+}
+
+export interface ArchiveDataScopeDynamicFieldCondition {
+    categoryId: number;
+    fieldCode: string;
+    operator: "EQ" | "IN" | "IS_NULL" | "IS_NOT_NULL";
+    values: string[];
+}
+
+export interface ArchiveDataScopeRequest {
+    scopeCode: string;
+    scopeName: string;
+    scopeType: ArchiveDataScopeType;
+    dimensions: ArchiveDataScopeDimensionRequest[];
+    dynamicCondition?: ArchiveDataScopeDynamicCondition;
+    enabled: boolean;
+    description?: string;
+}
+
+export interface ArchiveDataScopeDimensionRequest {
+    dimensionType: ArchiveDataScopeDimensionType;
+    targetId?: number;
+    targetCode?: string;
+    includeDescendants: boolean;
+}
+
+export interface AuthorizationPermissionDto {
+    permissionCode: string;
+    permissionName: string;
+    moduleCode: string;
+    description: string;
+}
+
+export interface CurrentUserPermissionsDto {
+    permissionCodes: string[];
+}
+
+export interface RolePermissionsDto {
+    roleId: number;
+    permissionCodes: string[];
+}
+
+export interface RoleArchiveDataScopesDto {
+    roleId: number;
+    scopeIds: number[];
+}
+
+export interface UserArchiveDataScopesDto {
+    userId: number;
+    scopeIds: number[];
+}
+
+export interface ArchiveItemElectronicFileRequest {
+    storageObjectId: number;
+    usageType?: string;
+    displayOrder?: number;
+}
+
+export interface ArchiveItemElectronicFileDto {
+    id: number;
+    archiveItemId: number;
+    storageObjectId: number;
+    usageType: string;
+    displayOrder: number;
+    originalFilename: string;
+    fileSize: number;
+    contentType?: string;
+    checksumSha256?: string;
+    createdAt: string;
+}
+
+export interface ArchiveItemAuditDto {
+    id: number;
+    sourceTableName: string;
+    sourceItemId: number;
+    archiveItemId?: number;
+    fondsCode?: string;
+    categoryCode?: string;
+    operationType: string;
+    operationReason?: string;
+    operatedBy: number;
+    operatedAt: string;
+}
+
+export interface ListArchiveItemAuditsRequest {
+    archiveItemId?: number;
+    fondsCode?: string;
+    categoryCode?: string;
+    operationType?: string;
+    operatedAfter?: string;
+    operatedBefore?: string;
+    limit?: number;
+    cursor?: string;
+    requestTotal?: boolean;
+}
+
+export interface CursorPageResponse<T> {
+    items: T[];
+    self?: string;
+    prev?: string;
+    next?: string;
+    first?: string;
+    total?: number;
 }

@@ -18,6 +18,20 @@
 - **AND** `challenge` SHALL 包含挑战数量 `c`、挑战尺寸 `s` 和难度 `d`
 - **AND** challenge 默认有效期 SHALL 为 10 分钟
 
+#### Scenario: 按登录风险提高安全验证难度
+
+- **GIVEN** 系统存在某登录名的失败风险状态
+- **WHEN** 客户端请求 `POST /api/v1/cap-challenges` 并提交登录名
+- **THEN** 系统 SHALL 基于登录名失败风险计算 challenge 难度 `d`
+- **AND** 风险命中时 challenge 难度 SHALL 高于默认难度
+
+#### Scenario: 安全验证令牌绑定登录名
+
+- **GIVEN** 客户端创建 CAP challenge 时提交了登录名
+- **WHEN** 客户端兑换 CAP token 并使用该 token 登录
+- **THEN** 系统 SHALL 校验 CAP token 绑定的登录名与本次登录名一致
+- **AND** 未绑定登录名或绑定到其他登录名的 CAP token SHALL NOT 用于账号密码登录
+
 #### Scenario: 兑换安全验证令牌
 
 - **GIVEN** 客户端持有未过期的 challenge token
@@ -84,6 +98,31 @@
 - **THEN** 系统 SHALL 返回 `401 Unauthorized`
 - **AND** 响应体 SHALL 为文本 `账号或密码错误`
 - **AND** 已提交的 `powToken` SHALL 被消费
+
+### Requirement: 登录失败 PoW 风控
+
+系统 SHALL 按登录名维护登录失败风险，并通过动态提高登录前安全验证成本限制机器暴力破解。
+
+#### Scenario: 记录登录名风险
+
+- **WHEN** 用户通过 `POST /api/v1/login-sessions` 登录失败
+- **THEN** 系统 SHALL 按提交的登录名记录失败风险状态
+- **AND** 登录名风险状态 SHALL 用于提高后续 CAP challenge 难度
+- **AND** 登录成功后系统 SHALL 清除该登录名的失败风险状态
+
+#### Scenario: 登录失败不锁定账号
+
+- **GIVEN** 某登录名在失败窗口内连续失败达到阈值
+- **WHEN** 客户端使用绑定该登录名的有效 CAP token 和正确密码请求登录
+- **THEN** 系统 SHALL NOT 因历史失败次数拒绝登录
+- **AND** 系统 SHALL 清除该登录名的失败风险状态
+
+#### Scenario: 防止低难度 PoW 绕过
+
+- **GIVEN** 某登录名已存在失败风险状态
+- **WHEN** 客户端使用未绑定登录名或绑定其他登录名的 CAP token 请求登录
+- **THEN** 系统 SHALL 拒绝登录
+- **AND** 系统 SHALL NOT 校验密码
 
 ### Requirement: 用户认证数据
 

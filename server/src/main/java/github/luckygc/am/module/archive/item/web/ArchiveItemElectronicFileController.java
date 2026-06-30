@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.api.CollectionResponse;
 import github.luckygc.am.common.security.AuthenticatedUser;
@@ -38,8 +39,8 @@ public class ArchiveItemElectronicFileController {
 
     @GetMapping("/api/v1/archive-items/{archiveItem}/electronic-files")
     public CollectionResponse<ArchiveItemElectronicFileResponse> listFiles(
-            @PathVariable Long archiveItem) {
-        return electronicFileService.listFiles(archiveItem);
+            @PathVariable Long archiveItem, Authentication authentication) {
+        return electronicFileService.listFiles(archiveItem, currentUserId(authentication));
     }
 
     @PostMapping("/api/v1/archive-items/{archiveItem}/electronic-files")
@@ -63,9 +64,12 @@ public class ArchiveItemElectronicFileController {
 
     @GetMapping("/api/v1/archive-items/{archiveItem}/electronic-files/{electronicFile}/content")
     public ResponseEntity<InputStreamResource> downloadFile(
-            @PathVariable Long archiveItem, @PathVariable Long electronicFile) {
+            @PathVariable Long archiveItem,
+            @PathVariable Long electronicFile,
+            Authentication authentication) {
         ArchiveItemFileDownload download =
-                electronicFileService.downloadFile(archiveItem, electronicFile);
+                electronicFileService.downloadFile(
+                        archiveItem, electronicFile, currentUserId(authentication));
         FileStorageResource resource = download.resource();
         String contentType =
                 org.apache.commons.lang3.StringUtils.defaultIfBlank(
@@ -82,11 +86,11 @@ public class ArchiveItemElectronicFileController {
                 .body(new InputStreamResource(download.resource().inputStream()));
     }
 
-    private @Nullable Long currentUserId(@Nullable Authentication authentication) {
+    private Long currentUserId(@Nullable Authentication authentication) {
         if (authentication != null
                 && authentication.getPrincipal() instanceof AuthenticatedUser userDetails) {
             return userDetails.id();
         }
-        return null;
+        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "请先登录");
     }
 }

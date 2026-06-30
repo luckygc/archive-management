@@ -23,7 +23,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import github.luckygc.am.app.ArchiveManagementApplication;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveItemOrderBy;
-import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveItemQueryRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.SearchArchiveItemsRequest;
 
 @Testcontainers(disabledWithoutDocker = true)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
@@ -71,7 +71,7 @@ class ArchiveFullTextSearchIntegrationTests {
 
         var result =
                 archiveItemRoutingService.discoverItems(
-                        new ArchiveItemQueryRequest(
+                        new SearchArchiveItemsRequest(
                                 categoryId, "Z001", "档案管理系统", null, null, 50, null, null),
                         1L);
 
@@ -90,7 +90,7 @@ class ArchiveFullTextSearchIntegrationTests {
 
         var firstPage =
                 archiveItemRoutingService.searchItems(
-                        new ArchiveItemQueryRequest(
+                        new SearchArchiveItemsRequest(
                                 categoryId,
                                 null,
                                 null,
@@ -108,7 +108,7 @@ class ArchiveFullTextSearchIntegrationTests {
 
         var secondPage =
                 archiveItemRoutingService.searchItems(
-                        new ArchiveItemQueryRequest(
+                        new SearchArchiveItemsRequest(
                                 categoryId,
                                 null,
                                 null,
@@ -126,7 +126,7 @@ class ArchiveFullTextSearchIntegrationTests {
 
         var previousPage =
                 archiveItemRoutingService.searchItems(
-                        new ArchiveItemQueryRequest(
+                        new SearchArchiveItemsRequest(
                                 categoryId,
                                 null,
                                 null,
@@ -144,7 +144,7 @@ class ArchiveFullTextSearchIntegrationTests {
         assertThatThrownBy(
                         () ->
                                 archiveItemRoutingService.searchItems(
-                                        new ArchiveItemQueryRequest(
+                                        new SearchArchiveItemsRequest(
                                                 categoryId,
                                                 "Z001",
                                                 null,
@@ -181,7 +181,7 @@ class ArchiveFullTextSearchIntegrationTests {
 
         var firstPage =
                 archiveItemRoutingService.searchItems(
-                        new ArchiveItemQueryRequest(
+                        new SearchArchiveItemsRequest(
                                 categoryId, null, null, null, null, 1, null, null),
                         1L);
 
@@ -192,7 +192,7 @@ class ArchiveFullTextSearchIntegrationTests {
 
         var secondPage =
                 archiveItemRoutingService.searchItems(
-                        new ArchiveItemQueryRequest(
+                        new SearchArchiveItemsRequest(
                                 categoryId, null, null, null, null, 1, firstPage.next(), null),
                         1L);
 
@@ -211,7 +211,7 @@ class ArchiveFullTextSearchIntegrationTests {
 
         var firstPage =
                 archiveItemRoutingService.searchItems(
-                        new ArchiveItemQueryRequest(
+                        new SearchArchiveItemsRequest(
                                 categoryId,
                                 null,
                                 null,
@@ -229,7 +229,7 @@ class ArchiveFullTextSearchIntegrationTests {
 
         var secondPage =
                 archiveItemRoutingService.searchItems(
-                        new ArchiveItemQueryRequest(
+                        new SearchArchiveItemsRequest(
                                 categoryId,
                                 null,
                                 null,
@@ -278,6 +278,7 @@ class ArchiveFullTextSearchIntegrationTests {
                 "insert into " + physicalTableName + " (id, f_box_no) values (?, ?)",
                 itemId,
                 "D-001");
+        grantSuperAdminRole(99L);
 
         archiveItemRoutingService.deleteItem(
                 itemId, 99L, new ArchiveItemRoutingService.DeleteItemRequest("测试删除"));
@@ -285,6 +286,27 @@ class ArchiveFullTextSearchIntegrationTests {
         assertDeletedMetadata("am_archive_item", itemId, 99L);
         assertDeletedMetadata(itemTableName, itemId, 99L);
         assertDeletedMetadata(physicalTableName, itemId, 99L);
+    }
+
+    private void grantSuperAdminRole(Long userId) {
+        jdbcTemplate.update(
+                """
+                insert into am_authentication_user (id, username, password, display_name)
+                values (?, ?, '{noop}test', ?)
+                on conflict (id) do nothing
+                """,
+                userId,
+                "test-user-" + userId,
+                "测试用户 " + userId);
+        jdbcTemplate.update(
+                """
+                insert into am_authorization_user_role_rel (user_id, role_id)
+                select ?, id
+                from am_authorization_role
+                where role_name = '超级管理员'
+                on conflict (user_id, role_id) do nothing
+                """,
+                userId);
     }
 
     @Test
@@ -304,7 +326,7 @@ class ArchiveFullTextSearchIntegrationTests {
 
         var firstPage =
                 archiveItemRoutingService.searchDeletedItems(
-                        new ArchiveItemQueryRequest(
+                        new SearchArchiveItemsRequest(
                                 categoryId, null, null, null, null, 1, null, null),
                         1L);
 
@@ -315,7 +337,7 @@ class ArchiveFullTextSearchIntegrationTests {
 
         var secondPage =
                 archiveItemRoutingService.searchDeletedItems(
-                        new ArchiveItemQueryRequest(
+                        new SearchArchiveItemsRequest(
                                 categoryId, null, null, null, null, 1, firstPage.next(), null),
                         1L);
 

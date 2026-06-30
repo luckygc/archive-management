@@ -1,6 +1,5 @@
 package github.luckygc.am.module.archive.mapper;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -41,6 +40,7 @@ public interface ArchiveMapper {
             @Param("archiveLevel") String archiveLevel,
             @Param("deleted") boolean deleted,
             @Param("fondsCode") String fondsCode,
+            @Param("dataScopeGroups") List<ArchiveDataScopeSqlGroup> dataScopeGroups,
             @Param("conditions") List<ArchiveSqlCondition> conditions,
             @Param("relatedGroups") List<ArchiveSqlRelatedGroup> relatedGroups,
             @Param("fullTextKeyword") String fullTextKeyword,
@@ -65,6 +65,8 @@ public interface ArchiveMapper {
             @Param("categoryName") String categoryName,
             @Param("archiveNo") String archiveNo,
             @Param("electronicStatus") String electronicStatus,
+            @Param("securityLevelId") Long securityLevelId,
+            @Param("retentionPeriodId") Long retentionPeriodId,
             @Param("archiveYear") int archiveYear,
             @Param("userId") Long userId);
 
@@ -85,6 +87,8 @@ public interface ArchiveMapper {
             @Param("fondsName") String fondsName,
             @Param("archiveNo") String archiveNo,
             @Param("electronicStatus") String electronicStatus,
+            @Param("securityLevelId") Long securityLevelId,
+            @Param("retentionPeriodId") Long retentionPeriodId,
             @Param("archiveYear") int archiveYear,
             @Param("userId") Long userId);
 
@@ -123,34 +127,6 @@ public interface ArchiveMapper {
             @Param("archiveNo") String archiveNo,
             @Param("excludedId") @Nullable Long excludedId);
 
-    int insertItemAudit(
-            @Param("sourceTableName") String sourceTableName,
-            @Param("sourceRecordId") Long sourceRecordId,
-            @Param("archiveItemId") Long archiveItemId,
-            @Param("fondsCode") String fondsCode,
-            @Param("categoryCode") String categoryCode,
-            @Param("operationType") String operationType,
-            @Param("operationReason") String operationReason,
-            @Param("operatedBy") Long operatedBy);
-
-    long countArchiveItemAudits(
-            @Param("archiveItemId") @Nullable Long archiveItemId,
-            @Param("fondsCode") @Nullable String fondsCode,
-            @Param("categoryCode") @Nullable String categoryCode,
-            @Param("operationType") @Nullable String operationType,
-            @Param("operatedAfter") @Nullable LocalDateTime operatedAfter,
-            @Param("operatedBefore") @Nullable LocalDateTime operatedBefore);
-
-    List<Map<String, Object>> listArchiveItemAudits(
-            @Param("archiveItemId") @Nullable Long archiveItemId,
-            @Param("fondsCode") @Nullable String fondsCode,
-            @Param("categoryCode") @Nullable String categoryCode,
-            @Param("operationType") @Nullable String operationType,
-            @Param("operatedAfter") @Nullable LocalDateTime operatedAfter,
-            @Param("operatedBefore") @Nullable LocalDateTime operatedBefore,
-            @Param("limit") int limit,
-            @Param("offset") long offset);
-
     List<Map<String, Object>> listArchiveItemElectronicFiles(
             @Param("archiveItemId") Long archiveItemId);
 
@@ -159,7 +135,7 @@ public interface ArchiveMapper {
             @Param("storageObjectId") Long storageObjectId,
             @Param("usageType") String usageType,
             @Param("displayOrder") int displayOrder,
-            @Param("userId") @Nullable Long userId);
+            @Param("userId") Long userId);
 
     int deleteArchiveItemElectronicFile(
             @Param("archiveItemId") Long archiveItemId,

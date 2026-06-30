@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.api.CollectionResponse;
 import github.luckygc.am.common.security.AuthenticatedUser;
@@ -71,11 +72,11 @@ public class ArchiveItemLineTableController {
                 lineTableId, request, currentUserId(authentication));
     }
 
-    private @Nullable Long currentUserId(@Nullable Authentication authentication) {
+    private Long currentUserId(@Nullable Authentication authentication) {
         if (authentication != null
                 && authentication.getPrincipal() instanceof AuthenticatedUser userDetails) {
             return userDetails.id();
         }
-        return null;
+        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "请先登录");
     }
 }

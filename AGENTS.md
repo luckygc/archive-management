@@ -58,6 +58,7 @@
 - Java 字符串判空统一使用 Apache Commons Lang `StringUtils`，不要直接散写原生空值和空白判断组合。
 - 摘要、编码、Hex 等通用加密/编码类方法优先使用 Apache Commons Codec 等成熟工具库，不要在业务代码里手写通用算法封装。
 - 方法参数校验、请求参数校验这类纯校验操作不应该被事务包裹；只有确实需要原子写入、状态变更、消费令牌、扣减库存、锁定记录等场景才开启事务。
+- 新增或改动 Java 方法时，超过 5 个业务参数应收敛为语义明确的对象参数，例如请求 record、条件 record、命令对象或 Mapper 条件对象；不要用长参数列表承载查询筛选、分页、排序或写入字段。框架回调、简单构造器和极少数稳定底层工具方法可例外，但业务 Service、Repository、Mapper 和 Controller 协作边界默认遵守该规则。
 - 数据库和 Flyway 迁移以 PostgreSQL 为唯一优先目标；项目自有 DDL、索引、约束、查询、执行计划和迁移脚本可以围绕 PostgreSQL 能力优化，不为 MySQL、Oracle、SQL Server 等数据库做兼容性折中。除非明确新增其他数据库支持，不维护多数据库迁移分支。
 - SQL 默认不使用双引号或反引号包裹标识符，也不要通过 `as "camelCase"` 这类 quoted alias 维持大小写；表名、列名、别名、索引名和约束名都使用小写 snake_case，让非法标识符尽早暴露。查询列名与结果名相同的场景不要写 `fonds_code as fonds_code` 这类冗余别名，只有表达式或确需更名时才使用小写 snake_case alias。动态 SQL 同样不要依赖自动引用标识符兜底，拼接前应校验标识符合法性。
 - SQL、迁移验证和测试断言不得假定 schema 固定为 `public`；需要限定当前 schema 时使用 `current_schema()`、当前 search_path 下的未限定对象名，或使用配置提供的 schema。除第三方上游脚本确实要求外，不写 `public.`、`table_schema = 'public'` 这类硬编码。

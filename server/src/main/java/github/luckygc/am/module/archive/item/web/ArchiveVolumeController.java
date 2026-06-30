@@ -8,13 +8,14 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.api.CollectionResponse;
 import github.luckygc.am.common.security.AuthenticatedUser;
 import github.luckygc.am.module.archive.item.service.ArchiveVolumeService;
 import github.luckygc.am.module.archive.item.service.ArchiveVolumeService.AddItemToVolumeRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveVolumeService.ArchiveVolumeDto;
-import github.luckygc.am.module.archive.item.service.ArchiveVolumeService.ArchiveVolumeRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveVolumeService.CreateArchiveVolumeRequest;
 
 @RestController
 public class ArchiveVolumeController {
@@ -33,7 +34,7 @@ public class ArchiveVolumeController {
     @PostMapping("/api/v1/archive-volumes")
     @ResponseStatus(HttpStatus.CREATED)
     public ArchiveVolumeDto createVolume(
-            @RequestBody ArchiveVolumeRequest request, Authentication authentication) {
+            @RequestBody CreateArchiveVolumeRequest request, Authentication authentication) {
         return archiveVolumeService.createVolume(request, currentUserId(authentication));
     }
 
@@ -57,6 +58,6 @@ public class ArchiveVolumeController {
                 && authentication.getPrincipal() instanceof AuthenticatedUser userDetails) {
             return userDetails.id();
         }
-        return null;
+        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "请先登录");
     }
 }

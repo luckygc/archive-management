@@ -19,6 +19,7 @@
         "build": "tsc --noEmit"
     },
     "dependencies": {
+        "axios": "catalog:",
         "cap-widget": "catalog:",
         "react": "catalog:",
         "zustand": "catalog:"

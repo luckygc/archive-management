@@ -56,7 +56,7 @@ public class ArchiveVolumeService {
     }
 
     @Transactional
-    public ArchiveVolumeDto createVolume(ArchiveVolumeRequest request, Long userId) {
+    public ArchiveVolumeDto createVolume(CreateArchiveVolumeRequest request, Long userId) {
         if (request == null) {
             throw new BadRequestException("请求体不能为空");
         }
@@ -175,7 +175,7 @@ public class ArchiveVolumeService {
         return row.get(JdbcUtils.convertPropertyNameToUnderscoreName(key));
     }
 
-    public record ArchiveVolumeRequest(
+    public record CreateArchiveVolumeRequest(
             Long categoryId,
             String fondsCode,
             String archiveNo,

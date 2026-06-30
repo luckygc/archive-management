@@ -51,8 +51,11 @@ public class ArchiveVolume implements CreationAuditable, UpdateAuditable {
     @Column(name = "electronic_status", nullable = false, length = 50)
     private String electronicStatus;
 
-    @Column(name = "security_level", length = 50)
-    private String securityLevel;
+    @Column(name = "security_level_id")
+    private Long securityLevelId;
+
+    @Column(name = "retention_period_id")
+    private Long retentionPeriodId;
 
     @Column(name = "sort_order", nullable = false)
     private int sortOrder;

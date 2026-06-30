@@ -44,6 +44,7 @@ function archiveResult(): ArchiveRecordListDto {
                 editColSpan: 1,
                 editSortOrder: 10,
                 exactSearchable: true,
+                dataScopeFilterable: false,
                 enabled: true,
                 sortOrder: 10,
                 createdAt: "2026-06-29T00:00:00",

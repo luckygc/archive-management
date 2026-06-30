@@ -104,6 +104,7 @@ function createField(field: Partial<ArchiveFieldDto>): ArchiveFieldDto {
         editVisible: true,
         enabled: true,
         exactSearchable: false,
+        dataScopeFilterable: false,
         fieldCode: "field",
         fieldName: "字段",
         fieldType: "TEXT",

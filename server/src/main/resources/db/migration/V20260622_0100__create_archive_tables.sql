@@ -159,6 +159,66 @@ comment on column am_archive_field.created_at is '创建时间';
 comment on column am_archive_field.updated_by is '更新人用户 ID';
 comment on column am_archive_field.updated_at is '更新时间';
 
+create table am_archive_security_level
+(
+    id          bigserial primary key,
+    level_name  varchar(100) not null,
+    enabled     boolean      not null default true,
+    sort_order  integer      not null default 0,
+    version     integer      not null default 0,
+    created_at  timestamp    not null default localtimestamp,
+    updated_at  timestamp    not null default localtimestamp
+);
+
+create unique index uk_am_archive_security_level_name on am_archive_security_level (level_name);
+create index idx_am_archive_security_level_enabled on am_archive_security_level (enabled, sort_order, id);
+
+comment on table am_archive_security_level is '档案密级字典表';
+comment on column am_archive_security_level.id is '主键';
+comment on column am_archive_security_level.level_name is '密级名称';
+comment on column am_archive_security_level.enabled is '是否启用';
+comment on column am_archive_security_level.sort_order is '排序号';
+comment on column am_archive_security_level.version is '乐观锁版本号';
+comment on column am_archive_security_level.created_at is '创建时间';
+comment on column am_archive_security_level.updated_at is '更新时间';
+
+insert into am_archive_security_level (level_name, sort_order)
+values
+    ('公开', 10),
+    ('内部', 20),
+    ('秘密', 30),
+    ('机密', 40),
+    ('绝密', 50);
+
+create table am_archive_retention_period
+(
+    id          bigserial primary key,
+    period_name varchar(100) not null,
+    enabled     boolean      not null default true,
+    sort_order  integer      not null default 0,
+    version     integer      not null default 0,
+    created_at  timestamp    not null default localtimestamp,
+    updated_at  timestamp    not null default localtimestamp
+);
+
+create unique index uk_am_archive_retention_period_name on am_archive_retention_period (period_name);
+create index idx_am_archive_retention_period_enabled on am_archive_retention_period (enabled, sort_order, id);
+
+comment on table am_archive_retention_period is '档案保管期限字典表';
+comment on column am_archive_retention_period.id is '主键';
+comment on column am_archive_retention_period.period_name is '保管期限名称';
+comment on column am_archive_retention_period.enabled is '是否启用';
+comment on column am_archive_retention_period.sort_order is '排序号';
+comment on column am_archive_retention_period.version is '乐观锁版本号';
+comment on column am_archive_retention_period.created_at is '创建时间';
+comment on column am_archive_retention_period.updated_at is '更新时间';
+
+insert into am_archive_retention_period (period_name, sort_order)
+values
+    ('10年', 10),
+    ('30年', 20),
+    ('永久', 30);
+
 create sequence am_archive_item_id_seq
     as bigint
     start with 1000000
@@ -178,7 +238,8 @@ create table am_archive_volume
     category_name  varchar(255) not null,
     archive_no     varchar(100),
     electronic_status varchar(50)  not null,
-    security_level varchar(50),
+    security_level_id bigint references am_archive_security_level (id),
+    retention_period_id bigint references am_archive_retention_period (id),
     sort_order     integer      not null default 0,
     display_order  integer      not null default 0,
     archived_at    timestamp,
@@ -230,7 +291,8 @@ comment on column am_archive_volume.category_code is '档案分类编码';
 comment on column am_archive_volume.category_name is '档案分类名称';
 comment on column am_archive_volume.archive_no is '档号';
 comment on column am_archive_volume.electronic_status is '电子档案状态';
-comment on column am_archive_volume.security_level is '密级';
+comment on column am_archive_volume.security_level_id is '密级 ID';
+comment on column am_archive_volume.retention_period_id is '保管期限 ID';
 comment on column am_archive_volume.sort_order is '排序字段';
 comment on column am_archive_volume.archived_at is '归档时间';
 comment on column am_archive_volume.archive_year is '年度';
@@ -258,7 +320,8 @@ create table am_archive_item
     category_name  varchar(255) not null,
     archive_no     varchar(100),
     electronic_status varchar(50)  not null,
-    security_level varchar(50),
+    security_level_id bigint references am_archive_security_level (id),
+    retention_period_id bigint references am_archive_retention_period (id),
     sort_order     integer      not null default 0,
     display_order  integer      not null default 0,
     archived_at    timestamp,
@@ -314,7 +377,8 @@ comment on column am_archive_item.category_code is '档案分类编码';
 comment on column am_archive_item.category_name is '档案分类名称';
 comment on column am_archive_item.archive_no is '档号';
 comment on column am_archive_item.electronic_status is '电子档案状态';
-comment on column am_archive_item.security_level is '密级';
+comment on column am_archive_item.security_level_id is '密级 ID';
+comment on column am_archive_item.retention_period_id is '保管期限 ID';
 comment on column am_archive_item.sort_order is '排序字段';
 comment on column am_archive_item.display_order is '同一案卷内卷内排序';
 comment on column am_archive_item.archived_at is '归档时间';
@@ -633,7 +697,7 @@ create table am_archive_item_audit
     category_code     varchar(100),
     operation_type    varchar(50)  not null,
     operation_reason  varchar(500),
-    operated_by       bigint,
+    operated_by       bigint      not null,
     operated_at       timestamp   not null default localtimestamp
 );
 

@@ -63,6 +63,8 @@
                category_name,
                archive_no,
                electronic_status,
+               security_level_id,
+               retention_period_id,
                archive_year,
                display_order,
                created_at,
@@ -119,6 +121,8 @@
                i.category_name,
                i.archive_no,
                i.electronic_status,
+               i.security_level_id,
+               i.retention_period_id,
                i.archive_year,
                i.display_order,
                i.created_at,
@@ -139,11 +143,67 @@
         <if test="fondsCode != null and fondsCode != ''">
             and i.fonds_code = #{fondsCode}
         </if>
+        <if test="dataScopeGroups != null and dataScopeGroups.size > 0">
+            and (
+            <foreach collection="dataScopeGroups" item="group" separator=" or ">
+                (
+                <if test="group.fondsCodes != null and group.fondsCodes.size > 0">
+                    i.fonds_code in
+                    <foreach collection="group.fondsCodes" item="dataScopeFondsCode" open="(" separator="," close=")">
+                        #{dataScopeFondsCode}
+                    </foreach>
+                </if>
+                <if test="group.conditions != null and group.conditions.size > 0">
+                    <if test="group.fondsCodes != null and group.fondsCodes.size > 0">
+                        and
+                    </if>
+                    <foreach collection="group.conditions" item="condition" separator=" and ">
+                        <choose>
+                            <when test="condition.operatorName == 'EQ'">
+                                d.${condition.columnName} = #{condition.value}
+                            </when>
+                            <when test="condition.operatorName == 'IN'">
+                                d.${condition.columnName} in
+                                <foreach collection="condition.values" item="conditionValue" open="(" separator="," close=")">
+                                    #{conditionValue}
+                                </foreach>
+                            </when>
+                            <when test="condition.operatorName == 'IS_NULL'">
+                                d.${condition.columnName} is null
+                            </when>
+                            <when test="condition.operatorName == 'IS_NOT_NULL'">
+                                d.${condition.columnName} is not null
+                            </when>
+                        </choose>
+                    </foreach>
+                </if>
+                <if test="group.securityLevelIds != null and group.securityLevelIds.size > 0">
+                    <if test="(group.fondsCodes != null and group.fondsCodes.size > 0) or (group.conditions != null and group.conditions.size > 0)">
+                        and
+                    </if>
+                    i.security_level_id in
+                    <foreach collection="group.securityLevelIds" item="dataScopeSecurityLevelId" open="(" separator="," close=")">
+                        #{dataScopeSecurityLevelId}
+                    </foreach>
+                </if>
+                <if test="(group.fondsCodes == null or group.fondsCodes.size == 0) and (group.securityLevelIds == null or group.securityLevelIds.size == 0) and (group.conditions == null or group.conditions.size == 0)">
+                    false
+                </if>
+                )
+            </foreach>
+            )
+        </if>
         <if test="conditions != null">
             <foreach collection="conditions" item="condition">
                 <choose>
                     <when test="condition.operatorName == 'EQ'">
                         and d.${condition.columnName} = #{condition.value}
+                    </when>
+                    <when test="condition.operatorName == 'IN'">
+                        and d.${condition.columnName} in
+                        <foreach collection="condition.values" item="conditionValue" open="(" separator="," close=")">
+                            #{conditionValue}
+                        </foreach>
                     </when>
                     <when test="condition.operatorName == 'CONTAINS'">
                         and d.${condition.columnName} like #{condition.value} escape '\'
@@ -158,7 +218,14 @@
                         and d.${condition.columnName} &lt;= #{condition.value}
                     </when>
                     <when test="condition.operatorName == 'BETWEEN'">
-                        and d.${condition.columnName} between #{condition.value} and #{condition.endValue}
+                        and d.${condition.columnName} &gt;= #{condition.value}
+                        and d.${condition.columnName} &lt;= #{condition.endValue}
+                    </when>
+                    <when test="condition.operatorName == 'IS_NULL'">
+                        and d.${condition.columnName} is null
+                    </when>
+                    <when test="condition.operatorName == 'IS_NOT_NULL'">
+                        and d.${condition.columnName} is not null
                     </when>
                     <when test="condition.operatorName == 'IS_EMPTY'">
                         and (d.${condition.columnName} is null or d.${condition.columnName} = '')
@@ -210,7 +277,8 @@
                                     and rd.${condition.columnName} &lt;= #{condition.value}
                                 </when>
                                 <when test="condition.operatorName == 'BETWEEN'">
-                                    and rd.${condition.columnName} between #{condition.value} and #{condition.endValue}
+                                    and rd.${condition.columnName} &gt;= #{condition.value}
+                                    and rd.${condition.columnName} &lt;= #{condition.endValue}
                                 </when>
                                 <when test="condition.operatorName == 'IS_EMPTY'">
                                     and (rd.${condition.columnName} is null or rd.${condition.columnName} = '')
@@ -256,10 +324,12 @@
     <select id="insertArchiveItem" resultType="long">
         insert into am_archive_item
             (volume_id, fonds_code, fonds_name, category_code, category_name,
-             archive_no, electronic_status, archive_year, created_by, updated_by)
+             archive_no, electronic_status, security_level_id, retention_period_id,
+             archive_year, created_by, updated_by)
         values
             (#{volumeId}, #{fondsCode}, #{fondsName}, #{categoryCode}, #{categoryName},
-             #{archiveNo}, #{electronicStatus}, #{archiveYear}, #{userId}, #{userId})
+             #{archiveNo}, #{electronicStatus}, #{securityLevelId}, #{retentionPeriodId},
+             #{archiveYear}, #{userId}, #{userId})
         returning id
     </select>
 
@@ -289,6 +359,8 @@
             fonds_code = #{fondsCode},
             fonds_name = #{fondsName},
             electronic_status = #{electronicStatus},
+            security_level_id = #{securityLevelId},
+            retention_period_id = #{retentionPeriodId},
             archive_year = #{archiveYear},
             updated_by = #{userId},
             version = version + 1,
@@ -330,6 +402,8 @@
                category_name,
                archive_no,
                electronic_status,
+               security_level_id,
+               retention_period_id,
                archive_year,
                locked_flag,
                lock_reason,
@@ -347,6 +421,8 @@
                category_name,
                archive_no,
                electronic_status,
+               security_level_id,
+               retention_period_id,
                archive_year,
                locked_flag,
                lock_reason,
@@ -399,76 +475,6 @@
         <if test="excludedId != null">
           and id != #{excludedId}
         </if>
-    </select>
-
-    <insert id="insertItemAudit">
-        insert into am_archive_item_audit
-            (source_table_name, source_item_id, archive_item_id, fonds_code,
-             category_code, operation_type, operation_reason, operated_by)
-        values
-            (#{sourceTableName}, #{sourceRecordId}, #{archiveItemId}, #{fondsCode},
-             #{categoryCode}, #{operationType}, #{operationReason}, #{operatedBy})
-    </insert>
-
-    <select id="countArchiveItemAudits" resultType="long">
-        select count(1)
-        from am_archive_item_audit
-        <where>
-            <if test="archiveItemId != null">
-                and archive_item_id = #{archiveItemId}
-            </if>
-            <if test="fondsCode != null and fondsCode != ''">
-                and fonds_code = #{fondsCode}
-            </if>
-            <if test="categoryCode != null and categoryCode != ''">
-                and category_code = #{categoryCode}
-            </if>
-            <if test="operationType != null and operationType != ''">
-                and operation_type = #{operationType}
-            </if>
-            <if test="operatedAfter != null">
-                and operated_at &gt;= #{operatedAfter}
-            </if>
-            <if test="operatedBefore != null">
-                and operated_at &lt; #{operatedBefore}
-            </if>
-        </where>
-    </select>
-
-    <select id="listArchiveItemAudits" resultType="map">
-        select id,
-               source_table_name,
-               source_item_id,
-               archive_item_id,
-               fonds_code,
-               category_code,
-               operation_type,
-               operation_reason,
-               operated_by,
-               operated_at
-        from am_archive_item_audit
-        <where>
-            <if test="archiveItemId != null">
-                and archive_item_id = #{archiveItemId}
-            </if>
-            <if test="fondsCode != null and fondsCode != ''">
-                and fonds_code = #{fondsCode}
-            </if>
-            <if test="categoryCode != null and categoryCode != ''">
-                and category_code = #{categoryCode}
-            </if>
-            <if test="operationType != null and operationType != ''">
-                and operation_type = #{operationType}
-            </if>
-            <if test="operatedAfter != null">
-                and operated_at &gt;= #{operatedAfter}
-            </if>
-            <if test="operatedBefore != null">
-                and operated_at &lt; #{operatedBefore}
-            </if>
-        </where>
-        order by operated_at desc, id desc
-        limit #{limit} offset #{offset}
     </select>
 
     <select id="listArchiveItemElectronicFiles" resultType="map">

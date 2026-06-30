@@ -1,0 +1,542 @@
+package github.luckygc.am.module.archive.item.service;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.math.BigDecimal;
+import java.sql.Date;
+import java.sql.Timestamp;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.Year;
+import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+
+import org.apache.commons.lang3.StringUtils;
+import org.apache.fesod.sheet.FesodSheet;
+import org.jspecify.annotations.Nullable;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
+import github.luckygc.am.common.exception.BadRequestException;
+import github.luckygc.am.module.archive.ArchiveLevel;
+import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
+import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService.ArchiveDataScopeFilter;
+import github.luckygc.am.module.archive.item.ArchiveItem;
+import github.luckygc.am.module.archive.item.ArchiveItemAudit;
+import github.luckygc.am.module.archive.item.repository.ArchiveItemAuditDataRepository;
+import github.luckygc.am.module.archive.item.repository.ArchiveItemDataRepository;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFieldDto;
+import github.luckygc.am.module.authorization.service.AuthorizationPermissionCode;
+import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
+
+@Service
+public class ArchiveItemImportExportService {
+
+    private static final String HEADER_FONDS_CODE = "全宗编码";
+    private static final String HEADER_ARCHIVE_NO = "档号";
+    private static final String HEADER_ARCHIVE_YEAR = "年度";
+    private static final String HEADER_ELECTRONIC_STATUS = "电子状态";
+    private static final int EXPORT_BATCH_LIMIT = 1000;
+    private static final int EXPORT_MAX_ROWS = 5000;
+
+    private final ArchiveMetadataService archiveMetadataService;
+    private final ArchiveItemRoutingService archiveItemRoutingService;
+    private final AuthorizationPermissionService permissionService;
+    private final ArchiveDataScopeService dataScopeService;
+    private final ArchiveItemDataRepository archiveItemRepository;
+    private final ArchiveItemAuditDataRepository auditRepository;
+
+    public ArchiveItemImportExportService(
+            ArchiveMetadataService archiveMetadataService,
+            ArchiveItemRoutingService archiveItemRoutingService,
+            AuthorizationPermissionService permissionService,
+            ArchiveDataScopeService dataScopeService,
+            ArchiveItemDataRepository archiveItemRepository,
+            ArchiveItemAuditDataRepository auditRepository) {
+        this.archiveMetadataService = archiveMetadataService;
+        this.archiveItemRoutingService = archiveItemRoutingService;
+        this.permissionService = permissionService;
+        this.dataScopeService = dataScopeService;
+        this.archiveItemRepository = archiveItemRepository;
+        this.auditRepository = auditRepository;
+    }
+
+    @Transactional(readOnly = true)
+    public ArchiveExcelFile generateImportTemplate(Long categoryId, Long userId) {
+        requireAnyPermission(
+                userId,
+                AuthorizationPermissionCode.ARCHIVE_ITEM_CREATE,
+                AuthorizationPermissionCode.ARCHIVE_ITEM_UPDATE);
+        ensureCategoryInDataScope(categoryId, userId);
+        ArchiveCategoryDto category = archiveMetadataService.getCategory(categoryId);
+        List<ArchiveFieldDto> fields =
+                archiveMetadataService.listEnabledFields(categoryId, ArchiveLevel.ITEM);
+        List<List<String>> head = importHead(fields);
+        List<List<@Nullable Object>> rows = new ArrayList<>();
+        rows.add(List.of("FONDS001", "A-2026-001", Year.now().getValue(), "DRAFT"));
+        return new ArchiveExcelFile(
+                "archive-import-template-" + category.categoryCode() + ".xlsx",
+                writeExcel(head, rows, "导入模板"));
+    }
+
+    @Transactional
+    public ArchiveImportResult importItems(Long categoryId, InputStream inputStream, Long userId) {
+        ensureCategoryInDataScope(categoryId, userId);
+        ArchiveCategoryDto category = archiveMetadataService.getCategory(categoryId);
+        List<ArchiveFieldDto> fields =
+                archiveMetadataService.listEnabledFields(categoryId, ArchiveLevel.ITEM);
+        List<ArchiveImportRow> rows = parseImportRows(categoryId, inputStream, fields);
+        List<ArchiveImportRowError> errors = validateImportRows(category, fields, rows, userId);
+        if (!errors.isEmpty()) {
+            return new ArchiveImportResult(0, errors);
+        }
+        int imported = 0;
+        for (ArchiveImportRow row : rows) {
+            if (row.existingItem() == null) {
+                archiveItemRoutingService.createItem(row.createRequest(), userId);
+            } else {
+                archiveItemRoutingService.updateItem(
+                        row.existingItem().getId(), row.updateRequest(), userId);
+            }
+            imported++;
+        }
+        return new ArchiveImportResult(imported, List.of());
+    }
+
+    @Transactional(readOnly = true)
+    public ArchiveExcelFile exportItems(
+            ArchiveItemRoutingService.@Nullable SearchArchiveItemsRequest request, Long userId) {
+        requirePermission(userId, AuthorizationPermissionCode.ARCHIVE_EXPORT);
+        ArchiveItemRoutingService.SearchArchiveItemsRequest base =
+                request == null
+                        ? new ArchiveItemRoutingService.SearchArchiveItemsRequest(
+                                null, null, null, null, null, EXPORT_BATCH_LIMIT, null, null)
+                        : request;
+        List<ArchiveFieldDto> fields = List.of();
+        List<Map<String, @Nullable Object>> exportedRows = new ArrayList<>();
+        @Nullable String cursor = null;
+        do {
+            ArchiveItemRoutingService.SearchArchiveItemsRequest pageRequest =
+                    new ArchiveItemRoutingService.SearchArchiveItemsRequest(
+                            base.categoryId(),
+                            base.fondsCode(),
+                            base.keyword(),
+                            base.where(),
+                            base.relatedGroups(),
+                            EXPORT_BATCH_LIMIT,
+                            cursor,
+                            base.orderBy());
+            ArchiveItemRoutingService.ArchiveItemListDto page =
+                    archiveItemRoutingService.searchItems(pageRequest, userId);
+            fields = page.fields();
+            exportedRows.addAll(page.items());
+            cursor = page.next();
+        } while (cursor != null && exportedRows.size() < EXPORT_MAX_ROWS);
+        byte[] bytes = writeExcel(exportHead(fields), exportBody(fields, exportedRows), "导出结果");
+        writeExportAudit(base, userId, exportedRows.size());
+        return new ArchiveExcelFile("archive-export.xlsx", bytes);
+    }
+
+    private void requirePermission(Long userId, AuthorizationPermissionCode permissionCode) {
+        if (userId == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "请先登录");
+        }
+        if (!permissionService.hasPermission(userId, permissionCode.code())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "权限不足");
+        }
+    }
+
+    private void requireAnyPermission(
+            Long userId, AuthorizationPermissionCode first, AuthorizationPermissionCode second) {
+        if (userId == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "请先登录");
+        }
+        if (!permissionService.hasPermission(userId, first.code())
+                && !permissionService.hasPermission(userId, second.code())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "权限不足");
+        }
+    }
+
+    private void ensureCategoryInDataScope(Long categoryId, Long userId) {
+        if (userId == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "请先登录");
+        }
+        ArchiveDataScopeFilter filter = dataScopeService.buildItemFilter(userId, categoryId, null);
+        if (filter.empty()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "数据范围不足");
+        }
+    }
+
+    private List<List<String>> importHead(List<ArchiveFieldDto> fields) {
+        List<List<String>> head = new ArrayList<>();
+        head.add(List.of(HEADER_FONDS_CODE));
+        head.add(List.of(HEADER_ARCHIVE_NO));
+        head.add(List.of(HEADER_ARCHIVE_YEAR));
+        head.add(List.of(HEADER_ELECTRONIC_STATUS));
+        fields.stream()
+                .sorted(
+                        java.util.Comparator.comparingInt(ArchiveFieldDto::editSortOrder)
+                                .thenComparing(ArchiveFieldDto::id))
+                .map(ArchiveFieldDto::fieldName)
+                .map(List::of)
+                .forEach(head::add);
+        return head;
+    }
+
+    private List<List<String>> exportHead(List<ArchiveFieldDto> fields) {
+        List<List<String>> head = new ArrayList<>();
+        head.add(List.of("ID"));
+        head.add(List.of(HEADER_FONDS_CODE));
+        head.add(List.of("全宗名称"));
+        head.add(List.of("分类编码"));
+        head.add(List.of("分类名称"));
+        head.add(List.of(HEADER_ARCHIVE_NO));
+        head.add(List.of(HEADER_ARCHIVE_YEAR));
+        fields.stream().map(ArchiveFieldDto::fieldName).map(List::of).forEach(head::add);
+        return head;
+    }
+
+    private List<List<@Nullable Object>> exportBody(
+            List<ArchiveFieldDto> fields, List<Map<String, @Nullable Object>> rows) {
+        List<List<@Nullable Object>> body = new ArrayList<>();
+        for (Map<String, @Nullable Object> row : rows) {
+            List<@Nullable Object> values = new ArrayList<>();
+            values.add(row.get("id"));
+            values.add(row.get("fondsCode"));
+            values.add(row.get("fondsName"));
+            values.add(row.get("categoryCode"));
+            values.add(row.get("categoryName"));
+            values.add(row.get("archiveNo"));
+            values.add(row.get("archiveYear"));
+            for (ArchiveFieldDto field : fields) {
+                values.add(row.get(field.fieldCode()));
+            }
+            body.add(values);
+        }
+        return body;
+    }
+
+    private List<ArchiveImportRow> parseImportRows(
+            Long categoryId, InputStream inputStream, List<ArchiveFieldDto> fields) {
+        List<Map<Integer, String>> rawRows =
+                FesodSheet.read(inputStream)
+                        .headRowNumber(0)
+                        .sheet()
+                        .<Map<Integer, String>>doReadSync();
+        if (rawRows.isEmpty()) {
+            return List.of();
+        }
+        Map<Integer, String> header = rawRows.getFirst();
+        Map<String, Integer> indexes = headerIndexes(header);
+        List<ArchiveImportRow> rows = new ArrayList<>();
+        for (int i = 1; i < rawRows.size(); i++) {
+            int rowNumber = i + 1;
+            Map<Integer, String> rawRow = rawRows.get(i);
+            if (rawRow.values().stream().allMatch(StringUtils::isBlank)) {
+                continue;
+            }
+            List<ArchiveImportRowError> parseErrors = new ArrayList<>();
+            @Nullable Integer archiveYear =
+                    parseArchiveYear(
+                            cell(rawRow, indexes.get(HEADER_ARCHIVE_YEAR)), rowNumber, parseErrors);
+            Map<String, @Nullable Object> dynamicFields = new LinkedHashMap<>();
+            for (ArchiveFieldDto field : fields) {
+                dynamicFields.put(field.fieldCode(), cell(rawRow, indexes.get(field.fieldName())));
+            }
+            ArchiveItemRoutingService.CreateArchiveItemRequest request =
+                    new ArchiveItemRoutingService.CreateArchiveItemRequest(
+                            categoryId,
+                            null,
+                            cell(rawRow, indexes.get(HEADER_FONDS_CODE)),
+                            cell(rawRow, indexes.get(HEADER_ARCHIVE_NO)),
+                            archiveYear,
+                            cell(rawRow, indexes.get(HEADER_ELECTRONIC_STATUS)),
+                            null,
+                            null,
+                            null,
+                            dynamicFields);
+            rows.add(new ArchiveImportRow(rowNumber, request, null, parseErrors));
+        }
+        return rows;
+    }
+
+    private Map<String, Integer> headerIndexes(Map<Integer, String> header) {
+        Map<String, Integer> indexes = new LinkedHashMap<>();
+        for (Map.Entry<Integer, String> entry : header.entrySet()) {
+            String value = StringUtils.trimToNull(entry.getValue());
+            if (value != null) {
+                indexes.put(value, entry.getKey());
+            }
+        }
+        return indexes;
+    }
+
+    private @Nullable String cell(Map<Integer, String> row, @Nullable Integer index) {
+        return index == null ? null : StringUtils.trimToNull(row.get(index));
+    }
+
+    private @Nullable Integer parseArchiveYear(
+            @Nullable String value, int rowNumber, List<ArchiveImportRowError> errors) {
+        if (value == null) {
+            return null;
+        }
+        try {
+            return Integer.valueOf(value);
+        } catch (NumberFormatException exception) {
+            errors.add(new ArchiveImportRowError(rowNumber, HEADER_ARCHIVE_YEAR, "年度不合法"));
+            return null;
+        }
+    }
+
+    private List<ArchiveImportRowError> validateImportRows(
+            ArchiveCategoryDto category,
+            List<ArchiveFieldDto> fields,
+            List<ArchiveImportRow> rows,
+            Long userId) {
+        List<ArchiveImportRowError> errors = new ArrayList<>();
+        Set<String> batchArchiveNos = new LinkedHashSet<>();
+        for (ArchiveImportRow row : rows) {
+            errors.addAll(row.parseErrors());
+            ArchiveItem existingItem = validateFixedFields(category, row, batchArchiveNos, errors);
+            row.bindExistingItem(existingItem);
+            validateRowPermission(row, userId, errors);
+            Map<String, @Nullable Object> convertedFields =
+                    validateDynamicFields(
+                            row.rowNumber(), fields, row.createRequest().dynamicFields(), errors);
+            validateRowDataScope(
+                    new ImportRowDataScopeCheck(
+                            category,
+                            fields,
+                            row.createRequest(),
+                            convertedFields,
+                            userId,
+                            row.rowNumber(),
+                            errors));
+        }
+        return errors;
+    }
+
+    private @Nullable ArchiveItem validateFixedFields(
+            ArchiveCategoryDto category,
+            ArchiveImportRow row,
+            Set<String> batchArchiveNos,
+            List<ArchiveImportRowError> errors) {
+        ArchiveItemRoutingService.CreateArchiveItemRequest request = row.createRequest();
+        if (StringUtils.isBlank(request.fondsCode())) {
+            errors.add(new ArchiveImportRowError(row.rowNumber(), HEADER_FONDS_CODE, "全宗不能为空"));
+        } else {
+            try {
+                archiveMetadataService.getEnabledFondsByCode(request.fondsCode());
+            } catch (RuntimeException exception) {
+                errors.add(
+                        new ArchiveImportRowError(row.rowNumber(), HEADER_FONDS_CODE, "全宗不存在或已停用"));
+            }
+        }
+        if (request.archiveYear() != null && request.archiveYear() < 1) {
+            errors.add(new ArchiveImportRowError(row.rowNumber(), HEADER_ARCHIVE_YEAR, "年度不合法"));
+        }
+        String archiveNo = StringUtils.trimToNull(request.archiveNo());
+        if (archiveNo != null && !batchArchiveNos.add(archiveNo)) {
+            errors.add(new ArchiveImportRowError(row.rowNumber(), HEADER_ARCHIVE_NO, "同批次档号重复"));
+        }
+        return archiveNo == null
+                ? null
+                : archiveItemRepository.findByArchiveNo(category.categoryCode(), archiveNo);
+    }
+
+    private void validateRowPermission(
+            ArchiveImportRow row, Long userId, List<ArchiveImportRowError> errors) {
+        AuthorizationPermissionCode permissionCode =
+                row.existingItem() == null
+                        ? AuthorizationPermissionCode.ARCHIVE_ITEM_CREATE
+                        : AuthorizationPermissionCode.ARCHIVE_ITEM_UPDATE;
+        if (!permissionService.hasPermission(userId, permissionCode.code())) {
+            String message = row.existingItem() == null ? "缺少创建权限" : "缺少编辑权限";
+            errors.add(new ArchiveImportRowError(row.rowNumber(), "*", message));
+        }
+    }
+
+    private Map<String, @Nullable Object> validateDynamicFields(
+            int rowNumber,
+            List<ArchiveFieldDto> fields,
+            @Nullable Map<String, @Nullable Object> values,
+            List<ArchiveImportRowError> errors) {
+        Map<String, @Nullable Object> converted = new LinkedHashMap<>();
+        Map<String, @Nullable Object> source = values == null ? Map.of() : values;
+        for (ArchiveFieldDto field : fields) {
+            try {
+                converted.put(
+                        field.fieldCode(), convertFieldValue(field, source.get(field.fieldCode())));
+            } catch (IllegalArgumentException exception) {
+                errors.add(
+                        new ArchiveImportRowError(
+                                rowNumber, field.fieldName(), exception.getMessage()));
+            }
+        }
+        return converted;
+    }
+
+    private void validateRowDataScope(ImportRowDataScopeCheck check) {
+        if (StringUtils.isBlank(check.request().fondsCode())) {
+            return;
+        }
+        ArchiveDataScopeFilter filter =
+                dataScopeService.buildItemFilter(
+                        check.userId(), check.category().id(), check.request().fondsCode());
+        if (filter.empty()) {
+            check.errors().add(new ArchiveImportRowError(check.rowNumber(), "*", "数据范围不足"));
+            return;
+        }
+        if (filter.allData()) {
+            return;
+        }
+        Map<String, @Nullable Object> dynamicRow = new LinkedHashMap<>();
+        for (ArchiveFieldDto field : check.fields()) {
+            dynamicRow.put(field.columnName(), check.convertedFields().get(field.fieldCode()));
+        }
+        if (!dataScopeService.matchesItemFilter(
+                filter,
+                check.request().fondsCode(),
+                check.request().securityLevelId(),
+                dynamicRow)) {
+            check.errors().add(new ArchiveImportRowError(check.rowNumber(), "*", "数据范围不足"));
+        }
+    }
+
+    private @Nullable Object convertFieldValue(ArchiveFieldDto field, @Nullable Object value) {
+        if (value instanceof String text) {
+            value = StringUtils.trimToNull(text);
+        }
+        if (value == null) {
+            return null;
+        }
+        try {
+            return switch (field.fieldType()) {
+                case TEXT -> convertTextValue(field, value);
+                case INTEGER -> Integer.valueOf(value.toString());
+                case DECIMAL -> new BigDecimal(value.toString());
+                case DATE -> Date.valueOf(LocalDate.parse(value.toString()));
+                case DATETIME -> Timestamp.valueOf(LocalDateTime.parse(value.toString()));
+            };
+        } catch (DateTimeParseException | IllegalArgumentException exception) {
+            throw new IllegalArgumentException(field.fieldName() + "格式不合法", exception);
+        }
+    }
+
+    private String convertTextValue(ArchiveFieldDto field, Object value) {
+        String text = StringUtils.trimToNull(value.toString());
+        if (text == null) {
+            return "";
+        }
+        if (field.textLength() != null && text.length() > field.textLength()) {
+            throw new IllegalArgumentException(field.fieldName() + "长度不能超过 " + field.textLength());
+        }
+        return text;
+    }
+
+    private byte[] writeExcel(
+            List<List<String>> head, List<List<@Nullable Object>> rows, String sheetName) {
+        try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+            FesodSheet.write(outputStream).head(head).sheet(sheetName).doWrite(rows);
+            return outputStream.toByteArray();
+        } catch (IOException exception) {
+            throw new BadRequestException("生成 Excel 失败");
+        }
+    }
+
+    private void writeExportAudit(
+            ArchiveItemRoutingService.SearchArchiveItemsRequest request,
+            Long userId,
+            int rowCount) {
+        ArchiveItemAudit audit = new ArchiveItemAudit();
+        audit.setSourceTableName("am_archive_item");
+        audit.setSourceRecordId(0L);
+        audit.setFondsCode(StringUtils.trimToNull(request.fondsCode()));
+        if (request.categoryId() != null) {
+            ArchiveCategoryDto category = archiveMetadataService.getCategory(request.categoryId());
+            audit.setCategoryCode(category.categoryCode());
+        }
+        audit.setOperationType("EXPORT");
+        audit.setOperationReason("rows=" + rowCount + ", query=" + Objects.toString(request));
+        audit.setOperatedBy(userId);
+        auditRepository.insert(audit);
+    }
+
+    private static final class ArchiveImportRow {
+
+        private final int rowNumber;
+        private final ArchiveItemRoutingService.CreateArchiveItemRequest createRequest;
+        private final List<ArchiveImportRowError> parseErrors;
+        private @Nullable ArchiveItem existingItem;
+
+        private ArchiveImportRow(
+                int rowNumber,
+                ArchiveItemRoutingService.CreateArchiveItemRequest createRequest,
+                @Nullable ArchiveItem existingItem,
+                List<ArchiveImportRowError> parseErrors) {
+            this.rowNumber = rowNumber;
+            this.createRequest = createRequest;
+            this.existingItem = existingItem;
+            this.parseErrors = parseErrors;
+        }
+
+        private int rowNumber() {
+            return rowNumber;
+        }
+
+        private ArchiveItemRoutingService.CreateArchiveItemRequest createRequest() {
+            return createRequest;
+        }
+
+        private ArchiveItemRoutingService.UpdateArchiveItemRequest updateRequest() {
+            return new ArchiveItemRoutingService.UpdateArchiveItemRequest(
+                    createRequest.volumeId(),
+                    createRequest.fondsCode(),
+                    createRequest.archiveNo(),
+                    createRequest.archiveYear(),
+                    createRequest.electronicStatus(),
+                    createRequest.securityLevelId(),
+                    createRequest.retentionPeriodId(),
+                    createRequest.physicalFields(),
+                    createRequest.dynamicFields());
+        }
+
+        private @Nullable ArchiveItem existingItem() {
+            return existingItem;
+        }
+
+        private List<ArchiveImportRowError> parseErrors() {
+            return parseErrors;
+        }
+
+        private void bindExistingItem(@Nullable ArchiveItem existingItem) {
+            this.existingItem = existingItem;
+        }
+    }
+
+    private record ImportRowDataScopeCheck(
+            ArchiveCategoryDto category,
+            List<ArchiveFieldDto> fields,
+            ArchiveItemRoutingService.CreateArchiveItemRequest request,
+            Map<String, @Nullable Object> convertedFields,
+            Long userId,
+            int rowNumber,
+            List<ArchiveImportRowError> errors) {}
+
+    public record ArchiveImportResult(int importedCount, List<ArchiveImportRowError> errors) {}
+
+    public record ArchiveImportRowError(int rowNumber, String fieldName, String message) {}
+
+    public record ArchiveExcelFile(String filename, byte[] bytes) {}
+}

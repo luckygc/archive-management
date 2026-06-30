@@ -43,7 +43,7 @@ public class ArchiveItemLineTableService {
 
     @Transactional
     public ArchiveItemLineTableDto createLineTable(
-            Long categoryId, ArchiveItemLineTableRequest request, @Nullable Long userId) {
+            Long categoryId, ArchiveItemLineTableRequest request, Long userId) {
         ArchiveCategoryDto category = archiveMetadataService.getCategory(categoryId);
         String tableCode = requiredCode(request.tableCode(), "明细表编码不能为空");
         String tableName = StringUtils.trimToNull(request.tableName());
@@ -94,7 +94,7 @@ public class ArchiveItemLineTableService {
 
     @Transactional
     public ArchiveItemLineFieldDto createLineField(
-            Long lineTableId, ArchiveItemLineFieldRequest request, @Nullable Long userId) {
+            Long lineTableId, ArchiveItemLineFieldRequest request, Long userId) {
         getLineTableRow(lineTableId);
         String fieldCode = requiredCode(request.fieldCode(), "字段编码不能为空");
         String fieldName = StringUtils.trimToNull(request.fieldName());
@@ -124,7 +124,7 @@ public class ArchiveItemLineTableService {
     }
 
     @Transactional
-    public ArchiveItemLineTableDto buildLineTable(Long lineTableId, @Nullable Long userId) {
+    public ArchiveItemLineTableDto buildLineTable(Long lineTableId, Long userId) {
         ArchiveItemLineTableDto table = getLineTable(lineTableId);
         if (table.fields().isEmpty()) {
             throw new BadRequestException("明细表没有可建表字段");

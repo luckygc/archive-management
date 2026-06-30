@@ -11,7 +11,7 @@ import {
 import type {
     ArchiveFieldDto,
     ArchiveRecordOrderBy,
-    ArchiveRecordQuery,
+    SearchArchiveRecordsRequest,
 } from "@/shared/types/archive";
 
 import {
@@ -23,7 +23,7 @@ import { toSearchQuery } from "./archiveQuery";
 
 export function ArchiveLibraryPage() {
     const [form] = Form.useForm<ArchiveQueryFormValues>();
-    const [committedQuery, setCommittedQuery] = useState<ArchiveRecordQuery>();
+    const [committedQuery, setCommittedQuery] = useState<SearchArchiveRecordsRequest>();
     const [orderBy, setOrderBy] = useState<ArchiveRecordOrderBy[]>([]);
     const previousCategoryIdRef = useRef<number | undefined>(undefined);
     const categoriesQuery = useQuery({
@@ -56,7 +56,7 @@ export function ArchiveLibraryPage() {
     });
 
     const searchMutation = useMutation({
-        mutationFn: (query: ArchiveRecordQuery) => discoverArchiveRecords(query),
+        mutationFn: (query: SearchArchiveRecordsRequest) => discoverArchiveRecords(query),
         onError: (error) => {
             void message.error(error instanceof Error ? error.message : "查询失败");
         },

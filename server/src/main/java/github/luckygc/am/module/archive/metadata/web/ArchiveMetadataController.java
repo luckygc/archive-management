@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.api.CollectionResponse;
 import github.luckygc.am.common.security.AuthenticatedUser;
@@ -27,20 +28,29 @@ import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFieldRequest;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFondsDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFondsRequest;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveRetentionPeriodDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveSecurityLevelDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveUniqueConstraintDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveUniqueConstraintRequest;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.UpdateArchiveRetentionPeriodRequest;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.UpdateArchiveSecurityLevelRequest;
+import github.luckygc.am.module.authorization.service.AuthorizationPermissionCode;
+import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
 
 @RestController
 public class ArchiveMetadataController {
 
     private final ArchiveMetadataService archiveMetadataService;
     private final ArchiveItemRoutingService archiveItemRoutingService;
+    private final AuthorizationPermissionService permissionService;
 
     public ArchiveMetadataController(
             ArchiveMetadataService archiveMetadataService,
-            ArchiveItemRoutingService archiveItemRoutingService) {
+            ArchiveItemRoutingService archiveItemRoutingService,
+            AuthorizationPermissionService permissionService) {
         this.archiveMetadataService = archiveMetadataService;
         this.archiveItemRoutingService = archiveItemRoutingService;
+        this.permissionService = permissionService;
     }
 
     @GetMapping("/api/v1/archive-fonds")
@@ -52,7 +62,7 @@ public class ArchiveMetadataController {
     @ResponseStatus(HttpStatus.CREATED)
     public ArchiveFondsDto createFonds(
             @RequestBody ArchiveFondsRequest request, Authentication authentication) {
-        return archiveMetadataService.createFonds(request, currentUserId(authentication));
+        return archiveMetadataService.createFonds(request, requireMetadataManage(authentication));
     }
 
     @PatchMapping("/api/v1/archive-fonds/{id}")
@@ -60,13 +70,42 @@ public class ArchiveMetadataController {
             @PathVariable Long id,
             @RequestBody ArchiveFondsRequest request,
             Authentication authentication) {
-        return archiveMetadataService.updateFonds(id, request, currentUserId(authentication));
+        return archiveMetadataService.updateFonds(
+                id, request, requireMetadataManage(authentication));
     }
 
     @DeleteMapping("/api/v1/archive-fonds/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteFonds(@PathVariable Long id, Authentication authentication) {
-        archiveMetadataService.deleteFonds(id, currentUserId(authentication));
+        archiveMetadataService.deleteFonds(id, requireMetadataManage(authentication));
+    }
+
+    @GetMapping("/api/v1/archive-security-levels")
+    public CollectionResponse<ArchiveSecurityLevelDto> listSecurityLevels(Boolean enabled) {
+        return CollectionResponse.of(archiveMetadataService.listSecurityLevels(enabled));
+    }
+
+    @PatchMapping("/api/v1/archive-security-levels/{id}")
+    public ArchiveSecurityLevelDto updateSecurityLevel(
+            @PathVariable Long id,
+            @RequestBody UpdateArchiveSecurityLevelRequest request,
+            Authentication authentication) {
+        requireMetadataManage(authentication);
+        return archiveMetadataService.updateSecurityLevel(id, request);
+    }
+
+    @GetMapping("/api/v1/archive-retention-periods")
+    public CollectionResponse<ArchiveRetentionPeriodDto> listRetentionPeriods(Boolean enabled) {
+        return CollectionResponse.of(archiveMetadataService.listRetentionPeriods(enabled));
+    }
+
+    @PatchMapping("/api/v1/archive-retention-periods/{id}")
+    public ArchiveRetentionPeriodDto updateRetentionPeriod(
+            @PathVariable Long id,
+            @RequestBody UpdateArchiveRetentionPeriodRequest request,
+            Authentication authentication) {
+        requireMetadataManage(authentication);
+        return archiveMetadataService.updateRetentionPeriod(id, request);
     }
 
     @GetMapping("/api/v1/archive-categories")
@@ -78,7 +117,8 @@ public class ArchiveMetadataController {
     @ResponseStatus(HttpStatus.CREATED)
     public ArchiveCategoryDto createCategory(
             @RequestBody ArchiveCategoryRequest request, Authentication authentication) {
-        return archiveMetadataService.createCategory(request, currentUserId(authentication));
+        return archiveMetadataService.createCategory(
+                request, requireMetadataManage(authentication));
     }
 
     @PatchMapping("/api/v1/archive-categories/{id}")
@@ -86,13 +126,14 @@ public class ArchiveMetadataController {
             @PathVariable Long id,
             @RequestBody ArchiveCategoryRequest request,
             Authentication authentication) {
-        return archiveMetadataService.updateCategory(id, request, currentUserId(authentication));
+        return archiveMetadataService.updateCategory(
+                id, request, requireMetadataManage(authentication));
     }
 
     @DeleteMapping("/api/v1/archive-categories/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteCategory(@PathVariable Long id, Authentication authentication) {
-        archiveMetadataService.deleteCategory(id, currentUserId(authentication));
+        archiveMetadataService.deleteCategory(id, requireMetadataManage(authentication));
     }
 
     @GetMapping("/api/v1/archive-categories/{categoryId}/fields")
@@ -112,7 +153,7 @@ public class ArchiveMetadataController {
             @RequestBody ArchiveFieldRequest request,
             Authentication authentication) {
         return archiveMetadataService.createField(
-                categoryId, request, currentUserId(authentication));
+                categoryId, request, requireMetadataManage(authentication));
     }
 
     @PatchMapping("/api/v1/archive-categories/{categoryId}/fields/{fieldId}")
@@ -122,7 +163,7 @@ public class ArchiveMetadataController {
             @RequestBody ArchiveFieldRequest request,
             Authentication authentication) {
         return archiveMetadataService.updateField(
-                categoryId, fieldId, request, currentUserId(authentication));
+                categoryId, fieldId, request, requireMetadataManage(authentication));
     }
 
     @DeleteMapping("/api/v1/archive-categories/{categoryId}/fields/{fieldId}")
@@ -131,7 +172,8 @@ public class ArchiveMetadataController {
             @PathVariable Long categoryId,
             @PathVariable Long fieldId,
             Authentication authentication) {
-        archiveMetadataService.deleteField(categoryId, fieldId, currentUserId(authentication));
+        archiveMetadataService.deleteField(
+                categoryId, fieldId, requireMetadataManage(authentication));
     }
 
     @GetMapping("/api/v1/archive-categories/{categoryId}/layouts/{surface}")
@@ -157,7 +199,7 @@ public class ArchiveMetadataController {
                 fieldScope,
                 surface,
                 request,
-                currentUserId(authentication));
+                requireMetadataManage(authentication));
     }
 
     @PostMapping("/api/v1/archive-categories/{id}:buildTable")
@@ -167,12 +209,13 @@ public class ArchiveMetadataController {
             @RequestParam(required = false) ArchiveFieldScope fieldScope,
             Authentication authentication) {
         return archiveMetadataService.buildTable(
-                id, archiveLevel, fieldScope, currentUserId(authentication));
+                id, archiveLevel, fieldScope, requireMetadataManage(authentication));
     }
 
     @PostMapping("/api/v1/archive-categories/{id}:rebuildSearchProjection")
     public ArchiveItemRoutingService.SearchProjectionRebuildResult rebuildSearchProjection(
-            @PathVariable Long id) {
+            @PathVariable Long id, Authentication authentication) {
+        requireMetadataManage(authentication);
         return archiveItemRoutingService.rebuildSearchProjection(id);
     }
 
@@ -189,7 +232,7 @@ public class ArchiveMetadataController {
             @RequestBody ArchiveUniqueConstraintRequest request,
             Authentication authentication) {
         return archiveMetadataService.createUniqueConstraint(
-                categoryId, request, currentUserId(authentication));
+                categoryId, request, requireMetadataManage(authentication));
     }
 
     @PatchMapping("/api/v1/archive-categories/{categoryId}/unique-constraints/{constraintId}")
@@ -199,7 +242,7 @@ public class ArchiveMetadataController {
             @RequestBody ArchiveUniqueConstraintRequest request,
             Authentication authentication) {
         return archiveMetadataService.updateUniqueConstraint(
-                categoryId, constraintId, request, currentUserId(authentication));
+                categoryId, constraintId, request, requireMetadataManage(authentication));
     }
 
     @DeleteMapping("/api/v1/archive-categories/{categoryId}/unique-constraints/{constraintId}")
@@ -209,7 +252,7 @@ public class ArchiveMetadataController {
             @PathVariable Long constraintId,
             Authentication authentication) {
         archiveMetadataService.deleteUniqueConstraint(
-                categoryId, constraintId, currentUserId(authentication));
+                categoryId, constraintId, requireMetadataManage(authentication));
     }
 
     private Long currentUserId(Authentication authentication) {
@@ -217,6 +260,13 @@ public class ArchiveMetadataController {
                 && authentication.getPrincipal() instanceof AuthenticatedUser userDetails) {
             return userDetails.id();
         }
-        return null;
+        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "请先登录");
+    }
+
+    private Long requireMetadataManage(Authentication authentication) {
+        Long userId = currentUserId(authentication);
+        permissionService.requirePermission(
+                userId, AuthorizationPermissionCode.ARCHIVE_METADATA_MANAGE);
+        return userId;
     }
 }

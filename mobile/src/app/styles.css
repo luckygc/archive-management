@@ -84,7 +84,7 @@ body {
     margin: 16px 0;
 }
 
-.am-mobile-auth-state {
+.am-mobile-authentication-state {
     display: grid;
     min-height: 100vh;
     place-items: center;

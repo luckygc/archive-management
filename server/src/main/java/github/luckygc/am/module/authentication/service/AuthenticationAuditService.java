@@ -235,10 +235,7 @@ public class AuthenticationAuditService {
         CursoredPage<AuthenticationLoginLog> page =
                 loginLogRepository.find(
                         restriction,
-                        pageRequest(effectiveLimit, cursor, requestTotal, fingerprint),
-                        Order.by(
-                                _AuthenticationLoginLog.occurredAt.desc(),
-                                _AuthenticationLoginLog.id.desc()));
+                        pageRequest(effectiveLimit, cursor, requestTotal, fingerprint));
         return new CursorPageResponse<>(
                 page.content().stream().map(this::toLoginLogResponse).toList(),
                 page.numberOfElements() == 0

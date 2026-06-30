@@ -2,7 +2,9 @@ package github.luckygc.am.module.archive.item.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -10,18 +12,26 @@ import java.io.ByteArrayInputStream;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.api.CollectionResponse;
 import github.luckygc.am.common.storage.FileStorageResource;
 import github.luckygc.am.common.storage.StorageType;
+import github.luckygc.am.module.archive.item.ArchiveItem;
+import github.luckygc.am.module.archive.item.ArchiveItemAudit;
+import github.luckygc.am.module.archive.item.repository.ArchiveItemAuditDataRepository;
+import github.luckygc.am.module.archive.item.repository.ArchiveItemDataRepository;
 import github.luckygc.am.module.archive.item.service.ArchiveItemElectronicFileService.ArchiveItemElectronicFileRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemElectronicFileService.ArchiveItemElectronicFileResponse;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
+import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
 import github.luckygc.am.module.storage.service.StorageObjectService;
 import github.luckygc.am.module.storage.service.StorageObjectService.StorageObjectDownload;
 import github.luckygc.am.module.storage.service.StorageObjectService.StorageObjectDto;
@@ -31,14 +41,31 @@ class ArchiveItemElectronicFileServiceTests {
 
     private ArchiveMapper archiveMapper;
     private StorageObjectService storageObjectService;
+    private ArchiveItemDataRepository archiveItemRepository;
+    private ArchiveItemAuditDataRepository archiveItemAuditRepository;
+    private AuthorizationPermissionService permissionService;
+    private ArchiveItemRoutingService archiveItemRoutingService;
     private ArchiveItemElectronicFileService electronicFileService;
 
     @BeforeEach
     void setUp() {
         archiveMapper = mock(ArchiveMapper.class);
         storageObjectService = mock(StorageObjectService.class);
+        archiveItemRepository = mock(ArchiveItemDataRepository.class);
+        archiveItemAuditRepository = mock(ArchiveItemAuditDataRepository.class);
+        permissionService = mock(AuthorizationPermissionService.class);
+        archiveItemRoutingService = mock(ArchiveItemRoutingService.class);
+        when(permissionService.hasPermission(9L, "archive:file:bind")).thenReturn(true);
+        when(permissionService.hasPermission(9L, "archive:item:read")).thenReturn(true);
+        when(permissionService.hasPermission(9L, "archive:file:download")).thenReturn(true);
         electronicFileService =
-                new ArchiveItemElectronicFileService(archiveMapper, storageObjectService);
+                new ArchiveItemElectronicFileService(
+                        archiveMapper,
+                        storageObjectService,
+                        archiveItemRepository,
+                        archiveItemAuditRepository,
+                        permissionService,
+                        archiveItemRoutingService);
     }
 
     @Test
@@ -83,7 +110,7 @@ class ArchiveItemElectronicFileServiceTests {
                                         Map.entry("created_at", createdAt))));
 
         CollectionResponse<ArchiveItemElectronicFileResponse> response =
-                electronicFileService.listFiles(10L);
+                electronicFileService.listFiles(10L, 9L);
 
         assertThat(response.items())
                 .containsExactly(
@@ -132,16 +159,67 @@ class ArchiveItemElectronicFileServiceTests {
                                 "demo".getBytes(java.nio.charset.StandardCharsets.UTF_8)),
                         4,
                         "application/pdf");
+        when(archiveItemRepository.findById(10L)).thenReturn(Optional.of(archiveItem()));
         when(archiveMapper.getArchiveItemElectronicFileStorageObjectId(10L, 30L)).thenReturn(20L);
         when(storageObjectService.openObject(20L))
                 .thenReturn(new StorageObjectDownload("demo.pdf", resource));
 
         ArchiveItemElectronicFileService.ArchiveItemFileDownload download =
-                electronicFileService.downloadFile(10L, 30L);
+                electronicFileService.downloadFile(10L, 30L, 9L);
 
         assertThat(download.originalFilename()).isEqualTo("demo.pdf");
         assertThat(download.resource()).isSameAs(resource);
         verify(storageObjectService).openObject(20L);
+    }
+
+    @Test
+    @DisplayName("下载范围外档案文件时拒绝打开存储对象")
+    void downloadFileShouldRejectItemOutsideDataScope() {
+        doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "数据范围不足"))
+                .when(archiveItemRoutingService)
+                .assertItemInDataScope(10L, 9L);
+
+        assertThatThrownBy(() -> electronicFileService.downloadFile(10L, 30L, 9L))
+                .isInstanceOfSatisfying(
+                        ResponseStatusException.class,
+                        exception ->
+                                assertThat(exception.getStatusCode())
+                                        .isEqualTo(HttpStatus.FORBIDDEN));
+
+        verify(storageObjectService, never()).openObject(20L);
+    }
+
+    @Test
+    @DisplayName("下载文件时写入下载审计")
+    void downloadFileShouldInsertDownloadAudit() {
+        FileStorageResource resource =
+                new FileStorageResource(
+                        StorageType.LOCAL,
+                        "archive",
+                        "2026/06/demo.pdf",
+                        new ByteArrayInputStream(
+                                "demo".getBytes(java.nio.charset.StandardCharsets.UTF_8)),
+                        4,
+                        "application/pdf");
+        when(archiveItemRepository.findById(10L)).thenReturn(Optional.of(archiveItem()));
+        when(archiveMapper.getArchiveItemElectronicFileStorageObjectId(10L, 30L)).thenReturn(20L);
+        when(storageObjectService.openObject(20L))
+                .thenReturn(new StorageObjectDownload("demo.pdf", resource));
+
+        electronicFileService.downloadFile(10L, 30L, 9L);
+
+        ArgumentCaptor<ArchiveItemAudit> auditCaptor =
+                ArgumentCaptor.forClass(ArchiveItemAudit.class);
+        verify(archiveItemAuditRepository).insert(auditCaptor.capture());
+        ArchiveItemAudit audit = auditCaptor.getValue();
+        assertThat(audit.getSourceTableName()).isEqualTo("am_archive_item");
+        assertThat(audit.getSourceRecordId()).isEqualTo(10L);
+        assertThat(audit.getArchiveItemId()).isEqualTo(10L);
+        assertThat(audit.getFondsCode()).isEqualTo("F001");
+        assertThat(audit.getCategoryCode()).isEqualTo("contract");
+        assertThat(audit.getOperationType()).isEqualTo("DOWNLOAD");
+        assertThat(audit.getOperationReason()).isEqualTo("electronicFileId=30, storageObjectId=20");
+        assertThat(audit.getOperatedBy()).isEqualTo(9L);
     }
 
     private StorageObjectDto storageObject() {
@@ -154,5 +232,13 @@ class ArchiveItemElectronicFileServiceTests {
                 1024L,
                 "application/pdf",
                 "abc");
+    }
+
+    private ArchiveItem archiveItem() {
+        ArchiveItem archiveItem = new ArchiveItem();
+        archiveItem.setId(10L);
+        archiveItem.setFondsCode("F001");
+        archiveItem.setCategoryCode("contract");
+        return archiveItem;
     }
 }

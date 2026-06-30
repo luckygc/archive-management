@@ -141,7 +141,9 @@ describe("React 主前端壳层", () => {
 });
 
 function requestUrl(input: RequestInfo | URL) {
-    return input instanceof Request ? input.url : input.toString();
+    const value = input instanceof Request ? input.url : input.toString();
+    const url = new URL(value, window.location.origin);
+    return `${url.pathname}${url.search}`;
 }
 
 function jsonResponse(body: unknown, status = 200) {

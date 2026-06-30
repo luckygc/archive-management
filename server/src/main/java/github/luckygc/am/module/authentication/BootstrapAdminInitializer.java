@@ -60,15 +60,14 @@ public class BootstrapAdminInitializer implements ApplicationRunner {
                         properties.getDisplayName(),
                         "archive.authentication.bootstrap-admin.display-name");
 
-        if (userRepository.findOptionalByUsername(username) != null) {
-            return;
+        AuthenticationUser user = userRepository.findOptionalByUsername(username);
+        if (user == null) {
+            user = new AuthenticationUser();
+            user.setUsername(username);
+            user.setPassword(passwordEncoder.encode(password));
+            user.setDisplayName(displayName);
+            user = userRepository.insert(user);
         }
-
-        AuthenticationUser user = new AuthenticationUser();
-        user.setUsername(username);
-        user.setPassword(passwordEncoder.encode(password));
-        user.setDisplayName(displayName);
-        user = userRepository.insert(user);
 
         for (String roleName : properties.getRoleNames()) {
             grantRole(user.getId(), roleName);
@@ -78,6 +77,12 @@ public class BootstrapAdminInitializer implements ApplicationRunner {
     private void grantRole(Long userId, String roleName) {
         AuthorizationRole role = roleRepository.findOptionalByRoleName(roleName);
         if (role == null) {
+            return;
+        }
+        boolean exists =
+                userRoleRelationRepository.findByUserId(userId).stream()
+                        .anyMatch(relation -> role.getId().equals(relation.getRoleId()));
+        if (exists) {
             return;
         }
         AuthorizationUserRoleRelation relation = new AuthorizationUserRoleRelation();

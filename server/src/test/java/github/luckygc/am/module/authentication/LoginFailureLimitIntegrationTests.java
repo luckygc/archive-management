@@ -3,11 +3,11 @@ package github.luckygc.am.module.authentication;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.LocalDateTime;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,19 +51,24 @@ class LoginFailureLimitIntegrationTests extends PostgreSqlContainerTest {
     @Autowired private PowChallengeService powChallengeService;
     @Autowired private LoginFailureLimitDataRepository failureLimitRepository;
 
+    @BeforeEach
+    void resetFailureLimitState() {
+        failureLimitRepository
+                .findById("admin")
+                .ifPresent(limit -> failureLimitRepository.deleteById("admin"));
+    }
+
     @Test
-    @DisplayName("连续失败达到阈值后锁定登录名且锁定期内不消费 CAP token")
-    void locksUsernameAndDoesNotConsumeCapTokenWhileLocked() throws Exception {
+    @DisplayName("连续失败后不锁定登录名但提高后续 CAP 难度")
+    void failuresIncreaseFollowingCapDifficultyWithoutLockingUsername() throws Exception {
         login("admin", "wrong-password", loginToken()).andExpect(status().isUnauthorized());
         login("admin", "wrong-password", loginToken()).andExpect(status().isUnauthorized());
 
-        String reusableToken = loginToken();
-        login("admin", "Admin123!", reusableToken)
-                .andExpect(status().isTooManyRequests())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("登录失败次数过多")));
+        PowChallengeService.CapChallengeResponse challenge =
+                powChallengeService.createChallenge(
+                        new PowChallengeService.CapChallengeRequest("admin"));
 
-        assertThat(powChallengeService.validateToken(reusableToken, true).get("success"))
-                .isEqualTo(true);
+        assertThat(challenge.challenge().d()).isGreaterThan(4);
     }
 
     @Test
@@ -83,21 +88,44 @@ class LoginFailureLimitIntegrationTests extends PostgreSqlContainerTest {
         assertThat(failureLimitRepository.findById("admin")).isEmpty();
     }
 
+    @Test
+    @DisplayName("未绑定登录名的 CAP token 不能用于登录")
+    void unboundCapTokenCannotBeUsedForLogin() throws Exception {
+        String unboundToken = unboundLoginToken();
+
+        login("admin", "Admin123!", unboundToken).andExpect(status().isUnauthorized());
+
+        assertThat(powChallengeService.validateToken(unboundToken, true).get("success"))
+                .isEqualTo(true);
+    }
+
     private org.springframework.test.web.servlet.ResultActions login(
             String username, String password, String powToken) throws Exception {
-        return mockMvc.perform(
+        org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder request =
                 post("/api/v1/login-sessions")
                         .with(csrf())
                         .param("username", username)
                         .param("password", password)
-                        .param("powToken", powToken));
+                        .param("powToken", powToken)
+                        .header("User-Agent", "Mozilla/5.0 Test Browser");
+        return mockMvc.perform(request);
     }
 
     private String loginToken() {
-        PowChallengeService.CapChallengeResponse challenge = powChallengeService.createChallenge();
+        PowChallengeService.CapChallengeResponse challenge =
+                powChallengeService.createChallenge(
+                        new PowChallengeService.CapChallengeRequest("admin"));
+        return redeemToken(challenge);
+    }
+
+    private String unboundLoginToken() {
+        return redeemToken(powChallengeService.createChallenge());
+    }
+
+    private String redeemToken(PowChallengeService.CapChallengeResponse challenge) {
         return powChallengeService
                 .redeemChallenge(
-                        new PowChallengeService.CapRedeemCommand(
+                        new PowChallengeService.CapRedeemRequest(
                                 challenge.token(),
                                 AuthenticationSessionAuditIntegrationTests.solveCapChallenge(
                                         challenge)))

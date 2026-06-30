@@ -16,6 +16,7 @@ import { createHashRouter } from "react-router";
 
 import { AppShell } from "@/layout/AppShell";
 import { ArchiveCategoriesPage } from "@/pages/archive-categories/ArchiveCategoriesPage";
+import { ArchiveDataScopesPage } from "@/pages/archive-data-scopes/ArchiveDataScopesPage";
 import { ArchiveFondsPage } from "@/pages/archive-fonds/ArchiveFondsPage";
 import { ArchiveItemManagementPage } from "@/pages/archive-items/ArchiveItemManagementPage";
 import { ArchiveLibraryPage } from "@/pages/archive-library/ArchiveLibraryPage";
@@ -98,6 +99,16 @@ export function createAppRouter() {
                             handle: {
                                 title: "档案分类",
                                 icon: <AppstoreOutlined />,
+                                isMenu: true,
+                                keepAlive: true,
+                            } satisfies AppRouteHandle,
+                        },
+                        {
+                            path: "system/data-scopes",
+                            element: <ArchiveDataScopesPage />,
+                            handle: {
+                                title: "数据范围",
+                                icon: <LockOutlined />,
                                 isMenu: true,
                                 keepAlive: true,
                             } satisfies AppRouteHandle,

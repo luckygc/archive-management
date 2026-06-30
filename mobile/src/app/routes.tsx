@@ -1,6 +1,6 @@
 import { createHashRouter } from "react-router";
 
-import { MobileAuthGate } from "@/shared/auth/MobileAuthGate";
+import { MobileSessionGate } from "@/shared/authentication/MobileSessionGate";
 import { HomePage } from "@/pages/home/HomePage";
 import { LoginPage } from "@/pages/login/LoginPage";
 import { PlaceholderPage } from "@/pages/home/PlaceholderPage";
@@ -13,7 +13,7 @@ export function createMobileRouter() {
         },
         {
             path: "/",
-            element: <MobileAuthGate />,
+            element: <MobileSessionGate />,
             children: [
                 {
                     index: true,

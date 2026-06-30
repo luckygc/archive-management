@@ -1,5 +1,5 @@
 import { Button, List, NavBar, Space } from "antd-mobile";
-import { useSessionStore } from "@archive-management/frontend-core/auth";
+import { useSessionStore } from "@archive-management/frontend-core/authentication";
 import { useNavigate } from "react-router";
 
 const entries = [

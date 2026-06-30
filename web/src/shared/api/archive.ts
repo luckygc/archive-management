@@ -1,25 +1,42 @@
-import { request } from "@archive-management/frontend-core/api";
+import { httpClient } from "@archive-management/frontend-core/api";
 import type {
-    ArchiveCategoryCommand,
+    ArchiveCategoryRequest,
     ArchiveCategoryDto,
     CollectionResponse,
-    ArchiveFieldCommand,
+    ArchiveFieldRequest,
     ArchiveFieldDto,
-    ArchiveFieldLayoutCommand,
+    ArchiveFieldLayoutRequest,
     ArchiveFieldLayoutDto,
     ArchiveLevel,
     ArchiveLayoutSurface,
-    ArchiveFondsCommand,
+    ArchiveFondsRequest,
     ArchiveFondsDto,
-    ArchiveRecordCommand,
+    ArchiveRetentionPeriodRequest,
+    ArchiveRetentionPeriodDto,
+    CreateArchiveRecordRequest,
     ArchiveRecordDetailDto,
     ArchiveRecordDto,
     ArchiveRecordListDto,
-    ArchiveRecordQuery,
-    ArchiveRecordUpdateCommand,
+    SearchArchiveRecordsRequest,
+    UpdateArchiveRecordRequest,
     ArchiveRelatedFilterCategoryDto,
-    ArchiveUniqueConstraintCommand,
+    ArchiveSecurityLevelRequest,
+    ArchiveSecurityLevelDto,
+    ArchiveUniqueConstraintRequest,
     ArchiveUniqueConstraintDto,
+    ArchiveImportResult,
+    ArchiveItemAuditDto,
+    ListArchiveItemAuditsRequest,
+    ArchiveItemElectronicFileRequest,
+    ArchiveItemElectronicFileDto,
+    ArchiveDataScopeRequest,
+    ArchiveDataScopeDto,
+    AuthorizationPermissionDto,
+    CursorPageResponse,
+    CurrentUserPermissionsDto,
+    RoleArchiveDataScopesDto,
+    RolePermissionsDto,
+    UserArchiveDataScopesDto,
 } from "../types/archive";
 
 function queryString(params: Record<string, string | number | boolean | undefined>) {
@@ -34,91 +51,99 @@ function queryString(params: Record<string, string | number | boolean | undefine
 }
 
 export function listArchiveFonds(enabled?: boolean) {
-    return request<CollectionResponse<ArchiveFondsDto>>(
+    return httpClient.get<CollectionResponse<ArchiveFondsDto>>(
         `/api/v1/archive-fonds${queryString({ enabled })}`,
     );
 }
 
-export function createArchiveFonds(command: ArchiveFondsCommand) {
-    return request<ArchiveFondsDto>("/api/v1/archive-fonds", {
-        method: "POST",
-        body: JSON.stringify(command),
-    });
+export function createArchiveFonds(payload: ArchiveFondsRequest) {
+    return httpClient.post<ArchiveFondsDto>("/api/v1/archive-fonds", payload);
 }
 
-export function updateArchiveFonds(id: number, command: ArchiveFondsCommand) {
-    return request<ArchiveFondsDto>(`/api/v1/archive-fonds/${id}`, {
-        method: "PATCH",
-        body: JSON.stringify(command),
-    });
+export function updateArchiveFonds(id: number, payload: ArchiveFondsRequest) {
+    return httpClient.patch<ArchiveFondsDto>(`/api/v1/archive-fonds/${id}`, payload);
 }
 
 export function deleteArchiveFonds(id: number) {
-    return request<void>(`/api/v1/archive-fonds/${id}`, {
-        method: "DELETE",
-    });
+    return httpClient.delete<void>(`/api/v1/archive-fonds/${id}`);
+}
+
+export function listArchiveSecurityLevels(enabled?: boolean) {
+    return httpClient.get<CollectionResponse<ArchiveSecurityLevelDto>>(
+        `/api/v1/archive-security-levels${queryString({ enabled })}`,
+    );
+}
+
+export function updateArchiveSecurityLevel(id: number, payload: ArchiveSecurityLevelRequest) {
+    return httpClient.patch<ArchiveSecurityLevelDto>(
+        `/api/v1/archive-security-levels/${id}`,
+        payload,
+    );
+}
+
+export function listArchiveRetentionPeriods(enabled?: boolean) {
+    return httpClient.get<CollectionResponse<ArchiveRetentionPeriodDto>>(
+        `/api/v1/archive-retention-periods${queryString({ enabled })}`,
+    );
+}
+
+export function updateArchiveRetentionPeriod(id: number, payload: ArchiveRetentionPeriodRequest) {
+    return httpClient.patch<ArchiveRetentionPeriodDto>(
+        `/api/v1/archive-retention-periods/${id}`,
+        payload,
+    );
 }
 
 export function listArchiveCategories(enabled?: boolean) {
-    return request<CollectionResponse<ArchiveCategoryDto>>(
+    return httpClient.get<CollectionResponse<ArchiveCategoryDto>>(
         `/api/v1/archive-categories${queryString({ enabled })}`,
     );
 }
 
 export function listArchiveRelatedFilterCategories(categoryId: number) {
-    return request<CollectionResponse<ArchiveRelatedFilterCategoryDto>>(
+    return httpClient.get<CollectionResponse<ArchiveRelatedFilterCategoryDto>>(
         `/api/v1/archive-categories/${categoryId}/related-filter-categories`,
     );
 }
 
-export function createArchiveCategory(command: ArchiveCategoryCommand) {
-    return request<ArchiveCategoryDto>("/api/v1/archive-categories", {
-        method: "POST",
-        body: JSON.stringify(command),
-    });
+export function createArchiveCategory(payload: ArchiveCategoryRequest) {
+    return httpClient.post<ArchiveCategoryDto>("/api/v1/archive-categories", payload);
 }
 
-export function updateArchiveCategory(id: number, command: ArchiveCategoryCommand) {
-    return request<ArchiveCategoryDto>(`/api/v1/archive-categories/${id}`, {
-        method: "PATCH",
-        body: JSON.stringify(command),
-    });
+export function updateArchiveCategory(id: number, payload: ArchiveCategoryRequest) {
+    return httpClient.patch<ArchiveCategoryDto>(`/api/v1/archive-categories/${id}`, payload);
 }
 
 export function deleteArchiveCategory(id: number) {
-    return request<void>(`/api/v1/archive-categories/${id}`, {
-        method: "DELETE",
-    });
+    return httpClient.delete<void>(`/api/v1/archive-categories/${id}`);
 }
 
 export function listArchiveFields(categoryId: number, archiveLevel?: ArchiveLevel) {
-    return request<CollectionResponse<ArchiveFieldDto>>(
+    return httpClient.get<CollectionResponse<ArchiveFieldDto>>(
         `/api/v1/archive-categories/${categoryId}/fields${queryString({ archiveLevel })}`,
     );
 }
 
-export function createArchiveField(categoryId: number, command: ArchiveFieldCommand) {
-    return request<ArchiveFieldDto>(`/api/v1/archive-categories/${categoryId}/fields`, {
-        method: "POST",
-        body: JSON.stringify(command),
-    });
+export function createArchiveField(categoryId: number, payload: ArchiveFieldRequest) {
+    return httpClient.post<ArchiveFieldDto>(
+        `/api/v1/archive-categories/${categoryId}/fields`,
+        payload,
+    );
 }
 
 export function updateArchiveField(
     categoryId: number,
     fieldId: number,
-    command: ArchiveFieldCommand,
+    payload: ArchiveFieldRequest,
 ) {
-    return request<ArchiveFieldDto>(`/api/v1/archive-categories/${categoryId}/fields/${fieldId}`, {
-        method: "PATCH",
-        body: JSON.stringify(command),
-    });
+    return httpClient.patch<ArchiveFieldDto>(
+        `/api/v1/archive-categories/${categoryId}/fields/${fieldId}`,
+        payload,
+    );
 }
 
 export function deleteArchiveField(categoryId: number, fieldId: number) {
-    return request<void>(`/api/v1/archive-categories/${categoryId}/fields/${fieldId}`, {
-        method: "DELETE",
-    });
+    return httpClient.delete<void>(`/api/v1/archive-categories/${categoryId}/fields/${fieldId}`);
 }
 
 export function getArchiveCategoryLayout(
@@ -126,7 +151,7 @@ export function getArchiveCategoryLayout(
     surface: ArchiveLayoutSurface,
     archiveLevel?: ArchiveLevel,
 ) {
-    return request<ArchiveFieldLayoutDto>(
+    return httpClient.get<ArchiveFieldLayoutDto>(
         `/api/v1/archive-categories/${categoryId}/layouts/${surface}${queryString({ archiveLevel })}`,
     );
 }
@@ -134,116 +159,224 @@ export function getArchiveCategoryLayout(
 export function savePublicArchiveCategoryLayout(
     categoryId: number,
     surface: ArchiveLayoutSurface,
-    command: ArchiveFieldLayoutCommand,
+    payload: ArchiveFieldLayoutRequest,
     archiveLevel?: ArchiveLevel,
 ) {
-    return request<ArchiveFieldLayoutDto>(
+    return httpClient.patch<ArchiveFieldLayoutDto>(
         `/api/v1/archive-categories/${categoryId}/layouts/${surface}${queryString({ archiveLevel })}`,
-        {
-            method: "PATCH",
-            body: JSON.stringify(command),
-        },
+        payload,
     );
 }
 
 export function buildArchiveCategoryTable(categoryId: number, archiveLevel?: ArchiveLevel) {
-    return request<ArchiveCategoryDto>(
+    return httpClient.post<ArchiveCategoryDto>(
         `/api/v1/archive-categories/${categoryId}:buildTable${queryString({ archiveLevel })}`,
-        {
-            method: "POST",
-        },
     );
 }
 
 export function listArchiveUniqueConstraints(categoryId: number) {
-    return request<CollectionResponse<ArchiveUniqueConstraintDto>>(
+    return httpClient.get<CollectionResponse<ArchiveUniqueConstraintDto>>(
         `/api/v1/archive-categories/${categoryId}/unique-constraints`,
     );
 }
 
 export function createArchiveUniqueConstraint(
     categoryId: number,
-    command: ArchiveUniqueConstraintCommand,
+    payload: ArchiveUniqueConstraintRequest,
 ) {
-    return request<ArchiveUniqueConstraintDto>(
+    return httpClient.post<ArchiveUniqueConstraintDto>(
         `/api/v1/archive-categories/${categoryId}/unique-constraints`,
-        {
-            method: "POST",
-            body: JSON.stringify(command),
-        },
+        payload,
     );
 }
 
 export function updateArchiveUniqueConstraint(
     categoryId: number,
     constraintId: number,
-    command: ArchiveUniqueConstraintCommand,
+    payload: ArchiveUniqueConstraintRequest,
 ) {
-    return request<ArchiveUniqueConstraintDto>(
+    return httpClient.patch<ArchiveUniqueConstraintDto>(
         `/api/v1/archive-categories/${categoryId}/unique-constraints/${constraintId}`,
-        {
-            method: "PATCH",
-            body: JSON.stringify(command),
-        },
+        payload,
     );
 }
 
 export function deleteArchiveUniqueConstraint(categoryId: number, constraintId: number) {
-    return request<void>(
+    return httpClient.delete<void>(
         `/api/v1/archive-categories/${categoryId}/unique-constraints/${constraintId}`,
-        {
-            method: "DELETE",
-        },
     );
 }
 
 export function listArchiveRecords(params: { categoryId?: number; fondsCode?: string }) {
-    return request<ArchiveRecordListDto>(`/api/v1/archive-items${queryString(params)}`);
+    return httpClient.get<ArchiveRecordListDto>(`/api/v1/archive-items${queryString(params)}`);
 }
 
-export function searchArchiveRecords(query: ArchiveRecordQuery) {
-    return request<ArchiveRecordListDto>("/api/v1/archive-items:search", {
-        method: "POST",
-        body: JSON.stringify(query),
-    });
+export function searchArchiveRecords(query: SearchArchiveRecordsRequest) {
+    return httpClient.post<ArchiveRecordListDto>("/api/v1/archive-items:search", query);
 }
 
-export function discoverArchiveRecords(query: ArchiveRecordQuery) {
-    return request<ArchiveRecordListDto>("/api/v1/archive-items:discover", {
-        method: "POST",
-        body: JSON.stringify(query),
-    });
+export function discoverArchiveRecords(query: SearchArchiveRecordsRequest) {
+    return httpClient.post<ArchiveRecordListDto>("/api/v1/archive-items:discover", query);
 }
 
-export function createArchiveRecord(command: ArchiveRecordCommand) {
-    return request<ArchiveRecordDto>("/api/v1/archive-items", {
-        method: "POST",
-        body: JSON.stringify(command),
-    });
+export function createArchiveRecord(payload: CreateArchiveRecordRequest) {
+    return httpClient.post<ArchiveRecordDto>("/api/v1/archive-items", payload);
 }
 
 export function getArchiveRecord(id: number, surface?: ArchiveLayoutSurface) {
-    return request<ArchiveRecordDetailDto>(
+    return httpClient.get<ArchiveRecordDetailDto>(
         `/api/v1/archive-items/${id}${queryString({ surface })}`,
     );
 }
 
-export function updateArchiveRecord(id: number, command: ArchiveRecordUpdateCommand) {
-    return request<ArchiveRecordDetailDto>(`/api/v1/archive-items/${id}`, {
-        method: "PATCH",
-        body: JSON.stringify(command),
-    });
+export function updateArchiveRecord(id: number, payload: UpdateArchiveRecordRequest) {
+    return httpClient.patch<ArchiveRecordDetailDto>(`/api/v1/archive-items/${id}`, payload);
 }
 
 export function lockArchiveRecord(id: number, reason?: string) {
-    return request<ArchiveRecordDto>(`/api/v1/archive-items/${id}:lock`, {
-        method: "POST",
-        body: JSON.stringify({ reason }),
-    });
+    return httpClient.post<ArchiveRecordDto>(`/api/v1/archive-items/${id}:lock`, { reason });
 }
 
 export function unlockArchiveRecord(id: number) {
-    return request<ArchiveRecordDto>(`/api/v1/archive-items/${id}:unlock`, {
-        method: "POST",
+    return httpClient.post<ArchiveRecordDto>(`/api/v1/archive-items/${id}:unlock`);
+}
+
+export function downloadArchiveImportTemplate(categoryId: number) {
+    return httpClient.download(
+        `/api/v1/archive-categories/${categoryId}/archive-items:importTemplate`,
+    );
+}
+
+export function importArchiveRecords(categoryId: number, file: File) {
+    const formData = new FormData();
+    formData.set("file", file);
+    return httpClient.post<ArchiveImportResult>(
+        `/api/v1/archive-categories/${categoryId}/archive-items:import`,
+        formData,
+    );
+}
+
+export function exportArchiveRecords(query: SearchArchiveRecordsRequest) {
+    return httpClient.download(
+        `/api/v1/archive-items:export${queryString({ query: encodeDownloadQuery(query) })}`,
+    );
+}
+
+export function listArchiveItemElectronicFiles(archiveItemId: number) {
+    return httpClient.get<CollectionResponse<ArchiveItemElectronicFileDto>>(
+        `/api/v1/archive-items/${archiveItemId}/electronic-files`,
+    );
+}
+
+export function bindArchiveItemElectronicFile(
+    archiveItemId: number,
+    payload: ArchiveItemElectronicFileRequest,
+) {
+    return httpClient.post<ArchiveItemElectronicFileDto>(
+        `/api/v1/archive-items/${archiveItemId}/electronic-files`,
+        payload,
+    );
+}
+
+export function unbindArchiveItemElectronicFile(archiveItemId: number, electronicFileId: number) {
+    return httpClient.delete<void>(
+        `/api/v1/archive-items/${archiveItemId}/electronic-files/${electronicFileId}`,
+    );
+}
+
+export function downloadArchiveItemElectronicFile(archiveItemId: number, electronicFileId: number) {
+    return httpClient.download(
+        `/api/v1/archive-items/${archiveItemId}/electronic-files/${electronicFileId}/content`,
+    );
+}
+
+export function listArchiveItemAudits(query: ListArchiveItemAuditsRequest) {
+    return httpClient.get<CursorPageResponse<ArchiveItemAuditDto>>(
+        `/api/v1/archive-item-audits${queryString({
+            archiveItemId: query.archiveItemId,
+            fondsCode: query.fondsCode,
+            categoryCode: query.categoryCode,
+            operationType: query.operationType,
+            operatedAfter: query.operatedAfter,
+            operatedBefore: query.operatedBefore,
+            limit: query.limit,
+            cursor: query.cursor,
+            requestTotal: query.requestTotal,
+        })}`,
+    );
+}
+
+export function listAuthorizationPermissions() {
+    return httpClient.get<CollectionResponse<AuthorizationPermissionDto>>(
+        "/api/v1/authorization-permissions",
+    );
+}
+
+export function getCurrentUserPermissions() {
+    return httpClient.get<CurrentUserPermissionsDto>("/api/v1/me/permissions");
+}
+
+export function getRolePermissions(roleId: number) {
+    return httpClient.get<RolePermissionsDto>(`/api/v1/authorization-roles/${roleId}/permissions`);
+}
+
+export function saveRolePermissions(roleId: number, permissionCodes: string[]) {
+    return httpClient.put<RolePermissionsDto>(`/api/v1/authorization-roles/${roleId}/permissions`, {
+        permissionCodes,
     });
+}
+
+export function listArchiveDataScopes(enabled = true) {
+    return httpClient.get<CollectionResponse<ArchiveDataScopeDto>>(
+        `/api/v1/archive-data-scopes${queryString({ enabled })}`,
+    );
+}
+
+export function createArchiveDataScope(payload: ArchiveDataScopeRequest) {
+    return httpClient.post<ArchiveDataScopeDto>("/api/v1/archive-data-scopes", payload);
+}
+
+export function updateArchiveDataScope(id: number, payload: ArchiveDataScopeRequest) {
+    return httpClient.put<ArchiveDataScopeDto>(`/api/v1/archive-data-scopes/${id}`, payload);
+}
+
+export function listArchiveDataScopeFields(categoryId: number) {
+    return httpClient.get<CollectionResponse<ArchiveFieldDto>>(
+        `/api/v1/archive-categories/${categoryId}/data-scope-fields`,
+    );
+}
+
+export function getRoleArchiveDataScopes(roleId: number) {
+    return httpClient.get<RoleArchiveDataScopesDto>(
+        `/api/v1/authorization-roles/${roleId}/archive-data-scopes`,
+    );
+}
+
+export function saveRoleArchiveDataScopes(roleId: number, scopeIds: number[]) {
+    return httpClient.put<RoleArchiveDataScopesDto>(
+        `/api/v1/authorization-roles/${roleId}/archive-data-scopes`,
+        { scopeIds },
+    );
+}
+
+function encodeDownloadQuery(query: SearchArchiveRecordsRequest) {
+    const bytes = new TextEncoder().encode(JSON.stringify(query));
+    let binary = "";
+    bytes.forEach((byte) => {
+        binary += String.fromCharCode(byte);
+    });
+    return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
+}
+
+export function getUserArchiveDataScopes(userId: number) {
+    return httpClient.get<UserArchiveDataScopesDto>(
+        `/api/v1/authorization-users/${userId}/archive-data-scopes`,
+    );
+}
+
+export function saveUserArchiveDataScopes(userId: number, scopeIds: number[]) {
+    return httpClient.put<UserArchiveDataScopesDto>(
+        `/api/v1/authorization-users/${userId}/archive-data-scopes`,
+        { scopeIds },
+    );
 }

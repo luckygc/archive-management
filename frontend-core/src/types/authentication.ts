@@ -1,4 +1,4 @@
-export interface LoginCommand {
+export interface LoginRequest {
     username: string;
     password: string;
     powToken: string;

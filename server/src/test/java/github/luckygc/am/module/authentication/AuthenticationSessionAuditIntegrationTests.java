@@ -199,7 +199,7 @@ class AuthenticationSessionAuditIntegrationTests extends PostgreSqlContainerTest
         PowChallengeService.CapChallengeResponse challenge = powChallengeService.createChallenge();
         var redeemResult =
                 powChallengeService.redeemChallenge(
-                        new PowChallengeService.CapRedeemCommand(
+                        new PowChallengeService.CapRedeemRequest(
                                 challenge.token(), solveCapChallenge(challenge)));
         return redeemResult.get("token").toString();
     }
@@ -266,10 +266,7 @@ class AuthenticationSessionAuditIntegrationTests extends PostgreSqlContainerTest
 
     private long countLogs(Restriction<AuthenticationLoginLog> restriction) {
         return loginLogRepository
-                .find(
-                        restriction,
-                        PageRequest.ofSize(1).withTotal(),
-                        Order.by(_AuthenticationLoginLog.id.desc()))
+                .find(restriction, PageRequest.ofSize(1).withTotal())
                 .totalElements();
     }
 
@@ -279,8 +276,7 @@ class AuthenticationSessionAuditIntegrationTests extends PostgreSqlContainerTest
                         Restrict.all(
                                 _AuthenticationLoginLog.eventType.equalTo(eventType),
                                 _AuthenticationLoginLog.sessionId.equalTo(sessionId)),
-                        PageRequest.ofSize(1).withoutTotal(),
-                        Order.by(_AuthenticationLoginLog.id.desc()))
+                        PageRequest.ofSize(1).withoutTotal())
                 .content()
                 .getFirst();
     }

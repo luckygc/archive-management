@@ -1,6 +1,5 @@
 package github.luckygc.am.module.authentication.service;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
 
 import org.apache.commons.lang3.StringUtils;
@@ -8,7 +7,6 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import github.luckygc.am.module.authentication.LoginBlockedException;
 import github.luckygc.am.module.authentication.LoginFailureLimit;
 import github.luckygc.am.module.authentication.LoginFailureLimitProperties;
 import github.luckygc.am.module.authentication.repository.LoginFailureLimitDataRepository;
@@ -27,17 +25,7 @@ public class LoginFailureLimitService {
 
     @Transactional(readOnly = true)
     public void assertLoginAllowed(@Nullable String rawUsername) {
-        String username = normalizedUsername(rawUsername);
-        if (username == null) {
-            return;
-        }
-        LoginFailureLimit limit = repository.findById(username).orElse(null);
-        LocalDateTime now = LocalDateTime.now();
-        if (limit != null
-                && limit.getLockedUntil() != null
-                && limit.getLockedUntil().isAfter(now)) {
-            throw new LoginBlockedException(limit.getLockedUntil());
-        }
+        // 登录失败状态只用于提高后续 PoW 成本，不再锁定账号。
     }
 
     @Transactional(rollbackFor = Throwable.class)
@@ -58,13 +46,22 @@ public class LoginFailureLimitService {
             limit.setFailureCount(limit.getFailureCount() + 1);
             limit.setLastFailedAt(now);
         }
-        if (limit.getFailureCount() >= properties.maxFailures()) {
-            int nextLevel = limit.getLockLevel() + 1;
-            limit.setLockLevel(nextLevel);
-            limit.setLockedUntil(now.plus(lockDuration(nextLevel)));
-        }
         limit.setCleanupAfter(cleanupAfter(limit, now));
         repository.update(limit);
+    }
+
+    @Transactional(readOnly = true)
+    public int difficulty(@Nullable String rawUsername, int baseDifficulty, int maxDifficulty) {
+        String username = normalizedUsername(rawUsername);
+        if (username == null) {
+            return baseDifficulty;
+        }
+        LoginFailureLimit limit = repository.findById(username).orElse(null);
+        if (limit == null) {
+            return baseDifficulty;
+        }
+        int increments = Math.min(2, Math.max(1, limit.getFailureCount()));
+        return Math.min(maxDifficulty, baseDifficulty + increments);
     }
 
     @Transactional(rollbackFor = Throwable.class)
@@ -97,26 +94,8 @@ public class LoginFailureLimitService {
         limit.setLockedUntil(null);
     }
 
-    private Duration lockDuration(int level) {
-        long multiplier = 1;
-        for (int index = 1; index < level; index++) {
-            multiplier =
-                    Math.min(
-                            Long.MAX_VALUE / properties.multiplier(),
-                            multiplier * properties.multiplier());
-        }
-        Duration duration = properties.initialLockDuration().multipliedBy(multiplier);
-        return duration.compareTo(properties.maxLockDuration()) > 0
-                ? properties.maxLockDuration()
-                : duration;
-    }
-
     private LocalDateTime cleanupAfter(LoginFailureLimit limit, LocalDateTime now) {
-        LocalDateTime base =
-                limit.getLockedUntil() != null && limit.getLockedUntil().isAfter(now)
-                        ? limit.getLockedUntil()
-                        : limit.getLastFailedAt();
-        return base.plus(properties.cleanupDelay());
+        return limit.getLastFailedAt().plus(properties.cleanupDelay());
     }
 
     private @Nullable String normalizedUsername(@Nullable String username) {

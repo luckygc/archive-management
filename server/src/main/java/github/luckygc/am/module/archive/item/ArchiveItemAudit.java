@@ -43,7 +43,7 @@ public class ArchiveItemAudit {
     @Column(name = "operation_reason")
     private String operationReason;
 
-    @Column(name = "operated_by")
+    @Column(name = "operated_by", nullable = false)
     private Long operatedBy;
 
     @Column(name = "operated_at", nullable = false)

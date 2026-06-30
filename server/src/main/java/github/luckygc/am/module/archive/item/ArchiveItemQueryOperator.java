@@ -6,7 +6,10 @@ public enum ArchiveItemQueryOperator {
     STARTS_WITH,
     GTE,
     LTE,
+    IN,
     BETWEEN,
+    IS_NULL,
+    IS_NOT_NULL,
     IS_EMPTY,
     IS_NOT_EMPTY;
 

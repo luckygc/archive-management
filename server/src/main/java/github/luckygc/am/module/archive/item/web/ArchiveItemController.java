@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.api.CollectionResponse;
 import github.luckygc.am.common.security.AuthenticatedUser;
@@ -19,14 +20,14 @@ import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveItemDetailDto;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveItemDto;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveItemListDto;
-import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveItemQueryRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveItemRelationDto;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveItemRelationRequest;
-import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveItemRequest;
-import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveItemUpdateRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveRelatedFilterCategoryDto;
+import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.CreateArchiveItemRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.DeleteItemRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.LockItemRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.SearchArchiveItemsRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.UpdateArchiveItemRequest;
 import github.luckygc.am.module.archive.metadata.ArchiveLayoutSurface;
 
 @RestController
@@ -47,19 +48,19 @@ public class ArchiveItemController {
 
     @PostMapping("/api/v1/archive-items:search")
     public ArchiveItemListDto searchItems(
-            @RequestBody ArchiveItemQueryRequest request, Authentication authentication) {
+            @RequestBody SearchArchiveItemsRequest request, Authentication authentication) {
         return archiveItemRoutingService.searchItems(request, currentUserId(authentication));
     }
 
     @PostMapping("/api/v1/archive-items:discover")
     public ArchiveItemListDto discoverItems(
-            @RequestBody ArchiveItemQueryRequest request, Authentication authentication) {
+            @RequestBody SearchArchiveItemsRequest request, Authentication authentication) {
         return archiveItemRoutingService.discoverItems(request, currentUserId(authentication));
     }
 
     @PostMapping("/api/v1/archive-items:searchDeleted")
     public ArchiveItemListDto searchDeletedItems(
-            @RequestBody ArchiveItemQueryRequest request, Authentication authentication) {
+            @RequestBody SearchArchiveItemsRequest request, Authentication authentication) {
         return archiveItemRoutingService.searchDeletedItems(request, currentUserId(authentication));
     }
 
@@ -72,7 +73,7 @@ public class ArchiveItemController {
     @PostMapping("/api/v1/archive-items")
     @ResponseStatus(HttpStatus.CREATED)
     public ArchiveItemDto createItem(
-            @RequestBody ArchiveItemRequest request, Authentication authentication) {
+            @RequestBody CreateArchiveItemRequest request, Authentication authentication) {
         return archiveItemRoutingService.createItem(request, currentUserId(authentication));
     }
 
@@ -87,7 +88,7 @@ public class ArchiveItemController {
     @PatchMapping("/api/v1/archive-items/{id}")
     public ArchiveItemDetailDto updateItem(
             @PathVariable Long id,
-            @RequestBody ArchiveItemUpdateRequest request,
+            @RequestBody UpdateArchiveItemRequest request,
             Authentication authentication) {
         return archiveItemRoutingService.updateItem(id, request, currentUserId(authentication));
     }
@@ -136,11 +137,11 @@ public class ArchiveItemController {
         archiveItemRoutingService.deleteRelation(id, relationId, currentUserId(authentication));
     }
 
-    private @Nullable Long currentUserId(@Nullable Authentication authentication) {
+    private Long currentUserId(@Nullable Authentication authentication) {
         if (authentication != null
                 && authentication.getPrincipal() instanceof AuthenticatedUser userDetails) {
             return userDetails.id();
         }
-        return null;
+        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "请先登录");
     }
 }

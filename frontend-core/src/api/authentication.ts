@@ -4,10 +4,10 @@ import type {
     CursorPageDto,
     ListAuthenticationEventsParams,
     ListLoginSessionsParams,
-    LoginCommand,
+    LoginRequest,
     LoginSessionDto,
 } from "../types";
-import { request } from "./client";
+import { httpClient } from "./client";
 
 function queryString(params: object) {
     const search = new URLSearchParams();
@@ -20,23 +20,21 @@ function queryString(params: object) {
     return text ? `?${text}` : "";
 }
 
-export function login(command: LoginCommand) {
+export function login(payload: LoginRequest) {
     const body = new URLSearchParams();
-    body.set("username", command.username);
-    body.set("password", command.password);
-    body.set("powToken", command.powToken);
+    body.set("username", payload.username);
+    body.set("password", payload.password);
+    body.set("powToken", payload.powToken);
 
-    return request<LoginSessionDto>("/api/v1/login-sessions", {
-        method: "POST",
+    return httpClient.post<LoginSessionDto>("/api/v1/login-sessions", body, {
         headers: {
             "Content-Type": "application/x-www-form-urlencoded",
         },
-        body,
     });
 }
 
 export function getCurrentUser() {
-    return request<CurrentUserDto>("/api/v1/me");
+    return httpClient.get<CurrentUserDto>("/api/v1/me");
 }
 
 export function logout(sessionId: string) {
@@ -44,17 +42,17 @@ export function logout(sessionId: string) {
 }
 
 export function listLoginSessions(params: ListLoginSessionsParams = {}) {
-    return request<CursorPageDto<LoginSessionDto>>(`/api/v1/login-sessions${queryString(params)}`);
+    return httpClient.get<CursorPageDto<LoginSessionDto>>(
+        `/api/v1/login-sessions${queryString(params)}`,
+    );
 }
 
 export function deleteLoginSession(sessionId: string) {
-    return request<void>(`/api/v1/login-sessions/${encodeURIComponent(sessionId)}`, {
-        method: "DELETE",
-    });
+    return httpClient.delete<void>(`/api/v1/login-sessions/${encodeURIComponent(sessionId)}`);
 }
 
 export function listAuthenticationEvents(params: ListAuthenticationEventsParams = {}) {
-    return request<CursorPageDto<AuthenticationEventDto>>(
+    return httpClient.get<CursorPageDto<AuthenticationEventDto>>(
         `/api/v1/authentication-events${queryString(params)}`,
     );
 }

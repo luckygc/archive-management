@@ -251,7 +251,7 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
 
         var redeemResult =
                 powChallengeService.redeemChallenge(
-                        new PowChallengeService.CapRedeemCommand(
+                        new PowChallengeService.CapRedeemRequest(
                                 response.token(), solveCapChallenge(response)));
 
         JsonNode redeemJson = jsonMapper.readTree(jsonMapper.writeValueAsString(redeemResult));
@@ -268,7 +268,7 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
         List<Long> solutions = solveCapChallenge(response);
         var redeemResult =
                 powChallengeService.redeemChallenge(
-                        new PowChallengeService.CapRedeemCommand(response.token(), solutions));
+                        new PowChallengeService.CapRedeemRequest(response.token(), solutions));
 
         Assertions.assertEquals(true, redeemResult.get("success"));
         Assertions.assertNotNull(redeemResult.get("token"));

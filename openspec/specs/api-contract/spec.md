@@ -60,8 +60,8 @@ Controller SHALL 显式声明完整 URL。
 - **WHEN** API 返回资源集合
 - **THEN** 响应 SHALL 使用项目自有集合或分页响应对象
 - **AND** 小规模、不需要分页的集合 SHALL 使用 `CollectionResponse<T>`
-- **AND** offset 分页集合 SHALL 使用 `OffsetPageResponse<T>`
-- **AND** 键集分页集合 SHALL 使用 `CursorPageResponse<T>`
+- **AND** 默认分页集合 SHALL 使用键集分页 `CursorPageResponse<T>`
+- **AND** 只有对应业务规格明确声明允许 offset 分页时，offset 分页集合 MAY 使用 `OffsetPageResponse<T>`
 - **AND** 三种响应对象 SHALL 以并列 record 表达，不通过继承、多态类型信息或框架分页父类表达 JSON 合同
 - **AND** 系统 SHALL NOT 为每个资源分别设计 `archives`、`tasks`、`users` 这类资源复数字段响应对象
 - **AND** 系统 SHALL NOT 直接暴露框架或持久化层的分页类型
@@ -72,20 +72,33 @@ Controller SHALL 显式声明完整 URL。
 
 ### Requirement: API 分页
 
-可增长集合 API SHALL 使用项目统一分页响应，并按查询场景选择 offset 分页或键集分页。
+可增长集合 API SHALL 使用项目统一分页响应，并默认使用键集分页；除非对应业务规格明确声明，项目自有 API SHALL NOT 使用 offset 分页。
+
+#### Scenario: 默认选择分页方式
+
+- **WHEN** 系统新增或改造可增长集合 API
+- **THEN** API SHALL 默认使用键集分页 `CursorPageResponse<T>`
+- **AND** 请求 SHALL 支持 `limit` 和不透明 `cursor`
+- **AND** 服务端 SHALL NOT 默认提供 `offset` 参数
+- **AND** 服务端 SHALL NOT 默认返回 `total`
+- **AND** 如确需总数，SHALL 优先通过 `:count` custom method 或明确请求参数单独表达
+- **AND** 使用明确请求参数返回总数时，服务端 SHALL 只在未提交 `cursor` 的首页请求执行 count
+- **AND** 带 `cursor` 的后续翻页请求 SHALL NOT 执行 count
+- **AND** 当 count 成本不稳定或可能耗时较长时，系统 SHALL 将 count 设计为独立 `:count` 方法或异步任务，不得让默认分页列表隐式等待 count
 
 #### Scenario: 请求 offset 分页集合
 
-- **WHEN** API 返回规模可控、排序稳定且客户端需要页码跳转或总数的集合
+- **WHEN** 对应业务规格明确声明该集合规模可控、排序稳定且客户端需要页码跳转或默认总数
 - **THEN** 请求 SHALL 支持 `limit` 和 `offset`
 - **AND** 服务端 SHALL 校验 `limit` 上限
 - **AND** 服务端 SHALL 为分页查询定义稳定排序
 - **AND** 排序字段 SHALL 使用 API 字段名，并在进入 SQL 前通过白名单映射为数据库列
 - **AND** 服务端 SHALL 追加唯一且稳定的兜底排序字段，例如 `id`
+- **AND** 未经业务规格明确声明的接口 SHALL NOT 使用 offset 分页
 
 #### Scenario: 返回 offset 分页集合
 
-- **WHEN** API 返回 offset 分页结果
+- **WHEN** 业务规格明确声明 API 返回 offset 分页结果
 - **THEN** 响应 SHALL 使用统一 page object
 - **AND** 响应 SHALL 包含 `items`
 - **AND** 响应 SHALL 包含 `limit`
@@ -155,6 +168,7 @@ Controller SHALL 显式声明完整 URL。
 - **AND** 大数据量集合 SHOULD NOT 提供 `last`
 - **AND** 响应默认 SHALL NOT 返回 `total`
 - **AND** 当接口明确支持 `requestTotal=true` 且请求未提交 `cursor` 时，响应 MAY 返回与本次筛选条件一致的 `total`
+- **AND** 当请求提交 `cursor` 时，即使 `requestTotal=true`，服务端 SHALL NOT 执行 count，响应 SHALL NOT 返回 `total`
 - **AND** 服务端 SHALL NOT 为键集分页默认执行 count 查询
 - **AND** `POST /api/v1/{resources}:search` 返回的分页响应 MAY 包含 `query`，用于回显本次查询条件
 
@@ -172,9 +186,12 @@ Controller SHALL 显式声明完整 URL。
 
 - **WHEN** 客户端需要总数
 - **THEN** 系统 SHALL 通过 `POST /api/v1/{resources}:count` 或显式请求参数单独表达
-- **AND** offset 分页响应 SHALL 返回 `total`
-- **AND** 键集分页响应 SHALL NOT 返回 `total`
+- **AND** 只有业务规格明确允许的 offset 分页响应 SHALL 返回 `total`
+- **AND** 键集分页默认响应 SHALL NOT 返回 `total`
+- **AND** 键集分页在 `requestTotal=true` 且未提交 `cursor` 的首页请求 MAY 返回 `total`
+- **AND** 键集分页后续带 `cursor` 请求 SHALL NOT 执行 count 或返回 `total`
 - **AND** 服务端 SHALL 将总数查询作为单独 count 查询执行，不得让默认列表查询隐式承担 count 成本
+- **AND** 当总数查询可能超过交互式请求预算时，系统 SHALL 返回可轮询的异步 count 任务，或提供独立 `:count` 能力由客户端按需触发
 - **AND** 大表或复杂查询入口 SHALL 优先使用键集分页，并通过单独 `:count` 方法表达总数需求，避免影响默认列表性能
 - **AND** 如果显式返回总数，响应 SHOULD 区分精确总数和估算总数，例如 `totalExact`
 

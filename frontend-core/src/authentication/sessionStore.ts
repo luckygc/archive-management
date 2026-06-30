@@ -1,13 +1,13 @@
 import { create } from "zustand";
 
 import { getCurrentUser, HttpClientError, login, logout } from "../api";
-import type { CurrentUserDto, LoginCommand } from "../types";
+import type { CurrentUserDto, LoginRequest } from "../types";
 
 interface SessionState {
     initialized: boolean;
     currentUser: CurrentUserDto | null;
     fetchCurrentUser: () => Promise<void>;
-    loginWithPassword: (command: LoginCommand) => Promise<CurrentUserDto>;
+    loginWithPassword: (request: LoginRequest) => Promise<CurrentUserDto>;
     logoutCurrentUser: () => Promise<void>;
     clearSession: () => void;
     reset: () => void;
@@ -42,8 +42,8 @@ export const useSessionStore = create<SessionState>((set, get) => ({
             set({ currentUser: null, initialized: true });
         }
     },
-    loginWithPassword: async (command) => {
-        const loginSession = await login(command);
+    loginWithPassword: async (request) => {
+        const loginSession = await login(request);
         const currentUser = {
             sessionId: loginSession.sessionId,
             username: loginSession.username,

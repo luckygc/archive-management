@@ -1,6 +1,10 @@
 import { Button, Card, Form, Input, Typography } from "antd";
 import { errorMessage } from "@archive-management/frontend-core/api";
-import { capWidgetApiEndpoint, useCapVerification } from "@archive-management/frontend-core/cap";
+import {
+    capWidgetApiEndpoint,
+    setCapChallengeContext,
+    useCapVerification,
+} from "@archive-management/frontend-core/cap";
 import { useSessionStore } from "@archive-management/frontend-core/authentication";
 import { createElement, forwardRef, useEffect, useRef, useState } from "react";
 import type { HTMLAttributes } from "react";
@@ -19,6 +23,7 @@ export function LoginPage() {
     const capWidgetRef = useRef<CapWidget | null>(null);
     const [submitting, setSubmitting] = useState(false);
     const [loginError, setLoginError] = useState("");
+    const watchedUsername = Form.useWatch("username", form);
     const loginWithPassword = useSessionStore((state) => state.loginWithPassword);
     const currentUser = useSessionStore((state) => state.currentUser);
     const {
@@ -29,6 +34,12 @@ export function LoginPage() {
         handleCapReset,
         handleCapError,
     } = useCapVerification(capWidgetRef);
+
+    useEffect(() => {
+        setCapChallengeContext({
+            username: watchedUsername?.trim(),
+        });
+    }, [watchedUsername]);
 
     useEffect(() => {
         const widget = capWidgetRef.current;
