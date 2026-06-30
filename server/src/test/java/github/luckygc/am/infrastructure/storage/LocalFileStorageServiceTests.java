@@ -11,6 +11,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import github.luckygc.am.common.storage.FileStorageResource;
+import github.luckygc.am.common.storage.StorageObjectInfo;
+
 @DisplayName("本地文件存储服务")
 class LocalFileStorageServiceTests {
 

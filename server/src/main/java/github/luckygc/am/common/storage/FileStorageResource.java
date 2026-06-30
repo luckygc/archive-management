@@ -1,9 +1,9 @@
-package github.luckygc.am.infrastructure.storage;
+package github.luckygc.am.common.storage;
 
 import java.io.IOException;
 import java.io.InputStream;
 
-import github.luckygc.am.common.storage.StorageType;
+import org.jspecify.annotations.Nullable;
 
 public record FileStorageResource(
         StorageType storageType,
@@ -11,7 +11,7 @@ public record FileStorageResource(
         String objectKey,
         InputStream inputStream,
         long contentLength,
-        String contentType)
+        @Nullable String contentType)
         implements AutoCloseable {
 
     @Override

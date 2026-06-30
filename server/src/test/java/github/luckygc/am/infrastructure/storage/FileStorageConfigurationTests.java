@@ -9,6 +9,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import github.luckygc.am.common.storage.FileStorageService;
 import github.luckygc.am.common.storage.StorageType;
 
 @DisplayName("文件存储配置")

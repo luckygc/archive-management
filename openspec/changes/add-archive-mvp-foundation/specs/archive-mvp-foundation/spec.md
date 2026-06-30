@@ -66,8 +66,8 @@
 
 - **WHEN** 系统保存档案条目和文件记录的绑定关系
 - **THEN** 系统 SHALL 使用 `am_archive_item_electronic_file` 作为绑定真相表
-- **AND** 绑定记录 SHALL 保存 `archive_item_id`、`storage_object_id`、`usage_type`、`display_order` 和逻辑删除字段
-- **AND** 未删除绑定 SHALL 通过 `(archive_item_id, storage_object_id, usage_type)` 保持唯一
+- **AND** 绑定记录 SHALL 保存 `archive_item_id`、`storage_object_id`、`usage_type` 和 `display_order`
+- **AND** 绑定记录 SHALL 通过 `(archive_item_id, storage_object_id, usage_type)` 保持唯一
 - **AND** 系统 SHALL NOT 在绑定表中复制 `storage_type`、`bucket_name`、`object_key`、文件名、大小或校验值
 
 #### Scenario: 绑定文件记录
@@ -90,7 +90,7 @@
 
 - **WHEN** 客户端解绑档案条目文件
 - **THEN** 客户端 SHALL 调用 `DELETE /api/v1/archive-items/{archiveItem}/electronic-files/{electronicFile}`
-- **AND** 系统 SHALL 逻辑删除绑定记录
+- **AND** 系统 SHALL 删除绑定记录
 - **AND** 系统 SHALL NOT 删除 `am_storage_object` 文件记录或底层对象
 
 #### Scenario: 下载档案文件

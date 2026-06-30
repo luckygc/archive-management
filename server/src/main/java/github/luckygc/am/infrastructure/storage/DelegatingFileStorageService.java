@@ -6,6 +6,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import github.luckygc.am.common.storage.FileStorageResource;
+import github.luckygc.am.common.storage.FileStorageService;
+import github.luckygc.am.common.storage.StorageObjectInfo;
 import github.luckygc.am.common.storage.StorageType;
 
 class DelegatingFileStorageService implements FileStorageService, AutoCloseable {

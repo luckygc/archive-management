@@ -3,6 +3,8 @@ package github.luckygc.am.infrastructure.storage;
 import java.io.IOException;
 import java.io.InputStream;
 
+import github.luckygc.am.common.storage.FileStorageResource;
+import github.luckygc.am.common.storage.StorageObjectInfo;
 import github.luckygc.am.common.storage.StorageType;
 
 interface FileStorageBackend {

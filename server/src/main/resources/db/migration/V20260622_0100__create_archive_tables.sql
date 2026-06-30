@@ -340,19 +340,14 @@ create table am_archive_item_electronic_file
     storage_object_id bigint      not null references am_storage_object (id),
     usage_type        varchar(50) not null default 'DEFAULT',
     display_order     integer     not null default 0,
-    deleted_flag      boolean     not null default false,
-    deleted_at        timestamp,
-    deleted_by        bigint,
     created_by        bigint,
     created_at        timestamp   not null default localtimestamp
 );
 
-create unique index uk_am_archive_item_electronic_file_active
-    on am_archive_item_electronic_file (archive_item_id, storage_object_id, usage_type)
-    where deleted_flag = false;
-create index idx_am_archive_item_electronic_file_object_active
-    on am_archive_item_electronic_file (storage_object_id)
-    where deleted_flag = false;
+create unique index uk_am_archive_item_electronic_file
+    on am_archive_item_electronic_file (archive_item_id, storage_object_id, usage_type);
+create index idx_am_archive_item_electronic_file_object
+    on am_archive_item_electronic_file (storage_object_id);
 
 comment on table am_archive_item_electronic_file is '档案条目和电子文件关联表';
 comment on column am_archive_item_electronic_file.id is '主键';
@@ -360,9 +355,6 @@ comment on column am_archive_item_electronic_file.archive_item_id is '档案条�
 comment on column am_archive_item_electronic_file.storage_object_id is '存储对象 ID';
 comment on column am_archive_item_electronic_file.usage_type is '文件用途类型';
 comment on column am_archive_item_electronic_file.display_order is '文件排序';
-comment on column am_archive_item_electronic_file.deleted_flag is '删除标记';
-comment on column am_archive_item_electronic_file.deleted_at is '删除时间';
-comment on column am_archive_item_electronic_file.deleted_by is '删除人用户 ID';
 comment on column am_archive_item_electronic_file.created_by is '创建人用户 ID';
 comment on column am_archive_item_electronic_file.created_at is '创建时间';
 

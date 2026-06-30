@@ -471,6 +471,45 @@
         limit #{limit} offset #{offset}
     </select>
 
+    <select id="listArchiveItemElectronicFiles" resultType="map">
+        select ef.id,
+               ef.archive_item_id,
+               ef.storage_object_id,
+               ef.usage_type,
+               ef.display_order,
+               so.original_filename,
+               so.file_size,
+               so.content_type,
+               so.checksum_sha256,
+               ef.created_at
+        from am_archive_item_electronic_file ef
+        join am_storage_object so on so.id = ef.storage_object_id
+        where so.deleted_at is null
+          and ef.archive_item_id = #{archiveItemId}
+        order by ef.display_order, ef.id
+    </select>
+
+    <select id="insertArchiveItemElectronicFile" resultType="long">
+        insert into am_archive_item_electronic_file
+            (archive_item_id, storage_object_id, usage_type, display_order, created_by)
+        values
+            (#{archiveItemId}, #{storageObjectId}, #{usageType}, #{displayOrder}, #{userId})
+        returning id
+    </select>
+
+    <delete id="deleteArchiveItemElectronicFile">
+        delete from am_archive_item_electronic_file
+        where archive_item_id = #{archiveItemId}
+          and id = #{electronicFileId}
+    </delete>
+
+    <select id="getArchiveItemElectronicFileStorageObjectId" resultType="long">
+        select storage_object_id
+        from am_archive_item_electronic_file
+        where archive_item_id = #{archiveItemId}
+          and id = #{electronicFileId}
+    </select>
+
     <update id="markArchiveItemDeleted">
         update am_archive_item
         set deleted_flag = true,

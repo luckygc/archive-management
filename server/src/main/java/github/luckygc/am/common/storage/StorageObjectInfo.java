@@ -1,14 +1,14 @@
-package github.luckygc.am.infrastructure.storage;
+package github.luckygc.am.common.storage;
 
 import java.time.Instant;
 
-import github.luckygc.am.common.storage.StorageType;
+import org.jspecify.annotations.Nullable;
 
 public record StorageObjectInfo(
         StorageType storageType,
         String bucketName,
         String objectKey,
         long contentLength,
-        String contentType,
+        @Nullable String contentType,
         Instant lastModified,
-        String eTag) {}
+        @Nullable String eTag) {}

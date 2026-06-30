@@ -151,6 +151,24 @@ public interface ArchiveMapper {
             @Param("limit") int limit,
             @Param("offset") long offset);
 
+    List<Map<String, Object>> listArchiveItemElectronicFiles(
+            @Param("archiveItemId") Long archiveItemId);
+
+    Long insertArchiveItemElectronicFile(
+            @Param("archiveItemId") Long archiveItemId,
+            @Param("storageObjectId") Long storageObjectId,
+            @Param("usageType") String usageType,
+            @Param("displayOrder") int displayOrder,
+            @Param("userId") @Nullable Long userId);
+
+    int deleteArchiveItemElectronicFile(
+            @Param("archiveItemId") Long archiveItemId,
+            @Param("electronicFileId") Long electronicFileId);
+
+    Long getArchiveItemElectronicFileStorageObjectId(
+            @Param("archiveItemId") Long archiveItemId,
+            @Param("electronicFileId") Long electronicFileId);
+
     int markArchiveItemDeleted(@Param("id") Long id, @Param("userId") Long userId);
 
     int lockArchiveItem(
