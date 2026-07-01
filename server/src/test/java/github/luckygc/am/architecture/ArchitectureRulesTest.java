@@ -22,6 +22,7 @@ import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.modulith.core.ApplicationModules;
+import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -337,6 +338,23 @@ class ArchitectureRulesTest {
                                 + explicitDeletedFlagFields);
     }
 
+    @ArchTest
+    static void spring_component_classes_should_declare_single_constructor(JavaClasses classes) {
+        List<String> violations =
+                classes.stream()
+                        .filter(ArchitectureRulesTest::isSpringComponentClass)
+                        .filter(javaClass -> javaClass.getConstructors().size() != 1)
+                        .map(
+                                javaClass ->
+                                        javaClass.getName()
+                                                + " 构造函数数量="
+                                                + javaClass.getConstructors().size())
+                        .sorted()
+                        .toList();
+
+        assertTrue(violations.isEmpty(), () -> "Spring Bean 组件类必须且只能有一个构造函数: " + violations);
+    }
+
     @Test
     @DisplayName("Spring Modulith 模块结构校验通过")
     void springModulithModuleStructureShouldBeValid() {
@@ -356,5 +374,12 @@ class ArchitectureRulesTest {
                 || method.isAnnotatedWith(Insert.class)
                 || method.isAnnotatedWith(Update.class)
                 || method.isAnnotatedWith(Delete.class);
+    }
+
+    private static boolean isSpringComponentClass(JavaClass javaClass) {
+        return !javaClass.isInterface()
+                && !javaClass.isAnnotation()
+                && (javaClass.isAnnotatedWith(Component.class)
+                        || javaClass.isMetaAnnotatedWith(Component.class));
     }
 }

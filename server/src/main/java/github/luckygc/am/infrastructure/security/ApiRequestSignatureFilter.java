@@ -21,7 +21,6 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -47,15 +46,7 @@ public class ApiRequestSignatureFilter extends OncePerRequestFilter {
     private final JsonMapper jsonMapper;
     private final Clock clock;
 
-    @Autowired
     public ApiRequestSignatureFilter(
-            ApiRequestSignatureProperties properties,
-            ApiRequestSigner signer,
-            JsonMapper jsonMapper) {
-        this(properties, signer, jsonMapper, Clock.systemUTC());
-    }
-
-    ApiRequestSignatureFilter(
             ApiRequestSignatureProperties properties,
             ApiRequestSigner signer,
             JsonMapper jsonMapper,

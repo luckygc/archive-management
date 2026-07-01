@@ -31,10 +31,6 @@ public class CursorHttpFingerprint {
 
     private final ObjectMapper objectMapper;
 
-    public CursorHttpFingerprint() {
-        this(new ObjectMapper());
-    }
-
     public CursorHttpFingerprint(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
     }

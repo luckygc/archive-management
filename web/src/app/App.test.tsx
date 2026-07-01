@@ -1,10 +1,28 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { resetSessionStore } from "@archive-management/frontend-core/authentication";
+import {
+    resetSessionStore,
+    useSessionStore,
+} from "@archive-management/frontend-core/authentication";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import { resetPageTabsStore } from "@/shared/tabs/pageTabsStore";
 
 import { App } from "./App";
+
+const archiveApiMocks = vi.hoisted(() => ({
+    discoverArchiveRecords: vi.fn(),
+    listArchiveCategories: vi.fn(),
+    listArchiveFields: vi.fn(),
+    listArchiveRelatedFilterCategories: vi.fn(),
+}));
+
+vi.mock("@/shared/api/archive", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/shared/api/archive")>();
+    return {
+        ...actual,
+        ...archiveApiMocks,
+    };
+});
 
 const currentUser = {
     sessionId: "session-1",
@@ -14,34 +32,30 @@ const currentUser = {
 };
 
 beforeEach(() => {
-    vi.stubGlobal(
-        "fetch",
-        vi.fn(async (input: RequestInfo | URL) => {
-            const url = requestUrl(input);
-            if (url === "/api/v1/me") {
-                return jsonResponse(currentUser);
-            }
-            if (url === "/api/v1/archive-categories?enabled=true") {
-                return jsonResponse({
-                    items: [
-                        {
-                            id: 1,
-                            categoryCode: "GW",
-                            categoryName: "公文档案",
-                            enabled: true,
-                            managementMode: "ITEM_ONLY",
-                            sortOrder: 10,
-                            tableStatus: "BUILT",
-                        },
-                    ],
-                });
-            }
-            if (url === "/api/v1/archive-categories/1/fields?archiveLevel=ITEM") {
-                return jsonResponse({ items: [] });
-            }
-            return jsonResponse({}, 404);
-        }),
-    );
+    useSessionStore.setState({
+        currentUser,
+        initialized: true,
+    });
+    archiveApiMocks.listArchiveCategories.mockResolvedValue({
+        items: [
+            {
+                id: 1,
+                categoryCode: "GW",
+                categoryName: "公文档案",
+                enabled: true,
+                managementMode: "ITEM_ONLY",
+                sortOrder: 10,
+                tableStatus: "BUILT",
+            },
+        ],
+    });
+    archiveApiMocks.listArchiveFields.mockResolvedValue({ items: [] });
+    archiveApiMocks.listArchiveRelatedFilterCategories.mockResolvedValue({ items: [] });
+    archiveApiMocks.discoverArchiveRecords.mockResolvedValue({
+        fields: [],
+        items: [],
+        tableBuilt: true,
+    });
     window.location.hash = "#/";
 });
 
@@ -49,7 +63,6 @@ afterEach(() => {
     cleanup();
     resetPageTabsStore();
     resetSessionStore();
-    vi.unstubAllGlobals();
 });
 
 describe("React 主前端壳层", () => {
@@ -123,11 +136,9 @@ describe("React 主前端壳层", () => {
     });
 
     it("redirects protected routes to login when backend session is unauthenticated", async () => {
-        vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL) => {
-            if (requestUrl(input) === "/api/v1/me") {
-                return jsonResponse({ detail: "未登录" }, 401);
-            }
-            return jsonResponse({}, 404);
+        useSessionStore.setState({
+            currentUser: null,
+            initialized: true,
         });
         window.location.hash = "#/archive/library";
 
@@ -139,18 +150,3 @@ describe("React 主前端壳层", () => {
         expect(window.location.hash).toContain("archive%2Flibrary");
     });
 });
-
-function requestUrl(input: RequestInfo | URL) {
-    const value = input instanceof Request ? input.url : input.toString();
-    const url = new URL(value, window.location.origin);
-    return `${url.pathname}${url.search}`;
-}
-
-function jsonResponse(body: unknown, status = 200) {
-    return Promise.resolve(
-        new Response(JSON.stringify(body), {
-            status,
-            headers: { "Content-Type": "application/json" },
-        }),
-    );
-}

@@ -8,10 +8,12 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 @DisplayName("HTTP cursor 查询指纹")
 class CursorHttpFingerprintTests {
 
-    private final CursorHttpFingerprint fingerprint = new CursorHttpFingerprint();
+    private final CursorHttpFingerprint fingerprint = new CursorHttpFingerprint(new ObjectMapper());
 
     @Test
     @DisplayName("JSON 字段顺序和分页参数不影响查询指纹")

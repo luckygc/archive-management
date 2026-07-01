@@ -4,48 +4,43 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { ArchiveFondsPage } from "./ArchiveFondsPage";
 
+const archiveApiMocks = vi.hoisted(() => ({
+    listArchiveFonds: vi.fn(),
+    updateArchiveFonds: vi.fn(),
+}));
+
+vi.mock("@/shared/api/archive", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/shared/api/archive")>();
+    return {
+        ...actual,
+        ...archiveApiMocks,
+    };
+});
+
 beforeEach(() => {
-    vi.stubGlobal(
-        "fetch",
-        vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-            const url = requestUrl(input);
-            if (url === "/api/v1/archive-fonds" && (!init?.method || init.method === "GET")) {
-                return jsonResponse({
-                    items: [
-                        createFonds({
-                            id: 1,
-                            fondsCode: "HD",
-                            fondsName: "华东公司",
-                            enabled: true,
-                        }),
-                        createFonds({
-                            id: 2,
-                            fondsCode: "CW",
-                            fondsName: "财务部",
-                            enabled: false,
-                        }),
-                    ],
-                });
-            }
-            if (url === "/api/v1/archive-fonds/1" && init?.method === "PATCH") {
-                expect(JSON.parse(requestBodyText(init?.body))).toMatchObject({
-                    enabled: false,
-                    fondsCode: "HD",
-                    fondsName: "华东公司",
-                    sortOrder: 10,
-                });
-                return jsonResponse(
-                    createFonds({ id: 1, fondsCode: "HD", fondsName: "华东公司", enabled: false }),
-                );
-            }
-            return jsonResponse({}, 404);
-        }),
+    archiveApiMocks.listArchiveFonds.mockResolvedValue({
+        items: [
+            createFonds({
+                id: 1,
+                fondsCode: "HD",
+                fondsName: "华东公司",
+                enabled: true,
+            }),
+            createFonds({
+                id: 2,
+                fondsCode: "CW",
+                fondsName: "财务部",
+                enabled: false,
+            }),
+        ],
+    });
+    archiveApiMocks.updateArchiveFonds.mockResolvedValue(
+        createFonds({ id: 1, fondsCode: "HD", fondsName: "华东公司", enabled: false }),
     );
 });
 
 afterEach(() => {
     cleanup();
-    vi.unstubAllGlobals();
 });
 
 describe("ArchiveFondsPage", () => {
@@ -62,32 +57,15 @@ describe("ArchiveFondsPage", () => {
         fireEvent.click(switchButton);
 
         await waitFor(() => {
-            expect(fetch).toHaveBeenCalledWith(
-                "/api/v1/archive-fonds/1",
-                expect.objectContaining({ method: "PATCH" }),
-            );
+            expect(archiveApiMocks.updateArchiveFonds).toHaveBeenCalledWith(1, {
+                enabled: false,
+                fondsCode: "HD",
+                fondsName: "华东公司",
+                sortOrder: 10,
+            });
         });
     });
 });
-
-function requestUrl(input: RequestInfo | URL) {
-    const value = input instanceof Request ? input.url : input.toString();
-    const url = new URL(value, window.location.origin);
-    return `${url.pathname}${url.search}`;
-}
-
-function requestBodyText(body: BodyInit | null | undefined) {
-    return typeof body === "string" ? body : "";
-}
-
-function jsonResponse(body: unknown, status = 200) {
-    return Promise.resolve(
-        new Response(JSON.stringify(body), {
-            status,
-            headers: { "Content-Type": "application/json" },
-        }),
-    );
-}
 
 function createFonds(values: {
     id: number;

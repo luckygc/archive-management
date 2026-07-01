@@ -1,6 +1,9 @@
 import { cleanup, render, screen } from "@testing-library/react";
-import { resetSessionStore } from "@archive-management/frontend-core/authentication";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import {
+    resetSessionStore,
+    useSessionStore,
+} from "@archive-management/frontend-core/authentication";
+import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 
 import { App } from "./App";
 
@@ -11,22 +14,16 @@ const currentUser = {
 };
 
 beforeEach(() => {
-    vi.stubGlobal(
-        "fetch",
-        vi.fn(async (input: RequestInfo | URL) => {
-            if (requestUrl(input) === "/api/v1/me") {
-                return jsonResponse(currentUser);
-            }
-            return jsonResponse({}, 404);
-        }),
-    );
+    useSessionStore.setState({
+        currentUser,
+        initialized: true,
+    });
     window.location.hash = "#/";
 });
 
 afterEach(() => {
     cleanup();
     resetSessionStore();
-    vi.unstubAllGlobals();
 });
 
 describe("移动端门户", () => {
@@ -41,11 +38,9 @@ describe("移动端门户", () => {
     });
 
     it("未登录时跳转到移动端登录页", async () => {
-        vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL) => {
-            if (requestUrl(input) === "/api/v1/me") {
-                return jsonResponse({ detail: "未登录" }, 401);
-            }
-            return jsonResponse({}, 404);
+        useSessionStore.setState({
+            currentUser: null,
+            initialized: true,
         });
         window.location.hash = "#/approval/tasks";
 
@@ -56,16 +51,3 @@ describe("移动端门户", () => {
         expect(window.location.hash).toContain("approval%2Ftasks");
     });
 });
-
-function requestUrl(input: RequestInfo | URL) {
-    return input instanceof Request ? input.url : input.toString();
-}
-
-function jsonResponse(body: unknown, status = 200) {
-    return Promise.resolve(
-        new Response(JSON.stringify(body), {
-            status,
-            headers: { "Content-Type": "application/json" },
-        }),
-    );
-}

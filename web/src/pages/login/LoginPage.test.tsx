@@ -1,5 +1,9 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { resetSessionStore } from "@archive-management/frontend-core/authentication";
+import {
+    resetSessionStore,
+    useSessionStore,
+} from "@archive-management/frontend-core/authentication";
+import type { LoginRequest } from "@archive-management/frontend-core/types";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import { AppProviders } from "@/app/AppProviders";
@@ -25,49 +29,29 @@ vi.mock("react-router", async (importOriginal) => {
 
 beforeEach(() => {
     navigate.mockReset();
-    vi.stubGlobal(
-        "fetch",
-        vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-            if (requestUrl(input) === "/api/v1/login-sessions") {
-                expect(init?.method).toBe("POST");
-                expect(init?.body).toBeInstanceOf(URLSearchParams);
-                const body = init?.body as URLSearchParams;
-                expect(body.get("username")).toBe("admin");
-                expect(body.get("password")).toBe("secret");
-                expect(body.get("powToken")).toBe("pow-token-1");
-                return jsonResponse({
-                    sessionId: "session-1",
-                    username: "admin",
-                    displayName: "系统管理员",
-                    roles: ["admin"],
-                    current: true,
-                    client: {
-                        userAgent: "",
-                        browserName: "",
-                        browserVersion: "",
-                        osName: "",
-                        osVersion: "",
-                        deviceType: "",
-                    },
-                    request: {
-                        remoteAddress: "",
-                        host: "",
-                        forwarded: "",
-                        xForwardedFor: "",
-                        xRealIp: "",
-                    },
-                });
-            }
-            return jsonResponse({}, 404);
+    useSessionStore.setState({
+        loginWithPassword: vi.fn(async (request: LoginRequest) => {
+            expect(request).toEqual({
+                username: "admin",
+                password: "secret",
+                powToken: "pow-token-1",
+            });
+            const currentUser = {
+                sessionId: "session-1",
+                username: "admin",
+                displayName: "系统管理员",
+                roles: ["admin"],
+            };
+            useSessionStore.setState({ currentUser, initialized: true });
+            return currentUser;
         }),
-    );
+    });
 });
 
 afterEach(() => {
     cleanup();
     resetPageTabsStore();
     resetSessionStore();
-    vi.unstubAllGlobals();
 });
 
 describe("LoginPage", () => {
@@ -77,6 +61,9 @@ describe("LoginPage", () => {
                 <LoginPage />
             </AppProviders>,
         );
+        Object.assign(screen.getByTestId("cap-widget"), {
+            reset: vi.fn(),
+        });
 
         fireEvent.change(screen.getByLabelText("账号"), { target: { value: "admin" } });
         fireEvent.change(screen.getByLabelText("密码"), { target: { value: "secret" } });
@@ -97,18 +84,3 @@ describe("LoginPage", () => {
         });
     });
 });
-
-function requestUrl(input: RequestInfo | URL) {
-    const value = input instanceof Request ? input.url : input.toString();
-    const url = new URL(value, window.location.origin);
-    return `${url.pathname}${url.search}`;
-}
-
-function jsonResponse(body: unknown, status = 200) {
-    return Promise.resolve(
-        new Response(JSON.stringify(body), {
-            status,
-            headers: { "Content-Type": "application/json" },
-        }),
-    );
-}
