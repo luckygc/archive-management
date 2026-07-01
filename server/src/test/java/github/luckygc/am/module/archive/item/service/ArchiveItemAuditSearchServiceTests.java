@@ -3,9 +3,8 @@ package github.luckygc.am.module.archive.item.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -22,8 +21,6 @@ import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.common.exception.BadRequestException;
-import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
-import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService.ResolvedArchiveDataScope;
 import github.luckygc.am.module.archive.item.ArchiveItemAudit;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemAuditDataRepository;
 import github.luckygc.am.module.archive.item.service.ArchiveItemAuditSearchService.ArchiveItemAuditResponse;
@@ -37,15 +34,8 @@ class ArchiveItemAuditSearchServiceTests {
             mock(ArchiveItemAuditDataRepository.class);
     private final AuthorizationPermissionService permissionService =
             mock(AuthorizationPermissionService.class);
-    private final ArchiveDataScopeService dataScopeService = mock(ArchiveDataScopeService.class);
-    private final ArchiveItemRoutingService archiveItemRoutingService =
-            mock(ArchiveItemRoutingService.class);
     private final ArchiveItemAuditSearchService auditSearchService =
-            new ArchiveItemAuditSearchService(
-                    auditRepository,
-                    permissionService,
-                    dataScopeService,
-                    archiveItemRoutingService);
+            new ArchiveItemAuditSearchService(auditRepository, permissionService);
 
     @Test
     @DisplayName("按档案、分类、全宗、操作类型和操作时间分页查询审计")
@@ -53,8 +43,7 @@ class ArchiveItemAuditSearchServiceTests {
         LocalDateTime operatedAt = LocalDateTime.of(2026, 6, 30, 10, 0);
         CursoredPage<ArchiveItemAudit> repositoryPage =
                 page(List.of(audit(99L, operatedAt)), 1L, false, true);
-        when(permissionService.hasPermission(9L, "archive:audit:read")).thenReturn(true);
-        when(dataScopeService.resolveUserDataScope(9L)).thenReturn(ResolvedArchiveDataScope.all());
+        when(permissionService.isSuperAdmin(9L)).thenReturn(true);
         when(auditRepository.find(any(), any())).thenReturn(repositoryPage);
 
         CursorPageResponse<ArchiveItemAuditResponse> page =
@@ -95,8 +84,7 @@ class ArchiveItemAuditSearchServiceTests {
         LocalDateTime operatedAt = LocalDateTime.of(2026, 6, 30, 10, 0);
         CursoredPage<ArchiveItemAudit> firstRepositoryPage =
                 page(List.of(audit(99L, operatedAt)), null, true, false);
-        when(permissionService.hasPermission(9L, "archive:audit:read")).thenReturn(true);
-        when(dataScopeService.resolveUserDataScope(9L)).thenReturn(ResolvedArchiveDataScope.all());
+        when(permissionService.isSuperAdmin(9L)).thenReturn(true);
         when(auditRepository.find(any(), any())).thenReturn(firstRepositoryPage);
         CursorPageResponse<ArchiveItemAuditResponse> firstPage =
                 auditSearchService.listAudits(
@@ -118,56 +106,44 @@ class ArchiveItemAuditSearchServiceTests {
     }
 
     @Test
-    @DisplayName("非任意数据范围查询泛化审计列表时按档案范围过滤")
-    void listAuditsShouldFilterGenericListByArchiveItemScope() {
-        LocalDateTime operatedAt = LocalDateTime.of(2026, 6, 30, 10, 0);
-        when(permissionService.hasPermission(9L, "archive:audit:read")).thenReturn(true);
-        when(dataScopeService.resolveUserDataScope(9L))
-                .thenReturn(ResolvedArchiveDataScope.conditional(List.of()));
-        CursoredPage<ArchiveItemAudit> repositoryPage =
-                page(
-                        List.of(
-                                audit(99L, 10L, operatedAt),
-                                audit(98L, 11L, operatedAt.minusMinutes(1))),
-                        2L,
-                        false,
-                        true);
-        when(auditRepository.find(any(), any())).thenReturn(repositoryPage);
-        doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "权限不足"))
-                .when(archiveItemRoutingService)
-                .assertItemInDataScope(11L, 9L);
+    @DisplayName("非超级管理员不能查询审计")
+    void listAuditsShouldRejectNonSuperAdmin() {
+        when(permissionService.isSuperAdmin(9L)).thenReturn(false);
 
-        CursorPageResponse<ArchiveItemAuditResponse> page =
-                auditSearchService.listAudits(
-                        new ListArchiveItemAuditsRequest(
-                                null, null, null, null, null, null, 20, null, true),
-                        9L);
-
-        assertThat(page.items())
-                .extracting(ArchiveItemAuditResponse::archiveItemId)
-                .containsExactly(10L);
-        assertThat(page.total()).isEqualTo(1);
+        assertThatThrownBy(
+                        () ->
+                                auditSearchService.listAudits(
+                                        new ListArchiveItemAuditsRequest(
+                                                null, null, null, null, null, null, 20, null,
+                                                false),
+                                        9L))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(exception -> ((ResponseStatusException) exception).getStatusCode())
+                .isEqualTo(HttpStatus.FORBIDDEN);
+        verify(auditRepository, never()).find(any(), any());
     }
 
     @Test
-    @DisplayName("按档案查询审计时校验目标档案数据范围")
-    void listAuditsShouldCheckArchiveItemScope() {
-        when(permissionService.hasPermission(9L, "archive:audit:read")).thenReturn(true);
-        CursoredPage<ArchiveItemAudit> repositoryPage = page(List.of(), null, false, false);
-        when(auditRepository.find(any(), any())).thenReturn(repositoryPage);
-
-        auditSearchService.listAudits(
-                new ListArchiveItemAuditsRequest(
-                        10L, null, null, null, null, null, 20, null, false),
-                9L);
-
-        verify(archiveItemRoutingService).assertItemInDataScope(10L, 9L);
+    @DisplayName("未登录不能查询审计")
+    void listAuditsShouldRejectAnonymousUser() {
+        assertThatThrownBy(
+                        () ->
+                                auditSearchService.listAudits(
+                                        new ListArchiveItemAuditsRequest(
+                                                null, null, null, null, null, null, 20, null,
+                                                false),
+                                        null))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(exception -> ((ResponseStatusException) exception).getStatusCode())
+                .isEqualTo(HttpStatus.UNAUTHORIZED);
+        verify(permissionService, never()).isSuperAdmin(any());
+        verify(auditRepository, never()).find(any(), any());
     }
 
     @Test
     @DisplayName("拒绝超过上限的 page size")
     void listAuditsShouldRejectLimitOverMaximum() {
-        when(permissionService.hasPermission(9L, "archive:audit:read")).thenReturn(true);
+        when(permissionService.isSuperAdmin(9L)).thenReturn(true);
 
         assertThatThrownBy(
                         () ->
@@ -192,11 +168,13 @@ class ArchiveItemAuditSearchServiceTests {
             when(page.totalElements()).thenReturn(total);
         }
         if (!content.isEmpty()) {
-            PageRequest.Cursor cursor = mock(PageRequest.Cursor.class);
             ArchiveItemAudit item = content.getFirst();
-            doReturn(List.of(item.getOperatedAt(), item.getId())).when(cursor).elements();
+            PageRequest.Cursor cursor =
+                    PageRequest.Cursor.forKey(item.getOperatedAt(), item.getId());
             when(page.cursor(0)).thenReturn(cursor);
             when(page.cursor(content.size() - 1)).thenReturn(cursor);
+            when(page.nextPageRequest()).thenReturn(PageRequest.ofSize(1).afterCursor(cursor));
+            when(page.previousPageRequest()).thenReturn(PageRequest.ofSize(1).beforeCursor(cursor));
         }
         return page;
     }

@@ -3,7 +3,6 @@ package github.luckygc.am.module.authentication.repository;
 import jakarta.data.Order;
 import jakarta.data.page.CursoredPage;
 import jakarta.data.page.PageRequest;
-import jakarta.data.repository.CrudRepository;
 import jakarta.data.repository.Find;
 import jakarta.data.repository.Repository;
 import jakarta.data.restrict.Restriction;
@@ -11,12 +10,13 @@ import jakarta.data.restrict.Restriction;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
+import github.luckygc.am.common.repository.DataRepository;
 import github.luckygc.am.module.authentication.SpringSessionRecord;
 
 @Transactional(rollbackFor = Throwable.class, isolation = Isolation.READ_COMMITTED)
 @Repository
 public interface SpringSessionRecordDataRepository
-        extends CrudRepository<SpringSessionRecord, String> {
+        extends DataRepository<SpringSessionRecord, String> {
 
     @Transactional(readOnly = true)
     @Find

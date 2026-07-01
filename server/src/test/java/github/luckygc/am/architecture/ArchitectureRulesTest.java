@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
+import jakarta.data.repository.CrudRepository;
 import jakarta.data.repository.Delete;
 import jakarta.data.repository.Find;
 import jakarta.data.repository.Insert;
@@ -194,6 +195,22 @@ class ArchitectureRulesTest {
                     .should()
                     .dependOnClassesThat()
                     .haveFullyQualifiedName("jakarta.data.repository.Save");
+
+    @ArchTest
+    static void project_repositories_should_not_extend_jakarta_crud_repository(
+            JavaClasses classes) {
+        List<String> violations =
+                classes.stream()
+                        .filter(ArchitectureRulesTest::isProjectDataRepository)
+                        .filter(repository -> repository.isAssignableTo(CrudRepository.class))
+                        .map(JavaClass::getName)
+                        .sorted()
+                        .toList();
+
+        assertTrue(
+                violations.isEmpty(),
+                () -> "项目 Repository 不应继承 Jakarta CrudRepository，应使用项目自定义基础接口: " + violations);
+    }
 
     @ArchTest
     static void repository_custom_methods_should_declare_operation_annotation(JavaClasses classes) {

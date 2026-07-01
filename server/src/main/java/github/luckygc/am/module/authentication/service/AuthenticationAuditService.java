@@ -1,17 +1,13 @@
 package github.luckygc.am.module.authentication.service;
 
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.List;
-import java.util.StringJoiner;
 
 import jakarta.data.Order;
 import jakarta.data.page.CursoredPage;
-import jakarta.data.page.PageRequest;
 import jakarta.data.restrict.Restrict;
 import jakarta.data.restrict.Restriction;
 import jakarta.servlet.http.HttpServletRequest;
@@ -29,6 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import github.luckygc.am.common.api.CursorPageResponse;
+import github.luckygc.am.common.api.CursorPageTokenCodec;
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.common.security.AuthenticatedUser;
 import github.luckygc.am.module.authentication.AuthenticationLoginEventType;
@@ -44,8 +41,6 @@ import github.luckygc.am.module.authentication.repository.SpringSessionRecordDat
 
 @Service
 public class AuthenticationAuditService {
-
-    private static final String CURSOR_VERSION = "v1";
 
     public static final String CLIENT_CONTEXT_ATTRIBUTE = "github.luckygc.am.auth.CLIENT_CONTEXT";
     public static final String USER_ID_ATTRIBUTE = "github.luckygc.am.auth.USER_ID";
@@ -182,33 +177,17 @@ public class AuthenticationAuditService {
     public CursorPageResponse<LoginSessionResponse> listLoginSessions(
             int limit, @Nullable String cursor, boolean requestTotal, HttpServletRequest request) {
         int effectiveLimit = clampLimit(limit);
-        String fingerprint = loginSessionQueryFingerprint(effectiveLimit);
         long now = Instant.now().toEpochMilli();
         CursoredPage<SpringSessionRecord> page =
                 springSessionRepository.find(
                         _SpringSessionRecord.expiryTime.greaterThan(now),
-                        pageRequest(effectiveLimit, cursor, requestTotal, fingerprint),
+                        CursorPageTokenCodec.pageRequest(effectiveLimit, cursor, requestTotal),
                         Order.by(
                                 _SpringSessionRecord.lastAccessTime.desc(),
                                 _SpringSessionRecord.sessionId.desc()));
         String currentSessionId =
                 request.getSession(false) == null ? "" : request.getSession(false).getId();
-        List<LoginSessionResponse> items =
-                page.content().stream()
-                        .map(row -> toLoginSessionResponse(row, currentSessionId))
-                        .toList();
-        return new CursorPageResponse<>(
-                items,
-                page.numberOfElements() == 0
-                        ? null
-                        : encodeCursor("self", fingerprint, page.cursor(0)),
-                page.hasPrevious() ? encodeCursor("prev", fingerprint, page.cursor(0)) : null,
-                page.hasNext()
-                        ? encodeCursor(
-                                "next", fingerprint, page.cursor(page.numberOfElements() - 1))
-                        : null,
-                null,
-                page.hasTotals() ? page.totalElements() : null);
+        return CursorPageResponse.from(page, row -> toLoginSessionResponse(row, currentSessionId));
     }
 
     @Transactional(readOnly = true)
@@ -222,49 +201,13 @@ public class AuthenticationAuditService {
             @Nullable String cursor,
             boolean requestTotal) {
         int effectiveLimit = clampLimit(limit);
-        String fingerprint =
-                loginLogQueryFingerprint(
-                        eventType,
-                        username,
-                        keyword,
-                        occurredAfter,
-                        occurredBefore,
-                        effectiveLimit);
         Restriction<AuthenticationLoginLog> restriction =
                 loginLogRestriction(eventType, username, keyword, occurredAfter, occurredBefore);
         CursoredPage<AuthenticationLoginLog> page =
                 loginLogRepository.find(
                         restriction,
-                        pageRequest(effectiveLimit, cursor, requestTotal, fingerprint));
-        return new CursorPageResponse<>(
-                page.content().stream().map(this::toLoginLogResponse).toList(),
-                page.numberOfElements() == 0
-                        ? null
-                        : encodeCursor("self", fingerprint, page.cursor(0)),
-                page.hasPrevious() ? encodeCursor("prev", fingerprint, page.cursor(0)) : null,
-                page.hasNext()
-                        ? encodeCursor(
-                                "next", fingerprint, page.cursor(page.numberOfElements() - 1))
-                        : null,
-                null,
-                page.hasTotals() ? page.totalElements() : null);
-    }
-
-    private PageRequest pageRequest(
-            int limit, @Nullable String cursor, boolean requestTotal, String fingerprint) {
-        PageRequest pageRequest =
-                requestTotal && StringUtils.isBlank(cursor)
-                        ? PageRequest.ofSize(limit).withTotal()
-                        : PageRequest.ofSize(limit).withoutTotal();
-        DecodedCursor decodedCursor = decodeCursor(cursor, fingerprint);
-        if (decodedCursor == null) {
-            return pageRequest;
-        }
-        PageRequest.Cursor pageCursor =
-                PageRequest.Cursor.forKey(decodedCursor.values().toArray(Object[]::new));
-        return "prev".equals(decodedCursor.direction())
-                ? pageRequest.beforeCursor(pageCursor)
-                : pageRequest.afterCursor(pageCursor);
+                        CursorPageTokenCodec.pageRequest(effectiveLimit, cursor, requestTotal));
+        return CursorPageResponse.from(page, this::toLoginLogResponse);
     }
 
     private Restriction<AuthenticationLoginLog> loginLogRestriction(
@@ -302,107 +245,6 @@ public class AuthenticationAuditService {
             restrictions.add(_AuthenticationLoginLog.occurredAt.lessThan(occurredBefore));
         }
         return restrictions.isEmpty() ? Restrict.unrestricted() : Restrict.all(restrictions);
-    }
-
-    private String loginSessionQueryFingerprint(int limit) {
-        return "login-sessions|limit=" + limit + "|order=lastAccessTime.desc,sessionId.desc";
-    }
-
-    private String loginLogQueryFingerprint(
-            @Nullable String eventType,
-            @Nullable String username,
-            @Nullable String keyword,
-            @Nullable LocalDateTime occurredAfter,
-            @Nullable LocalDateTime occurredBefore,
-            int limit) {
-        return new StringJoiner("|")
-                .add("authentication-events")
-                .add("eventType=" + StringUtils.defaultString(StringUtils.trimToNull(eventType)))
-                .add("username=" + StringUtils.defaultString(StringUtils.trimToNull(username)))
-                .add("keyword=" + StringUtils.defaultString(StringUtils.trimToNull(keyword)))
-                .add(
-                        "occurredAfter="
-                                + StringUtils.defaultString(
-                                        occurredAfter == null ? null : occurredAfter.toString()))
-                .add(
-                        "occurredBefore="
-                                + StringUtils.defaultString(
-                                        occurredBefore == null ? null : occurredBefore.toString()))
-                .add("limit=" + limit)
-                .add("order=occurredAt.desc,id.desc")
-                .toString();
-    }
-
-    private @Nullable String encodeCursor(
-            String direction, String fingerprint, PageRequest.Cursor cursor) {
-        List<String> values = new ArrayList<>();
-        values.add(CURSOR_VERSION);
-        values.add(direction);
-        values.add(encodeCursorValue(fingerprint));
-        for (Object element : cursor.elements()) {
-            values.add(encodeCursorValue(element));
-        }
-        return Base64.getUrlEncoder()
-                .withoutPadding()
-                .encodeToString(String.join("|", values).getBytes(StandardCharsets.UTF_8));
-    }
-
-    private @Nullable DecodedCursor decodeCursor(@Nullable String cursor, String fingerprint) {
-        if (StringUtils.isBlank(cursor)) {
-            return null;
-        }
-        try {
-            String payload =
-                    new String(Base64.getUrlDecoder().decode(cursor), StandardCharsets.UTF_8);
-            String[] parts = payload.split("\\|", -1);
-            if (parts.length < 4
-                    || !CURSOR_VERSION.equals(parts[0])
-                    || (!"next".equals(parts[1]) && !"prev".equals(parts[1]))) {
-                throw new BadRequestException("分页 cursor 无效", "cursor", "cursor 格式无效");
-            }
-            Object cursorFingerprint = decodeCursorValue(parts[2]);
-            if (!fingerprint.equals(cursorFingerprint)) {
-                throw new BadRequestException("分页 cursor 无效", "cursor", "cursor 查询条件不匹配");
-            }
-            List<Object> values = new ArrayList<>(parts.length - 3);
-            for (int index = 3; index < parts.length; index++) {
-                values.add(decodeCursorValue(parts[index]));
-            }
-            return new DecodedCursor(parts[1], values);
-        } catch (IllegalArgumentException ex) {
-            throw new BadRequestException("分页 cursor 无效", "cursor", "cursor 格式无效");
-        }
-    }
-
-    private String encodeCursorValue(Object value) {
-        return switch (value) {
-            case LocalDateTime dateTime -> "T:" + dateTime;
-            case Long longValue -> "L:" + longValue;
-            case Integer integerValue -> "I:" + integerValue;
-            default ->
-                    "S:"
-                            + Base64.getUrlEncoder()
-                                    .withoutPadding()
-                                    .encodeToString(
-                                            value.toString().getBytes(StandardCharsets.UTF_8));
-        };
-    }
-
-    private Object decodeCursorValue(String value) {
-        if (value.startsWith("T:")) {
-            return LocalDateTime.parse(value.substring(2));
-        }
-        if (value.startsWith("L:")) {
-            return Long.valueOf(value.substring(2));
-        }
-        if (value.startsWith("I:")) {
-            return Integer.valueOf(value.substring(2));
-        }
-        if (value.startsWith("S:")) {
-            return new String(
-                    Base64.getUrlDecoder().decode(value.substring(2)), StandardCharsets.UTF_8);
-        }
-        throw new BadRequestException("分页 cursor 无效", "cursor", "cursor 格式无效");
     }
 
     private LoginSessionResponse toLoginSessionResponse(
@@ -589,6 +431,4 @@ public class AuthenticationAuditService {
             ClientInfo client,
             RequestContextResponse request,
             @Nullable LocalDateTime occurredAt) {}
-
-    private record DecodedCursor(String direction, List<Object> values) {}
 }

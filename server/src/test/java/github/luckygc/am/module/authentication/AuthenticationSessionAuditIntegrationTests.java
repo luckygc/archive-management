@@ -146,9 +146,9 @@ class AuthenticationSessionAuditIntegrationTests extends PostgreSqlContainerTest
     }
 
     @Test
-    @DisplayName("认证审计 cursor 绑定查询条件")
+    @DisplayName("认证审计 cursor 不绑定查询条件，由客户端在条件变化时清空")
     @WithMockUser(username = "admin", roles = "系统管理员")
-    void authenticationEventCursorRejectsChangedQuery() throws Exception {
+    void authenticationEventCursorDoesNotBindQueryCondition() throws Exception {
         login("admin", "wrong-password").andExpect(status().isUnauthorized());
         login("admin", "wrong-password").andExpect(status().isUnauthorized());
         MvcResult firstPage =
@@ -166,8 +166,7 @@ class AuthenticationSessionAuditIntegrationTests extends PostgreSqlContainerTest
                                 .param("eventType", "login_success")
                                 .param("limit", "1")
                                 .param("cursor", next))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.fieldViolations[0].field").value("cursor"));
+                .andExpect(status().isOk());
     }
 
     private org.springframework.test.web.servlet.ResultActions login(

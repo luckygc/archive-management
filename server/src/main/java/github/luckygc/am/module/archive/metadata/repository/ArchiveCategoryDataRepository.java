@@ -1,8 +1,10 @@
 package github.luckygc.am.module.archive.metadata.repository;
 
 import java.util.List;
+import java.util.Optional;
 
-import jakarta.data.repository.CrudRepository;
+import jakarta.annotation.Nonnull;
+import jakarta.data.repository.By;
 import jakarta.data.repository.Find;
 import jakarta.data.repository.OrderBy;
 import jakarta.data.repository.Repository;
@@ -10,11 +12,16 @@ import jakarta.data.repository.Repository;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
+import github.luckygc.am.common.repository.DataRepository;
 import github.luckygc.am.module.archive.metadata.ArchiveCategory;
 
 @Transactional(rollbackFor = Throwable.class, isolation = Isolation.READ_COMMITTED)
 @Repository
-public interface ArchiveCategoryDataRepository extends CrudRepository<ArchiveCategory, Long> {
+public interface ArchiveCategoryDataRepository extends DataRepository<ArchiveCategory, Long> {
+
+    @Transactional(readOnly = true)
+    @Find
+    Optional<ArchiveCategory> findById(@By(By.ID) @Nonnull Long id);
 
     @Transactional(readOnly = true)
     @Find
