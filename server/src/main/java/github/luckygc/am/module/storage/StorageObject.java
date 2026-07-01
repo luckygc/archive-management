@@ -64,6 +64,9 @@ public class StorageObject implements CreationAuditable {
     @CreationTimestamp
     private LocalDateTime createdAt;
 
+    @Column(name = "expires_at")
+    private LocalDateTime expiresAt;
+
     @Column(name = "deleted_by")
     private Long deletedBy;
 

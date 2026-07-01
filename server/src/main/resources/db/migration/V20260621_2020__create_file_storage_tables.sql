@@ -13,11 +13,15 @@ create table am_storage_object
     etag              varchar(255),
     created_by        bigint,
     created_at        timestamp     not null default localtimestamp,
+    expires_at        timestamp,
     deleted_by        bigint,
     deleted_at        timestamp
 );
 
 create index idx_am_storage_object_created_at on am_storage_object (created_at);
+create index idx_am_storage_object_expires_at_active
+    on am_storage_object (expires_at)
+    where deleted_at is null and expires_at is not null;
 create unique index uk_am_storage_object_location_active
     on am_storage_object (storage_type, bucket_name, object_key)
     where deleted_at is null;
@@ -36,5 +40,6 @@ comment on column am_storage_object.checksum_md5 is '文件内容 MD5 指纹，�
 comment on column am_storage_object.etag is '对象存储返回的 ETag，仅作为存储侧元信息';
 comment on column am_storage_object.created_by is '创建人用户 ID';
 comment on column am_storage_object.created_at is '创建时间';
+comment on column am_storage_object.expires_at is '文件对象过期时间；为空表示长期有效';
 comment on column am_storage_object.deleted_by is '删除人用户 ID';
 comment on column am_storage_object.deleted_at is '删除时间';

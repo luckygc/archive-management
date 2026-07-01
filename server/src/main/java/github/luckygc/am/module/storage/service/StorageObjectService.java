@@ -1,5 +1,8 @@
 package github.luckygc.am.module.storage.service;
 
+import java.time.Clock;
+import java.time.LocalDateTime;
+
 import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -17,12 +20,21 @@ public class StorageObjectService {
 
     private final StorageObjectDataRepository storageObjectRepository;
     private final FileStorageService fileStorageService;
+    private final Clock clock;
 
     public StorageObjectService(
             StorageObjectDataRepository storageObjectRepository,
             FileStorageService fileStorageService) {
+        this(storageObjectRepository, fileStorageService, Clock.systemDefaultZone());
+    }
+
+    StorageObjectService(
+            StorageObjectDataRepository storageObjectRepository,
+            FileStorageService fileStorageService,
+            Clock clock) {
         this.storageObjectRepository = storageObjectRepository;
         this.fileStorageService = fileStorageService;
+        this.clock = clock;
     }
 
     @Transactional(readOnly = true)
@@ -32,7 +44,7 @@ public class StorageObjectService {
                         .findById(storageObjectId)
                         .orElseThrow(
                                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "文件记录不存在"));
-        if (storageObject.getDeletedAt() != null) {
+        if (storageObject.getDeletedAt() != null || isExpired(storageObject)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "文件记录不存在");
         }
         return toDto(storageObject);
@@ -63,6 +75,11 @@ public class StorageObjectService {
                 storageObject.getFileSize(),
                 storageObject.getContentType(),
                 storageObject.getChecksumSha256());
+    }
+
+    private boolean isExpired(StorageObject storageObject) {
+        LocalDateTime expiresAt = storageObject.getExpiresAt();
+        return expiresAt != null && !expiresAt.isAfter(LocalDateTime.now(clock));
     }
 
     public record StorageObjectDto(

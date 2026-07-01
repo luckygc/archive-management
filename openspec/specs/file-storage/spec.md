@@ -23,6 +23,13 @@
 - **THEN** 系统 SHALL 按文件记录中的 `storage_type`、`bucket_name` 和 `object_key` 路由到对应存储
 - **AND** 系统 SHALL NOT 依赖对象存储列举或元信息反查作为业务真相源
 
+#### Scenario: 识别过期文件
+
+- **WHEN** 文件记录的 `expires_at` 不为空且不晚于当前时间
+- **THEN** 系统 SHALL 将该文件记录视为不可用
+- **AND** `expires_at` 为空的文件记录 SHALL 表示长期有效
+- **AND** 系统 SHALL NOT 依赖操作系统临时目录或对象存储生命周期规则作为业务过期真相源
+
 ### Requirement: 文件存储路由
 
 系统 SHALL 通过显式配置选择默认上传位置。
