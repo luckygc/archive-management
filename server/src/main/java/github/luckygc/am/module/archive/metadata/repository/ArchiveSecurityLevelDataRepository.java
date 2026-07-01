@@ -1,10 +1,7 @@
 package github.luckygc.am.module.archive.metadata.repository;
 
 import java.util.List;
-import java.util.Optional;
 
-import jakarta.annotation.Nonnull;
-import jakarta.data.repository.By;
 import jakarta.data.repository.Find;
 import jakarta.data.repository.OrderBy;
 import jakarta.data.repository.Repository;
@@ -19,10 +16,6 @@ import github.luckygc.am.module.archive.metadata.ArchiveSecurityLevel;
 @Repository
 public interface ArchiveSecurityLevelDataRepository
         extends DataRepository<ArchiveSecurityLevel, Long> {
-
-    @Transactional(readOnly = true)
-    @Find
-    Optional<ArchiveSecurityLevel> findById(@By(By.ID) @Nonnull Long id);
 
     @Transactional(readOnly = true)
     @Find
