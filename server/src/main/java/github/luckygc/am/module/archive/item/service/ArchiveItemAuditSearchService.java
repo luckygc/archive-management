@@ -17,6 +17,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.api.CursorPageRequest;
 import github.luckygc.am.common.api.CursorPageResponse;
+import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.archive.item.ArchiveItemAudit;
 import github.luckygc.am.module.archive.item._ArchiveItemAudit;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemAuditDataRepository;
@@ -50,9 +51,7 @@ public class ArchiveItemAuditSearchService {
     }
 
     private void requireSuperAdmin(Long userId) {
-        if (userId == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "请先登录");
-        }
+        userId = AuthenticatedUsers.requireResolvedUserId(userId);
         if (!permissionService.isSuperAdmin(userId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "权限不足");
         }

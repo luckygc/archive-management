@@ -8,10 +8,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.api.CollectionResponse;
-import github.luckygc.am.common.security.AuthenticatedUser;
+import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.archive.item.service.ArchiveVolumeService;
 import github.luckygc.am.module.archive.item.service.ArchiveVolumeService.AddItemToVolumeRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveVolumeService.ArchiveVolumeDto;
@@ -35,7 +34,10 @@ public class ArchiveVolumeController {
     @ResponseStatus(HttpStatus.CREATED)
     public ArchiveVolumeDto createVolume(
             @RequestBody CreateArchiveVolumeRequest request, Authentication authentication) {
-        return archiveVolumeService.createVolume(request, currentUserId(authentication));
+        return archiveVolumeService.createVolume(
+                request,
+                AuthenticatedUsers.requireUserId(
+                        authentication == null ? null : authentication.getPrincipal()));
     }
 
     @GetMapping("/api/v1/archive-volumes/{id}")
@@ -50,14 +52,10 @@ public class ArchiveVolumeController {
             @RequestBody AddItemToVolumeRequest request,
             Authentication authentication) {
         archiveVolumeService.addItemToVolume(
-                id, request.itemId(), request.displayOrder(), currentUserId(authentication));
-    }
-
-    private Long currentUserId(Authentication authentication) {
-        if (authentication != null
-                && authentication.getPrincipal() instanceof AuthenticatedUser userDetails) {
-            return userDetails.id();
-        }
-        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "请先登录");
+                id,
+                request.itemId(),
+                request.displayOrder(),
+                AuthenticatedUsers.requireUserId(
+                        authentication == null ? null : authentication.getPrincipal()));
     }
 }

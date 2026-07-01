@@ -22,6 +22,7 @@ import org.springframework.web.server.ResponseStatusException;
 import github.luckygc.am.common.api.CursorPageRequest;
 import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.common.api.CursorPageTokenContext;
+import github.luckygc.am.common.security.UnauthenticatedException;
 import github.luckygc.am.module.archive.item.ArchiveItemAudit;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemAuditDataRepository;
 import github.luckygc.am.module.archive.item.service.ArchiveItemAuditSearchService.ArchiveItemAuditResponse;
@@ -132,9 +133,8 @@ class ArchiveItemAuditSearchServiceTests {
                                                 null, null, null, null, null, null),
                                         firstPage(20, false),
                                         null))
-                .isInstanceOf(ResponseStatusException.class)
-                .extracting(exception -> ((ResponseStatusException) exception).getStatusCode())
-                .isEqualTo(HttpStatus.UNAUTHORIZED);
+                .isInstanceOf(UnauthenticatedException.class)
+                .hasMessage("请先登录");
         verify(permissionService, never()).isSuperAdmin(any());
         verify(auditRepository, never()).find(any(), any());
     }

@@ -1,6 +1,5 @@
 package github.luckygc.am.module.archive.item.web;
 
-import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -12,10 +11,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.api.CollectionResponse;
-import github.luckygc.am.common.security.AuthenticatedUser;
+import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveItemDetailDto;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveItemDto;
@@ -43,25 +41,37 @@ public class ArchiveItemController {
     public ArchiveItemListDto listItems(
             Long categoryId, String fondsCode, Authentication authentication) {
         return archiveItemRoutingService.listItems(
-                categoryId, fondsCode, currentUserId(authentication));
+                categoryId,
+                fondsCode,
+                AuthenticatedUsers.requireUserId(
+                        authentication == null ? null : authentication.getPrincipal()));
     }
 
     @PostMapping("/api/v1/archive-items:search")
     public ArchiveItemListDto searchItems(
             @RequestBody SearchArchiveItemsRequest request, Authentication authentication) {
-        return archiveItemRoutingService.searchItems(request, currentUserId(authentication));
+        return archiveItemRoutingService.searchItems(
+                request,
+                AuthenticatedUsers.requireUserId(
+                        authentication == null ? null : authentication.getPrincipal()));
     }
 
     @PostMapping("/api/v1/archive-items:discover")
     public ArchiveItemListDto discoverItems(
             @RequestBody SearchArchiveItemsRequest request, Authentication authentication) {
-        return archiveItemRoutingService.discoverItems(request, currentUserId(authentication));
+        return archiveItemRoutingService.discoverItems(
+                request,
+                AuthenticatedUsers.requireUserId(
+                        authentication == null ? null : authentication.getPrincipal()));
     }
 
     @PostMapping("/api/v1/archive-items:searchDeleted")
     public ArchiveItemListDto searchDeletedItems(
             @RequestBody SearchArchiveItemsRequest request, Authentication authentication) {
-        return archiveItemRoutingService.searchDeletedItems(request, currentUserId(authentication));
+        return archiveItemRoutingService.searchDeletedItems(
+                request,
+                AuthenticatedUsers.requireUserId(
+                        authentication == null ? null : authentication.getPrincipal()));
     }
 
     @GetMapping("/api/v1/archive-categories/{id}/related-filter-categories")
@@ -74,7 +84,10 @@ public class ArchiveItemController {
     @ResponseStatus(HttpStatus.CREATED)
     public ArchiveItemDto createItem(
             @RequestBody CreateArchiveItemRequest request, Authentication authentication) {
-        return archiveItemRoutingService.createItem(request, currentUserId(authentication));
+        return archiveItemRoutingService.createItem(
+                request,
+                AuthenticatedUsers.requireUserId(
+                        authentication == null ? null : authentication.getPrincipal()));
     }
 
     @GetMapping("/api/v1/archive-items/{id}")
@@ -82,7 +95,11 @@ public class ArchiveItemController {
             @PathVariable Long id,
             @RequestParam(required = false) ArchiveLayoutSurface surface,
             Authentication authentication) {
-        return archiveItemRoutingService.getItemDetail(id, currentUserId(authentication), surface);
+        return archiveItemRoutingService.getItemDetail(
+                id,
+                AuthenticatedUsers.requireUserId(
+                        authentication == null ? null : authentication.getPrincipal()),
+                surface);
     }
 
     @PatchMapping("/api/v1/archive-items/{id}")
@@ -90,7 +107,11 @@ public class ArchiveItemController {
             @PathVariable Long id,
             @RequestBody UpdateArchiveItemRequest request,
             Authentication authentication) {
-        return archiveItemRoutingService.updateItem(id, request, currentUserId(authentication));
+        return archiveItemRoutingService.updateItem(
+                id,
+                request,
+                AuthenticatedUsers.requireUserId(
+                        authentication == null ? null : authentication.getPrincipal()));
     }
 
     @DeleteMapping("/api/v1/archive-items/{id}")
@@ -99,7 +120,11 @@ public class ArchiveItemController {
             @PathVariable Long id,
             @RequestBody(required = false) DeleteItemRequest request,
             Authentication authentication) {
-        archiveItemRoutingService.deleteItem(id, currentUserId(authentication), request);
+        archiveItemRoutingService.deleteItem(
+                id,
+                AuthenticatedUsers.requireUserId(
+                        authentication == null ? null : authentication.getPrincipal()),
+                request);
     }
 
     @PostMapping("/api/v1/archive-items/{id}:lock")
@@ -107,12 +132,19 @@ public class ArchiveItemController {
             @PathVariable Long id,
             @RequestBody(required = false) LockItemRequest request,
             Authentication authentication) {
-        return archiveItemRoutingService.lockItem(id, currentUserId(authentication), request);
+        return archiveItemRoutingService.lockItem(
+                id,
+                AuthenticatedUsers.requireUserId(
+                        authentication == null ? null : authentication.getPrincipal()),
+                request);
     }
 
     @PostMapping("/api/v1/archive-items/{id}:unlock")
     public ArchiveItemDto unlockItem(@PathVariable Long id, Authentication authentication) {
-        return archiveItemRoutingService.unlockItem(id, currentUserId(authentication));
+        return archiveItemRoutingService.unlockItem(
+                id,
+                AuthenticatedUsers.requireUserId(
+                        authentication == null ? null : authentication.getPrincipal()));
     }
 
     @GetMapping("/api/v1/archive-items/{id}/relations")
@@ -127,21 +159,21 @@ public class ArchiveItemController {
             @PathVariable Long id,
             @RequestBody ArchiveItemRelationRequest request,
             Authentication authentication) {
-        return archiveItemRoutingService.createRelation(id, request, currentUserId(authentication));
+        return archiveItemRoutingService.createRelation(
+                id,
+                request,
+                AuthenticatedUsers.requireUserId(
+                        authentication == null ? null : authentication.getPrincipal()));
     }
 
     @DeleteMapping("/api/v1/archive-items/{id}/relations/{relationId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteRelation(
             @PathVariable Long id, @PathVariable Long relationId, Authentication authentication) {
-        archiveItemRoutingService.deleteRelation(id, relationId, currentUserId(authentication));
-    }
-
-    private Long currentUserId(@Nullable Authentication authentication) {
-        if (authentication != null
-                && authentication.getPrincipal() instanceof AuthenticatedUser userDetails) {
-            return userDetails.id();
-        }
-        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "请先登录");
+        archiveItemRoutingService.deleteRelation(
+                id,
+                relationId,
+                AuthenticatedUsers.requireUserId(
+                        authentication == null ? null : authentication.getPrincipal()));
     }
 }

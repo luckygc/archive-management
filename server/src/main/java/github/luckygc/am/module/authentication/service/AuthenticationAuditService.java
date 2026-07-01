@@ -28,6 +28,7 @@ import github.luckygc.am.common.api.CursorPageRequest;
 import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.common.security.AuthenticatedUser;
+import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.authentication.AuthenticationLoginEventType;
 import github.luckygc.am.module.authentication.AuthenticationLoginLog;
 import github.luckygc.am.module.authentication.ClientInfo;
@@ -69,12 +70,14 @@ public class AuthenticationAuditService {
         HttpSession session = request.getSession(false);
         if (session != null) {
             session.setAttribute(CLIENT_CONTEXT_ATTRIBUTE, context);
-            session.setAttribute(USER_ID_ATTRIBUTE, currentUserId(authentication));
+            session.setAttribute(
+                    USER_ID_ATTRIBUTE,
+                    AuthenticatedUsers.currentUserId(authentication.getPrincipal()));
             session.setAttribute(DISPLAY_NAME_ATTRIBUTE, displayName(authentication));
             session.setAttribute(ROLES_ATTRIBUTE, roles(authentication));
         }
         AuthenticationLoginLog log = baseLog(AuthenticationLoginEventType.LOGIN_SUCCESS, context);
-        log.setUserId(currentUserId(authentication));
+        log.setUserId(AuthenticatedUsers.currentUserId(authentication.getPrincipal()));
         log.setUsername(authentication.getName());
         log.setDisplayName(displayName(authentication));
         log.setSessionId(session == null ? null : session.getId());
@@ -95,7 +98,7 @@ public class AuthenticationAuditService {
         ClientRequestContext context = contextFromSessionOrRequest(request);
         AuthenticationLoginLog log = baseLog(AuthenticationLoginEventType.LOGOUT, context);
         if (authentication != null) {
-            log.setUserId(currentUserId(authentication));
+            log.setUserId(AuthenticatedUsers.currentUserId(authentication.getPrincipal()));
             log.setUsername(authentication.getName());
             log.setDisplayName(displayName(authentication));
         }
@@ -121,7 +124,7 @@ public class AuthenticationAuditService {
         log.setUsername(targetUsername(target));
         log.setUserId(target.getAttribute(USER_ID_ATTRIBUTE));
         log.setDisplayName(target.getAttribute(DISPLAY_NAME_ATTRIBUTE));
-        log.setOperatorUserId(currentUserId(authentication));
+        log.setOperatorUserId(AuthenticatedUsers.currentUserId(authentication.getPrincipal()));
         log.setOperatorUsername(authentication.getName());
         loginLogRepository.insert(log);
         sessionRepository.deleteById(sessionId);
@@ -156,7 +159,7 @@ public class AuthenticationAuditService {
                                         .toEpochMilli());
         return new LoginSessionResponse(
                 sessionId,
-                currentUserId(authentication),
+                AuthenticatedUsers.currentUserId(authentication.getPrincipal()),
                 authentication.getName(),
                 displayName(authentication),
                 roles(authentication),
@@ -302,14 +305,6 @@ public class AuthenticationAuditService {
 
     private ClientRequestContext emptyContext() {
         return new ClientRequestContext("", "", "", "", "", new ClientInfo("", "", "", "", "", ""));
-    }
-
-    private @Nullable Long currentUserId(@Nullable Authentication authentication) {
-        if (authentication == null
-                || !(authentication.getPrincipal() instanceof AuthenticatedUser user)) {
-            return null;
-        }
-        return user.id();
     }
 
     private String displayName(@Nullable Authentication authentication) {

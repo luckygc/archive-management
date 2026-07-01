@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.exception.BadRequestException;
+import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.authorization.AuthorizationPermission;
 import github.luckygc.am.module.authorization.AuthorizationRole;
 import github.luckygc.am.module.authorization.AuthorizationRolePermissionRelation;
@@ -176,9 +177,7 @@ public class AuthorizationPermissionService {
     }
 
     public void requirePermission(Long userId, AuthorizationPermissionCode permissionCode) {
-        if (userId == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "请先登录");
-        }
+        userId = AuthenticatedUsers.requireResolvedUserId(userId);
         if (!hasPermission(userId, permissionCode.code())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "权限不足");
         }

@@ -11,10 +11,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.api.CollectionResponse;
-import github.luckygc.am.common.security.AuthenticatedUser;
+import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldScope;
@@ -255,16 +254,10 @@ public class ArchiveMetadataController {
                 categoryId, constraintId, requireMetadataManage(authentication));
     }
 
-    private Long currentUserId(Authentication authentication) {
-        if (authentication != null
-                && authentication.getPrincipal() instanceof AuthenticatedUser userDetails) {
-            return userDetails.id();
-        }
-        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "请先登录");
-    }
-
     private Long requireMetadataManage(Authentication authentication) {
-        Long userId = currentUserId(authentication);
+        Long userId =
+                AuthenticatedUsers.requireUserId(
+                        authentication == null ? null : authentication.getPrincipal());
         permissionService.requirePermission(
                 userId, AuthorizationPermissionCode.ARCHIVE_METADATA_MANAGE);
         return userId;

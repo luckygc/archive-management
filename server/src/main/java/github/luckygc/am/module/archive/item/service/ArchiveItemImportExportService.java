@@ -27,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.exception.BadRequestException;
+import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService.ArchiveDataScopeFilter;
@@ -149,9 +150,7 @@ public class ArchiveItemImportExportService {
     }
 
     private void requirePermission(Long userId, AuthorizationPermissionCode permissionCode) {
-        if (userId == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "请先登录");
-        }
+        userId = AuthenticatedUsers.requireResolvedUserId(userId);
         if (!permissionService.hasPermission(userId, permissionCode.code())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "权限不足");
         }
@@ -159,9 +158,7 @@ public class ArchiveItemImportExportService {
 
     private void requireAnyPermission(
             Long userId, AuthorizationPermissionCode first, AuthorizationPermissionCode second) {
-        if (userId == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "请先登录");
-        }
+        userId = AuthenticatedUsers.requireResolvedUserId(userId);
         if (!permissionService.hasPermission(userId, first.code())
                 && !permissionService.hasPermission(userId, second.code())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "权限不足");
@@ -169,9 +166,7 @@ public class ArchiveItemImportExportService {
     }
 
     private void ensureCategoryInDataScope(Long categoryId, Long userId) {
-        if (userId == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "请先登录");
-        }
+        userId = AuthenticatedUsers.requireResolvedUserId(userId);
         ArchiveDataScopeFilter filter = dataScopeService.buildItemFilter(userId, categoryId, null);
         if (filter.empty()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "数据范围不足");

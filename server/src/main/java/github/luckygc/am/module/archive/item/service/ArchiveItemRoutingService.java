@@ -30,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.exception.BadRequestException;
+import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService.ArchiveDataScopeFilter;
@@ -630,9 +631,7 @@ public class ArchiveItemRoutingService {
     }
 
     public void assertItemInDataScope(Long id, Long userId) {
-        if (userId == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "请先登录");
-        }
+        userId = AuthenticatedUsers.requireResolvedUserId(userId);
         ArchiveItemDto record = getItem(id);
         ArchiveCategoryDto category = getCategoryByCode(record.categoryCode());
         assertItemInDataScope(userId, category, record);
@@ -1444,9 +1443,7 @@ public class ArchiveItemRoutingService {
     }
 
     private void requirePermission(Long userId, String permissionCode) {
-        if (userId == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "请先登录");
-        }
+        userId = AuthenticatedUsers.requireResolvedUserId(userId);
         if (!permissionService.hasPermission(userId, permissionCode)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "权限不足");
         }
@@ -1454,9 +1451,7 @@ public class ArchiveItemRoutingService {
 
     private void assertItemInDataScope(
             Long userId, ArchiveCategoryDto category, ArchiveItemDto record) {
-        if (userId == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "请先登录");
-        }
+        userId = AuthenticatedUsers.requireResolvedUserId(userId);
         ArchiveDataScopeFilter filter =
                 dataScopeService.buildItemFilter(userId, category.id(), record.fondsCode());
         if (filter.empty()) {
@@ -1479,9 +1474,7 @@ public class ArchiveItemRoutingService {
             @Nullable Long securityLevelId,
             List<ArchiveFieldDto> fields,
             Map<String, @Nullable Object> dynamicFieldsByCode) {
-        if (userId == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "请先登录");
-        }
+        userId = AuthenticatedUsers.requireResolvedUserId(userId);
         ArchiveDataScopeFilter filter =
                 dataScopeService.buildItemFilter(userId, category.id(), fondsCode);
         if (filter.empty()) {

@@ -30,6 +30,7 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 
 import github.luckygc.am.common.api.ApiFieldViolation;
 import github.luckygc.am.common.exception.BadRequestException;
+import github.luckygc.am.common.security.UnauthenticatedException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
@@ -50,6 +51,20 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                         request);
         withFieldViolations(problem, exception.fieldViolations());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(problem);
+    }
+
+    @ExceptionHandler(UnauthenticatedException.class)
+    ResponseEntity<ProblemDetail> handleUnauthenticatedException(
+            UnauthenticatedException exception, HttpServletRequest request) {
+        ProblemDetail problem =
+                problem(
+                        HttpStatus.UNAUTHORIZED,
+                        title(HttpStatus.UNAUTHORIZED),
+                        exception.getMessage(),
+                        canonicalCode(HttpStatus.UNAUTHORIZED),
+                        canonicalCode(HttpStatus.UNAUTHORIZED) + "_ERROR",
+                        request);
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(problem);
     }
 
     @ExceptionHandler(ResponseStatusException.class)

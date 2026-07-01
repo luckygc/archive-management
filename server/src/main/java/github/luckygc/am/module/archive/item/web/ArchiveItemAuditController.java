@@ -4,16 +4,14 @@ import java.time.LocalDateTime;
 
 import org.jspecify.annotations.Nullable;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.api.CursorPageRequest;
 import github.luckygc.am.common.api.CursorPageResponse;
-import github.luckygc.am.common.security.AuthenticatedUser;
+import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.archive.item.service.ArchiveItemAuditSearchService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemAuditSearchService.ArchiveItemAuditResponse;
 import github.luckygc.am.module.archive.item.service.ArchiveItemAuditSearchService.ListArchiveItemAuditsRequest;
@@ -39,7 +37,9 @@ public class ArchiveItemAuditController {
                     @Nullable LocalDateTime operatedBefore,
             CursorPageRequest page,
             @Nullable Authentication authentication) {
-        Long userId = currentUserId(authentication);
+        Long userId =
+                AuthenticatedUsers.requireUserId(
+                        authentication == null ? null : authentication.getPrincipal());
         return auditSearchService.listAudits(
                 new ListArchiveItemAuditsRequest(
                         archiveItemId,
@@ -50,13 +50,5 @@ public class ArchiveItemAuditController {
                         operatedBefore),
                 page,
                 userId);
-    }
-
-    private Long currentUserId(@Nullable Authentication authentication) {
-        if (authentication != null
-                && authentication.getPrincipal() instanceof AuthenticatedUser userDetails) {
-            return userDetails.id();
-        }
-        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "请先登录");
     }
 }

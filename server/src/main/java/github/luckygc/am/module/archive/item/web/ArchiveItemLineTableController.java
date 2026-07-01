@@ -1,6 +1,5 @@
 package github.luckygc.am.module.archive.item.web;
 
-import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -9,10 +8,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.api.CollectionResponse;
-import github.luckygc.am.common.security.AuthenticatedUser;
+import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.archive.item.service.ArchiveItemLineTableService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemLineTableService.ArchiveItemLineFieldDto;
 import github.luckygc.am.module.archive.item.service.ArchiveItemLineTableService.ArchiveItemLineFieldRequest;
@@ -41,7 +39,10 @@ public class ArchiveItemLineTableController {
             @RequestBody ArchiveItemLineTableRequest request,
             Authentication authentication) {
         return archiveItemLineTableService.createLineTable(
-                categoryId, request, currentUserId(authentication));
+                categoryId,
+                request,
+                AuthenticatedUsers.requireUserId(
+                        authentication == null ? null : authentication.getPrincipal()));
     }
 
     @GetMapping("/api/v1/archive-item-line-tables/{lineTableId}")
@@ -53,7 +54,9 @@ public class ArchiveItemLineTableController {
     public ArchiveItemLineTableDto buildLineTable(
             @PathVariable Long lineTableId, Authentication authentication) {
         return archiveItemLineTableService.buildLineTable(
-                lineTableId, currentUserId(authentication));
+                lineTableId,
+                AuthenticatedUsers.requireUserId(
+                        authentication == null ? null : authentication.getPrincipal()));
     }
 
     @GetMapping("/api/v1/archive-item-line-tables/{lineTableId}/fields")
@@ -69,14 +72,9 @@ public class ArchiveItemLineTableController {
             @RequestBody ArchiveItemLineFieldRequest request,
             Authentication authentication) {
         return archiveItemLineTableService.createLineField(
-                lineTableId, request, currentUserId(authentication));
-    }
-
-    private Long currentUserId(@Nullable Authentication authentication) {
-        if (authentication != null
-                && authentication.getPrincipal() instanceof AuthenticatedUser userDetails) {
-            return userDetails.id();
-        }
-        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "请先登录");
+                lineTableId,
+                request,
+                AuthenticatedUsers.requireUserId(
+                        authentication == null ? null : authentication.getPrincipal()));
     }
 }

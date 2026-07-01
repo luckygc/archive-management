@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 
 import github.luckygc.am.common.audit.CreationAuditable;
 import github.luckygc.am.common.audit.UpdateAuditable;
-import github.luckygc.am.common.security.AuthenticatedUser;
+import github.luckygc.am.common.security.AuthenticatedUsers;
 
 @Component
 public class SecurityAuditingInterceptor implements Interceptor {
@@ -68,12 +68,10 @@ public class SecurityAuditingInterceptor implements Interceptor {
 
     private @Nullable Long currentUserId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null
-                || !authentication.isAuthenticated()
-                || !(authentication.getPrincipal() instanceof AuthenticatedUser user)) {
+        if (authentication == null || !authentication.isAuthenticated()) {
             return null;
         }
-        return user.id();
+        return AuthenticatedUsers.currentUserId(authentication.getPrincipal());
     }
 
     private void setState(

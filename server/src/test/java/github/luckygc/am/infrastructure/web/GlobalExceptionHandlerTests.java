@@ -16,6 +16,7 @@ import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.exception.BadRequestException;
+import github.luckygc.am.common.security.UnauthenticatedException;
 import github.luckygc.am.module.authentication.PowChallengeException;
 
 @DisplayName("全局异常处理器")
@@ -75,6 +76,25 @@ class GlobalExceptionHandlerTests {
                                 assertThat(violation)
                                         .hasFieldOrPropertyWithValue("field", "archiveYear")
                                         .hasFieldOrPropertyWithValue("message", "年度必须在合法范围内"));
+    }
+
+    @Test
+    @DisplayName("未登录异常输出未认证 ProblemDetail")
+    void unauthenticatedExceptionUsesUnauthenticatedProblemDetail() {
+        MockHttpServletRequest request =
+                new MockHttpServletRequest("GET", "/api/v1/archive-item-audits");
+
+        var response =
+                handler.handleUnauthenticatedException(new UnauthenticatedException(), request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getStatus()).isEqualTo(401);
+        assertThat(response.getBody().getDetail()).isEqualTo("请先登录");
+        assertThat(response.getBody().getProperties())
+                .containsEntry("code", "UNAUTHENTICATED")
+                .containsEntry("reason", "UNAUTHENTICATED_ERROR")
+                .containsEntry("path", "/api/v1/archive-item-audits");
     }
 
     @Test

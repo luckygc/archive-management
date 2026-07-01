@@ -3,7 +3,6 @@ package github.luckygc.am.module.archive.authorization.web;
 import java.util.List;
 
 import org.jspecify.annotations.Nullable;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -12,10 +11,9 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.api.CollectionResponse;
-import github.luckygc.am.common.security.AuthenticatedUser;
+import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService.ArchiveDataScopeResponse;
@@ -125,12 +123,9 @@ public class ArchiveDataScopeController {
     public record UpdateUserArchiveDataScopesRequest(List<Long> scopeIds) {}
 
     private void requirePermission(@Nullable Authentication authentication) {
-        if (authentication != null
-                && authentication.getPrincipal() instanceof AuthenticatedUser userDetails) {
-            permissionService.requirePermission(
-                    userDetails.id(), AuthorizationPermissionCode.ARCHIVE_DATA_SCOPE_MANAGE);
-            return;
-        }
-        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "请先登录");
+        permissionService.requirePermission(
+                AuthenticatedUsers.requireUserId(
+                        authentication == null ? null : authentication.getPrincipal()),
+                AuthorizationPermissionCode.ARCHIVE_DATA_SCOPE_MANAGE);
     }
 }

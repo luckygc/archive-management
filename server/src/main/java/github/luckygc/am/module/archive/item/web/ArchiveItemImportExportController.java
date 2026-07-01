@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
-import github.luckygc.am.common.security.AuthenticatedUser;
+import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.archive.item.service.ArchiveItemImportExportService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemImportExportService.ArchiveExcelFile;
 import github.luckygc.am.module.archive.item.service.ArchiveItemImportExportService.ArchiveImportResult;
@@ -51,7 +51,9 @@ public class ArchiveItemImportExportController {
             @PathVariable Long categoryId, Authentication authentication) {
         return excelResponse(
                 importExportService.generateImportTemplate(
-                        categoryId, currentUserId(authentication)));
+                        categoryId,
+                        AuthenticatedUsers.requireUserId(
+                                authentication == null ? null : authentication.getPrincipal())));
     }
 
     @PostMapping(
@@ -63,7 +65,10 @@ public class ArchiveItemImportExportController {
             Authentication authentication)
             throws IOException {
         return importExportService.importItems(
-                categoryId, file.getInputStream(), currentUserId(authentication));
+                categoryId,
+                file.getInputStream(),
+                AuthenticatedUsers.requireUserId(
+                        authentication == null ? null : authentication.getPrincipal()));
     }
 
     @PostMapping("/api/v1/archive-items:export")
@@ -71,7 +76,10 @@ public class ArchiveItemImportExportController {
             @RequestBody(required = false) SearchArchiveItemsRequest request,
             Authentication authentication) {
         return excelResponse(
-                importExportService.exportItems(request, currentUserId(authentication)));
+                importExportService.exportItems(
+                        request,
+                        AuthenticatedUsers.requireUserId(
+                                authentication == null ? null : authentication.getPrincipal())));
     }
 
     @GetMapping("/api/v1/archive-items:export")
@@ -79,7 +87,9 @@ public class ArchiveItemImportExportController {
             @RequestParam(required = false) String query, Authentication authentication) {
         return excelResponse(
                 importExportService.exportItems(
-                        decodeExportQuery(query), currentUserId(authentication)));
+                        decodeExportQuery(query),
+                        AuthenticatedUsers.requireUserId(
+                                authentication == null ? null : authentication.getPrincipal())));
     }
 
     private ResponseEntity<ByteArrayResource> excelResponse(ArchiveExcelFile file) {
@@ -93,14 +103,6 @@ public class ArchiveItemImportExportController {
                                 .toString())
                 .contentLength(file.bytes().length)
                 .body(new ByteArrayResource(file.bytes()));
-    }
-
-    private Long currentUserId(@Nullable Authentication authentication) {
-        if (authentication != null
-                && authentication.getPrincipal() instanceof AuthenticatedUser userDetails) {
-            return userDetails.id();
-        }
-        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "请先登录");
     }
 
     private @Nullable SearchArchiveItemsRequest decodeExportQuery(@Nullable String query) {

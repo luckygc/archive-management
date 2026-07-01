@@ -15,6 +15,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.api.CollectionResponse;
 import github.luckygc.am.common.exception.BadRequestException;
+import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.common.storage.FileStorageResource;
 import github.luckygc.am.module.archive.item.ArchiveItem;
 import github.luckygc.am.module.archive.item.ArchiveItemAudit;
@@ -153,9 +154,7 @@ public class ArchiveItemElectronicFileService {
     }
 
     private void requirePermission(Long userId, String permissionCode) {
-        if (userId == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "请先登录");
-        }
+        userId = AuthenticatedUsers.requireResolvedUserId(userId);
         if (!permissionService.hasPermission(userId, permissionCode)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "权限不足");
         }
