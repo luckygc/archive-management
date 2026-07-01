@@ -3,21 +3,19 @@ import {
     resetSessionStore,
     useSessionStore,
 } from "@archive-management/frontend-core/authentication";
-import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import { App } from "./App";
 
 const currentUser = {
+    sessionId: "session-1",
     username: "admin",
     displayName: "系统管理员",
     roles: ["admin"],
 };
 
 beforeEach(() => {
-    useSessionStore.setState({
-        currentUser,
-        initialized: true,
-    });
+    stubCurrentUserSession(currentUser);
     window.location.hash = "#/";
 });
 
@@ -38,10 +36,7 @@ describe("移动端门户", () => {
     });
 
     it("未登录时跳转到移动端登录页", async () => {
-        useSessionStore.setState({
-            currentUser: null,
-            initialized: true,
-        });
+        stubUnauthenticatedSession();
         window.location.hash = "#/approval/tasks";
 
         render(<App />);
@@ -51,3 +46,29 @@ describe("移动端门户", () => {
         expect(window.location.hash).toContain("approval%2Ftasks");
     });
 });
+
+function stubCurrentUserSession(user: typeof currentUser) {
+    useSessionStore.setState({
+        currentUser: null,
+        fetchCurrentUser: vi.fn(async () => {
+            useSessionStore.setState({
+                currentUser: user,
+                initialized: true,
+            });
+        }),
+        initialized: false,
+    });
+}
+
+function stubUnauthenticatedSession() {
+    useSessionStore.setState({
+        currentUser: null,
+        fetchCurrentUser: vi.fn(async () => {
+            useSessionStore.setState({
+                currentUser: null,
+                initialized: true,
+            });
+        }),
+        initialized: false,
+    });
+}

@@ -32,10 +32,7 @@ const currentUser = {
 };
 
 beforeEach(() => {
-    useSessionStore.setState({
-        currentUser,
-        initialized: true,
-    });
+    stubCurrentUserSession(currentUser);
     archiveApiMocks.listArchiveCategories.mockResolvedValue({
         items: [
             {
@@ -136,10 +133,7 @@ describe("React 主前端壳层", () => {
     });
 
     it("redirects protected routes to login when backend session is unauthenticated", async () => {
-        useSessionStore.setState({
-            currentUser: null,
-            initialized: true,
-        });
+        stubUnauthenticatedSession();
         window.location.hash = "#/archive/library";
 
         render(<App />);
@@ -150,3 +144,29 @@ describe("React 主前端壳层", () => {
         expect(window.location.hash).toContain("archive%2Flibrary");
     });
 });
+
+function stubCurrentUserSession(user: typeof currentUser) {
+    useSessionStore.setState({
+        currentUser: null,
+        fetchCurrentUser: vi.fn(async () => {
+            useSessionStore.setState({
+                currentUser: user,
+                initialized: true,
+            });
+        }),
+        initialized: false,
+    });
+}
+
+function stubUnauthenticatedSession() {
+    useSessionStore.setState({
+        currentUser: null,
+        fetchCurrentUser: vi.fn(async () => {
+            useSessionStore.setState({
+                currentUser: null,
+                initialized: true,
+            });
+        }),
+        initialized: false,
+    });
+}

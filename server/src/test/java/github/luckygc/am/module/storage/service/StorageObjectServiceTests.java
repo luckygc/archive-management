@@ -7,7 +7,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.ByteArrayInputStream;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -33,14 +36,18 @@ class StorageObjectServiceTests {
         storageObjectRepository = mock(StorageObjectDataRepository.class);
         fileStorageService = mock(FileStorageService.class);
         storageObjectService =
-                new StorageObjectService(storageObjectRepository, fileStorageService);
+                new StorageObjectService(
+                        storageObjectRepository,
+                        fileStorageService,
+                        Clock.fixed(
+                                Instant.parse("2026-07-01T02:00:00Z"), ZoneId.of("Asia/Shanghai")));
     }
 
     @Test
     @DisplayName("过期文件记录不再视为有效文件")
     void getActiveObjectShouldRejectExpiredObject() {
         StorageObject object = storageObject();
-        object.setExpiresAt(LocalDateTime.now().minusMinutes(1));
+        object.setExpiresAt(LocalDateTime.of(2026, 7, 1, 9, 59));
         when(storageObjectRepository.findById(20L)).thenReturn(Optional.of(object));
 
         assertThatThrownBy(() -> storageObjectService.getActiveObject(20L))
