@@ -1,4 +1,5 @@
 import { httpClient } from "@archive-management/frontend-core/api";
+import type { DownloadLink } from "@archive-management/frontend-core/api";
 import type {
     ArchiveCategoryRequest,
     ArchiveCategoryDto,
@@ -241,7 +242,7 @@ export function unlockArchiveRecord(id: number) {
     return httpClient.post<ArchiveRecordDto>(`/api/v1/archive-items/${id}:unlock`);
 }
 
-export function downloadArchiveImportTemplate(categoryId: number) {
+export function downloadArchiveImportTemplate(categoryId: number): DownloadLink {
     return httpClient.download(
         `/api/v1/archive-categories/${categoryId}/archive-items:importTemplate`,
     );
@@ -256,7 +257,7 @@ export function importArchiveRecords(categoryId: number, file: File) {
     );
 }
 
-export function exportArchiveRecords(query: SearchArchiveRecordsRequest) {
+export function exportArchiveRecords(query: SearchArchiveRecordsRequest): DownloadLink {
     return httpClient.download(
         `/api/v1/archive-items:export${queryString({ query: encodeDownloadQuery(query) })}`,
     );
@@ -284,10 +285,19 @@ export function unbindArchiveItemElectronicFile(archiveItemId: number, electroni
     );
 }
 
-export function downloadArchiveItemElectronicFile(archiveItemId: number, electronicFileId: number) {
-    return httpClient.download(
-        `/api/v1/archive-items/${archiveItemId}/electronic-files/${electronicFileId}/content`,
+interface ArchiveItemElectronicFileDownloadLinkResponse {
+    url: string;
+    expiresAt: string;
+}
+
+export async function downloadArchiveItemElectronicFile(
+    archiveItemId: number,
+    electronicFileId: number,
+): Promise<DownloadLink> {
+    const response = await httpClient.post<ArchiveItemElectronicFileDownloadLinkResponse>(
+        `/api/v1/archive-items/${archiveItemId}/electronic-files/${electronicFileId}:createDownloadLink`,
     );
+    return httpClient.download(response.url);
 }
 
 export function listArchiveItemAudits(query: ListArchiveItemAuditsRequest) {

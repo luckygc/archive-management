@@ -108,6 +108,8 @@ public class SecurityConfig {
                         "/api/v1/cap-tokens",
                         "/api/v1/cap-tokens:validate")
                 .permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/public-file-links/*:download")
+                .permitAll()
                 .requestMatchers("/actuator/**")
                 .hasRole(authorizationProperties.getActuatorRoleName())
                 .anyRequest()

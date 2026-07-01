@@ -91,3 +91,39 @@
 - **AND** `checksum_md5` SHALL 仅作为历史系统或外部系统兼容备用字段
 - **AND** 对象存储返回的 `etag` SHALL 只作为存储侧元信息
 - **AND** 系统 SHALL NOT 将 `etag` 作为 checksum 真相源
+
+### Requirement: 文件短链访问
+
+系统 SHALL 通过短链向前端暴露文件下载入口，不向前端暴露真实文件存储位置或业务文件流路径。
+
+#### Scenario: 创建用户绑定下载短链
+
+- **WHEN** 前端需要下载需要登录用户权限的文件
+- **THEN** 前端 SHALL 先调用对应业务资源的创建下载短链接口
+- **AND** 服务端 SHALL 在创建短链前校验当前用户的业务权限、数据范围和文件绑定关系
+- **AND** 服务端 SHALL 将短链绑定到当前用户
+- **AND** 服务端 SHALL 返回可由浏览器直接打开的短链下载 URL 和过期时间
+- **AND** 前端 SHALL 使用返回的短链 URL 发起下载
+- **AND** 前端 SHALL NOT 直接调用真实文件流接口
+
+#### Scenario: 访问用户绑定短链
+
+- **WHEN** 用户通过内部短链下载入口访问文件
+- **THEN** 服务端 SHALL 校验短链存在、未过期、未撤销
+- **AND** 如果短链绑定了用户，服务端 SHALL 只允许绑定用户访问
+- **AND** 如果短链未绑定用户，服务端 MAY 允许已登录用户访问
+- **AND** 服务端 SHALL 使用 `application/octet-stream` 返回附件下载响应
+- **AND** 服务端 SHALL NOT 使用文件自身 MIME 类型作为下载响应的 `Content-Type`
+
+#### Scenario: 访问公开短链
+
+- **WHEN** 匿名访问公开短链下载入口
+- **THEN** 服务端 SHALL 只允许访问未绑定用户的短链
+- **AND** 服务端 SHALL 拒绝用户绑定短链
+- **AND** 服务端 SHALL 校验短链存在、未过期、未撤销
+
+#### Scenario: 清理过期短链
+
+- **WHEN** 统一过期数据清理服务运行
+- **THEN** 系统 SHALL 删除已过期的文件短链
+- **AND** 系统 SHALL NOT 因短链过期而删除长期有效的文件对象

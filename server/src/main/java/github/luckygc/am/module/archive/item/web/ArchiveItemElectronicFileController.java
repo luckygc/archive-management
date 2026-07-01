@@ -1,14 +1,9 @@
 package github.luckygc.am.module.archive.item.web;
 
-import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
 
 import org.jspecify.annotations.Nullable;
-import org.springframework.core.io.InputStreamResource;
-import org.springframework.http.ContentDisposition;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,20 +16,22 @@ import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.api.CollectionResponse;
 import github.luckygc.am.common.security.AuthenticatedUser;
-import github.luckygc.am.common.storage.FileStorageResource;
+import github.luckygc.am.module.archive.item.service.ArchiveItemElectronicFileLinkService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemElectronicFileService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemElectronicFileService.ArchiveItemElectronicFileRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemElectronicFileService.ArchiveItemElectronicFileResponse;
-import github.luckygc.am.module.archive.item.service.ArchiveItemElectronicFileService.ArchiveItemFileDownload;
 
 @RestController
 public class ArchiveItemElectronicFileController {
 
     private final ArchiveItemElectronicFileService electronicFileService;
+    private final ArchiveItemElectronicFileLinkService electronicFileLinkService;
 
     public ArchiveItemElectronicFileController(
-            ArchiveItemElectronicFileService electronicFileService) {
+            ArchiveItemElectronicFileService electronicFileService,
+            ArchiveItemElectronicFileLinkService electronicFileLinkService) {
         this.electronicFileService = electronicFileService;
+        this.electronicFileLinkService = electronicFileLinkService;
     }
 
     @GetMapping("/api/v1/archive-items/{archiveItem}/electronic-files")
@@ -62,28 +59,17 @@ public class ArchiveItemElectronicFileController {
                 archiveItem, electronicFile, currentUserId(authentication));
     }
 
-    @GetMapping("/api/v1/archive-items/{archiveItem}/electronic-files/{electronicFile}/content")
-    public ResponseEntity<InputStreamResource> downloadFile(
+    @PostMapping(
+            "/api/v1/archive-items/{archiveItem}/electronic-files/{electronicFile}:createDownloadLink")
+    public ArchiveItemElectronicFileDownloadLinkResponse createDownloadLink(
             @PathVariable Long archiveItem,
             @PathVariable Long electronicFile,
             Authentication authentication) {
-        ArchiveItemFileDownload download =
-                electronicFileService.downloadFile(
+        ArchiveItemElectronicFileLinkService.DownloadLinkCreated created =
+                electronicFileLinkService.createDownloadLink(
                         archiveItem, electronicFile, currentUserId(authentication));
-        FileStorageResource resource = download.resource();
-        String contentType =
-                org.apache.commons.lang3.StringUtils.defaultIfBlank(
-                        resource.contentType(), MediaType.APPLICATION_OCTET_STREAM_VALUE);
-        return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType(contentType))
-                .contentLength(resource.contentLength())
-                .header(
-                        HttpHeaders.CONTENT_DISPOSITION,
-                        ContentDisposition.attachment()
-                                .filename(download.originalFilename(), StandardCharsets.UTF_8)
-                                .build()
-                                .toString())
-                .body(new InputStreamResource(download.resource().inputStream()));
+        return new ArchiveItemElectronicFileDownloadLinkResponse(
+                "/api/v1/file-links/" + created.code() + ":download", created.expiresAt());
     }
 
     private Long currentUserId(@Nullable Authentication authentication) {
@@ -93,4 +79,7 @@ public class ArchiveItemElectronicFileController {
         }
         throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "请先登录");
     }
+
+    public record ArchiveItemElectronicFileDownloadLinkResponse(
+            String url, LocalDateTime expiresAt) {}
 }

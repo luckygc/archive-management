@@ -119,7 +119,7 @@ export function ArchiveItemManagementPage() {
         },
     });
     const downloadTemplateMutation = useMutation({
-        mutationFn: (selectedCategoryId: number) =>
+        mutationFn: async (selectedCategoryId: number) =>
             downloadArchiveImportTemplate(selectedCategoryId),
         onSuccess: (link) => {
             openDownloadLink(link.href);
@@ -144,7 +144,7 @@ export function ArchiveItemManagementPage() {
         },
     });
     const exportMutation = useMutation({
-        mutationFn: (query: SearchArchiveRecordsRequest) => exportArchiveRecords(query),
+        mutationFn: async (query: SearchArchiveRecordsRequest) => exportArchiveRecords(query),
         onSuccess: (link) => {
             openDownloadLink(link.href);
         },

@@ -5,51 +5,41 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.io.ByteArrayInputStream;
+import java.time.LocalDateTime;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.core.io.InputStreamResource;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 
 import github.luckygc.am.common.security.AuthenticatedUser;
-import github.luckygc.am.common.storage.FileStorageResource;
-import github.luckygc.am.common.storage.StorageType;
+import github.luckygc.am.module.archive.item.service.ArchiveItemElectronicFileLinkService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemElectronicFileService;
-import github.luckygc.am.module.archive.item.service.ArchiveItemElectronicFileService.ArchiveItemFileDownload;
 
 @DisplayName("档案条目电子文件 HTTP 入口")
 class ArchiveItemElectronicFileControllerTests {
 
     private final ArchiveItemElectronicFileService electronicFileService =
             mock(ArchiveItemElectronicFileService.class);
+    private final ArchiveItemElectronicFileLinkService electronicFileLinkService =
+            mock(ArchiveItemElectronicFileLinkService.class);
     private final ArchiveItemElectronicFileController controller =
-            new ArchiveItemElectronicFileController(electronicFileService);
+            new ArchiveItemElectronicFileController(
+                    electronicFileService, electronicFileLinkService);
 
     @Test
-    @DisplayName("下载响应使用原始文件名和内容类型")
-    void downloadFileShouldReturnResourceResponse() throws Exception {
-        FileStorageResource resource =
-                new FileStorageResource(
-                        StorageType.LOCAL,
-                        "archive",
-                        "2026/06/demo.pdf",
-                        new ByteArrayInputStream(
-                                "demo".getBytes(java.nio.charset.StandardCharsets.UTF_8)),
-                        4,
-                        "application/pdf");
-        when(electronicFileService.downloadFile(10L, 30L, 9L))
-                .thenReturn(new ArchiveItemFileDownload("demo.pdf", resource));
+    @DisplayName("创建下载短链响应返回内部短链地址和过期时间")
+    void createDownloadLinkShouldReturnInternalDownloadLink() {
+        when(electronicFileLinkService.createDownloadLink(10L, 30L, 9L))
+                .thenReturn(
+                        new ArchiveItemElectronicFileLinkService.DownloadLinkCreated(
+                                "AbCdEfGhIjKlMnOpQrStUv", LocalDateTime.of(2026, 7, 1, 10, 10)));
 
-        ResponseEntity<InputStreamResource> response =
-                controller.downloadFile(10L, 30L, authentication(9L));
+        ArchiveItemElectronicFileController.ArchiveItemElectronicFileDownloadLinkResponse response =
+                controller.createDownloadLink(10L, 30L, authentication(9L));
 
-        assertThat(response.getHeaders().getContentType().toString()).isEqualTo("application/pdf");
-        assertThat(response.getHeaders().getContentLength()).isEqualTo(4);
-        assertThat(response.getHeaders().getContentDisposition().getFilename())
-                .isEqualTo("demo.pdf");
-        verify(electronicFileService).downloadFile(10L, 30L, 9L);
+        assertThat(response.url()).isEqualTo("/api/v1/file-links/AbCdEfGhIjKlMnOpQrStUv:download");
+        assertThat(response.expiresAt()).isEqualTo(LocalDateTime.of(2026, 7, 1, 10, 10));
+        verify(electronicFileLinkService).createDownloadLink(10L, 30L, 9L);
     }
 
     private Authentication authentication(Long userId) {

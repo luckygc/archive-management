@@ -6,8 +6,13 @@ import type { ReactNode } from "react";
 const queryClient = new QueryClient({
     defaultOptions: {
         queries: {
+            gcTime: 0,
             refetchOnWindowFocus: false,
             retry: 1,
+            staleTime: 0,
+        },
+        mutations: {
+            gcTime: 0,
         },
     },
 });

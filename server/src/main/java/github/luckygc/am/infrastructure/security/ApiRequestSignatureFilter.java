@@ -75,7 +75,8 @@ public class ApiRequestSignatureFilter extends OncePerRequestFilter {
         return !properties.isEnabled()
                 || !request.getRequestURI().startsWith("/api/")
                 || HttpMethod.OPTIONS.matches(request.getMethod())
-                || isLoginBootstrapRequest(request);
+                || isLoginBootstrapRequest(request)
+                || isFileLinkDownloadRequest(request);
     }
 
     private boolean isLoginBootstrapRequest(HttpServletRequest request) {
@@ -84,6 +85,16 @@ public class ApiRequestSignatureFilter extends OncePerRequestFilter {
                 || "/api/v1/cap-challenges".equals(uri)
                 || "/api/v1/cap-tokens".equals(uri)
                 || "/api/v1/cap-tokens:validate".equals(uri);
+    }
+
+    private boolean isFileLinkDownloadRequest(HttpServletRequest request) {
+        if (!HttpMethod.GET.matches(request.getMethod())) {
+            return false;
+        }
+        String uri = request.getRequestURI();
+        return (uri.startsWith("/api/v1/file-links/")
+                        || uri.startsWith("/api/v1/public-file-links/"))
+                && uri.endsWith(":download");
     }
 
     @Override
