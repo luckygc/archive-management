@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import github.luckygc.am.common.api.CursorPageRequest;
 import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.common.security.AuthenticatedUser;
 import github.luckygc.am.module.authentication.service.AuthenticationAuditService;
@@ -42,11 +43,8 @@ public class LoginSessionController {
 
     @GetMapping("/api/v1/login-sessions")
     public CursorPageResponse<AuthenticationAuditService.LoginSessionResponse> listLoginSessions(
-            @RequestParam(defaultValue = "100") int limit,
-            @RequestParam(required = false) @Nullable String cursor,
-            @RequestParam(defaultValue = "false") boolean requestTotal,
-            HttpServletRequest request) {
-        return authenticationAuditService.listLoginSessions(limit, cursor, requestTotal, request);
+            CursorPageRequest page, HttpServletRequest request) {
+        return authenticationAuditService.listLoginSessions(page, request);
     }
 
     @DeleteMapping("/api/v1/login-sessions/{session}")
@@ -71,18 +69,9 @@ public class LoginSessionController {
             @RequestParam(required = false) @Nullable String keyword,
             @RequestParam(required = false) @Nullable LocalDateTime occurredAfter,
             @RequestParam(required = false) @Nullable LocalDateTime occurredBefore,
-            @RequestParam(defaultValue = "100") int limit,
-            @RequestParam(required = false) @Nullable String cursor,
-            @RequestParam(defaultValue = "false") boolean requestTotal) {
+            CursorPageRequest page) {
         return authenticationAuditService.listLoginLogs(
-                eventType,
-                username,
-                keyword,
-                occurredAfter,
-                occurredBefore,
-                limit,
-                cursor,
-                requestTotal);
+                eventType, username, keyword, occurredAfter, occurredBefore, page);
     }
 
     private @Nullable String currentSessionId(@Nullable HttpServletRequest request) {

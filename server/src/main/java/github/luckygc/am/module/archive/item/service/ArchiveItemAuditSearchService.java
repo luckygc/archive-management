@@ -15,9 +15,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import github.luckygc.am.common.api.CursorPageRequest;
 import github.luckygc.am.common.api.CursorPageResponse;
-import github.luckygc.am.common.api.CursorPageTokenCodec;
-import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.archive.item.ArchiveItemAudit;
 import github.luckygc.am.module.archive.item._ArchiveItemAudit;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemAuditDataRepository;
@@ -25,9 +24,6 @@ import github.luckygc.am.module.authorization.service.AuthorizationPermissionSer
 
 @Service
 public class ArchiveItemAuditSearchService {
-
-    private static final int DEFAULT_PAGE_LIMIT = 100;
-    private static final int MAX_PAGE_LIMIT = 1000;
 
     private final ArchiveItemAuditDataRepository auditRepository;
     private final AuthorizationPermissionService permissionService;
@@ -41,31 +37,16 @@ public class ArchiveItemAuditSearchService {
 
     @Transactional(readOnly = true)
     public CursorPageResponse<ArchiveItemAuditResponse> listAudits(
-            @Nullable ListArchiveItemAuditsRequest query, Long userId) {
+            @Nullable ListArchiveItemAuditsRequest query,
+            CursorPageRequest pageRequest,
+            Long userId) {
         requireSuperAdmin(userId);
         ListArchiveItemAuditsRequest effectiveQuery =
                 query == null ? ListArchiveItemAuditsRequest.empty() : query;
-        int limit = pageLimit(effectiveQuery.limit());
-        AuditSearchCriteria criteria = AuditSearchCriteria.from(effectiveQuery, limit);
+        AuditSearchCriteria criteria = AuditSearchCriteria.from(effectiveQuery);
         CursoredPage<ArchiveItemAudit> page =
-                auditRepository.find(
-                        auditRestriction(criteria),
-                        CursorPageTokenCodec.pageRequest(
-                                criteria.limit(), criteria.cursor(), criteria.requestTotal()));
-        return CursorPageResponse.from(page, this::toResponse);
-    }
-
-    private int pageLimit(@Nullable Integer limit) {
-        if (limit == null) {
-            return DEFAULT_PAGE_LIMIT;
-        }
-        if (limit <= 0) {
-            throw new BadRequestException("分页参数不合法", "limit", "limit 必须大于 0");
-        }
-        if (limit > MAX_PAGE_LIMIT) {
-            throw new BadRequestException("分页参数不合法", "limit", "limit 不能大于 1000");
-        }
-        return limit;
+                auditRepository.find(auditRestriction(criteria), pageRequest.pageRequest());
+        return CursorPageResponse.from(page, pageRequest, this::toResponse);
     }
 
     private void requireSuperAdmin(Long userId) {
@@ -121,14 +102,10 @@ public class ArchiveItemAuditSearchService {
             @Nullable String categoryCode,
             @Nullable String operationType,
             @Nullable LocalDateTime operatedAfter,
-            @Nullable LocalDateTime operatedBefore,
-            @Nullable Integer limit,
-            @Nullable String cursor,
-            boolean requestTotal) {
+            @Nullable LocalDateTime operatedBefore) {
 
         private static ListArchiveItemAuditsRequest empty() {
-            return new ListArchiveItemAuditsRequest(
-                    null, null, null, null, null, null, null, null, false);
+            return new ListArchiveItemAuditsRequest(null, null, null, null, null, null);
         }
     }
 
@@ -138,12 +115,9 @@ public class ArchiveItemAuditSearchService {
             @Nullable String categoryCode,
             @Nullable String operationType,
             @Nullable LocalDateTime operatedAfter,
-            @Nullable LocalDateTime operatedBefore,
-            int limit,
-            @Nullable String cursor,
-            boolean requestTotal) {
+            @Nullable LocalDateTime operatedBefore) {
 
-        private static AuditSearchCriteria from(ListArchiveItemAuditsRequest query, int limit) {
+        private static AuditSearchCriteria from(ListArchiveItemAuditsRequest query) {
             String fondsCode = StringUtils.trimToNull(query.fondsCode());
             String categoryCode = StringUtils.trimToNull(query.categoryCode());
             String operationType =
@@ -154,10 +128,7 @@ public class ArchiveItemAuditSearchService {
                     categoryCode,
                     operationType,
                     query.operatedAfter(),
-                    query.operatedBefore(),
-                    limit,
-                    query.cursor(),
-                    query.requestTotal());
+                    query.operatedBefore());
         }
     }
 

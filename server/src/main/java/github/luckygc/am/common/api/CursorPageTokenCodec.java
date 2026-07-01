@@ -25,6 +25,7 @@ import github.luckygc.am.common.exception.BadRequestException;
 public final class CursorPageTokenCodec {
 
     private static final String VERSION = "v1";
+    private static final String CONTEXT_VERSION = "v2";
     private static final String SECRET = "archive-management-page-token-v1";
     private static final Base64.Encoder BASE64_URL_ENCODER =
             Base64.getUrlEncoder().withoutPadding();
@@ -50,6 +51,34 @@ public final class CursorPageTokenCodec {
         };
     }
 
+    public static PageRequest pageRequest(
+            int limit,
+            @Nullable String token,
+            boolean requestTotal,
+            CursorPageTokenContext context) {
+        PageRequest pageRequest =
+                requestTotal && StringUtils.isBlank(token)
+                        ? PageRequest.ofSize(limit).withTotal()
+                        : PageRequest.ofSize(limit).withoutTotal();
+        DecodedCursor cursor = decode(token);
+        if (cursor == null) {
+            return pageRequest;
+        }
+        if (cursor.limit() == null
+                || cursor.context() == null
+                || cursor.limit() != limit
+                || !cursor.context().equals(context)) {
+            throw invalidCursor("cursor 查询条件不匹配");
+        }
+        PageRequest.Cursor pageCursor =
+                PageRequest.Cursor.forKey(cursor.values().toArray(Object[]::new));
+        return switch (cursor.direction()) {
+            case "next" -> pageRequest.afterCursor(pageCursor);
+            case "prev" -> pageRequest.beforeCursor(pageCursor);
+            default -> throw invalidCursor("cursor 格式无效");
+        };
+    }
+
     public static @Nullable String encode(PageRequest pageRequest) {
         return switch (pageRequest.mode()) {
             case CURSOR_NEXT -> encode("next", pageRequest.cursor().orElseThrow().elements());
@@ -60,6 +89,14 @@ public final class CursorPageTokenCodec {
 
     public static @Nullable String encode(String direction, PageRequest.Cursor cursor) {
         return encode(direction, cursor.elements());
+    }
+
+    public static @Nullable String encode(
+            String direction,
+            PageRequest.Cursor cursor,
+            int limit,
+            CursorPageTokenContext context) {
+        return encode(direction, cursor.elements(), limit, context);
     }
 
     public static @Nullable String self(CursoredPage<?> page) {
@@ -88,6 +125,25 @@ public final class CursorPageTokenCodec {
                 + hmacHex(payload);
     }
 
+    public static @Nullable String encode(
+            String direction, @Nullable List<?> values, int limit, CursorPageTokenContext context) {
+        if (values == null || values.isEmpty()) {
+            return null;
+        }
+        List<String> fields = new ArrayList<>(values.size() + 6);
+        fields.add(CONTEXT_VERSION);
+        fields.add(direction);
+        fields.add(Integer.toString(limit));
+        fields.add(encodeString(context.endpointId()));
+        fields.add(context.queryFingerprint());
+        fields.add(encodeString(context.userKey()));
+        values.forEach(value -> fields.add(encodeValue(value)));
+        String payload = String.join("|", fields);
+        return BASE64_URL_ENCODER.encodeToString(payload.getBytes(StandardCharsets.UTF_8))
+                + "."
+                + hmacHex(payload);
+    }
+
     public static @Nullable DecodedCursor decode(@Nullable String token) {
         if (StringUtils.isBlank(token)) {
             return null;
@@ -103,6 +159,23 @@ public final class CursorPageTokenCodec {
                 throw invalidCursor("cursor 签名无效");
             }
             String[] fields = payload.split("\\|", -1);
+            if (fields.length >= 7 && CONTEXT_VERSION.equals(fields[0])) {
+                if (!"next".equals(fields[1])
+                        && !"prev".equals(fields[1])
+                        && !"self".equals(fields[1])) {
+                    throw invalidCursor("cursor 格式无效");
+                }
+                List<Object> values = new ArrayList<>(fields.length - 6);
+                for (int index = 6; index < fields.length; index++) {
+                    values.add(decodeValue(fields[index]));
+                }
+                return new DecodedCursor(
+                        fields[1],
+                        values,
+                        Integer.valueOf(fields[2]),
+                        new CursorPageTokenContext(
+                                decodeString(fields[3]), fields[4], decodeString(fields[5])));
+            }
             if (fields.length < 3 || !VERSION.equals(fields[0])) {
                 throw invalidCursor("cursor 格式无效");
             }
@@ -115,7 +188,7 @@ public final class CursorPageTokenCodec {
             for (int index = 2; index < fields.length; index++) {
                 values.add(decodeValue(fields[index]));
             }
-            return new DecodedCursor(fields[1], values);
+            return new DecodedCursor(fields[1], values, null, null);
         } catch (IllegalArgumentException | DateTimeParseException exception) {
             if (exception instanceof BadRequestException badRequestException) {
                 throw badRequestException;
@@ -140,6 +213,14 @@ public final class CursorPageTokenCodec {
                             + BASE64_URL_ENCODER.encodeToString(
                                     value.toString().getBytes(StandardCharsets.UTF_8));
         };
+    }
+
+    private static String encodeString(String value) {
+        return BASE64_URL_ENCODER.encodeToString(value.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private static String decodeString(String value) {
+        return new String(BASE64_URL_DECODER.decode(value), StandardCharsets.UTF_8);
     }
 
     private static @Nullable Object decodeValue(String value) {
@@ -167,10 +248,33 @@ public final class CursorPageTokenCodec {
         return new BadRequestException("分页 cursor 无效", "cursor", reason);
     }
 
-    public record DecodedCursor(String direction, List<Object> values) {
+    public record DecodedCursor(
+            String direction,
+            List<Object> values,
+            @Nullable Integer limit,
+            @Nullable CursorPageTokenContext context) {
 
         public DecodedCursor {
             values = List.copyOf(values);
         }
+    }
+
+    public static @Nullable String self(
+            CursoredPage<?> page, int limit, CursorPageTokenContext context) {
+        return page.numberOfElements() == 0 ? null : encode("self", page.cursor(0), limit, context);
+    }
+
+    public static @Nullable String previous(
+            CursoredPage<?> page, int limit, CursorPageTokenContext context) {
+        return page.hasPrevious()
+                ? encode("prev", page.previousPageRequest().cursor().orElseThrow(), limit, context)
+                : null;
+    }
+
+    public static @Nullable String next(
+            CursoredPage<?> page, int limit, CursorPageTokenContext context) {
+        return page.hasNext()
+                ? encode("next", page.nextPageRequest().cursor().orElseThrow(), limit, context)
+                : null;
     }
 }

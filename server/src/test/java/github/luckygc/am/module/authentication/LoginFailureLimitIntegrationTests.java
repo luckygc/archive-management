@@ -59,7 +59,7 @@ class LoginFailureLimitIntegrationTests extends PostgreSqlContainerTest {
     }
 
     @Test
-    @DisplayName("连续失败后不锁定登录名但提高后续 CAP 难度")
+    @DisplayName("连续失败后不锁定登录名但 CAP 难度只上浮一档")
     void failuresIncreaseFollowingCapDifficultyWithoutLockingUsername() throws Exception {
         login("admin", "wrong-password", loginToken()).andExpect(status().isUnauthorized());
         login("admin", "wrong-password", loginToken()).andExpect(status().isUnauthorized());
@@ -68,7 +68,7 @@ class LoginFailureLimitIntegrationTests extends PostgreSqlContainerTest {
                 powChallengeService.createChallenge(
                         new PowChallengeService.CapChallengeRequest("admin"));
 
-        assertThat(challenge.challenge().d()).isGreaterThan(4);
+        assertThat(challenge.challenge().d()).isEqualTo(5);
     }
 
     @Test

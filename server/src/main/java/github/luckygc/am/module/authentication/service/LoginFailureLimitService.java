@@ -60,8 +60,10 @@ public class LoginFailureLimitService {
         if (limit == null) {
             return baseDifficulty;
         }
-        int increments = Math.min(2, Math.max(1, limit.getFailureCount()));
-        return Math.min(maxDifficulty, baseDifficulty + increments);
+        if (limit.getFailureCount() <= 0) {
+            return baseDifficulty;
+        }
+        return Math.min(maxDifficulty, baseDifficulty + 1);
     }
 
     @Transactional(rollbackFor = Throwable.class)

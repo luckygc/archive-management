@@ -10,6 +10,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
+import github.luckygc.am.common.api.CursorPageRequest;
+import github.luckygc.am.common.api.CursorPageTokenContext;
 import github.luckygc.am.module.archive.item.service.ArchiveItemAuditSearchService;
 
 @DisplayName("档案条目操作审计 HTTP 入口")
@@ -26,8 +28,7 @@ class ArchiveItemAuditControllerTests {
         assertThatThrownBy(
                         () ->
                                 controller.listAudits(
-                                        null, null, null, null, null, null, null, null, false,
-                                        null))
+                                        null, null, null, null, null, null, firstPage(), null))
                 .isInstanceOfSatisfying(
                         ResponseStatusException.class,
                         exception -> {
@@ -37,5 +38,13 @@ class ArchiveItemAuditControllerTests {
                         });
 
         verifyNoInteractions(auditSearchService);
+    }
+
+    private CursorPageRequest firstPage() {
+        return CursorPageRequest.of(
+                100,
+                null,
+                false,
+                new CursorPageTokenContext("GET /api/v1/archive-item-audits", "fingerprint", ""));
     }
 }

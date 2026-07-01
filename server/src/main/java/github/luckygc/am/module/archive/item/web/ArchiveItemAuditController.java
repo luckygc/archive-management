@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import github.luckygc.am.common.api.CursorPageRequest;
 import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.common.security.AuthenticatedUser;
 import github.luckygc.am.module.archive.item.service.ArchiveItemAuditSearchService;
@@ -36,9 +37,7 @@ public class ArchiveItemAuditController {
                     @Nullable LocalDateTime operatedAfter,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
                     @Nullable LocalDateTime operatedBefore,
-            @RequestParam(required = false) @Nullable Integer limit,
-            @RequestParam(required = false) @Nullable String cursor,
-            @RequestParam(defaultValue = "false") boolean requestTotal,
+            CursorPageRequest page,
             @Nullable Authentication authentication) {
         Long userId = currentUserId(authentication);
         return auditSearchService.listAudits(
@@ -48,10 +47,8 @@ public class ArchiveItemAuditController {
                         categoryCode,
                         operationType,
                         operatedAfter,
-                        operatedBefore,
-                        limit,
-                        cursor,
-                        requestTotal),
+                        operatedBefore),
+                page,
                 userId);
     }
 

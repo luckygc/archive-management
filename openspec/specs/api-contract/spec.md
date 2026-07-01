@@ -86,6 +86,15 @@ Controller SHALL 显式声明完整 URL。
 - **AND** 带 `cursor` 的后续翻页请求 SHALL NOT 执行 count
 - **AND** 当 count 成本不稳定或可能耗时较长时，系统 SHALL 将 count 设计为独立 `:count` 方法或异步任务，不得让默认分页列表隐式等待 count
 
+#### Scenario: 分页请求参数载体
+
+- **WHEN** 客户端提交项目自有分页请求
+- **THEN** 分页参数 SHALL 通过 URL query 参数或 JSON 请求体提交
+- **AND** 普通资源列表接口 SHOULD 使用 URL query 参数提交 `limit`、`cursor`、`offset` 和 `requestTotal`
+- **AND** 使用 JSON 请求体表达复杂查询条件的接口 MAY 在同一个 JSON 对象中提交分页参数
+- **AND** 服务端 SHALL 将 JSON 请求体根对象中的 `limit`、`cursor`、`offset`、`requestTotal` 和 `_csrf` 视为分页或请求技术字段，不纳入 cursor 查询指纹
+- **AND** 服务端 SHALL 拒绝通过 `multipart/*` 请求提交分页参数
+
 #### Scenario: 请求 offset 分页集合
 
 - **WHEN** 对应业务规格明确声明该集合规模可控、排序稳定且客户端需要页码跳转或默认总数

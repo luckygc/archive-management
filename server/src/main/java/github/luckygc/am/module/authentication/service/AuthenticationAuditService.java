@@ -24,8 +24,8 @@ import org.springframework.session.SessionRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import github.luckygc.am.common.api.CursorPageRequest;
 import github.luckygc.am.common.api.CursorPageResponse;
-import github.luckygc.am.common.api.CursorPageTokenCodec;
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.common.security.AuthenticatedUser;
 import github.luckygc.am.module.authentication.AuthenticationLoginEventType;
@@ -175,19 +175,19 @@ public class AuthenticationAuditService {
 
     @Transactional(readOnly = true)
     public CursorPageResponse<LoginSessionResponse> listLoginSessions(
-            int limit, @Nullable String cursor, boolean requestTotal, HttpServletRequest request) {
-        int effectiveLimit = clampLimit(limit);
+            CursorPageRequest pageRequest, HttpServletRequest request) {
         long now = Instant.now().toEpochMilli();
         CursoredPage<SpringSessionRecord> page =
                 springSessionRepository.find(
                         _SpringSessionRecord.expiryTime.greaterThan(now),
-                        CursorPageTokenCodec.pageRequest(effectiveLimit, cursor, requestTotal),
+                        pageRequest.pageRequest(),
                         Order.by(
                                 _SpringSessionRecord.lastAccessTime.desc(),
                                 _SpringSessionRecord.sessionId.desc()));
         String currentSessionId =
                 request.getSession(false) == null ? "" : request.getSession(false).getId();
-        return CursorPageResponse.from(page, row -> toLoginSessionResponse(row, currentSessionId));
+        return CursorPageResponse.from(
+                page, pageRequest, row -> toLoginSessionResponse(row, currentSessionId));
     }
 
     @Transactional(readOnly = true)
@@ -197,17 +197,12 @@ public class AuthenticationAuditService {
             @Nullable String keyword,
             @Nullable LocalDateTime occurredAfter,
             @Nullable LocalDateTime occurredBefore,
-            int limit,
-            @Nullable String cursor,
-            boolean requestTotal) {
-        int effectiveLimit = clampLimit(limit);
+            CursorPageRequest pageRequest) {
         Restriction<AuthenticationLoginLog> restriction =
                 loginLogRestriction(eventType, username, keyword, occurredAfter, occurredBefore);
         CursoredPage<AuthenticationLoginLog> page =
-                loginLogRepository.find(
-                        restriction,
-                        CursorPageTokenCodec.pageRequest(effectiveLimit, cursor, requestTotal));
-        return CursorPageResponse.from(page, this::toLoginLogResponse);
+                loginLogRepository.find(restriction, pageRequest.pageRequest());
+        return CursorPageResponse.from(page, pageRequest, this::toLoginLogResponse);
     }
 
     private Restriction<AuthenticationLoginLog> loginLogRestriction(
@@ -336,13 +331,6 @@ public class AuthenticationAuditService {
     private List<String> sessionRoles(Session session) {
         Object value = session.getAttribute(ROLES_ATTRIBUTE);
         return value instanceof List<?> roles ? (List<String>) roles : List.of();
-    }
-
-    private int clampLimit(int limit) {
-        if (limit <= 0) {
-            return 100;
-        }
-        return Math.min(limit, 1000);
     }
 
     private String targetUsername(Session target) {

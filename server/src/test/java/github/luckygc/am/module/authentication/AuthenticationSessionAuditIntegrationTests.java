@@ -107,9 +107,11 @@ class AuthenticationSessionAuditIntegrationTests extends PostgreSqlContainerTest
     @Test
     @DisplayName("登录失败写入失败审计且不创建登录会话")
     void loginFailureWritesAuditWithoutSession() throws Exception {
-        login("admin", "wrong-password").andExpect(status().isUnauthorized());
+        long beforeFailureCount = countLogs("login_failure");
 
-        assertThat(countLogs("login_failure")).isEqualTo(1);
+        login("login-failure-user", "wrong-password").andExpect(status().isUnauthorized());
+
+        assertThat(countLogs("login_failure")).isEqualTo(beforeFailureCount + 1);
         assertThat(activeSessionCount()).isZero();
     }
 
@@ -146,11 +148,11 @@ class AuthenticationSessionAuditIntegrationTests extends PostgreSqlContainerTest
     }
 
     @Test
-    @DisplayName("认证审计 cursor 不绑定查询条件，由客户端在条件变化时清空")
+    @DisplayName("认证审计 cursor 绑定查询条件，条件变化时拒绝旧 cursor")
     @WithMockUser(username = "admin", roles = "系统管理员")
-    void authenticationEventCursorDoesNotBindQueryCondition() throws Exception {
-        login("admin", "wrong-password").andExpect(status().isUnauthorized());
-        login("admin", "wrong-password").andExpect(status().isUnauthorized());
+    void authenticationEventCursorShouldBindQueryCondition() throws Exception {
+        login("cursor-failure-user-1", "wrong-password").andExpect(status().isUnauthorized());
+        login("cursor-failure-user-2", "wrong-password").andExpect(status().isUnauthorized());
         MvcResult firstPage =
                 mockMvc.perform(
                                 withClientHeaders(get("/api/v1/authentication-events"))
@@ -166,12 +168,12 @@ class AuthenticationSessionAuditIntegrationTests extends PostgreSqlContainerTest
                                 .param("eventType", "login_success")
                                 .param("limit", "1")
                                 .param("cursor", next))
-                .andExpect(status().isOk());
+                .andExpect(status().isBadRequest());
     }
 
     private org.springframework.test.web.servlet.ResultActions login(
             String username, String password) throws Exception {
-        String powToken = loginToken();
+        String powToken = loginToken(username);
         return mockMvc.perform(
                 withClientHeaders(post("/api/v1/login-sessions"))
                         .with(csrf())
@@ -194,8 +196,10 @@ class AuthenticationSessionAuditIntegrationTests extends PostgreSqlContainerTest
                         });
     }
 
-    private String loginToken() {
-        PowChallengeService.CapChallengeResponse challenge = powChallengeService.createChallenge();
+    private String loginToken(String username) {
+        PowChallengeService.CapChallengeResponse challenge =
+                powChallengeService.createChallenge(
+                        new PowChallengeService.CapChallengeRequest(username));
         var redeemResult =
                 powChallengeService.redeemChallenge(
                         new PowChallengeService.CapRedeemRequest(

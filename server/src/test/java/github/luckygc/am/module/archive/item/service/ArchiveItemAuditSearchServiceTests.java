@@ -19,8 +19,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
+import github.luckygc.am.common.api.CursorPageRequest;
 import github.luckygc.am.common.api.CursorPageResponse;
-import github.luckygc.am.common.exception.BadRequestException;
+import github.luckygc.am.common.api.CursorPageTokenContext;
 import github.luckygc.am.module.archive.item.ArchiveItemAudit;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemAuditDataRepository;
 import github.luckygc.am.module.archive.item.service.ArchiveItemAuditSearchService.ArchiveItemAuditResponse;
@@ -54,10 +55,8 @@ class ArchiveItemAuditSearchServiceTests {
                                 " contract ",
                                 " UPDATE ",
                                 LocalDateTime.of(2026, 6, 1, 0, 0),
-                                LocalDateTime.of(2026, 7, 1, 0, 0),
-                                20,
-                                null,
-                                true),
+                                LocalDateTime.of(2026, 7, 1, 0, 0)),
+                        firstPage(20, true),
                         9L);
 
         assertThat(page.total()).isEqualTo(1);
@@ -88,8 +87,8 @@ class ArchiveItemAuditSearchServiceTests {
         when(auditRepository.find(any(), any())).thenReturn(firstRepositoryPage);
         CursorPageResponse<ArchiveItemAuditResponse> firstPage =
                 auditSearchService.listAudits(
-                        new ListArchiveItemAuditsRequest(
-                                null, null, null, null, null, null, 1, null, true),
+                        new ListArchiveItemAuditsRequest(null, null, null, null, null, null),
+                        firstPage(1, true),
                         9L);
 
         CursoredPage<ArchiveItemAudit> nextRepositoryPage =
@@ -98,8 +97,8 @@ class ArchiveItemAuditSearchServiceTests {
 
         CursorPageResponse<ArchiveItemAuditResponse> nextPage =
                 auditSearchService.listAudits(
-                        new ListArchiveItemAuditsRequest(
-                                null, null, null, null, null, null, 1, firstPage.next(), true),
+                        new ListArchiveItemAuditsRequest(null, null, null, null, null, null),
+                        tokenPage(1, firstPage.next()),
                         9L);
 
         assertThat(nextPage.total()).isNull();
@@ -114,8 +113,8 @@ class ArchiveItemAuditSearchServiceTests {
                         () ->
                                 auditSearchService.listAudits(
                                         new ListArchiveItemAuditsRequest(
-                                                null, null, null, null, null, null, 20, null,
-                                                false),
+                                                null, null, null, null, null, null),
+                                        firstPage(20, false),
                                         9L))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(exception -> ((ResponseStatusException) exception).getStatusCode())
@@ -130,30 +129,14 @@ class ArchiveItemAuditSearchServiceTests {
                         () ->
                                 auditSearchService.listAudits(
                                         new ListArchiveItemAuditsRequest(
-                                                null, null, null, null, null, null, 20, null,
-                                                false),
+                                                null, null, null, null, null, null),
+                                        firstPage(20, false),
                                         null))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(exception -> ((ResponseStatusException) exception).getStatusCode())
                 .isEqualTo(HttpStatus.UNAUTHORIZED);
         verify(permissionService, never()).isSuperAdmin(any());
         verify(auditRepository, never()).find(any(), any());
-    }
-
-    @Test
-    @DisplayName("拒绝超过上限的 page size")
-    void listAuditsShouldRejectLimitOverMaximum() {
-        when(permissionService.isSuperAdmin(9L)).thenReturn(true);
-
-        assertThatThrownBy(
-                        () ->
-                                auditSearchService.listAudits(
-                                        new ListArchiveItemAuditsRequest(
-                                                null, null, null, null, null, null, 2000, null,
-                                                false),
-                                        9L))
-                .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("分页参数不合法");
     }
 
     private static CursoredPage<ArchiveItemAudit> page(
@@ -177,6 +160,18 @@ class ArchiveItemAuditSearchServiceTests {
             when(page.previousPageRequest()).thenReturn(PageRequest.ofSize(1).beforeCursor(cursor));
         }
         return page;
+    }
+
+    private static CursorPageRequest firstPage(int limit, boolean requestTotal) {
+        return CursorPageRequest.of(limit, null, requestTotal, context());
+    }
+
+    private static CursorPageRequest tokenPage(int limit, String cursor) {
+        return CursorPageRequest.of(limit, cursor, true, context());
+    }
+
+    private static CursorPageTokenContext context() {
+        return new CursorPageTokenContext("GET /api/v1/archive-item-audits", "fingerprint", "9");
     }
 
     private static ArchiveItemAudit audit(Long id, LocalDateTime operatedAt) {

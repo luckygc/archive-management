@@ -38,4 +38,15 @@ public record CursorPageResponse<T>(
                 null,
                 page.hasTotals() ? page.totalElements() : null);
     }
+
+    public static <S, T> CursorPageResponse<T> from(
+            CursoredPage<S> page, CursorPageRequest request, Function<S, T> mapper) {
+        return new CursorPageResponse<>(
+                page.content().stream().map(mapper).toList(),
+                CursorPageTokenCodec.self(page, request.limit(), request.context()),
+                CursorPageTokenCodec.previous(page, request.limit(), request.context()),
+                CursorPageTokenCodec.next(page, request.limit(), request.context()),
+                null,
+                page.hasTotals() ? page.totalElements() : null);
+    }
 }
