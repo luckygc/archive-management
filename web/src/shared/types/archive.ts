@@ -81,6 +81,8 @@ export interface ArchiveCategoryDto {
     managementMode: ArchiveManagementMode;
     volumeTableName?: string;
     itemTableName?: string;
+    volumePhysicalTableName?: string;
+    itemPhysicalTableName?: string;
     tableStatus: ArchiveTableStatus;
     builtAt?: string;
     enabled: boolean;
