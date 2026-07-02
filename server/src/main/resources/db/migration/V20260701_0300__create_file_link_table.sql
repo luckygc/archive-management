@@ -22,7 +22,7 @@ comment on column am_file_link.id is '主键';
 comment on column am_file_link.code is '短链短码，不包含业务信息';
 comment on column am_file_link.target_type is '短链目标类型';
 comment on column am_file_link.target_parent_id is '目标上下文 ID，例如档案条目 ID';
-comment on column am_file_link.target_id is '目标 ID，例如存储对象 ID 或电子文件绑定 ID';
+comment on column am_file_link.target_id is '目标 ID，例如存储对象 ID 或档案电子文件 ID';
 comment on column am_file_link.allowed_user_id is '允许访问的用户 ID；为空表示公开短链';
 comment on column am_file_link.expires_at is '短链过期时间';
 comment on column am_file_link.revoked_at is '短链撤销时间';

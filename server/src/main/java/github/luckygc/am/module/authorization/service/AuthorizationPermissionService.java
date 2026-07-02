@@ -38,9 +38,15 @@ public class AuthorizationPermissionService {
                             "archive:item:delete", "删除档案", "archive", "逻辑删除档案条目和案卷"),
                     new PermissionDefinition("archive:item:lock", "锁定档案", "archive", "锁定和解锁档案条目"),
                     new PermissionDefinition(
-                            "archive:file:bind", "绑定档案文件", "archive", "绑定和解绑档案电子文件"),
+                            "archive:item:preview-electronic-file",
+                            "预览档案电子文件",
+                            "archive",
+                            "在线预览档案电子文件"),
                     new PermissionDefinition(
-                            "archive:file:download", "下载档案文件", "archive", "下载档案电子文件"),
+                            "archive:item:download-electronic-file",
+                            "下载档案电子文件",
+                            "archive",
+                            "下载档案电子文件或创建下载短链"),
                     new PermissionDefinition("archive:audit:read", "查询档案审计", "archive", "查询档案操作审计"),
                     new PermissionDefinition("archive:export", "导出档案", "archive", "按查询条件导出档案数据"),
                     new PermissionDefinition(
@@ -53,6 +59,16 @@ public class AuthorizationPermissionService {
                             "管理功能权限",
                             "authorization",
                             "查看权限点并维护角色功能权限"),
+                    new PermissionDefinition(
+                            "authentication:session:manage",
+                            "管理登录会话",
+                            "authentication",
+                            "查看登录会话并踢出其他会话"),
+                    new PermissionDefinition(
+                            "authentication:audit:read",
+                            "查询认证审计",
+                            "authentication",
+                            "查询登录、退出和踢下线审计事件"),
                     new PermissionDefinition(
                             "archive:data-scope:manage", "管理档案数据范围", "archive", "维护档案数据范围和主体范围绑定"));
 

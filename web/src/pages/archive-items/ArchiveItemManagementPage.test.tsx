@@ -98,8 +98,9 @@ describe("ArchiveItemManagementPage", () => {
                 "archive:item:read",
                 "archive:item:create",
                 "archive:item:update",
-                "archive:file:bind",
-                "archive:file:download",
+                "archive:item:preview-electronic-file",
+                "archive:item:download-electronic-file",
+                "archive:audit:read",
                 "archive:export",
             ],
         });

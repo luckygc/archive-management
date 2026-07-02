@@ -14,6 +14,7 @@ import jakarta.servlet.FilterChain;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
@@ -68,6 +69,26 @@ class ApiRequestSignatureFilterTests {
     }
 
     @Test
+    @DisplayName("相同 nonce 的签名请求只能使用一次")
+    void repeatedNonceShouldBeRejected() throws Exception {
+        ApiRequestSignatureFilter filter = filter(true);
+        MockHttpServletRequest first = request("{\"title\":\"A\"}");
+        sign(first, "categoryId=1&fondsCode=A", DigestUtils.sha256Hex("{\"title\":\"A\"}"));
+        MockHttpServletResponse firstResponse = new MockHttpServletResponse();
+
+        filter.doFilter(first, firstResponse, (servletRequest, servletResponse) -> {});
+
+        MockHttpServletRequest replay = request("{\"title\":\"A\"}");
+        sign(replay, "categoryId=1&fondsCode=A", DigestUtils.sha256Hex("{\"title\":\"A\"}"));
+        MockHttpServletResponse replayResponse = new MockHttpServletResponse();
+        filter.doFilter(replay, replayResponse, (servletRequest, servletResponse) -> {});
+
+        assertThat(firstResponse.getStatus()).isEqualTo(200);
+        assertThat(replayResponse.getStatus()).isEqualTo(400);
+        assertThat(replayResponse.getContentAsString()).contains("X-AM-Nonce");
+    }
+
+    @Test
     @DisplayName("未启用签名时不校验请求头")
     void disabledSignatureSkipsVerification() throws Exception {
         ApiRequestSignatureFilter filter = filter(false);
@@ -103,7 +124,8 @@ class ApiRequestSignatureFilterTests {
                 properties,
                 signer,
                 JsonMapper.builder().findAndAddModules().build(),
-                Clock.fixed(NOW, ZoneOffset.UTC));
+                Clock.fixed(NOW, ZoneOffset.UTC),
+                new ConcurrentMapCacheManager("archive.security.request-signature.nonce"));
     }
 
     private MockHttpServletRequest request(String body) {

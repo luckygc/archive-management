@@ -22,6 +22,7 @@ import github.luckygc.am.module.storage.service.StorageObjectService.StorageObje
 public class ArchiveItemElectronicFileLinkService implements FileLinkTargetResolver {
 
     private static final Duration DOWNLOAD_LINK_TTL = Duration.ofMinutes(10);
+    private static final String PERMISSION_DOWNLOAD = "archive:item:download-electronic-file";
 
     private final ArchiveMapper archiveMapper;
     private final AuthorizationPermissionService permissionService;
@@ -45,13 +46,13 @@ public class ArchiveItemElectronicFileLinkService implements FileLinkTargetResol
     @Transactional
     public DownloadLinkCreated createDownloadLink(
             Long archiveItemId, Long electronicFileId, Long userId) {
-        requirePermission(userId, "archive:file:download");
+        requirePermission(userId, PERMISSION_DOWNLOAD);
         archiveItemRoutingService.assertItemInDataScope(archiveItemId, userId);
         Long storageObjectId =
                 archiveMapper.getArchiveItemElectronicFileStorageObjectId(
                         archiveItemId, electronicFileId);
         if (storageObjectId == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "文件绑定不存在");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "档案电子文件不存在");
         }
         FileLinkService.FileLinkCreated created =
                 fileLinkService.createUserLink(

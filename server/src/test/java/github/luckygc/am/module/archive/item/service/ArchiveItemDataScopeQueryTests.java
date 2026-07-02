@@ -12,6 +12,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -30,6 +31,7 @@ import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeSe
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService.ArchiveDataScopeFilter;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService.ResolvedArchiveDataScope;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemAuditDataRepository;
+import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveItemRelationRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.CreateArchiveItemRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.SearchArchiveItemsRequest;
 import github.luckygc.am.module.archive.mapper.ArchiveDataScopeSqlGroup;
@@ -202,6 +204,45 @@ class ArchiveItemDataScopeQueryTests {
     }
 
     @Test
+    @DisplayName("读取档案关联时校验读取权限和来源档案数据范围")
+    void listRelationsShouldRequireReadPermissionAndSourceDataScope() {
+        when(permissionService.hasPermission(9L, "archive:item:read")).thenReturn(false);
+
+        assertThatThrownBy(() -> archiveItemRoutingService.listRelations(10L, 1, 9L))
+                .isInstanceOfSatisfying(
+                        ResponseStatusException.class,
+                        exception ->
+                                assertThat(exception.getStatusCode())
+                                        .isEqualTo(HttpStatus.FORBIDDEN));
+
+        verify(archiveMapper, never()).listItemRelations(10L);
+    }
+
+    @Test
+    @DisplayName("创建档案关联时校验来源和目标档案数据范围")
+    void createRelationShouldRequireSourceAndTargetDataScope() {
+        when(archiveMapper.getArchiveItem(10L)).thenReturn(itemRow(10L, "F001", "A-001"));
+        when(archiveMapper.getArchiveItem(11L)).thenReturn(itemRow(11L, "F002", "A-002"));
+        when(archiveMetadataService.listCategories(null)).thenReturn(List.of(category()));
+        when(dataScopeService.buildItemFilter(9L, 1L, "F001"))
+                .thenReturn(ArchiveDataScopeFilter.all());
+        when(dataScopeService.buildItemFilter(9L, 1L, "F002"))
+                .thenReturn(ArchiveDataScopeFilter.none());
+
+        assertThatThrownBy(
+                        () ->
+                                archiveItemRoutingService.createRelation(
+                                        10L, new ArchiveItemRelationRequest(11L), 9L))
+                .isInstanceOfSatisfying(
+                        ResponseStatusException.class,
+                        exception ->
+                                assertThat(exception.getStatusCode())
+                                        .isEqualTo(HttpStatus.FORBIDDEN));
+
+        verify(archiveMapper, never()).insertItemRelation(10L, 11L);
+    }
+
+    @Test
     @DisplayName("创建范围外档案时拒绝写入")
     void createItemShouldRejectTargetOutsideDataScope() {
         when(archiveMetadataService.getCategory(1L)).thenReturn(category());
@@ -273,13 +314,17 @@ class ArchiveItemDataScopeQueryTests {
     }
 
     private Map<String, Object> itemRow() {
+        return itemRow(10L, "F001", "A-001");
+    }
+
+    private Map<String, Object> itemRow(Long id, String fondsCode, String archiveNo) {
         return Map.ofEntries(
-                Map.entry("id", 10L),
-                Map.entry("fonds_code", "F001"),
+                Map.entry("id", id),
+                Map.entry("fonds_code", fondsCode),
                 Map.entry("fonds_name", "启用全宗"),
                 Map.entry("category_code", "contract"),
                 Map.entry("category_name", "合同档案"),
-                Map.entry("archive_no", "A-001"),
+                Map.entry("archive_no", archiveNo),
                 Map.entry("electronic_status", "DRAFT"),
                 Map.entry("archive_year", 2026),
                 Map.entry("created_at", LocalDateTime.of(2026, 6, 30, 10, 0)),

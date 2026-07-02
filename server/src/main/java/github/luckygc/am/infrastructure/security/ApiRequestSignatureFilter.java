@@ -21,6 +21,8 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -40,17 +42,20 @@ public class ApiRequestSignatureFilter extends OncePerRequestFilter {
     static final String TIMESTAMP_HEADER = "X-AM-Timestamp";
     static final String NONCE_HEADER = "X-AM-Nonce";
     static final String SIGNATURE_HEADER = "X-AM-Signature";
+    static final String NONCE_CACHE_NAME = "archive.security.request-signature.nonce";
 
     private final ApiRequestSignatureProperties properties;
     private final ApiRequestSigner signer;
     private final JsonMapper jsonMapper;
     private final Clock clock;
+    private final Cache nonceCache;
 
     public ApiRequestSignatureFilter(
             ApiRequestSignatureProperties properties,
             ApiRequestSigner signer,
             JsonMapper jsonMapper,
-            Clock clock) {
+            Clock clock,
+            CacheManager cacheManager) {
         this.properties = properties;
         this.signer = signer;
         this.jsonMapper = jsonMapper;
@@ -59,6 +64,7 @@ public class ApiRequestSignatureFilter extends OncePerRequestFilter {
             throw new IllegalStateException(
                     "archive.security.request-signature.secret 至少需要 32 个字符");
         }
+        this.nonceCache = nonceCache(properties, cacheManager);
     }
 
     @Override
@@ -122,6 +128,27 @@ public class ApiRequestSignatureFilter extends OncePerRequestFilter {
                         nonce,
                         DigestUtils.sha256Hex(request.body()));
         signer.verify(canonicalRequest, signature, properties.getSecret());
+        consumeNonce(nonce);
+    }
+
+    private Cache nonceCache(ApiRequestSignatureProperties properties, CacheManager cacheManager) {
+        Cache cache = cacheManager.getCache(NONCE_CACHE_NAME);
+        if (!properties.isEnabled()) {
+            return cache == null
+                    ? new org.springframework.cache.support.NoOpCache(NONCE_CACHE_NAME)
+                    : cache;
+        }
+        if (cache == null || cache.getClass().getName().contains("NoOpCache")) {
+            throw new IllegalStateException("请求签名启用时必须配置可写入的 Spring Cache");
+        }
+        return cache;
+    }
+
+    private void consumeNonce(String nonce) {
+        Cache.ValueWrapper previous = nonceCache.putIfAbsent(nonce, clock.instant().toString());
+        if (previous != null) {
+            throw badRequest(NONCE_HEADER, "请求签名 nonce 已使用");
+        }
     }
 
     private String requiredHeader(HttpServletRequest request, String name) {

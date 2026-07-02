@@ -28,12 +28,9 @@ public class CursorHttpFingerprint {
     private static final String OFFSET_PARAM = "offset";
     private static final String REQUEST_TOTAL_PARAM = "requestTotal";
     private static final String CSRF_PARAM = "_csrf";
+    private static final int MAX_JSON_DEPTH = 100;
 
-    private final ObjectMapper objectMapper;
-
-    public CursorHttpFingerprint(ObjectMapper objectMapper) {
-        this.objectMapper = objectMapper;
-    }
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public String fingerprint(HttpServletRequest request) {
         StringBuilder builder = new StringBuilder();
@@ -75,7 +72,7 @@ public class CursorHttpFingerprint {
         }
         try {
             JsonNode node = objectMapper.readTree(body);
-            builder.append("b:").append(canonicalJson(node, true)).append('\n');
+            builder.append("b:").append(canonicalJson(node, true, 0)).append('\n');
         } catch (IOException exception) {
             throw new BadRequestException("请求体 JSON 无效", "body", "JSON 格式无效");
         }
@@ -101,7 +98,11 @@ public class CursorHttpFingerprint {
         }
     }
 
-    private String canonicalJson(JsonNode node, boolean root) throws JsonProcessingException {
+    private String canonicalJson(JsonNode node, boolean root, int depth)
+            throws JsonProcessingException {
+        if (depth > MAX_JSON_DEPTH) {
+            throw new BadRequestException("请求体 JSON 无效", "body", "JSON 嵌套层级过深");
+        }
         if (node.isObject()) {
             StringBuilder builder = new StringBuilder("{");
             boolean first = true;
@@ -120,7 +121,7 @@ public class CursorHttpFingerprint {
                 first = false;
                 builder.append(objectMapper.writeValueAsString(entry.getKey()))
                         .append(':')
-                        .append(canonicalJson(entry.getValue(), false));
+                        .append(canonicalJson(entry.getValue(), false, depth + 1));
             }
             return builder.append('}').toString();
         }
@@ -132,7 +133,7 @@ public class CursorHttpFingerprint {
                     builder.append(',');
                 }
                 first = false;
-                builder.append(canonicalJson(item, false));
+                builder.append(canonicalJson(item, false, depth + 1));
             }
             return builder.append(']').toString();
         }

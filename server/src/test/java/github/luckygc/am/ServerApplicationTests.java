@@ -19,7 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.cache.CacheManager;
-import org.springframework.cache.support.NoOpCacheManager;
+import org.springframework.cache.caffeine.CaffeineCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -66,7 +66,7 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
     void contextLoads() {
         Assertions.assertTrue(POSTGRES.isRunning());
         Assertions.assertInstanceOf(JdbcIndexedSessionRepository.class, sessionRepository);
-        Assertions.assertInstanceOf(NoOpCacheManager.class, cacheManager);
+        Assertions.assertInstanceOf(CaffeineCacheManager.class, cacheManager);
     }
 
     @Test

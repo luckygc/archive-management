@@ -18,8 +18,8 @@ import github.luckygc.am.common.api.CollectionResponse;
 import github.luckygc.am.common.security.AuthenticatedUser;
 import github.luckygc.am.module.archive.item.service.ArchiveItemElectronicFileLinkService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemElectronicFileService;
-import github.luckygc.am.module.archive.item.service.ArchiveItemElectronicFileService.ArchiveItemElectronicFileRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemElectronicFileService.ArchiveItemElectronicFileResponse;
+import github.luckygc.am.module.archive.item.service.ArchiveItemElectronicFileService.CreateArchiveItemElectronicFileRequest;
 
 @RestController
 public class ArchiveItemElectronicFileController {
@@ -42,20 +42,21 @@ public class ArchiveItemElectronicFileController {
 
     @PostMapping("/api/v1/archive-items/{archiveItem}/electronic-files")
     @ResponseStatus(HttpStatus.CREATED)
-    public ArchiveItemElectronicFileResponse bindFile(
+    public ArchiveItemElectronicFileResponse createFile(
             @PathVariable Long archiveItem,
-            @RequestBody ArchiveItemElectronicFileRequest request,
+            @RequestBody CreateArchiveItemElectronicFileRequest request,
             Authentication authentication) {
-        return electronicFileService.bindFile(archiveItem, request, currentUserId(authentication));
+        return electronicFileService.createFile(
+                archiveItem, request, currentUserId(authentication));
     }
 
     @DeleteMapping("/api/v1/archive-items/{archiveItem}/electronic-files/{electronicFile}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void unbindFile(
+    public void deleteFile(
             @PathVariable Long archiveItem,
             @PathVariable Long electronicFile,
             Authentication authentication) {
-        electronicFileService.unbindFile(
+        electronicFileService.deleteFile(
                 archiveItem, electronicFile, currentUserId(authentication));
     }
 

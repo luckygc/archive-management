@@ -23,8 +23,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.mock.web.MockHttpSession;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -108,11 +106,12 @@ class AuthenticationSessionAuditIntegrationTests extends PostgreSqlContainerTest
     @DisplayName("登录失败写入失败审计且不创建登录会话")
     void loginFailureWritesAuditWithoutSession() throws Exception {
         long beforeFailureCount = countLogs("login_failure");
+        long beforeActiveSessionCount = activeSessionCount();
 
         login("login-failure-user", "wrong-password").andExpect(status().isUnauthorized());
 
         assertThat(countLogs("login_failure")).isEqualTo(beforeFailureCount + 1);
-        assertThat(activeSessionCount()).isZero();
+        assertThat(activeSessionCount()).isEqualTo(beforeActiveSessionCount);
     }
 
     @Test
@@ -133,14 +132,19 @@ class AuthenticationSessionAuditIntegrationTests extends PostgreSqlContainerTest
 
     @Test
     @DisplayName("踢下线写入审计并删除目标会话")
-    @WithMockUser(username = "admin", roles = "系统管理员")
     void revokeSessionWritesAuditAndDeletesTargetSession() throws Exception {
         MvcResult loginResult = login("admin", "Admin123!").andExpect(status().isOk()).andReturn();
         String sessionId = loginSessionId(loginResult);
+        Cookie operatorCookie =
+                login("admin", "Admin123!")
+                        .andExpect(status().isOk())
+                        .andReturn()
+                        .getResponse()
+                        .getCookie("SESSION");
 
         mockMvc.perform(
                         withClientHeaders(delete("/api/v1/login-sessions/{session}", sessionId))
-                                .session(new MockHttpSession(null, "operator-session")))
+                                .cookie(operatorCookie))
                 .andExpect(status().isNoContent());
 
         assertThat(countLogs("kickout")).isEqualTo(1);
@@ -149,13 +153,19 @@ class AuthenticationSessionAuditIntegrationTests extends PostgreSqlContainerTest
 
     @Test
     @DisplayName("认证审计 cursor 绑定查询条件，条件变化时拒绝旧 cursor")
-    @WithMockUser(username = "admin", roles = "系统管理员")
     void authenticationEventCursorShouldBindQueryCondition() throws Exception {
+        Cookie sessionCookie =
+                login("admin", "Admin123!")
+                        .andExpect(status().isOk())
+                        .andReturn()
+                        .getResponse()
+                        .getCookie("SESSION");
         login("cursor-failure-user-1", "wrong-password").andExpect(status().isUnauthorized());
         login("cursor-failure-user-2", "wrong-password").andExpect(status().isUnauthorized());
         MvcResult firstPage =
                 mockMvc.perform(
                                 withClientHeaders(get("/api/v1/authentication-events"))
+                                        .cookie(sessionCookie)
                                         .param("eventType", "login_failure")
                                         .param("limit", "1"))
                         .andExpect(status().isOk())
@@ -165,6 +175,7 @@ class AuthenticationSessionAuditIntegrationTests extends PostgreSqlContainerTest
 
         mockMvc.perform(
                         withClientHeaders(get("/api/v1/authentication-events"))
+                                .cookie(sessionCookie)
                                 .param("eventType", "login_success")
                                 .param("limit", "1")
                                 .param("cursor", next))

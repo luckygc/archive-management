@@ -20,6 +20,9 @@ public interface AuthenticationCapChallengeDataRepository
     @HQL("delete from AuthenticationCapChallenge where token = ?1")
     void deleteById(@Nonnull String token);
 
+    @HQL("delete from AuthenticationCapChallenge where token = ?1 and expiresAt > ?2")
+    int consume(@Nonnull String token, @Nonnull LocalDateTime expiresAt);
+
     @HQL("delete from AuthenticationCapChallenge where expiresAt < ?1")
     int deleteExpired(@Nonnull LocalDateTime expiresAt);
 }

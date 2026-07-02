@@ -32,6 +32,11 @@ public class ArchiveItemElectronicFileService {
 
     private static final String DEFAULT_USAGE_TYPE = "DEFAULT";
     private static final String AUDIT_OPERATION_DOWNLOAD = "DOWNLOAD";
+    private static final String PERMISSION_ITEM_READ = "archive:item:read";
+    private static final String PERMISSION_ITEM_CREATE = "archive:item:create";
+    private static final String PERMISSION_ITEM_UPDATE = "archive:item:update";
+    private static final String PERMISSION_ITEM_DELETE = "archive:item:delete";
+    private static final String PERMISSION_DOWNLOAD = "archive:item:download-electronic-file";
 
     private final ArchiveMapper archiveMapper;
     private final StorageObjectService storageObjectService;
@@ -56,9 +61,11 @@ public class ArchiveItemElectronicFileService {
     }
 
     @Transactional
-    public ArchiveItemElectronicFileResponse bindFile(
-            Long archiveItemId, @Nullable ArchiveItemElectronicFileRequest request, Long userId) {
-        requirePermission(userId, "archive:file:bind");
+    public ArchiveItemElectronicFileResponse createFile(
+            Long archiveItemId,
+            @Nullable CreateArchiveItemElectronicFileRequest request,
+            Long userId) {
+        requireAnyPermission(userId, PERMISSION_ITEM_CREATE, PERMISSION_ITEM_UPDATE);
         if (request == null) {
             throw new BadRequestException("请求体不能为空");
         }
@@ -77,7 +84,7 @@ public class ArchiveItemElectronicFileService {
                     archiveMapper.insertArchiveItemElectronicFile(
                             archiveItemId, storageObject.id(), usageType, displayOrder, userId);
         } catch (DataIntegrityViolationException exception) {
-            throw new BadRequestException("文件已绑定");
+            throw new BadRequestException("档案电子文件已存在");
         }
         return new ArchiveItemElectronicFileResponse(
                 electronicFileId,
@@ -95,7 +102,7 @@ public class ArchiveItemElectronicFileService {
     @Transactional(readOnly = true)
     public CollectionResponse<ArchiveItemElectronicFileResponse> listFiles(
             Long archiveItemId, Long userId) {
-        requirePermission(userId, "archive:item:read");
+        requirePermission(userId, PERMISSION_ITEM_READ);
         archiveItemRoutingService.assertItemInDataScope(archiveItemId, userId);
         ensureArchiveItemExists(archiveItemId);
         return CollectionResponse.of(
@@ -105,26 +112,26 @@ public class ArchiveItemElectronicFileService {
     }
 
     @Transactional
-    public void unbindFile(Long archiveItemId, Long electronicFileId, Long userId) {
-        requirePermission(userId, "archive:file:bind");
+    public void deleteFile(Long archiveItemId, Long electronicFileId, Long userId) {
+        requirePermission(userId, PERMISSION_ITEM_DELETE);
         archiveItemRoutingService.assertItemInDataScope(archiveItemId, userId);
         int deleted =
                 archiveMapper.deleteArchiveItemElectronicFile(archiveItemId, electronicFileId);
         if (deleted == 0) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "文件绑定不存在");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "档案电子文件不存在");
         }
     }
 
     @Transactional
     public ArchiveItemFileDownload downloadFile(
             Long archiveItemId, Long electronicFileId, Long userId) {
-        requirePermission(userId, "archive:file:download");
+        requirePermission(userId, PERMISSION_DOWNLOAD);
         archiveItemRoutingService.assertItemInDataScope(archiveItemId, userId);
         Long storageObjectId =
                 archiveMapper.getArchiveItemElectronicFileStorageObjectId(
                         archiveItemId, electronicFileId);
         if (storageObjectId == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "文件绑定不存在");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "档案电子文件不存在");
         }
         ArchiveItem archiveItem = loadArchiveItem(archiveItemId);
         StorageObjectDownload download = storageObjectService.openObject(storageObjectId);
@@ -158,6 +165,20 @@ public class ArchiveItemElectronicFileService {
         if (!permissionService.hasPermission(userId, permissionCode)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "权限不足");
         }
+    }
+
+    private void requireAnyPermission(
+            Long userId, String firstPermissionCode, String... otherPermissionCodes) {
+        userId = AuthenticatedUsers.requireResolvedUserId(userId);
+        if (permissionService.hasPermission(userId, firstPermissionCode)) {
+            return;
+        }
+        for (String permissionCode : otherPermissionCodes) {
+            if (permissionService.hasPermission(userId, permissionCode)) {
+                return;
+            }
+        }
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "权限不足");
     }
 
     private void ensureArchiveItemExists(Long archiveItemId) {
@@ -226,7 +247,7 @@ public class ArchiveItemElectronicFileService {
         return row.get(JdbcUtils.convertPropertyNameToUnderscoreName(key));
     }
 
-    public record ArchiveItemElectronicFileRequest(
+    public record CreateArchiveItemElectronicFileRequest(
             @Nullable Long storageObjectId,
             @Nullable String usageType,
             @Nullable Integer displayOrder) {}

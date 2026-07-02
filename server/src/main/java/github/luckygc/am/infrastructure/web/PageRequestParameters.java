@@ -75,8 +75,12 @@ final class PageRequestParameters {
         if (request instanceof CachedBodyHttpServletRequestWrapper wrapper) {
             return wrapper.getCachedBody();
         }
+        if (request.getContentLengthLong()
+                > CachedBodyHttpServletRequestWrapper.MAX_JSON_BODY_BYTES) {
+            throw new BadRequestException("请求体过大", "body", "请求体不能超过 1 MiB");
+        }
         try {
-            return request.getInputStream().readAllBytes();
+            return CachedBodyHttpServletRequestWrapper.readBounded(request.getInputStream());
         } catch (IOException exception) {
             throw new BadRequestException("请求体读取失败", "body", "无法读取请求体");
         }

@@ -8,7 +8,7 @@
 
 - **WHEN** 已认证管理员请求功能权限点列表
 - **THEN** 系统 SHALL 返回权限编码、权限名称、所属模块和说明
-- **AND** 权限编码 SHALL 使用稳定字符串，例如 `archive:item:read`、`archive:item:create`、`archive:item:update`、`archive:file:download`、`archive:export`、`archive:metadata:manage`
+- **AND** 权限编码 SHALL 使用稳定字符串，例如 `archive:item:read`、`archive:item:create`、`archive:item:update`、`archive:item:preview-electronic-file`、`archive:item:download-electronic-file`、`archive:export`、`archive:metadata:manage`
 - **AND** 响应 SHALL NOT 包含数据范围条件
 
 #### Scenario: 当前用户查询自身权限

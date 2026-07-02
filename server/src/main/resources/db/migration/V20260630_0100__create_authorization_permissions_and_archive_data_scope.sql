@@ -122,12 +122,14 @@ values
     ('archive:item:update', '修改档案', 'archive', '修改档案条目和案卷'),
     ('archive:item:delete', '删除档案', 'archive', '逻辑删除档案条目和案卷'),
     ('archive:item:lock', '锁定档案', 'archive', '锁定和解锁档案条目'),
-    ('archive:file:bind', '绑定档案文件', 'archive', '绑定和解绑档案电子文件'),
-    ('archive:file:download', '下载档案文件', 'archive', '下载档案电子文件'),
+    ('archive:item:preview-electronic-file', '预览档案电子文件', 'archive', '在线预览档案电子文件'),
+    ('archive:item:download-electronic-file', '下载档案电子文件', 'archive', '下载档案电子文件或创建下载短链'),
     ('archive:audit:read', '查询档案审计', 'archive', '查询档案操作审计'),
     ('archive:export', '导出档案', 'archive', '按查询条件导出档案数据'),
     ('archive:metadata:manage', '管理档案元数据', 'archive', '维护全宗、分类、字段、布局、密级和保管期限'),
     ('authorization:permission:manage', '管理功能权限', 'authorization', '查看权限点并维护角色功能权限'),
+    ('authentication:session:manage', '管理登录会话', 'authentication', '查看登录会话并踢出其他会话'),
+    ('authentication:audit:read', '查询认证审计', 'authentication', '查询登录、退出和踢下线审计事件'),
     ('archive:data-scope:manage', '管理档案数据范围', 'archive', '维护档案数据范围和主体范围绑定');
 
 insert into am_archive_data_scope (scope_code, scope_name, scope_type, description)

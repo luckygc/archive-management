@@ -149,8 +149,15 @@ public class ArchiveItemController {
 
     @GetMapping("/api/v1/archive-items/{id}/relations")
     public CollectionResponse<ArchiveItemRelationDto> listRelations(
-            @PathVariable Long id, @RequestParam(defaultValue = "1") Integer depth) {
-        return CollectionResponse.of(archiveItemRoutingService.listRelations(id, depth));
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "1") Integer depth,
+            Authentication authentication) {
+        return CollectionResponse.of(
+                archiveItemRoutingService.listRelations(
+                        id,
+                        depth,
+                        AuthenticatedUsers.requireUserId(
+                                authentication == null ? null : authentication.getPrincipal())));
     }
 
     @PostMapping("/api/v1/archive-items/{id}/relations")

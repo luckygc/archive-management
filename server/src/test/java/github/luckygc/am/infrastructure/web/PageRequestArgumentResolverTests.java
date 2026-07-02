@@ -15,8 +15,6 @@ import org.springframework.core.MethodParameter;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.web.context.request.ServletWebRequest;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import github.luckygc.am.common.api.CursorPageRequest;
 import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.common.api.CursorPageTokenCodec;
@@ -27,7 +25,7 @@ import github.luckygc.am.common.exception.BadRequestException;
 @DisplayName("分页请求参数解析")
 class PageRequestArgumentResolverTests {
 
-    private final CursorHttpFingerprint fingerprint = new CursorHttpFingerprint(new ObjectMapper());
+    private final CursorHttpFingerprint fingerprint = new CursorHttpFingerprint();
 
     @Test
     @DisplayName("解析 cursor 分页参数并校验 token 查询指纹")

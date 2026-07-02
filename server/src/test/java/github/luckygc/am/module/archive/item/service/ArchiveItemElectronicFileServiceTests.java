@@ -28,15 +28,15 @@ import github.luckygc.am.module.archive.item.ArchiveItem;
 import github.luckygc.am.module.archive.item.ArchiveItemAudit;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemAuditDataRepository;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemDataRepository;
-import github.luckygc.am.module.archive.item.service.ArchiveItemElectronicFileService.ArchiveItemElectronicFileRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemElectronicFileService.ArchiveItemElectronicFileResponse;
+import github.luckygc.am.module.archive.item.service.ArchiveItemElectronicFileService.CreateArchiveItemElectronicFileRequest;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
 import github.luckygc.am.module.storage.service.StorageObjectService;
 import github.luckygc.am.module.storage.service.StorageObjectService.StorageObjectDownload;
 import github.luckygc.am.module.storage.service.StorageObjectService.StorageObjectDto;
 
-@DisplayName("档案条目电子文件绑定")
+@DisplayName("档案条目电子文件")
 class ArchiveItemElectronicFileServiceTests {
 
     private ArchiveMapper archiveMapper;
@@ -55,9 +55,12 @@ class ArchiveItemElectronicFileServiceTests {
         archiveItemAuditRepository = mock(ArchiveItemAuditDataRepository.class);
         permissionService = mock(AuthorizationPermissionService.class);
         archiveItemRoutingService = mock(ArchiveItemRoutingService.class);
-        when(permissionService.hasPermission(9L, "archive:file:bind")).thenReturn(true);
+        when(permissionService.hasPermission(9L, "archive:item:create")).thenReturn(true);
+        when(permissionService.hasPermission(9L, "archive:item:update")).thenReturn(true);
         when(permissionService.hasPermission(9L, "archive:item:read")).thenReturn(true);
-        when(permissionService.hasPermission(9L, "archive:file:download")).thenReturn(true);
+        when(permissionService.hasPermission(9L, "archive:item:delete")).thenReturn(true);
+        when(permissionService.hasPermission(9L, "archive:item:download-electronic-file"))
+                .thenReturn(true);
         electronicFileService =
                 new ArchiveItemElectronicFileService(
                         archiveMapper,
@@ -69,16 +72,16 @@ class ArchiveItemElectronicFileServiceTests {
     }
 
     @Test
-    @DisplayName("绑定存储对象记录到档案条目")
-    void bindElectronicFileShouldInsertBinding() {
+    @DisplayName("新增档案条目电子文件")
+    void createElectronicFileShouldInsertElectronicFile() {
         when(archiveMapper.getArchiveItem(10L)).thenReturn(Map.of("id", 10L));
         when(storageObjectService.getActiveObject(20L)).thenReturn(storageObject());
         when(archiveMapper.insertArchiveItemElectronicFile(10L, 20L, "ORIGINAL", 7, 9L))
                 .thenReturn(30L);
 
         ArchiveItemElectronicFileResponse response =
-                electronicFileService.bindFile(
-                        10L, new ArchiveItemElectronicFileRequest(20L, " ORIGINAL ", 7), 9L);
+                electronicFileService.createFile(
+                        10L, new CreateArchiveItemElectronicFileRequest(20L, " ORIGINAL ", 7), 9L);
 
         assertThat(response.id()).isEqualTo(30L);
         assertThat(response.archiveItemId()).isEqualTo(10L);
@@ -90,7 +93,37 @@ class ArchiveItemElectronicFileServiceTests {
     }
 
     @Test
-    @DisplayName("查询档案条目电子文件绑定列表")
+    @DisplayName("有档案创建权限且档案在数据范围内时允许新增电子文件")
+    void createElectronicFileShouldAllowItemCreatePermission() {
+        when(archiveMapper.getArchiveItem(10L)).thenReturn(Map.of("id", 10L));
+        when(storageObjectService.getActiveObject(20L)).thenReturn(storageObject());
+        when(archiveMapper.insertArchiveItemElectronicFile(10L, 20L, "ORIGINAL", 7, 9L))
+                .thenReturn(30L);
+
+        electronicFileService.createFile(
+                10L, new CreateArchiveItemElectronicFileRequest(20L, " ORIGINAL ", 7), 9L);
+
+        verify(archiveItemRoutingService).assertItemInDataScope(10L, 9L);
+        verify(archiveMapper).insertArchiveItemElectronicFile(10L, 20L, "ORIGINAL", 7, 9L);
+    }
+
+    @Test
+    @DisplayName("有档案编辑权限且无创建权限时允许新增电子文件")
+    void createElectronicFileShouldAllowItemUpdatePermission() {
+        when(permissionService.hasPermission(9L, "archive:item:create")).thenReturn(false);
+        when(archiveMapper.getArchiveItem(10L)).thenReturn(Map.of("id", 10L));
+        when(storageObjectService.getActiveObject(20L)).thenReturn(storageObject());
+        when(archiveMapper.insertArchiveItemElectronicFile(10L, 20L, "ORIGINAL", 7, 9L))
+                .thenReturn(30L);
+
+        electronicFileService.createFile(
+                10L, new CreateArchiveItemElectronicFileRequest(20L, " ORIGINAL ", 7), 9L);
+
+        verify(archiveMapper).insertArchiveItemElectronicFile(10L, 20L, "ORIGINAL", 7, 9L);
+    }
+
+    @Test
+    @DisplayName("查询档案条目电子文件列表")
     void listFilesShouldReturnCollectionResponse() {
         LocalDateTime createdAt = LocalDateTime.of(2026, 6, 30, 10, 0);
         when(archiveMapper.getArchiveItem(10L)).thenReturn(Map.of("id", 10L));
@@ -128,28 +161,28 @@ class ArchiveItemElectronicFileServiceTests {
     }
 
     @Test
-    @DisplayName("解绑时删除绑定记录")
-    void unbindFileShouldDeleteBinding() {
+    @DisplayName("删除档案条目电子文件")
+    void deleteFileShouldDeleteElectronicFile() {
         when(archiveMapper.deleteArchiveItemElectronicFile(10L, 30L)).thenReturn(1);
 
-        electronicFileService.unbindFile(10L, 30L, 9L);
+        electronicFileService.deleteFile(10L, 30L, 9L);
 
         verify(archiveMapper).deleteArchiveItemElectronicFile(10L, 30L);
     }
 
     @Test
-    @DisplayName("解绑不存在绑定时返回不存在")
-    void unbindFileShouldRejectMissingBinding() {
+    @DisplayName("删除不存在电子文件时返回不存在")
+    void deleteFileShouldRejectMissingElectronicFile() {
         when(archiveMapper.deleteArchiveItemElectronicFile(10L, 30L)).thenReturn(0);
 
-        assertThatThrownBy(() -> electronicFileService.unbindFile(10L, 30L, 9L))
+        assertThatThrownBy(() -> electronicFileService.deleteFile(10L, 30L, 9L))
                 .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("文件绑定不存在");
+                .hasMessageContaining("档案电子文件不存在");
     }
 
     @Test
-    @DisplayName("下载按绑定记录打开存储对象")
-    void downloadFileShouldOpenBoundStorageObject() {
+    @DisplayName("下载按档案电子文件打开存储对象")
+    void downloadFileShouldOpenElectronicFileWithDownloadPermission() {
         FileStorageResource resource =
                 new FileStorageResource(
                         StorageType.LOCAL,
@@ -170,6 +203,22 @@ class ArchiveItemElectronicFileServiceTests {
         assertThat(download.originalFilename()).isEqualTo("demo.pdf");
         assertThat(download.resource()).isSameAs(resource);
         verify(storageObjectService).openObject(20L);
+    }
+
+    @Test
+    @DisplayName("只有档案阅读权限没有下载电子文件权限时拒绝下载")
+    void downloadFileShouldRejectReadOnlyPermission() {
+        when(permissionService.hasPermission(9L, "archive:item:download-electronic-file"))
+                .thenReturn(false);
+
+        assertThatThrownBy(() -> electronicFileService.downloadFile(10L, 30L, 9L))
+                .isInstanceOfSatisfying(
+                        ResponseStatusException.class,
+                        exception ->
+                                assertThat(exception.getStatusCode())
+                                        .isEqualTo(HttpStatus.FORBIDDEN));
+
+        verify(storageObjectService, never()).openObject(20L);
     }
 
     @Test

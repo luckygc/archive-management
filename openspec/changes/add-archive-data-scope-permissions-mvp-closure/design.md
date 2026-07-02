@@ -1,6 +1,6 @@
 ## Context
 
-项目当前已有登录认证、角色、档案元数据、动态表、档案记录查询、全文发现、文件存储、文件绑定和基础审计。MVP 仍缺三类闭环能力：后端数据范围、可枚举/可判断的功能权限、标准导入导出。现有授权模块只有角色和用户角色关系，Spring Security 只负责登录态和少量基础角色判断；档案记录查询主要由 MyBatis 拼接动态表 SQL。
+项目当前已有登录认证、角色、档案元数据、动态表、档案记录查询、全文发现、文件存储、档案电子文件管理和基础审计。MVP 仍缺三类闭环能力：后端数据范围、可枚举/可判断的功能权限、标准导入导出。现有授权模块只有角色和用户角色关系，Spring Security 只负责登录态和少量基础角色判断；档案记录查询主要由 MyBatis 拼接动态表 SQL。
 
 数据范围与功能权限需要拆开：功能权限回答“用户能做什么动作”，数据范围回答“哪些档案属于用户范围”。运行时统一组合为“已登录 + 有功能权限 + 目标数据命中数据范围”。数据范围本身不包含 READ/WRITE/DELETE 语义。
 
@@ -11,7 +11,7 @@
 - 支持独立档案数据范围资源，包含 `*` 任意范围、全宗、分类、密级和分类内动态字段条件。
 - 动态字段条件只在数据范围定义的 jsonb 部分保存；不保存 SQL，不为权限表做动态 DDL。
 - 支持权限点枚举、角色权限绑定和当前用户权限判断接口。
-- 档案管理查询、全文发现、详情、写入、文件绑定/解绑/下载、审计查询、导入导出统一应用数据范围。
+- 档案管理查询、全文发现、详情、写入、档案电子文件上传、列表、预览、下载、删除、审计查询、导入导出统一应用数据范围；档案电子文件列表可见、预览和下载使用不同功能权限。
 - 补齐标准 Excel 导入导出，使 MVP 能支撑真实批量维护。
 
 **Non-Goals:**
@@ -61,7 +61,7 @@ AND 用户查询条件
 
 ### 功能权限使用稳定权限点
 
-新增稳定权限点，例如 `archive:item:read`、`archive:item:create`、`archive:item:update`、`archive:item:delete`、`archive:item:lock`、`archive:file:download`、`archive:export`、`archive:metadata:manage`、`archive:data-scope:manage`、`authorization:permission:manage`。权限点可枚举，角色可绑定，当前用户可查询自身权限并由后端判断接口使用。导入不设置独立功能权限，按每行实际写入语义分别使用创建或编辑权限。
+新增稳定权限点，例如 `archive:item:read`、`archive:item:create`、`archive:item:update`、`archive:item:delete`、`archive:item:lock`、`archive:item:preview-electronic-file`、`archive:item:download-electronic-file`、`archive:export`、`archive:metadata:manage`、`archive:data-scope:manage`、`authorization:permission:manage`。权限点可枚举，角色可绑定，当前用户可查询自身权限并由后端判断接口使用。导入不设置独立功能权限，按每行实际写入语义分别使用创建或编辑权限。
 
 Spring Security 继续负责认证和少量基础入口保护；业务权限判断在业务 Service 层集中执行，以便结合档案数据范围。
 

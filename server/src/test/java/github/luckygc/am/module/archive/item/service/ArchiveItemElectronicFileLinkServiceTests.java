@@ -34,7 +34,8 @@ class ArchiveItemElectronicFileLinkServiceTests {
         archiveItemRoutingService = mock(ArchiveItemRoutingService.class);
         fileLinkService = mock(FileLinkService.class);
         electronicFileService = mock(ArchiveItemElectronicFileService.class);
-        when(permissionService.hasPermission(9L, "archive:file:download")).thenReturn(true);
+        when(permissionService.hasPermission(9L, "archive:item:download-electronic-file"))
+                .thenReturn(true);
         linkService =
                 new ArchiveItemElectronicFileLinkService(
                         archiveMapper,
@@ -45,8 +46,8 @@ class ArchiveItemElectronicFileLinkServiceTests {
     }
 
     @Test
-    @DisplayName("创建下载短链时校验权限和绑定关系并绑定当前用户")
-    void createDownloadLinkShouldValidateAndBindCurrentUser() {
+    @DisplayName("创建下载短链时校验权限和档案电子文件存在，并限定当前用户访问")
+    void createDownloadLinkShouldValidateElectronicFileAndLimitCurrentUser() {
         when(archiveMapper.getArchiveItemElectronicFileStorageObjectId(10L, 30L)).thenReturn(20L);
         when(fileLinkService.createUserLink(
                         FileLinkTargetType.ARCHIVE_ITEM_ELECTRONIC_FILE,

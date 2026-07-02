@@ -4,7 +4,7 @@
 
 **Goal:** 把档案系统能力地图中的 MVP 边界落成文档、OpenSpec 合同和后续代码实施切片。
 
-**Architecture:** 本计划先完成规格和路线收口，不在一次变更中实现全部 MVP 代码。MVP 代码后续按全宗/档号/审计、导入导出、文件绑定、数据范围四个独立 change 推进，每个 change 都以 OpenSpec 验收场景作为真相源。
+**Architecture:** 本计划先完成规格和路线收口，不在一次变更中实现全部 MVP 代码。MVP 代码后续按全宗/档号/审计、导入导出、档案电子文件、数据范围四个独立 change 推进，每个 change 都以 OpenSpec 验收场景作为真相源。
 
 **Tech Stack:** Markdown、OpenSpec、Spring Boot、Jakarta Data、MyBatis、PostgreSQL、Vite+。
 
@@ -50,7 +50,7 @@ Expected: 无输出。
 
 - [x] **Step 3: 写 spec**
 
-新增 `archive-mvp-foundation` 规格，定义 MVP 完成门槛、全宗基础治理、手工档号、导入导出、基础审计、数据范围和文件绑定的验收场景。
+新增 `archive-mvp-foundation` 规格，定义 MVP 完成门槛、全宗基础治理、手工档号、导入导出、基础审计、数据范围和档案电子文件的验收场景。
 
 - [x] **Step 4: 写 tasks**
 

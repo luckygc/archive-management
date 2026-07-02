@@ -84,8 +84,10 @@ export function ArchiveItemManagementPage() {
     const canRead = permissionCodes.has("archive:item:read");
     const canCreate = permissionCodes.has("archive:item:create");
     const canUpdate = permissionCodes.has("archive:item:update");
-    const canBindFile = permissionCodes.has("archive:file:bind");
-    const canDownloadFile = permissionCodes.has("archive:file:download");
+    const canCreateElectronicFile = canCreate || canUpdate;
+    const canDeleteElectronicFile = permissionCodes.has("archive:item:delete");
+    const canDownloadFile = permissionCodes.has("archive:item:download-electronic-file");
+    const canReadAudit = permissionCodes.has("archive:audit:read");
     const canImport = canCreate || canUpdate;
     const canExport = permissionCodes.has("archive:export");
     const categoryId = Form.useWatch("categoryId", form);
@@ -399,6 +401,7 @@ export function ArchiveItemManagementPage() {
                                     编辑
                                 </Button>
                                 <Button
+                                    disabled={!canRead}
                                     icon={<FileOutlined />}
                                     size="small"
                                     type="link"
@@ -407,7 +410,7 @@ export function ArchiveItemManagementPage() {
                                     文件
                                 </Button>
                                 <Button
-                                    disabled={!canRead}
+                                    disabled={!canReadAudit}
                                     icon={<HistoryOutlined />}
                                     size="small"
                                     type="link"
@@ -457,22 +460,25 @@ export function ArchiveItemManagementPage() {
                                             ]}
                                         >
                                             <InputNumber
-                                                disabled={!canBindFile}
+                                                disabled={!canCreateElectronicFile}
                                                 min={1}
                                                 placeholder="文件记录 ID"
                                             />
                                         </Form.Item>
                                         <Form.Item name="usageType">
-                                            <Input disabled={!canBindFile} placeholder="用途" />
+                                            <Input
+                                                disabled={!canCreateElectronicFile}
+                                                placeholder="用途"
+                                            />
                                         </Form.Item>
                                         <Form.Item name="displayOrder">
                                             <InputNumber
-                                                disabled={!canBindFile}
+                                                disabled={!canCreateElectronicFile}
                                                 placeholder="顺序"
                                             />
                                         </Form.Item>
                                         <Button
-                                            disabled={!canBindFile}
+                                            disabled={!canCreateElectronicFile}
                                             htmlType="submit"
                                             icon={<LinkOutlined />}
                                             loading={bindFileMutation.isPending}
@@ -521,7 +527,7 @@ export function ArchiveItemManagementPage() {
                                                         </Button>
                                                         <Button
                                                             danger
-                                                            disabled={!canBindFile}
+                                                            disabled={!canDeleteElectronicFile}
                                                             icon={<DeleteOutlined />}
                                                             loading={unbindFileMutation.isPending}
                                                             size="small"

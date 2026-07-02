@@ -19,21 +19,29 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.api.CursorPageRequest;
 import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.common.security.AuthenticatedUser;
+import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.authentication.service.AuthenticationAuditService;
+import github.luckygc.am.module.authorization.service.AuthorizationPermissionCode;
+import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
 
 @RestController
 public class LoginSessionController {
 
     private final AuthenticationAuditService authenticationAuditService;
+    private final AuthorizationPermissionService permissionService;
     private final SecurityContextLogoutHandler securityContextLogoutHandler =
             new SecurityContextLogoutHandler();
 
-    public LoginSessionController(AuthenticationAuditService authenticationAuditService) {
+    public LoginSessionController(
+            AuthenticationAuditService authenticationAuditService,
+            AuthorizationPermissionService permissionService) {
         this.authenticationAuditService = authenticationAuditService;
+        this.permissionService = permissionService;
     }
 
     @GetMapping("/api/v1/me")
@@ -43,7 +51,9 @@ public class LoginSessionController {
 
     @GetMapping("/api/v1/login-sessions")
     public CursorPageResponse<AuthenticationAuditService.LoginSessionResponse> listLoginSessions(
-            CursorPageRequest page, HttpServletRequest request) {
+            CursorPageRequest page, HttpServletRequest request, Authentication authentication) {
+        requirePermission(
+                authentication, AuthorizationPermissionCode.AUTHENTICATION_SESSION_MANAGE);
         return authenticationAuditService.listLoginSessions(page, request);
     }
 
@@ -59,6 +69,8 @@ public class LoginSessionController {
             securityContextLogoutHandler.logout(request, response, authentication);
             return;
         }
+        requirePermission(
+                authentication, AuthorizationPermissionCode.AUTHENTICATION_SESSION_MANAGE);
         authenticationAuditService.revokeSession(session, request, authentication);
     }
 
@@ -69,9 +81,21 @@ public class LoginSessionController {
             @RequestParam(required = false) @Nullable String keyword,
             @RequestParam(required = false) @Nullable LocalDateTime occurredAfter,
             @RequestParam(required = false) @Nullable LocalDateTime occurredBefore,
-            CursorPageRequest page) {
+            CursorPageRequest page,
+            Authentication authentication) {
+        requirePermission(authentication, AuthorizationPermissionCode.AUTHENTICATION_AUDIT_READ);
         return authenticationAuditService.listLoginLogs(
                 eventType, username, keyword, occurredAfter, occurredBefore, page);
+    }
+
+    private void requirePermission(
+            @Nullable Authentication authentication, AuthorizationPermissionCode permissionCode) {
+        Long userId =
+                AuthenticatedUsers.requireUserId(
+                        authentication == null ? null : authentication.getPrincipal());
+        if (!permissionService.hasPermission(userId, permissionCode.code())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "权限不足");
+        }
     }
 
     private @Nullable String currentSessionId(@Nullable HttpServletRequest request) {

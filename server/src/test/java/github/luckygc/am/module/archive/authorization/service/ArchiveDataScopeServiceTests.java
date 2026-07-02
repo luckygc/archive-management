@@ -36,6 +36,8 @@ import github.luckygc.am.module.archive.metadata.ArchiveTableStatus;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFieldDto;
+import github.luckygc.am.module.authentication.AuthenticationUser;
+import github.luckygc.am.module.authentication.repository.AuthenticationUserDataRepository;
 import github.luckygc.am.module.authorization.AuthorizationRole;
 import github.luckygc.am.module.authorization.AuthorizationUserRoleRelation;
 import github.luckygc.am.module.authorization.repository.AuthorizationRoleDataRepository;
@@ -50,6 +52,7 @@ class ArchiveDataScopeServiceTests {
     private ArchiveDataScopeSubjectRelationDataRepository subjectRelationRepository;
     private AuthorizationRoleDataRepository roleRepository;
     private AuthorizationUserRoleRelationDataRepository userRoleRelationRepository;
+    private AuthenticationUserDataRepository authenticationUserRepository;
     private ArchiveMetadataService archiveMetadataService;
     private ArchiveDataScopeService dataScopeService;
 
@@ -60,6 +63,7 @@ class ArchiveDataScopeServiceTests {
         subjectRelationRepository = mock(ArchiveDataScopeSubjectRelationDataRepository.class);
         roleRepository = mock(AuthorizationRoleDataRepository.class);
         userRoleRelationRepository = mock(AuthorizationUserRoleRelationDataRepository.class);
+        authenticationUserRepository = mock(AuthenticationUserDataRepository.class);
         archiveMetadataService = mock(ArchiveMetadataService.class);
         dataScopeService =
                 new ArchiveDataScopeService(
@@ -68,6 +72,7 @@ class ArchiveDataScopeServiceTests {
                         subjectRelationRepository,
                         roleRepository,
                         userRoleRelationRepository,
+                        authenticationUserRepository,
                         archiveMetadataService);
     }
 
@@ -331,6 +336,16 @@ class ArchiveDataScopeServiceTests {
         assertThat(filter.empty()).isTrue();
     }
 
+    @Test
+    @DisplayName("保存用户数据范围时拒绝不存在的目标用户")
+    void saveUserDataScopesShouldRejectMissingUser() {
+        when(authenticationUserRepository.findById(7L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> dataScopeService.saveUserDataScopes(7L, List.of()))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("用户不存在");
+    }
+
     private static ArchiveDataScope scope(
             Long id, ArchiveDataScopeType scopeType, boolean enabled) {
         ArchiveDataScope scope = new ArchiveDataScope();
@@ -354,6 +369,15 @@ class ArchiveDataScopeServiceTests {
         AuthorizationRole role = enabledRole(id);
         role.setEnabled(false);
         return role;
+    }
+
+    private static AuthenticationUser enabledUser(Long id) {
+        AuthenticationUser user = new AuthenticationUser();
+        user.setId(id);
+        user.setUsername("user" + id);
+        user.setDisplayName("用户" + id);
+        user.setEnabled(true);
+        return user;
     }
 
     private static AuthorizationUserRoleRelation userRole(Long userId, Long roleId) {

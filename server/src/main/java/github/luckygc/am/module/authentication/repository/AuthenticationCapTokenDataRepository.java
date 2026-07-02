@@ -23,6 +23,13 @@ public interface AuthenticationCapTokenDataRepository
     @HQL("delete from AuthenticationCapToken where tokenKey = ?1 and expiresAt > ?2")
     int consume(@Nonnull String tokenKey, @Nonnull LocalDateTime expiresAt);
 
+    @HQL(
+            "delete from AuthenticationCapToken where tokenKey = ?1 and usernameHash = ?2 and expiresAt > ?3")
+    int consume(
+            @Nonnull String tokenKey,
+            @Nonnull String usernameHash,
+            @Nonnull LocalDateTime expiresAt);
+
     @HQL("delete from AuthenticationCapToken where expiresAt < ?1")
     int deleteExpired(@Nonnull LocalDateTime expiresAt);
 }

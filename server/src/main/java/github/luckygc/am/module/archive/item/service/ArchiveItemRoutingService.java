@@ -839,32 +839,27 @@ public class ArchiveItemRoutingService {
     }
 
     public List<ArchiveItemRelationDto> listRelations(Long itemId, @Nullable Integer depth) {
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "权限不足");
+    }
+
+    public List<ArchiveItemRelationDto> listRelations(
+            Long itemId, @Nullable Integer depth, Long userId) {
+        requirePermission(userId, "archive:item:read");
         int normalizedDepth = depth == null ? 1 : depth;
         if (normalizedDepth < 1 || normalizedDepth > 2) {
             throw badRequest("关联档案展开层级必须在 1 到 2 之间", "depth", "关联档案展开层级必须在 1 到 2 之间");
         }
-        getItem(itemId);
+        assertItemInDataScope(itemId, userId);
         return archiveMapper.listItemRelations(itemId).stream()
-                .map(
-                        row ->
-                                new ArchiveItemRelationDto(
-                                        number(row, "id").longValue(),
-                                        number(row, "sourceItemId").longValue(),
-                                        number(row, "targetItemId").longValue(),
-                                        dateTime(row, "createdAt"),
-                                        new ArchiveItemRelationTargetDto(
-                                                number(row, "targetItemId").longValue(),
-                                                string(row, "targetFondsCode"),
-                                                string(row, "targetFondsName"),
-                                                string(row, "targetCategoryCode"),
-                                                string(row, "targetCategoryName"),
-                                                string(row, "targetArchiveNo"))))
+                .peek(row -> assertItemInDataScope(number(row, "targetItemId").longValue(), userId))
+                .map(this::toRelationDto)
                 .toList();
     }
 
     @Transactional
     public ArchiveItemRelationDto createRelation(
             Long itemId, @Nullable ArchiveItemRelationRequest request, Long userId) {
+        requirePermission(userId, "archive:item:update");
         if (request == null) {
             throw badRequest("请求体不能为空");
         }
@@ -874,14 +869,14 @@ public class ArchiveItemRoutingService {
         if (itemId.equals(request.targetItemId())) {
             throw badRequest("不能关联自身", "targetItemId", "不能关联自身");
         }
-        getItem(itemId);
-        getItem(request.targetItemId());
+        assertItemInDataScope(itemId, userId);
+        assertItemInDataScope(request.targetItemId(), userId);
         try {
             archiveMapper.insertItemRelation(itemId, request.targetItemId());
         } catch (DuplicateKeyException exception) {
             throw badRequest("关联档案已存在", "targetItemId", "关联档案已存在");
         }
-        return listRelations(itemId).stream()
+        return listRelations(itemId, 1, userId).stream()
                 .filter(relation -> relation.targetItemId().equals(request.targetItemId()))
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("关联档案创建后不可见"));
@@ -889,14 +884,38 @@ public class ArchiveItemRoutingService {
 
     @Transactional
     public void deleteRelation(Long itemId, @Nullable Long relationId, Long userId) {
+        requirePermission(userId, "archive:item:update");
         if (relationId == null || relationId <= 0) {
             throw badRequest("关联 ID 不合法");
         }
-        getItem(itemId);
+        assertItemInDataScope(itemId, userId);
+        Long targetItemId =
+                archiveMapper.listItemRelations(itemId).stream()
+                        .filter(row -> relationId.equals(number(row, "id").longValue()))
+                        .map(row -> number(row, "targetItemId").longValue())
+                        .findFirst()
+                        .orElseThrow(
+                                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "关联档案不存在"));
+        assertItemInDataScope(targetItemId, userId);
         int updated = archiveMapper.deleteItemRelation(relationId, itemId);
         if (updated == 0) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "关联档案不存在");
         }
+    }
+
+    private ArchiveItemRelationDto toRelationDto(Map<String, @Nullable Object> row) {
+        return new ArchiveItemRelationDto(
+                number(row, "id").longValue(),
+                number(row, "sourceItemId").longValue(),
+                number(row, "targetItemId").longValue(),
+                dateTime(row, "createdAt"),
+                new ArchiveItemRelationTargetDto(
+                        number(row, "targetItemId").longValue(),
+                        string(row, "targetFondsCode"),
+                        string(row, "targetFondsName"),
+                        string(row, "targetCategoryCode"),
+                        string(row, "targetCategoryName"),
+                        string(row, "targetArchiveNo")));
     }
 
     public ArchiveItemDto getItem(Long id) {

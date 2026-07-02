@@ -1,6 +1,7 @@
 package github.luckygc.am.infrastructure.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.nio.charset.StandardCharsets;
 
@@ -8,12 +9,12 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import github.luckygc.am.common.exception.BadRequestException;
 
 @DisplayName("HTTP cursor 查询指纹")
 class CursorHttpFingerprintTests {
 
-    private final CursorHttpFingerprint fingerprint = new CursorHttpFingerprint(new ObjectMapper());
+    private final CursorHttpFingerprint fingerprint = new CursorHttpFingerprint();
 
     @Test
     @DisplayName("JSON 字段顺序和分页参数不影响查询指纹")
@@ -61,6 +62,18 @@ class CursorHttpFingerprintTests {
         second.addParameter("operationType", "delete");
 
         assertThat(fingerprint.fingerprint(first)).isNotEqualTo(fingerprint.fingerprint(second));
+    }
+
+    @Test
+    @DisplayName("深嵌套 JSON 请求体拒绝生成查询指纹")
+    void deepJsonBodyShouldBeRejected() {
+        assertThatThrownBy(() -> fingerprint.fingerprint(jsonRequest(deepJson(101))))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("JSON");
+    }
+
+    private static String deepJson(int depth) {
+        return "[".repeat(depth) + "0" + "]".repeat(depth);
     }
 
     private static MockHttpServletRequest jsonRequest(String body) {

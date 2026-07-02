@@ -100,7 +100,11 @@ public class PowChallengeService {
             return redeemFailure("Invalid solution");
         }
 
-        deleteChallenge(request.token());
+        if (challengeRepository.consume(
+                        request.token(), toLocalDateTime(System.currentTimeMillis()))
+                != 1) {
+            return redeemFailure("Challenge invalid or expired");
+        }
 
         String vertoken = randomHex(15);
         long expires = System.currentTimeMillis() + TOKEN_EXPIRES_MS;
@@ -151,18 +155,23 @@ public class PowChallengeService {
             throw new PowChallengeException("安全验证已失效，请重试");
         }
 
-        AuthenticationCapToken capToken = tokenRepository.findById(tokenKey).orElse(null);
         String expectedUsernameHash = usernameHash(username);
-        if (capToken == null
-                || toEpochMillis(capToken.getExpiresAt()) <= System.currentTimeMillis()) {
+        int consumed =
+                requireUsernameBinding
+                        ? consumeBoundToken(tokenKey, expectedUsernameHash)
+                        : tokenRepository.consume(
+                                tokenKey, toLocalDateTime(System.currentTimeMillis()));
+        if (consumed != 1) {
             throw new PowChallengeException("安全验证已失效，请重试");
         }
-        if (requireUsernameBinding
-                && (expectedUsernameHash == null
-                        || !expectedUsernameHash.equals(capToken.getUsernameHash()))) {
+    }
+
+    private int consumeBoundToken(String tokenKey, @Nullable String expectedUsernameHash) {
+        if (expectedUsernameHash == null) {
             throw new PowChallengeException("安全验证已失效，请重试");
         }
-        tokenRepository.deleteById(tokenKey);
+        return tokenRepository.consume(
+                tokenKey, expectedUsernameHash, toLocalDateTime(System.currentTimeMillis()));
     }
 
     private Map<String, Object> redeemFailure(String message) {

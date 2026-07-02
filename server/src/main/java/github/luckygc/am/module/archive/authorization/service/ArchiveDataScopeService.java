@@ -34,6 +34,8 @@ import github.luckygc.am.module.archive.mapper.ArchiveSqlCondition;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFieldDto;
+import github.luckygc.am.module.authentication.AuthenticationUser;
+import github.luckygc.am.module.authentication.repository.AuthenticationUserDataRepository;
 import github.luckygc.am.module.authorization.AuthorizationRole;
 import github.luckygc.am.module.authorization.AuthorizationUserRoleRelation;
 import github.luckygc.am.module.authorization.repository.AuthorizationRoleDataRepository;
@@ -48,6 +50,7 @@ public class ArchiveDataScopeService {
     private final ArchiveDataScopeSubjectRelationDataRepository subjectRelationRepository;
     private final AuthorizationRoleDataRepository roleRepository;
     private final AuthorizationUserRoleRelationDataRepository userRoleRelationRepository;
+    private final AuthenticationUserDataRepository authenticationUserRepository;
     private final ArchiveMetadataService archiveMetadataService;
 
     public ArchiveDataScopeService(
@@ -56,12 +59,14 @@ public class ArchiveDataScopeService {
             ArchiveDataScopeSubjectRelationDataRepository subjectRelationRepository,
             AuthorizationRoleDataRepository roleRepository,
             AuthorizationUserRoleRelationDataRepository userRoleRelationRepository,
+            AuthenticationUserDataRepository authenticationUserRepository,
             ArchiveMetadataService archiveMetadataService) {
         this.dataScopeRepository = dataScopeRepository;
         this.dimensionRepository = dimensionRepository;
         this.subjectRelationRepository = subjectRelationRepository;
         this.roleRepository = roleRepository;
         this.userRoleRelationRepository = userRoleRelationRepository;
+        this.authenticationUserRepository = authenticationUserRepository;
         this.archiveMetadataService = archiveMetadataService;
     }
 
@@ -166,6 +171,13 @@ public class ArchiveDataScopeService {
 
     @Transactional
     public UserArchiveDataScopesResponse saveUserDataScopes(Long userId, List<Long> scopeIds) {
+        AuthenticationUser user =
+                authenticationUserRepository
+                        .findById(userId)
+                        .orElseThrow(() -> new BadRequestException("用户不存在", "userId", "用户不存在"));
+        if (!user.isEnabled()) {
+            throw new BadRequestException("用户已停用", "userId", "用户已停用");
+        }
         List<Long> normalizedScopeIds =
                 scopeIds.stream().filter(Objects::nonNull).distinct().sorted().toList();
         for (Long scopeId : normalizedScopeIds) {
