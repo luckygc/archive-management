@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vite-plus/test";
 
-import { getCurrentUser, login } from "./authentication";
+import { getCurrentUser, login, resetLoginFailureLimit } from "./authentication";
 
 const httpClientMock = vi.hoisted(() => ({
     delete: vi.fn(),
@@ -53,5 +53,15 @@ describe("authentication API", () => {
         expect(body.get("username")).toBe("admin");
         expect(body.get("password")).toBe("secret");
         expect(body.get("powToken")).toBe("pow-token-1");
+    });
+
+    it("resets login failure limit by username", async () => {
+        httpClientMock.post.mockResolvedValue(undefined);
+
+        await resetLoginFailureLimit("admin@example.com");
+
+        expect(httpClientMock.post).toHaveBeenCalledWith(
+            "/api/v1/login-failure-limits/admin%40example.com:reset",
+        );
     });
 });

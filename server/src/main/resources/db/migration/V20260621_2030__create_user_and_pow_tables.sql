@@ -70,7 +70,6 @@ create table am_authentication_cap_challenge
     challenge_count integer   not null,
     challenge_size  integer   not null,
     difficulty      integer   not null,
-    username_hash   varchar(64),
     expires_at      timestamp not null,
     created_at      timestamp not null default localtimestamp
 );
@@ -82,14 +81,12 @@ comment on column am_authentication_cap_challenge.token is 'Cap challenge token�
 comment on column am_authentication_cap_challenge.challenge_count is 'Cap challenge.c，挑战数量';
 comment on column am_authentication_cap_challenge.challenge_size is 'Cap challenge.s，单个挑战 salt 长度';
 comment on column am_authentication_cap_challenge.difficulty is 'Cap challenge.d，目标前缀长度';
-comment on column am_authentication_cap_challenge.username_hash is '绑定登录名哈希，用于动态 PoW 难度校验';
 comment on column am_authentication_cap_challenge.expires_at is 'challenge 过期时间';
 comment on column am_authentication_cap_challenge.created_at is '创建时间';
 
 create table am_authentication_cap_token
 (
     token_key     varchar(81) primary key,
-    username_hash varchar(64),
     expires_at    timestamp not null,
     created_at    timestamp not null default localtimestamp
 );
@@ -98,7 +95,6 @@ create index idx_am_authentication_cap_token_expires_at on am_authentication_cap
 
 comment on table am_authentication_cap_token is 'Cap 登录工作量证明已兑换令牌表';
 comment on column am_authentication_cap_token.token_key is 'Cap token key，格式为 id:sha256(vertoken)';
-comment on column am_authentication_cap_token.username_hash is '绑定登录名哈希，用于登录时校验 challenge 上下文';
 comment on column am_authentication_cap_token.expires_at is 'token 过期时间';
 comment on column am_authentication_cap_token.created_at is '创建时间';
 

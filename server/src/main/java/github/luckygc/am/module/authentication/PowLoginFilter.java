@@ -40,8 +40,7 @@ public class PowLoginFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         try {
             failureLimitService.assertLoginAllowed(request.getParameter("username"));
-            powChallengeService.consumeToken(
-                    request.getParameter("powToken"), request.getParameter("username"));
+            powChallengeService.consumeToken(request.getParameter("powToken"));
             filterChain.doFilter(request, response);
         } catch (LoginBlockedException ex) {
             response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());

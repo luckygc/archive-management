@@ -85,6 +85,9 @@ catalogs:
 overrides:
   vite: npm:@voidzero-dev/vite-plus-core@latest
 
+patchedDependencies:
+  cap-widget@0.1.56: f15c10a9010c39180e0cf9eb1f4938cb8381c6801b6a3265e1ee66ca3e469b28
+
 importers:
 
   .:
@@ -100,7 +103,7 @@ importers:
         version: 1.18.1
       cap-widget:
         specifier: 'catalog:'
-        version: 0.1.56
+        version: 0.1.56(patch_hash=f15c10a9010c39180e0cf9eb1f4938cb8381c6801b6a3265e1ee66ca3e469b28)
       react:
         specifier: 'catalog:'
         version: 19.2.7
@@ -134,7 +137,7 @@ importers:
         version: 5.42.3(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       cap-widget:
         specifier: 'catalog:'
-        version: 0.1.56
+        version: 0.1.56(patch_hash=f15c10a9010c39180e0cf9eb1f4938cb8381c6801b6a3265e1ee66ca3e469b28)
       react:
         specifier: 'catalog:'
         version: 19.2.7
@@ -195,7 +198,7 @@ importers:
         version: 6.4.5(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       cap-widget:
         specifier: 'catalog:'
-        version: 0.1.56
+        version: 0.1.56(patch_hash=f15c10a9010c39180e0cf9eb1f4938cb8381c6801b6a3265e1ee66ca3e469b28)
       dayjs:
         specifier: 'catalog:'
         version: 1.11.21
@@ -4368,7 +4371,7 @@ snapshots:
 
   callsites@3.1.0: {}
 
-  cap-widget@0.1.56: {}
+  cap-widget@0.1.56(patch_hash=f15c10a9010c39180e0cf9eb1f4938cb8381c6801b6a3265e1ee66ca3e469b28): {}
 
   chai@6.2.2: {}
 

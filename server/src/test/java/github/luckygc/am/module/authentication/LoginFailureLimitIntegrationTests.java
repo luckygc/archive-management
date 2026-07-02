@@ -41,7 +41,7 @@ import github.luckygc.am.test.PostgreSqlContainerTest;
             "archive.authentication.login-failure-limit.max-failures=2",
             "archive.authentication.login-failure-limit.initial-lock-duration=5m",
             "archive.authentication.login-failure-limit.multiplier=3",
-            "archive.authentication.login-failure-limit.max-lock-duration=24h"
+            "archive.authentication.login-failure-limit.max-lock-duration=30m"
         })
 @AutoConfigureMockMvc
 @DisplayName("登录失败限制")
@@ -59,8 +59,8 @@ class LoginFailureLimitIntegrationTests extends PostgreSqlContainerTest {
     }
 
     @Test
-    @DisplayName("连续失败后不锁定登录名但 CAP 难度只上浮一档")
-    void failuresIncreaseFollowingCapDifficultyWithoutLockingUsername() throws Exception {
+    @DisplayName("连续失败后锁定登录名但不提高 CAP 难度")
+    void failuresLockUsernameWithoutIncreasingCapDifficulty() throws Exception {
         login("admin", "wrong-password", loginToken()).andExpect(status().isUnauthorized());
         login("admin", "wrong-password", loginToken()).andExpect(status().isUnauthorized());
 
@@ -68,11 +68,12 @@ class LoginFailureLimitIntegrationTests extends PostgreSqlContainerTest {
                 powChallengeService.createChallenge(
                         new PowChallengeService.CapChallengeRequest("admin"));
 
-        assertThat(challenge.challenge().d()).isEqualTo(5);
+        assertThat(challenge.challenge().d()).isEqualTo(4);
+        login("admin", "Admin123!", loginToken()).andExpect(status().isTooManyRequests());
     }
 
     @Test
-    @DisplayName("未锁定时登录成功清除历史失败限制状态")
+    @DisplayName("登录成功清除历史失败限制状态")
     void successfulLoginClearsFailureLimitState() throws Exception {
         LoginFailureLimit limit = new LoginFailureLimit();
         limit.setUsername("admin");
@@ -89,14 +90,14 @@ class LoginFailureLimitIntegrationTests extends PostgreSqlContainerTest {
     }
 
     @Test
-    @DisplayName("未绑定登录名的 CAP token 不能用于登录")
-    void unboundCapTokenCannotBeUsedForLogin() throws Exception {
+    @DisplayName("未绑定登录名的 CAP token 可以用于登录")
+    void unboundCapTokenCanBeUsedForLogin() throws Exception {
         String unboundToken = unboundLoginToken();
 
-        login("admin", "Admin123!", unboundToken).andExpect(status().isUnauthorized());
+        login("admin", "Admin123!", unboundToken).andExpect(status().isOk());
 
         assertThat(powChallengeService.validateToken(unboundToken, true).get("success"))
-                .isEqualTo(true);
+                .isEqualTo(false);
     }
 
     private org.springframework.test.web.servlet.ResultActions login(

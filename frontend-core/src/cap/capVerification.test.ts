@@ -1,10 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
-import { capFetch, capWidgetApiEndpoint, setCapChallengeContext } from "./capVerification";
+import { capFetch, capWidgetApiEndpoint } from "./capVerification";
 
 describe("capFetch", () => {
     afterEach(() => {
-        setCapChallengeContext({});
         vi.unstubAllGlobals();
     });
 
@@ -48,11 +47,8 @@ describe("capFetch", () => {
         expect(requests).toEqual(["/api/v1/me"]);
     });
 
-    it("adds login risk context to cap challenge requests", async () => {
+    it("does not attach username context to cap challenge requests", async () => {
         const requestBodies: string[] = [];
-        setCapChallengeContext({
-            username: "admin",
-        });
         vi.stubGlobal(
             "fetch",
             vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -65,9 +61,7 @@ describe("capFetch", () => {
 
         await capFetch(`${capWidgetApiEndpoint()}challenge`, { method: "POST" });
 
-        expect(JSON.parse(requestBodies[0])).toEqual({
-            username: "admin",
-        });
+        expect(requestBodies[0]).toBe("undefined");
     });
 });
 

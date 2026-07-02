@@ -28,22 +28,18 @@ public class PowChallengeService {
     private static final int DEFAULT_CHALLENGE_COUNT = 50;
     private static final int DEFAULT_CHALLENGE_SIZE = 32;
     private static final int DEFAULT_CHALLENGE_DIFFICULTY = 4;
-    private static final int MAX_CHALLENGE_DIFFICULTY = 6;
     private static final long CHALLENGE_EXPIRES_MS = 600_000L;
     private static final long TOKEN_EXPIRES_MS = 20 * 60 * 1000L;
 
     private final AuthenticationCapChallengeDataRepository challengeRepository;
     private final AuthenticationCapTokenDataRepository tokenRepository;
-    private final LoginFailureLimitService failureLimitService;
     private final SecureRandom secureRandom = new SecureRandom();
 
     public PowChallengeService(
             AuthenticationCapChallengeDataRepository challengeRepository,
-            AuthenticationCapTokenDataRepository tokenRepository,
-            LoginFailureLimitService failureLimitService) {
+            AuthenticationCapTokenDataRepository tokenRepository) {
         this.challengeRepository = challengeRepository;
         this.tokenRepository = tokenRepository;
-        this.failureLimitService = failureLimitService;
     }
 
     @Transactional
@@ -55,25 +51,20 @@ public class PowChallengeService {
     public CapChallengeResponse createChallenge(@Nullable CapChallengeRequest request) {
         String token = randomHex(25);
         long expires = System.currentTimeMillis() + CHALLENGE_EXPIRES_MS;
-        String username = request == null ? null : request.username();
-        String usernameHash = usernameHash(username);
-        int difficulty =
-                request == null
-                        ? DEFAULT_CHALLENGE_DIFFICULTY
-                        : failureLimitService.difficulty(
-                                username, DEFAULT_CHALLENGE_DIFFICULTY, MAX_CHALLENGE_DIFFICULTY);
 
         AuthenticationCapChallenge challenge = new AuthenticationCapChallenge();
         challenge.setToken(token);
         challenge.setChallengeCount(DEFAULT_CHALLENGE_COUNT);
         challenge.setChallengeSize(DEFAULT_CHALLENGE_SIZE);
-        challenge.setDifficulty(difficulty);
-        challenge.setUsernameHash(usernameHash);
+        challenge.setDifficulty(DEFAULT_CHALLENGE_DIFFICULTY);
         challenge.setExpiresAt(toLocalDateTime(expires));
         challengeRepository.insert(challenge);
 
         return new CapChallengeResponse(
-                new CapChallenge(DEFAULT_CHALLENGE_COUNT, DEFAULT_CHALLENGE_SIZE, difficulty),
+                new CapChallenge(
+                        DEFAULT_CHALLENGE_COUNT,
+                        DEFAULT_CHALLENGE_SIZE,
+                        DEFAULT_CHALLENGE_DIFFICULTY),
                 token,
                 expires);
     }
@@ -113,7 +104,6 @@ public class PowChallengeService {
 
         AuthenticationCapToken capToken = new AuthenticationCapToken();
         capToken.setTokenKey(tokenKey);
-        capToken.setUsernameHash(challenge.getUsernameHash());
         capToken.setExpiresAt(toLocalDateTime(expires));
         tokenRepository.insert(capToken);
 
@@ -131,7 +121,7 @@ public class PowChallengeService {
         }
 
         try {
-            consumeTokenInCurrentTransaction(token, null, false);
+            consumeTokenInCurrentTransaction(token);
             return validationResult(true);
         } catch (PowChallengeException ex) {
             return validationResult(false);
@@ -140,38 +130,25 @@ public class PowChallengeService {
 
     @Transactional
     public void consumeToken(@Nullable String token) {
-        consumeTokenInCurrentTransaction(token, null, true);
+        consumeTokenInCurrentTransaction(token);
     }
 
     @Transactional
     public void consumeToken(@Nullable String token, @Nullable String username) {
-        consumeTokenInCurrentTransaction(token, username, true);
+        consumeTokenInCurrentTransaction(token);
     }
 
-    private void consumeTokenInCurrentTransaction(
-            @Nullable String token, @Nullable String username, boolean requireUsernameBinding) {
+    private void consumeTokenInCurrentTransaction(@Nullable String token) {
         String tokenKey = tokenKey(token);
         if (tokenKey == null) {
             throw new PowChallengeException("安全验证已失效，请重试");
         }
 
-        String expectedUsernameHash = usernameHash(username);
         int consumed =
-                requireUsernameBinding
-                        ? consumeBoundToken(tokenKey, expectedUsernameHash)
-                        : tokenRepository.consume(
-                                tokenKey, toLocalDateTime(System.currentTimeMillis()));
+                tokenRepository.consume(tokenKey, toLocalDateTime(System.currentTimeMillis()));
         if (consumed != 1) {
             throw new PowChallengeException("安全验证已失效，请重试");
         }
-    }
-
-    private int consumeBoundToken(String tokenKey, @Nullable String expectedUsernameHash) {
-        if (expectedUsernameHash == null) {
-            throw new PowChallengeException("安全验证已失效，请重试");
-        }
-        return tokenRepository.consume(
-                tokenKey, expectedUsernameHash, toLocalDateTime(System.currentTimeMillis()));
     }
 
     private Map<String, Object> redeemFailure(String message) {
@@ -289,11 +266,6 @@ public class PowChallengeService {
     public record CapChallengeResponse(CapChallenge challenge, String token, long expires) {}
 
     public record CapChallenge(int c, int s, int d) {}
-
-    private @Nullable String usernameHash(@Nullable String username) {
-        String normalized = StringUtils.trimToNull(username);
-        return normalized == null ? null : sha256Hex(normalized);
-    }
 
     public record CapChallengeRequest(@Nullable String username) {}
 

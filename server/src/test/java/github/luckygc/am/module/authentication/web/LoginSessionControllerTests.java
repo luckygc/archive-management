@@ -19,6 +19,7 @@ import github.luckygc.am.common.api.CursorPageRequest;
 import github.luckygc.am.common.api.CursorPageTokenContext;
 import github.luckygc.am.module.authentication.ArchiveUserDetails;
 import github.luckygc.am.module.authentication.service.AuthenticationAuditService;
+import github.luckygc.am.module.authentication.service.LoginFailureLimitService;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionCode;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
 
@@ -32,7 +33,8 @@ class LoginSessionControllerTests {
         AuthorizationPermissionService permissionService =
                 mock(AuthorizationPermissionService.class);
         LoginSessionController controller =
-                new LoginSessionController(auditService, permissionService);
+                new LoginSessionController(
+                        auditService, mock(LoginFailureLimitService.class), permissionService);
         UsernamePasswordAuthenticationToken authentication = authentication(7L);
         when(permissionService.hasPermission(
                         7L, AuthorizationPermissionCode.AUTHENTICATION_SESSION_MANAGE.code()))
@@ -59,7 +61,8 @@ class LoginSessionControllerTests {
         AuthorizationPermissionService permissionService =
                 mock(AuthorizationPermissionService.class);
         LoginSessionController controller =
-                new LoginSessionController(auditService, permissionService);
+                new LoginSessionController(
+                        auditService, mock(LoginFailureLimitService.class), permissionService);
         UsernamePasswordAuthenticationToken authentication = authentication(7L);
         when(permissionService.hasPermission(
                         7L, AuthorizationPermissionCode.AUTHENTICATION_AUDIT_READ.code()))
@@ -90,7 +93,8 @@ class LoginSessionControllerTests {
         AuthorizationPermissionService permissionService =
                 mock(AuthorizationPermissionService.class);
         LoginSessionController controller =
-                new LoginSessionController(auditService, permissionService);
+                new LoginSessionController(
+                        auditService, mock(LoginFailureLimitService.class), permissionService);
         UsernamePasswordAuthenticationToken authentication = authentication(7L);
         HttpServletRequest request = mock(HttpServletRequest.class);
         when(permissionService.hasPermission(
@@ -104,6 +108,25 @@ class LoginSessionControllerTests {
                 authentication);
 
         verify(auditService).revokeSession("target-session", request, authentication);
+    }
+
+    @Test
+    @DisplayName("重置登录失败限制时要求会话管理权限")
+    void resetLoginFailureLimitShouldRequireSessionManagePermission() {
+        AuthenticationAuditService auditService = mock(AuthenticationAuditService.class);
+        LoginFailureLimitService failureLimitService = mock(LoginFailureLimitService.class);
+        AuthorizationPermissionService permissionService =
+                mock(AuthorizationPermissionService.class);
+        LoginSessionController controller =
+                new LoginSessionController(auditService, failureLimitService, permissionService);
+        UsernamePasswordAuthenticationToken authentication = authentication(7L);
+        when(permissionService.hasPermission(
+                        7L, AuthorizationPermissionCode.AUTHENTICATION_SESSION_MANAGE.code()))
+                .thenReturn(true);
+
+        controller.resetLoginFailureLimit("admin", authentication);
+
+        verify(failureLimitService).clear("admin");
     }
 
     private static CursorPageRequest pageRequest() {

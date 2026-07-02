@@ -20,9 +20,6 @@ public class AuthenticationCapToken {
     @Column(name = "token_key", length = 81)
     private String tokenKey;
 
-    @Column(name = "username_hash", length = 64)
-    private String usernameHash;
-
     @Column(name = "expires_at", nullable = false)
     private LocalDateTime expiresAt;
 

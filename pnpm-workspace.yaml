@@ -49,3 +49,6 @@ catalog:
 
 minimumReleaseAgeExclude:
     - "@ant-design/cli@6.5.0"
+
+patchedDependencies:
+    cap-widget@0.1.56: patches/cap-widget@0.1.56.patch

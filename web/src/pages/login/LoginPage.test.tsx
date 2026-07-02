@@ -83,4 +83,32 @@ describe("LoginPage", () => {
             expect(navigate).toHaveBeenCalledWith("/archive/library", { replace: true });
         });
     });
+
+    it("keeps completed CAP verification after username changes", async () => {
+        render(
+            <AppProviders>
+                <LoginPage />
+            </AppProviders>,
+        );
+        const reset = vi.fn();
+        Object.assign(screen.getByTestId("cap-widget"), {
+            reset,
+        });
+
+        fireEvent.change(screen.getByLabelText("账号"), { target: { value: "admin" } });
+        fireEvent(
+            screen.getByTestId("cap-widget"),
+            new CustomEvent("solve", {
+                bubbles: true,
+                detail: {
+                    token: "pow-token-1",
+                },
+            }),
+        );
+
+        fireEvent.change(screen.getByLabelText("账号"), { target: { value: "operator" } });
+
+        expect(reset).not.toHaveBeenCalled();
+        expect(screen.getByText("安全验证已完成")).toBeInTheDocument();
+    });
 });

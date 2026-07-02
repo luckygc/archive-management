@@ -68,16 +68,31 @@
 - **AND** 请求 SHALL 支持按事件类型、用户名、关键字和时间范围筛选
 - **AND** 日志 SHALL 按发生时间倒序、ID 倒序稳定排序
 
-### Requirement: 登录失败 PoW 风控
+### Requirement: 登录失败限制
 
-系统 SHALL 对同一登录名在时间窗口内连续登录失败进行风险记录，并按风险动态提高 CAP 难度，不因失败次数直接锁定账号。
+系统 SHALL 对同一登录名在时间窗口内连续登录失败进行状态记录，达到阈值后临时禁止该登录名继续登录；CAP 难度 SHALL 保持固定，不按登录名失败状态动态提高。
 
-#### Scenario: 失败次数提高 CAP 难度
+#### Scenario: 失败次数触发临时禁止登录
 
-- **GIVEN** 同一登录名存在失败风险
-- **WHEN** 客户端请求 `POST /api/v1/cap-challenges` 并提交登录名
-- **THEN** 系统 SHALL 返回高于默认难度的 CAP challenge
-- **AND** 兑换出的 CAP token SHALL 绑定该登录名
+- **GIVEN** 同一登录名在失败窗口内连续失败达到阈值
+- **WHEN** 客户端继续使用该登录名请求 `POST /api/v1/login-sessions`
+- **THEN** 系统 SHALL 返回 `429 Too Many Requests`
+- **AND** 响应体 SHALL 包含可再次登录时间
+- **AND** 后续 CAP challenge SHALL 继续使用默认难度
+
+#### Scenario: 登录禁止时间指数递增并封顶
+
+- **GIVEN** 同一登录名多次达到失败阈值
+- **WHEN** 系统计算下一次登录禁止时间
+- **THEN** 登录禁止时间 SHALL 按历史锁定次数指数递增
+- **AND** 登录禁止时间 SHALL NOT 超过 30 分钟
+
+#### Scenario: 管理员重置登录失败状态
+
+- **GIVEN** 管理员拥有登录会话管理权限
+- **WHEN** 管理员请求 `POST /api/v1/login-failure-limits/{username}:reset`
+- **THEN** 系统 SHALL 清除该登录名的失败状态
+- **AND** 响应状态 SHALL 为 `204 No Content`
 
 #### Scenario: 登录成功清除失败限制
 

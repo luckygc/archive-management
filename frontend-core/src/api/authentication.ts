@@ -51,6 +51,12 @@ export function deleteLoginSession(sessionId: string) {
     return httpClient.delete<void>(`/api/v1/login-sessions/${encodeURIComponent(sessionId)}`);
 }
 
+export function resetLoginFailureLimit(username: string) {
+    return httpClient.post<void>(
+        `/api/v1/login-failure-limits/${encodeURIComponent(username)}:reset`,
+    );
+}
+
 export function listAuthenticationEvents(params: ListAuthenticationEventsParams = {}) {
     return httpClient.get<CursorPageDto<AuthenticationEventDto>>(
         `/api/v1/authentication-events${queryString(params)}`,

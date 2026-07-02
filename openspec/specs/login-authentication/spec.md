@@ -18,19 +18,19 @@
 - **AND** `challenge` SHALL 包含挑战数量 `c`、挑战尺寸 `s` 和难度 `d`
 - **AND** challenge 默认有效期 SHALL 为 10 分钟
 
-#### Scenario: 按登录风险提高安全验证难度
+#### Scenario: 安全验证难度固定
 
-- **GIVEN** 系统存在某登录名的失败风险状态
-- **WHEN** 客户端请求 `POST /api/v1/cap-challenges` 并提交登录名
-- **THEN** 系统 SHALL 基于登录名失败风险计算 challenge 难度 `d`
-- **AND** 风险命中时 challenge 难度 SHALL 高于默认难度
+- **GIVEN** 系统存在任意登录名的失败状态
+- **WHEN** 客户端请求 `POST /api/v1/cap-challenges`
+- **THEN** 系统 SHALL 返回默认 CAP challenge 难度
+- **AND** 系统 SHALL NOT 基于登录名、失败次数或锁定状态提高 CAP challenge 难度
 
-#### Scenario: 安全验证令牌绑定登录名
+#### Scenario: 安全验证令牌不绑定登录名
 
-- **GIVEN** 客户端创建 CAP challenge 时提交了登录名
-- **WHEN** 客户端兑换 CAP token 并使用该 token 登录
-- **THEN** 系统 SHALL 校验 CAP token 绑定的登录名与本次登录名一致
-- **AND** 未绑定登录名或绑定到其他登录名的 CAP token SHALL NOT 用于账号密码登录
+- **GIVEN** 客户端兑换得到有效 CAP token
+- **WHEN** 客户端使用该 token 提交账号密码登录
+- **THEN** 系统 SHALL 只校验 CAP token 自身是否有效且未被消费
+- **AND** 系统 SHALL NOT 校验 CAP token 与本次登录名是否一致
 
 #### Scenario: 兑换安全验证令牌
 
@@ -99,30 +99,43 @@
 - **AND** 响应体 SHALL 为文本 `账号或密码错误`
 - **AND** 已提交的 `powToken` SHALL 被消费
 
-### Requirement: 登录失败 PoW 风控
+### Requirement: 登录失败限制
 
-系统 SHALL 按登录名维护登录失败风险，并通过动态提高登录前安全验证成本限制机器暴力破解。
+系统 SHALL 按登录名维护登录失败状态，并在连续失败达到阈值后临时禁止该登录名继续登录；CAP 仅用于提高机器暴力破解成本，不承载账号维度风控。
 
-#### Scenario: 记录登录名风险
+#### Scenario: 记录登录失败状态
 
 - **WHEN** 用户通过 `POST /api/v1/login-sessions` 登录失败
-- **THEN** 系统 SHALL 按提交的登录名记录失败风险状态
-- **AND** 登录名风险状态 SHALL 用于提高后续 CAP challenge 难度
+- **THEN** 系统 SHALL 按提交的登录名记录失败状态
 - **AND** 登录成功后系统 SHALL 清除该登录名的失败风险状态
 
-#### Scenario: 登录失败不锁定账号
+#### Scenario: 连续失败后临时禁止登录
 
 - **GIVEN** 某登录名在失败窗口内连续失败达到阈值
-- **WHEN** 客户端使用绑定该登录名的有效 CAP token 和正确密码请求登录
-- **THEN** 系统 SHALL NOT 因历史失败次数拒绝登录
-- **AND** 系统 SHALL 清除该登录名的失败风险状态
-
-#### Scenario: 防止低难度 PoW 绕过
-
-- **GIVEN** 某登录名已存在失败风险状态
-- **WHEN** 客户端使用未绑定登录名或绑定其他登录名的 CAP token 请求登录
+- **WHEN** 客户端继续使用该登录名请求 `POST /api/v1/login-sessions`
 - **THEN** 系统 SHALL 拒绝登录
-- **AND** 系统 SHALL NOT 校验密码
+- **AND** 响应状态 SHALL 为 `429 Too Many Requests`
+- **AND** 响应体 SHALL 包含可再次登录时间
+
+#### Scenario: 登录禁止时间指数递增并封顶
+
+- **GIVEN** 某登录名多次达到登录失败阈值
+- **WHEN** 系统计算下一次登录禁止时间
+- **THEN** 系统 SHALL 按历史锁定次数指数递增禁止时长
+- **AND** 禁止时长 SHALL NOT 超过 30 分钟
+
+#### Scenario: 管理员重置登录失败状态
+
+- **GIVEN** 管理员拥有登录会话管理权限
+- **WHEN** 管理员请求 `POST /api/v1/login-failure-limits/{username}:reset`
+- **THEN** 系统 SHALL 清除 `{username}` 对应的登录失败状态
+- **AND** 响应状态 SHALL 为 `204 No Content`
+
+#### Scenario: 无权限禁止重置登录失败状态
+
+- **WHEN** 未拥有登录会话管理权限的用户请求 `POST /api/v1/login-failure-limits/{username}:reset`
+- **THEN** 系统 SHALL 拒绝请求
+- **AND** 响应状态 SHALL 为 `403 Forbidden`
 
 ### Requirement: 用户认证数据
 

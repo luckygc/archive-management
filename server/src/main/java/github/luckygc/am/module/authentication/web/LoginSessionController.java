@@ -16,6 +16,7 @@ import org.springframework.security.web.authentication.logout.SecurityContextLog
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
@@ -26,6 +27,7 @@ import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.common.security.AuthenticatedUser;
 import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.authentication.service.AuthenticationAuditService;
+import github.luckygc.am.module.authentication.service.LoginFailureLimitService;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionCode;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
 
@@ -33,14 +35,17 @@ import github.luckygc.am.module.authorization.service.AuthorizationPermissionSer
 public class LoginSessionController {
 
     private final AuthenticationAuditService authenticationAuditService;
+    private final LoginFailureLimitService failureLimitService;
     private final AuthorizationPermissionService permissionService;
     private final SecurityContextLogoutHandler securityContextLogoutHandler =
             new SecurityContextLogoutHandler();
 
     public LoginSessionController(
             AuthenticationAuditService authenticationAuditService,
+            LoginFailureLimitService failureLimitService,
             AuthorizationPermissionService permissionService) {
         this.authenticationAuditService = authenticationAuditService;
+        this.failureLimitService = failureLimitService;
         this.permissionService = permissionService;
     }
 
@@ -72,6 +77,15 @@ public class LoginSessionController {
         requirePermission(
                 authentication, AuthorizationPermissionCode.AUTHENTICATION_SESSION_MANAGE);
         authenticationAuditService.revokeSession(session, request, authentication);
+    }
+
+    @PostMapping("/api/v1/login-failure-limits/{username}:reset")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void resetLoginFailureLimit(
+            @PathVariable String username, Authentication authentication) {
+        requirePermission(
+                authentication, AuthorizationPermissionCode.AUTHENTICATION_SESSION_MANAGE);
+        failureLimitService.clear(username);
     }
 
     @GetMapping("/api/v1/authentication-events")
