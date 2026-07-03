@@ -196,7 +196,7 @@ export function AppShell() {
                             trigger={["click"]}
                         >
                             <Button icon={<UserOutlined />} type="text">
-                                {currentUser?.displayName ?? currentUser?.username}
+                                {currentUser?.displayName || "-"}
                             </Button>
                         </Dropdown>
                     </Space>

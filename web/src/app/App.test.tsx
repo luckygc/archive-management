@@ -75,6 +75,15 @@ describe("React 主前端壳层", () => {
         expect(screen.getByRole("menuitem", { name: /系统配置/ })).toBeTruthy();
     });
 
+    it("顶部用户区不把空显示名称回退为登录名", async () => {
+        stubCurrentUserSession({ ...currentUser, displayName: "" });
+
+        render(<App />);
+
+        expect(await screen.findByRole("heading", { name: "工作台" })).toBeTruthy();
+        expect(screen.queryByText("admin")).toBeNull();
+    });
+
     it("keeps archive route state when switching page tabs", async () => {
         render(<App />);
 

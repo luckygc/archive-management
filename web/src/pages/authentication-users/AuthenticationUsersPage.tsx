@@ -183,8 +183,8 @@ export function AuthenticationUsersPage() {
                 id: editingUserId,
                 payload: {
                     displayName: values.displayName,
-                    email: values.email || undefined,
-                    mobilePhone: values.mobilePhone || undefined,
+                    email: values.email ?? null,
+                    mobilePhone: values.mobilePhone ?? null,
                     departmentId: values.departmentId ?? null,
                     enabled: values.enabled,
                 },
@@ -376,7 +376,13 @@ export function AuthenticationUsersPage() {
                                 <Form.Item
                                     name="username"
                                     label="登录名"
-                                    rules={[{ required: true, message: "请输入登录名" }]}
+                                    rules={[
+                                        {
+                                            required: true,
+                                            whitespace: true,
+                                            message: "请输入登录名",
+                                        },
+                                    ]}
                                 >
                                     <Input placeholder="例如：zhangsan" />
                                 </Form.Item>
@@ -392,7 +398,13 @@ export function AuthenticationUsersPage() {
                         <Form.Item
                             name="displayName"
                             label="显示名称"
-                            rules={[{ required: true, message: "请输入显示名称" }]}
+                            rules={[
+                                {
+                                    required: true,
+                                    whitespace: true,
+                                    message: "请输入显示名称",
+                                },
+                            ]}
                         >
                             <Input placeholder="例如：张三" />
                         </Form.Item>

@@ -448,7 +448,7 @@ export interface RoleSummaryDto {
 export interface CreateAuthenticationUserRequest {
     username: string;
     password: string;
-    displayName?: string;
+    displayName: string;
     email?: string;
     mobilePhone?: string;
     departmentId?: number | null;
@@ -456,8 +456,8 @@ export interface CreateAuthenticationUserRequest {
 
 export interface UpdateAuthenticationUserRequest {
     displayName?: string;
-    email?: string;
-    mobilePhone?: string;
+    email?: string | null;
+    mobilePhone?: string | null;
     departmentId?: number | null;
     enabled?: boolean;
 }

@@ -134,7 +134,7 @@ public class LoginSessionController {
             String displayName =
                     authentication.getPrincipal() instanceof AuthenticatedUser userDetails
                             ? userDetails.displayName()
-                            : username;
+                            : "";
             return new CurrentUserDto(sessionId, username, displayName, roles);
         }
     }

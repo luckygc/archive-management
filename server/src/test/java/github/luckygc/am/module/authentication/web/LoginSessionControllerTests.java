@@ -1,5 +1,6 @@
 package github.luckygc.am.module.authentication.web;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -127,6 +128,19 @@ class LoginSessionControllerTests {
         controller.resetLoginFailureLimit("admin", authentication);
 
         verify(failureLimitService).clear("admin");
+    }
+
+    @Test
+    @DisplayName("当前用户 displayName 不回退到 username")
+    void currentUserShouldNotFallbackDisplayNameToUsername() {
+        UsernamePasswordAuthenticationToken authentication =
+                UsernamePasswordAuthenticationToken.authenticated("zhangsan", "N/A", List.of());
+
+        LoginSessionController.CurrentUserDto currentUser =
+                LoginSessionController.CurrentUserDto.from(authentication, "session-1");
+
+        assertThat(currentUser.username()).isEqualTo("zhangsan");
+        assertThat(currentUser.displayName()).isEmpty();
     }
 
     private static CursorPageRequest pageRequest() {

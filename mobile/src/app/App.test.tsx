@@ -35,6 +35,15 @@ describe("移动端门户", () => {
         expect(screen.getByText("档案查询")).toBeTruthy();
     });
 
+    it("移动门户不把空显示名称回退为登录名", async () => {
+        stubCurrentUserSession({ ...currentUser, displayName: "" });
+
+        render(<App />);
+
+        expect(await screen.findByText("移动门户")).toBeTruthy();
+        expect(screen.queryByText("admin")).toBeNull();
+    });
+
     it("未登录时跳转到移动端登录页", async () => {
         stubUnauthenticatedSession();
         window.location.hash = "#/approval/tasks";

@@ -140,8 +140,11 @@ public class AuthenticationUserManagementController {
 
     private @Nullable String nullableText(JsonNode request, String fieldName) {
         JsonNode value = request.get(fieldName);
-        if (value == null || value.isNull()) {
+        if (value == null) {
             return null;
+        }
+        if (value.isNull()) {
+            return "";
         }
         if (!value.isTextual()) {
             throw new BadRequestException(fieldName + "不合法", fieldName, fieldName + "不合法");

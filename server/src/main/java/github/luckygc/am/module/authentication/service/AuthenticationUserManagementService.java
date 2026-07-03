@@ -95,28 +95,27 @@ public class AuthenticationUserManagementService {
     public AuthenticationUserDto createUser(
             CreateAuthenticationUserRequest request, Long operatorUserId) {
         requireUserManage(operatorUserId);
-        if (StringUtils.isBlank(request.username())) {
+        String username = StringUtils.trimToNull(request.username());
+        String displayName = StringUtils.trimToNull(request.displayName());
+        if (username == null) {
             throw new BadRequestException("用户名不能为空", "username", "用户名不能为空");
         }
         if (StringUtils.isBlank(request.password())) {
             throw new BadRequestException("密码不能为空", "password", "密码不能为空");
         }
-        if (userRepository.findOptionalByUsername(request.username().trim()) != null) {
+        if (displayName == null) {
+            throw new BadRequestException("显示名称不能为空", "displayName", "显示名称不能为空");
+        }
+        if (userRepository.findOptionalByUsername(username) != null) {
             throw new BadRequestException(
-                    "用户名已存在", "username", "用户名 " + request.username() + " 已存在");
+                    "用户名已存在", "username", "用户名 " + username + " 已存在");
         }
         AuthenticationUser user = new AuthenticationUser();
-        user.setUsername(request.username().trim());
+        user.setUsername(username);
         user.setPassword(passwordEncoder.encode(request.password()));
-        user.setDisplayName(
-                StringUtils.isNotBlank(request.displayName())
-                        ? request.displayName().trim()
-                        : request.username().trim());
-        user.setEmail(StringUtils.isNotBlank(request.email()) ? request.email().trim() : null);
-        user.setMobilePhone(
-                StringUtils.isNotBlank(request.mobilePhone())
-                        ? request.mobilePhone().trim()
-                        : null);
+        user.setDisplayName(displayName);
+        user.setEmail(StringUtils.trimToNull(request.email()));
+        user.setMobilePhone(StringUtils.trimToNull(request.mobilePhone()));
         user.setDepartmentId(validateDepartmentForWrite(request.departmentId()));
         user.setEnabled(true);
         user = userRepository.insert(user);
@@ -132,19 +131,17 @@ public class AuthenticationUserManagementService {
                         .findById(id)
                         .orElseThrow(() -> new BadRequestException("用户不存在", "id", "用户不存在"));
         if (request.displayName() != null) {
-            user.setDisplayName(
-                    StringUtils.isNotBlank(request.displayName())
-                            ? request.displayName().trim()
-                            : user.getUsername());
+            String displayName = StringUtils.trimToNull(request.displayName());
+            if (displayName == null) {
+                throw new BadRequestException("显示名称不能为空", "displayName", "显示名称不能为空");
+            }
+            user.setDisplayName(displayName);
         }
         if (request.email() != null) {
-            user.setEmail(StringUtils.isNotBlank(request.email()) ? request.email().trim() : null);
+            user.setEmail(StringUtils.trimToNull(request.email()));
         }
         if (request.mobilePhone() != null) {
-            user.setMobilePhone(
-                    StringUtils.isNotBlank(request.mobilePhone())
-                            ? request.mobilePhone().trim()
-                            : null);
+            user.setMobilePhone(StringUtils.trimToNull(request.mobilePhone()));
         }
         if (request.enabled() != null) {
             user.setEnabled(request.enabled());

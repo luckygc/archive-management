@@ -118,7 +118,7 @@ class AuthenticationUserManagementServiceTests {
     @DisplayName("创建用户时用户名已存在则拒绝")
     void createUserShouldRejectDuplicateUsername() {
         CreateAuthenticationUserRequest request =
-                new CreateAuthenticationUserRequest("zhangsan", "secret123", null, null, null);
+                new CreateAuthenticationUserRequest("zhangsan", "secret123", "张三", null, null);
         when(userRepository.findOptionalByUsername("zhangsan"))
                 .thenReturn(userEntity(10L, "zhangsan"));
 
@@ -130,30 +130,48 @@ class AuthenticationUserManagementServiceTests {
     }
 
     @Test
-    @DisplayName("创建用户时 displayName 为空则默认使用 username")
-    void createUserShouldDefaultDisplayNameToUsername() {
+    @DisplayName("创建用户时 displayName 为空则拒绝")
+    void createUserShouldRejectBlankDisplayName() {
         CreateAuthenticationUserRequest request =
                 new CreateAuthenticationUserRequest("zhangsan", "secret123", null, null, null);
         when(userRepository.findOptionalByUsername("zhangsan")).thenReturn(null);
         when(passwordEncoder.encode("secret123")).thenReturn("encoded-password");
-        when(userRepository.insert(any()))
-                .thenAnswer(
-                        inv -> {
-                            AuthenticationUser u = inv.getArgument(0);
-                            u.setId(10L);
-                            return u;
-                        });
+        when(userRepository.insert(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        assertThatThrownBy(() -> userService.createUser(request, OPERATOR_ID))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("显示名称不能为空");
+
+        verify(userRepository, never()).insert(any());
+    }
+
+    @Test
+    @DisplayName("创建用户时文本字段裁剪首尾空白")
+    void createUserShouldTrimTextFields() {
+        CreateAuthenticationUserRequest request =
+                new CreateAuthenticationUserRequest(
+                        " zhangsan ",
+                        "secret123",
+                        " 张三 ",
+                        " zhangsan@example.com ",
+                        " 13800138000 ");
+        when(userRepository.findOptionalByUsername("zhangsan")).thenReturn(null);
+        when(passwordEncoder.encode("secret123")).thenReturn("encoded-password");
+        when(userRepository.insert(any())).thenAnswer(inv -> inv.getArgument(0));
 
         AuthenticationUserDto result = userService.createUser(request, OPERATOR_ID);
 
-        assertThat(result.displayName()).isEqualTo("zhangsan");
+        assertThat(result.username()).isEqualTo("zhangsan");
+        assertThat(result.displayName()).isEqualTo("张三");
+        assertThat(result.email()).isEqualTo("zhangsan@example.com");
+        assertThat(result.mobilePhone()).isEqualTo("13800138000");
     }
 
     @Test
     @DisplayName("创建用户时密码已加密存储")
     void createUserShouldEncodePassword() {
         CreateAuthenticationUserRequest request =
-                new CreateAuthenticationUserRequest("zhangsan", "secret123", null, null, null);
+                new CreateAuthenticationUserRequest("zhangsan", "secret123", "张三", null, null);
         when(userRepository.findOptionalByUsername("zhangsan")).thenReturn(null);
         when(passwordEncoder.encode("secret123")).thenReturn("encoded-password");
         when(userRepository.insert(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -192,7 +210,8 @@ class AuthenticationUserManagementServiceTests {
     @DisplayName("创建用户拒绝停用部门")
     void createUserShouldRejectDisabledDepartment() {
         CreateAuthenticationUserRequest request =
-                new CreateAuthenticationUserRequest("zhangsan", "secret123", null, null, null, 3L);
+                new CreateAuthenticationUserRequest(
+                        "zhangsan", "secret123", "张三", null, null, 3L);
         when(userRepository.findOptionalByUsername("zhangsan")).thenReturn(null);
         doThrow(new BadRequestException("部门已停用", "departmentId", "部门已停用"))
                 .when(departmentService)
@@ -223,20 +242,23 @@ class AuthenticationUserManagementServiceTests {
     }
 
     @Test
-    @DisplayName("更新用户 displayName 为空时回退到 username")
-    void updateUserShouldFallbackDisplayNameToUsername() {
+    @DisplayName("更新用户 displayName 为空时拒绝")
+    void updateUserShouldRejectBlankDisplayName() {
         AuthenticationUser user = userEntity(10L, "zhangsan");
         user.setDisplayName("张三");
         when(userRepository.findById(10L)).thenReturn(Optional.of(user));
         when(userRepository.update(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        AuthenticationUserDto result =
-                userService.updateUser(
-                        10L,
-                        new UpdateAuthenticationUserRequest("", null, null, null),
-                        OPERATOR_ID);
+        assertThatThrownBy(
+                        () ->
+                                userService.updateUser(
+                                        10L,
+                                        new UpdateAuthenticationUserRequest("", null, null, null),
+                                        OPERATOR_ID))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("显示名称不能为空");
 
-        assertThat(result.displayName()).isEqualTo("zhangsan");
+        verify(userRepository, never()).update(any());
     }
 
     @Test
@@ -256,6 +278,26 @@ class AuthenticationUserManagementServiceTests {
 
         assertThat(result.email()).isEqualTo("new@example.com");
         assertThat(result.displayName()).isEqualTo("张三"); // unchanged
+    }
+
+    @Test
+    @DisplayName("更新用户时空白可选文本字段归一化为 null")
+    void updateUserShouldNormalizeBlankOptionalTextFieldsToNull() {
+        AuthenticationUser user = userEntity(10L, "zhangsan");
+        user.setDisplayName("张三");
+        user.setEmail("old@example.com");
+        user.setMobilePhone("13800138000");
+        when(userRepository.findById(10L)).thenReturn(Optional.of(user));
+        when(userRepository.update(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        AuthenticationUserDto result =
+                userService.updateUser(
+                        10L,
+                        new UpdateAuthenticationUserRequest(null, "", "   ", null),
+                        OPERATOR_ID);
+
+        assertThat(result.email()).isNull();
+        assertThat(result.mobilePhone()).isNull();
     }
 
     @Test

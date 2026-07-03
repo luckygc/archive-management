@@ -61,6 +61,53 @@ afterEach(() => {
 });
 
 describe("AuthenticationUsersPage", () => {
+    it("更新用户时保留清空的可选文本字段", async () => {
+        archiveApiMocks.getAuthenticationUser.mockResolvedValue({
+            id: 7,
+            username: "zhangsan",
+            displayName: "张三",
+            email: "old@example.com",
+            mobilePhone: "13800138000",
+            departmentId: 1,
+            departmentCode: "D001",
+            departmentName: "综合部",
+            enabled: true,
+            createdAt: "2026-07-03T00:00:00",
+            roles: [],
+        });
+        archiveApiMocks.updateAuthenticationUser.mockResolvedValue({
+            id: 7,
+            username: "zhangsan",
+            displayName: "张三",
+            mobilePhone: "13800138000",
+            departmentId: 1,
+            departmentCode: "D001",
+            departmentName: "综合部",
+            enabled: true,
+            createdAt: "2026-07-03T00:00:00",
+        });
+
+        render(
+            <QueryClientProvider client={new QueryClient()}>
+                <AuthenticationUsersPage />
+            </QueryClientProvider>,
+        );
+
+        fireEvent.click(await screen.findByRole("button", { name: /编\s*辑/ }));
+        await waitFor(() => {
+            expect(archiveApiMocks.getAuthenticationUser).toHaveBeenCalledWith(7);
+        });
+        fireEvent.change(screen.getByLabelText("邮箱"), { target: { value: "" } });
+        fireEvent.click(screen.getByRole("button", { name: "OK" }));
+
+        await waitFor(() => {
+            expect(archiveApiMocks.updateAuthenticationUser).toHaveBeenCalledWith(
+                7,
+                expect.objectContaining({ email: "" }),
+            );
+        });
+    });
+
     it("does not save empty roles when role detail loading fails", async () => {
         archiveApiMocks.getAuthenticationUser.mockRejectedValue(new Error("网络错误"));
 
