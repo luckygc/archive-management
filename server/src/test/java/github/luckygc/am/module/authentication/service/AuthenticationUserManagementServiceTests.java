@@ -210,8 +210,7 @@ class AuthenticationUserManagementServiceTests {
     @DisplayName("创建用户拒绝停用部门")
     void createUserShouldRejectDisabledDepartment() {
         CreateAuthenticationUserRequest request =
-                new CreateAuthenticationUserRequest(
-                        "zhangsan", "secret123", "张三", null, null, 3L);
+                new CreateAuthenticationUserRequest("zhangsan", "secret123", "张三", null, null, 3L);
         when(userRepository.findOptionalByUsername("zhangsan")).thenReturn(null);
         doThrow(new BadRequestException("部门已停用", "departmentId", "部门已停用"))
                 .when(departmentService)

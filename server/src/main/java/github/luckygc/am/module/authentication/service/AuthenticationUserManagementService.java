@@ -107,8 +107,7 @@ public class AuthenticationUserManagementService {
             throw new BadRequestException("显示名称不能为空", "displayName", "显示名称不能为空");
         }
         if (userRepository.findOptionalByUsername(username) != null) {
-            throw new BadRequestException(
-                    "用户名已存在", "username", "用户名 " + username + " 已存在");
+            throw new BadRequestException("用户名已存在", "username", "用户名 " + username + " 已存在");
         }
         AuthenticationUser user = new AuthenticationUser();
         user.setUsername(username);

@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import github.luckygc.am.common.api.CollectionResponse;
+import github.luckygc.am.common.api.RawRequestStrings;
 import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveItemDetailDto;
@@ -49,7 +50,8 @@ public class ArchiveItemController {
 
     @PostMapping("/api/v1/archive-items:search")
     public ArchiveItemListDto searchItems(
-            @RequestBody SearchArchiveItemsRequest request, Authentication authentication) {
+            @RawRequestStrings @RequestBody SearchArchiveItemsRequest request,
+            Authentication authentication) {
         return archiveItemRoutingService.searchItems(
                 request,
                 AuthenticatedUsers.requireUserId(
@@ -58,7 +60,8 @@ public class ArchiveItemController {
 
     @PostMapping("/api/v1/archive-items:discover")
     public ArchiveItemListDto discoverItems(
-            @RequestBody SearchArchiveItemsRequest request, Authentication authentication) {
+            @RawRequestStrings @RequestBody SearchArchiveItemsRequest request,
+            Authentication authentication) {
         return archiveItemRoutingService.discoverItems(
                 request,
                 AuthenticatedUsers.requireUserId(
@@ -67,7 +70,8 @@ public class ArchiveItemController {
 
     @PostMapping("/api/v1/archive-items:searchDeleted")
     public ArchiveItemListDto searchDeletedItems(
-            @RequestBody SearchArchiveItemsRequest request, Authentication authentication) {
+            @RawRequestStrings @RequestBody SearchArchiveItemsRequest request,
+            Authentication authentication) {
         return archiveItemRoutingService.searchDeletedItems(
                 request,
                 AuthenticatedUsers.requireUserId(
