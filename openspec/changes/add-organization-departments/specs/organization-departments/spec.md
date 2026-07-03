@@ -72,8 +72,12 @@
 
 系统 SHALL 使用独立功能权限控制组织架构管理。
 
-#### Scenario: 管理组织架构
+#### Scenario: 管理组织架构部门接口
 
-- **WHEN** 用户调用组织架构部门详情、创建或更新 API
+- **WHEN** 用户调用 `GET /api/v1/organization-departments`
+- **OR** 用户调用 `GET /api/v1/organization-departments?enabled=true`
+- **OR** 用户调用 `GET /api/v1/organization-departments/{organizationDepartment}`
+- **OR** 用户调用 `POST /api/v1/organization-departments`
+- **OR** 用户调用 `PATCH /api/v1/organization-departments/{organizationDepartment}`
 - **THEN** 系统 SHALL 要求 `organization:department:manage`
 - **AND** 超级管理员 SHALL 默认拥有该权限
