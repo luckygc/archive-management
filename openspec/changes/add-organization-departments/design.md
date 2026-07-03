@@ -27,6 +27,10 @@
 
 部门实体、Repository、Service 和 Controller 放在 `github.luckygc.am.module.organization` 下。其他模块通过 `OrganizationDepartmentService` 校验部门可用性并读取展示数据。
 
+### Department API has no delete method
+
+组织架构部门资源使用 `/api/v1/organization-departments`。首版只提供列表、详情、创建和 `PATCH` 更新；启停通过更新 `enabled` 字段表达，排序通过 `sortOrder` 字段表达。部门不提供删除接口，避免破坏已有用户、档案和数据范围历史引用。
+
 ### Direct department scope only
 
 运行期档案数据范围只纳入用户所属启用部门直接绑定的启用数据范围。父部门绑定不在本 change 中自动包含子部门用户。
@@ -38,6 +42,7 @@
 ## Risks / Trade-offs
 
 - 不保留 `organization_unit` 兼容会要求同一批实现完整替换旧符号，但可以避免未发布阶段继续扩大双口径维护成本。
+- 不提供删除接口会让停用成为唯一退出路径，但能保留审计和历史引用一致性。
 - 父部门不自动包含子部门用户会让首版部门数据范围更简单、可解释；后续如果业务要求继承，再单独设计继承语义。
 - 停用部门保留历史引用会让查询展示需要容忍 disabled 状态，但能避免历史档案和用户关系被破坏。
 

@@ -14,4 +14,4 @@
 
 - **WHEN** 客户端查询用户列表或详情
 - **THEN** 响应 SHALL 包含 `departmentId`
-- **AND** 响应 SHOULD 包含 `departmentCode` 和 `departmentName` 供界面展示
+- **AND** 响应 SHALL 包含 `departmentCode` 和 `departmentName` 供界面展示
