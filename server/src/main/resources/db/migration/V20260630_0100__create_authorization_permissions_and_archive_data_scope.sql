@@ -83,7 +83,7 @@ create index idx_am_archive_data_scope_dimension_scope_id
 
 comment on table am_archive_data_scope_dimension is '档案数据范围固定维度条件表';
 comment on column am_archive_data_scope_dimension.scope_id is '数据范围 ID';
-comment on column am_archive_data_scope_dimension.dimension_type is '维度类型：FONDS、CATEGORY、SECURITY_LEVEL、RETENTION_PERIOD、ORG_UNIT';
+comment on column am_archive_data_scope_dimension.dimension_type is '维度类型：FONDS、CATEGORY、SECURITY_LEVEL、RETENTION_PERIOD、DEPARTMENT';
 comment on column am_archive_data_scope_dimension.target_id is '目标 ID，例如分类 ID';
 comment on column am_archive_data_scope_dimension.target_code is '目标编码，例如全宗编码或密级编码';
 comment on column am_archive_data_scope_dimension.include_descendants is '是否包含树形子级';
@@ -105,7 +105,7 @@ create index idx_am_archive_data_scope_subject_rel_scope_id
     on am_archive_data_scope_subject_rel (scope_id);
 
 comment on table am_archive_data_scope_subject_rel is '档案数据范围授权主体关系表';
-comment on column am_archive_data_scope_subject_rel.subject_type is '授权主体类型：ROLE、USER、ORG_UNIT';
+comment on column am_archive_data_scope_subject_rel.subject_type is '授权主体类型：ROLE、USER、DEPARTMENT';
 comment on column am_archive_data_scope_subject_rel.subject_id is '授权主体 ID；组织主体由后续组织模块定义';
 comment on column am_archive_data_scope_subject_rel.scope_id is '档案数据范围 ID';
 

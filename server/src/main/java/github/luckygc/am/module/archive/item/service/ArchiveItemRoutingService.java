@@ -55,6 +55,7 @@ import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveUniqueConstraintDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveUniqueConstraintFieldDto;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
+import github.luckygc.am.module.organization.service.OrganizationDepartmentService;
 
 @Service
 public class ArchiveItemRoutingService {
@@ -77,6 +78,7 @@ public class ArchiveItemRoutingService {
     private final ArchiveDataScopeService dataScopeService;
     private final AuthorizationPermissionService permissionService;
     private final ArchiveItemAuditDataRepository auditRepository;
+    private final OrganizationDepartmentService departmentService;
 
     public ArchiveItemRoutingService(
             ArchiveMetadataService archiveMetadataService,
@@ -84,13 +86,15 @@ public class ArchiveItemRoutingService {
             ArchiveItemSearchProjectionService searchProjectionService,
             ArchiveDataScopeService dataScopeService,
             AuthorizationPermissionService permissionService,
-            ArchiveItemAuditDataRepository auditRepository) {
+            ArchiveItemAuditDataRepository auditRepository,
+            OrganizationDepartmentService departmentService) {
         this.archiveMetadataService = archiveMetadataService;
         this.archiveMapper = archiveMapper;
         this.searchProjectionService = searchProjectionService;
         this.dataScopeService = dataScopeService;
         this.permissionService = permissionService;
         this.auditRepository = auditRepository;
+        this.departmentService = departmentService;
     }
 
     public ArchiveItemListDto listItems(
@@ -555,7 +559,7 @@ public class ArchiveItemRoutingService {
         int archiveYear =
                 request.archiveYear() == null ? Year.now().getValue() : request.archiveYear();
         validateArchiveYear(archiveYear);
-        Long orgUnitId = validateOrgUnitForWrite(request.orgUnitId());
+        Long departmentId = validateDepartmentForWrite(request.departmentId());
         String archiveNo = StringUtils.trimToNull(request.archiveNo());
         ensureItemArchiveNoUnique(category.categoryCode(), archiveNo, null);
         Map<String, @Nullable Object> convertedDynamicFields =
@@ -570,7 +574,7 @@ public class ArchiveItemRoutingService {
                 fonds.fondsCode(),
                 request.securityLevelId(),
                 request.retentionPeriodId(),
-                orgUnitId,
+                departmentId,
                 fields,
                 convertedDynamicFields);
 
@@ -588,7 +592,7 @@ public class ArchiveItemRoutingService {
                             StringUtils.defaultIfBlank(request.electronicStatus(), "DRAFT"),
                             request.securityLevelId(),
                             request.retentionPeriodId(),
-                            orgUnitId,
+                            departmentId,
                             archiveYear,
                             userId);
         } catch (DuplicateKeyException exception) {
@@ -701,10 +705,10 @@ public class ArchiveItemRoutingService {
         int archiveYear =
                 request.archiveYear() == null ? before.item().archiveYear() : request.archiveYear();
         validateArchiveYear(archiveYear);
-        Long orgUnitId =
-                request.orgUnitId() == null
-                        ? before.item().orgUnitId()
-                        : validateOrgUnitForWrite(request.orgUnitId());
+        Long departmentId =
+                request.departmentId() == null
+                        ? before.item().departmentId()
+                        : validateDepartmentForWrite(request.departmentId());
         String archiveNo = StringUtils.trimToNull(request.archiveNo());
         ensureItemArchiveNoUnique(before.item().categoryCode(), archiveNo, id);
         Map<String, @Nullable Object> requestDynamicFields =
@@ -726,7 +730,7 @@ public class ArchiveItemRoutingService {
                 request.retentionPeriodId() == null
                         ? before.item().retentionPeriodId()
                         : request.retentionPeriodId(),
-                orgUnitId,
+                departmentId,
                 before.fields(),
                 convertedDynamicFields);
         int updated;
@@ -746,7 +750,7 @@ public class ArchiveItemRoutingService {
                             request.retentionPeriodId() == null
                                     ? before.item().retentionPeriodId()
                                     : request.retentionPeriodId(),
-                            orgUnitId,
+                            departmentId,
                             archiveYear,
                             userId);
         } catch (DuplicateKeyException exception) {
@@ -950,7 +954,7 @@ public class ArchiveItemRoutingService {
                 string(row, "electronicStatus"),
                 longOrNull(row, "securityLevelId"),
                 longOrNull(row, "retentionPeriodId"),
-                longOrNull(row, "orgUnitId"),
+                longOrNull(row, "departmentId"),
                 number(row, "archiveYear").intValue(),
                 bool(row, "lockedFlag"),
                 string(row, "lockReason"),
@@ -1499,7 +1503,7 @@ public class ArchiveItemRoutingService {
                 record.fondsCode(),
                 record.securityLevelId(),
                 record.retentionPeriodId(),
-                record.orgUnitId(),
+                record.departmentId(),
                 dynamicRecord)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "数据范围不足");
         }
@@ -1511,7 +1515,7 @@ public class ArchiveItemRoutingService {
             String fondsCode,
             @Nullable Long securityLevelId,
             @Nullable Long retentionPeriodId,
-            @Nullable Long orgUnitId,
+            @Nullable Long departmentId,
             List<ArchiveFieldDto> fields,
             Map<String, @Nullable Object> dynamicFieldsByCode) {
         userId = AuthenticatedUsers.requireResolvedUserId(userId);
@@ -1528,24 +1532,19 @@ public class ArchiveItemRoutingService {
             dynamicRow.put(field.columnName(), dynamicFieldsByCode.get(field.fieldCode()));
         }
         if (!dataScopeService.matchesItemFilter(
-                filter, fondsCode, securityLevelId, retentionPeriodId, orgUnitId, dynamicRow)) {
+                filter, fondsCode, securityLevelId, retentionPeriodId, departmentId, dynamicRow)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "数据范围不足");
         }
     }
 
-    private @Nullable Long validateOrgUnitForWrite(@Nullable Long orgUnitId) {
-        if (orgUnitId == null) {
+    private @Nullable Long validateDepartmentForWrite(@Nullable Long departmentId) {
+        if (departmentId == null) {
             return null;
         }
-        if (orgUnitId <= 0) {
-            throw badRequest("组织单元不合法", "orgUnitId", "组织单元不合法");
+        if (departmentId <= 0) {
+            throw badRequest("部门不合法", "departmentId", "部门不合法");
         }
-        ArchiveMetadataService.OrganizationUnitDto orgUnit =
-                archiveMetadataService.getOrganizationUnit(orgUnitId);
-        if (!orgUnit.enabled()) {
-            throw badRequest("组织单元已停用", "orgUnitId", "组织单元已停用");
-        }
-        return orgUnit.id();
+        return departmentService.requireEnabledDepartment(departmentId).id();
     }
 
     private @Nullable String string(Map<String, @Nullable Object> row, String key) {
@@ -1626,7 +1625,7 @@ public class ArchiveItemRoutingService {
             @Nullable String electronicStatus,
             @Nullable Long securityLevelId,
             @Nullable Long retentionPeriodId,
-            @Nullable Long orgUnitId,
+            @Nullable Long departmentId,
             @Nullable Map<String, @Nullable Object> physicalFields,
             @Nullable Map<String, @Nullable Object> dynamicFields) {}
 
@@ -1638,7 +1637,7 @@ public class ArchiveItemRoutingService {
             @Nullable String electronicStatus,
             @Nullable Long securityLevelId,
             @Nullable Long retentionPeriodId,
-            @Nullable Long orgUnitId,
+            @Nullable Long departmentId,
             @Nullable Map<String, @Nullable Object> physicalFields,
             @Nullable Map<String, @Nullable Object> dynamicFields) {}
 
@@ -1674,7 +1673,7 @@ public class ArchiveItemRoutingService {
             String electronicStatus,
             @Nullable Long securityLevelId,
             @Nullable Long retentionPeriodId,
-            @Nullable Long orgUnitId,
+            @Nullable Long departmentId,
             int archiveYear,
             boolean lockedFlag,
             @Nullable String lockReason,

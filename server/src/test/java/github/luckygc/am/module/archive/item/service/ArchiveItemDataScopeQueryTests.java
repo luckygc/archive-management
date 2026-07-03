@@ -41,6 +41,7 @@ import github.luckygc.am.module.archive.metadata.ArchiveTableStatus;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryDto;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
+import github.luckygc.am.module.organization.service.OrganizationDepartmentService;
 
 @DisplayName("档案查询数据范围")
 class ArchiveItemDataScopeQueryTests {
@@ -68,7 +69,8 @@ class ArchiveItemDataScopeQueryTests {
                         searchProjectionService,
                         dataScopeService,
                         permissionService,
-                        auditRepository);
+                        auditRepository,
+                        mock(OrganizationDepartmentService.class));
     }
 
     @Test

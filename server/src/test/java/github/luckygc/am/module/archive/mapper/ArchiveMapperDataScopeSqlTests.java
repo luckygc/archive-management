@@ -18,8 +18,8 @@ import org.junit.jupiter.api.Test;
 class ArchiveMapperDataScopeSqlTests {
 
     @Test
-    @DisplayName("组织单元范围生成主表 org_unit_id 谓词")
-    void listDynamicItemsShouldApplyOrgUnitDataScope() throws Exception {
+    @DisplayName("部门范围生成主表 department_id 谓词")
+    void listDynamicItemsShouldApplyDepartmentDataScope() throws Exception {
         Configuration configuration = new Configuration();
         try (Reader reader = Resources.getResourceAsReader("mapper/archive/ArchiveMapper.xml")) {
             new XMLMapperBuilder(
@@ -56,6 +56,6 @@ class ArchiveMapperDataScopeSqlTests {
 
         String sql = statement.getBoundSql(parameters).getSql().replaceAll("\\s+", " ");
 
-        assertThat(sql).contains("i.org_unit_id in ( ? )");
+        assertThat(sql).contains("i.department_id in ( ? )");
     }
 }

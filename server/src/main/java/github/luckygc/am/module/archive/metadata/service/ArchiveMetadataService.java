@@ -38,8 +38,6 @@ import github.luckygc.am.module.archive.metadata.repository.ArchiveFieldLayoutDa
 import github.luckygc.am.module.archive.metadata.repository.ArchiveFondsDataRepository;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveRetentionPeriodDataRepository;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveSecurityLevelDataRepository;
-import github.luckygc.am.module.organization.service.OrganizationDepartmentService;
-import github.luckygc.am.module.organization.service.OrganizationDepartmentService.OrganizationDepartmentResponse;
 
 @Service
 public class ArchiveMetadataService {
@@ -56,7 +54,7 @@ public class ArchiveMetadataService {
                     "electronic_status",
                     "security_level_id",
                     "retention_period_id",
-                    "org_unit_id",
+                    "department_id",
                     "sort_order",
                     "archived_at",
                     "archive_year",
@@ -97,7 +95,7 @@ public class ArchiveMetadataService {
                             ArchiveFieldType.INTEGER,
                             "security_level_id"),
                     new BuiltinDataScopeField(
-                            "org_unit_id", "组织单元", ArchiveFieldType.INTEGER, "org_unit_id"),
+                            "department_id", "所属部门", ArchiveFieldType.INTEGER, "department_id"),
                     new BuiltinDataScopeField(
                             "created_by", "创建人", ArchiveFieldType.INTEGER, "created_by"));
     private static final int DEFAULT_TEXT_LENGTH = 500;
@@ -111,7 +109,6 @@ public class ArchiveMetadataService {
     private final ArchiveFieldLayoutDataRepository fieldLayoutRepository;
     private final ArchiveSecurityLevelDataRepository securityLevelRepository;
     private final ArchiveRetentionPeriodDataRepository retentionPeriodRepository;
-    private final OrganizationDepartmentService departmentService;
 
     public ArchiveMetadataService(
             ArchiveMapper archiveMapper,
@@ -120,8 +117,7 @@ public class ArchiveMetadataService {
             ArchiveFieldDataRepository fieldRepository,
             ArchiveFieldLayoutDataRepository fieldLayoutRepository,
             ArchiveSecurityLevelDataRepository securityLevelRepository,
-            ArchiveRetentionPeriodDataRepository retentionPeriodRepository,
-            OrganizationDepartmentService departmentService) {
+            ArchiveRetentionPeriodDataRepository retentionPeriodRepository) {
         this.archiveMapper = archiveMapper;
         this.fondsRepository = fondsRepository;
         this.categoryRepository = categoryRepository;
@@ -129,7 +125,6 @@ public class ArchiveMetadataService {
         this.fieldLayoutRepository = fieldLayoutRepository;
         this.securityLevelRepository = securityLevelRepository;
         this.retentionPeriodRepository = retentionPeriodRepository;
-        this.departmentService = departmentService;
     }
 
     public List<ArchiveFondsDto> listFonds(@Nullable Boolean enabled) {
@@ -245,21 +240,6 @@ public class ArchiveMetadataService {
                 retentionPeriodRepository.findById(id).orElseThrow(() -> notFound("保管期限不存在"));
         period.setPeriodName(name);
         return mapRetentionPeriod(retentionPeriodRepository.update(period));
-    }
-
-    public List<OrganizationUnitDto> listOrganizationUnits(@Nullable Boolean enabled) {
-        return departmentService.listDepartments(enabled).stream()
-                .map(this::mapOrganizationUnit)
-                .toList();
-    }
-
-    public OrganizationUnitDto getOrganizationUnit(Long id) {
-        requireId(id);
-        try {
-            return mapOrganizationUnit(departmentService.getDepartment(id));
-        } catch (BadRequestException ex) {
-            throw notFound("组织单元不存在");
-        }
     }
 
     public List<ArchiveCategoryDto> listCategories(@Nullable Boolean enabled) {
@@ -1397,18 +1377,6 @@ public class ArchiveMetadataService {
                 period.getUpdatedAt());
     }
 
-    private OrganizationUnitDto mapOrganizationUnit(OrganizationDepartmentResponse unit) {
-        return new OrganizationUnitDto(
-                unit.id(),
-                unit.departmentCode(),
-                unit.departmentName(),
-                unit.parentId(),
-                unit.enabled(),
-                unit.sortOrder(),
-                unit.createdAt(),
-                unit.updatedAt());
-    }
-
     private ArchiveCategoryDto mapCategory(Map<String, Object> row) {
         Number parentId = numberOrNull(row, "parentId");
         return new ArchiveCategoryDto(
@@ -1623,16 +1591,6 @@ public class ArchiveMetadataService {
     public record ArchiveRetentionPeriodDto(
             Long id,
             String periodName,
-            boolean enabled,
-            int sortOrder,
-            LocalDateTime createdAt,
-            LocalDateTime updatedAt) {}
-
-    public record OrganizationUnitDto(
-            Long id,
-            String unitCode,
-            String unitName,
-            @Nullable Long parentId,
             boolean enabled,
             int sortOrder,
             LocalDateTime createdAt,

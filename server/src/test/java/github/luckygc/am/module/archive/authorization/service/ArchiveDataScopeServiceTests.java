@@ -36,7 +36,6 @@ import github.luckygc.am.module.archive.metadata.ArchiveTableStatus;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFieldDto;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.OrganizationUnitDto;
 import github.luckygc.am.module.authentication.AuthenticationUser;
 import github.luckygc.am.module.authentication.repository.AuthenticationUserDataRepository;
 import github.luckygc.am.module.authorization.AuthorizationRole;
@@ -44,6 +43,7 @@ import github.luckygc.am.module.authorization.AuthorizationUserRoleRelation;
 import github.luckygc.am.module.authorization.repository.AuthorizationRoleDataRepository;
 import github.luckygc.am.module.authorization.repository.AuthorizationUserRoleRelationDataRepository;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
+import github.luckygc.am.module.organization.service.OrganizationDepartmentService;
 
 @DisplayName("档案数据范围服务")
 class ArchiveDataScopeServiceTests {
@@ -55,6 +55,7 @@ class ArchiveDataScopeServiceTests {
     private AuthorizationUserRoleRelationDataRepository userRoleRelationRepository;
     private AuthenticationUserDataRepository authenticationUserRepository;
     private ArchiveMetadataService archiveMetadataService;
+    private OrganizationDepartmentService departmentService;
     private ArchiveDataScopeService dataScopeService;
 
     @BeforeEach
@@ -66,6 +67,7 @@ class ArchiveDataScopeServiceTests {
         userRoleRelationRepository = mock(AuthorizationUserRoleRelationDataRepository.class);
         authenticationUserRepository = mock(AuthenticationUserDataRepository.class);
         archiveMetadataService = mock(ArchiveMetadataService.class);
+        departmentService = mock(OrganizationDepartmentService.class);
         dataScopeService =
                 new ArchiveDataScopeService(
                         dataScopeRepository,
@@ -74,7 +76,8 @@ class ArchiveDataScopeServiceTests {
                         roleRepository,
                         userRoleRelationRepository,
                         authenticationUserRepository,
-                        archiveMetadataService);
+                        archiveMetadataService,
+                        departmentService);
     }
 
     @Test
@@ -126,18 +129,19 @@ class ArchiveDataScopeServiceTests {
     }
 
     @Test
-    @DisplayName("组织单元范围拒绝停用组织单元")
-    void validateScopeShouldRejectDisabledOrgUnitDimension() {
+    @DisplayName("部门范围拒绝停用部门")
+    void validateScopeShouldRejectDisabledDepartmentDimension() {
         ArchiveDataScope scope = scope(1L, ArchiveDataScopeType.CONDITIONAL, true);
         ArchiveDataScopeDimension dimension = new ArchiveDataScopeDimension();
-        dimension.setDimensionType(ArchiveDataScopeDimensionType.ORG_UNIT);
+        dimension.setDimensionType(ArchiveDataScopeDimensionType.DEPARTMENT);
         dimension.setTargetId(5L);
-        when(archiveMetadataService.getOrganizationUnit(5L)).thenReturn(orgUnit(5L, false));
+        when(departmentService.requireEnabledDepartment(5L))
+                .thenThrow(new BadRequestException("部门已停用", "departmentId", "部门已停用"));
 
         assertThatThrownBy(
                         () -> dataScopeService.validateScopeDefinition(scope, List.of(dimension)))
                 .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("组织单元已停用");
+                .hasMessageContaining("部门已停用");
     }
 
     @Test
@@ -298,14 +302,14 @@ class ArchiveDataScopeServiceTests {
     }
 
     @Test
-    @DisplayName("组织单元范围编译为主表固定 ID 条件")
-    void buildItemFilterShouldCompileOrgUnitIds() {
+    @DisplayName("部门范围编译为主表固定 ID 条件")
+    void buildItemFilterShouldCompileDepartmentIds() {
         ArchiveDataScope scope = scope(100L, ArchiveDataScopeType.CONDITIONAL, true);
-        ArchiveDataScopeDimension orgUnitDimension = new ArchiveDataScopeDimension();
-        orgUnitDimension.setScopeId(100L);
-        orgUnitDimension.setDimensionType(ArchiveDataScopeDimensionType.ORG_UNIT);
-        orgUnitDimension.setTargetId(5L);
-        bindDirectUserScope(scope, List.of(orgUnitDimension));
+        ArchiveDataScopeDimension departmentDimension = new ArchiveDataScopeDimension();
+        departmentDimension.setScopeId(100L);
+        departmentDimension.setDimensionType(ArchiveDataScopeDimensionType.DEPARTMENT);
+        departmentDimension.setTargetId(5L);
+        bindDirectUserScope(scope, List.of(departmentDimension));
         when(archiveMetadataService.listCategories(true)).thenReturn(List.of(category(11L, null)));
         when(archiveMetadataService.listFields(11L)).thenReturn(List.of());
 
@@ -463,11 +467,6 @@ class ArchiveDataScopeServiceTests {
                 0,
                 now,
                 now);
-    }
-
-    private static OrganizationUnitDto orgUnit(Long id, boolean enabled) {
-        LocalDateTime now = LocalDateTime.of(2026, 6, 30, 10, 0);
-        return new OrganizationUnitDto(id, "OU" + id, "组织" + id, null, enabled, 0, now, now);
     }
 
     private static ArchiveFieldDto field(

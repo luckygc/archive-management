@@ -30,7 +30,6 @@ import github.luckygc.am.module.archive.metadata.repository.ArchiveSecurityLevel
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveUniqueConstraintDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveUniqueConstraintRequest;
-import github.luckygc.am.module.organization.service.OrganizationDepartmentService;
 
 @DisplayName("档案元数据服务")
 class ArchiveMetadataServiceTests {
@@ -53,7 +52,6 @@ class ArchiveMetadataServiceTests {
                 mock(ArchiveSecurityLevelDataRepository.class);
         ArchiveRetentionPeriodDataRepository retentionPeriodRepository =
                 mock(ArchiveRetentionPeriodDataRepository.class);
-        OrganizationDepartmentService departmentService = mock(OrganizationDepartmentService.class);
         service =
                 new ArchiveMetadataService(
                         archiveMapper,
@@ -62,8 +60,7 @@ class ArchiveMetadataServiceTests {
                         fieldRepository,
                         fieldLayoutRepository,
                         securityLevelRepository,
-                        retentionPeriodRepository,
-                        departmentService);
+                        retentionPeriodRepository);
     }
 
     @Test

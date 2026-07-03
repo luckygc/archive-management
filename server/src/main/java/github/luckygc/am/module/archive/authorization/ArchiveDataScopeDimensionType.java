@@ -5,5 +5,5 @@ public enum ArchiveDataScopeDimensionType {
     CATEGORY,
     SECURITY_LEVEL,
     RETENTION_PERIOD,
-    ORG_UNIT
+    DEPARTMENT
 }

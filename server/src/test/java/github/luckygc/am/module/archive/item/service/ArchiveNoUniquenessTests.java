@@ -36,6 +36,7 @@ import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFondsDto;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
+import github.luckygc.am.module.organization.service.OrganizationDepartmentService;
 
 @DisplayName("手工档号唯一校验")
 class ArchiveNoUniquenessTests {
@@ -65,7 +66,8 @@ class ArchiveNoUniquenessTests {
                         searchProjectionService,
                         dataScopeService,
                         permissionService,
-                        auditRepository);
+                        auditRepository,
+                        mock(OrganizationDepartmentService.class));
         archiveVolumeService =
                 new ArchiveVolumeService(
                         archiveMapper, archiveMetadataService, archiveItemRoutingService);

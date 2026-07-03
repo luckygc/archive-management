@@ -6,7 +6,7 @@ public record ArchiveDataScopeSqlGroup(
         List<String> fondsCodes,
         List<Long> securityLevelIds,
         List<Long> retentionPeriodIds,
-        List<Long> orgUnitIds,
+        List<Long> departmentIds,
         List<ArchiveSqlCondition> conditions) {
 
     public ArchiveDataScopeSqlGroup(

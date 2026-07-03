@@ -122,14 +122,6 @@ public class ArchiveDataScopeController {
         return CollectionResponse.of(fields);
     }
 
-    @GetMapping("/api/v1/organization-units")
-    public CollectionResponse<ArchiveMetadataService.OrganizationUnitDto> listOrganizationUnits(
-            @RequestParam(defaultValue = "true") boolean enabled,
-            @Nullable Authentication authentication) {
-        requirePermission(authentication);
-        return CollectionResponse.of(archiveMetadataService.listOrganizationUnits(enabled));
-    }
-
     public record UpdateRoleArchiveDataScopesRequest(List<Long> scopeIds) {}
 
     public record UpdateUserArchiveDataScopesRequest(List<Long> scopeIds) {}

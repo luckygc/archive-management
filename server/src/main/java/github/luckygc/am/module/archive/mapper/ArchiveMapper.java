@@ -67,7 +67,7 @@ public interface ArchiveMapper {
             @Param("electronicStatus") String electronicStatus,
             @Param("securityLevelId") Long securityLevelId,
             @Param("retentionPeriodId") Long retentionPeriodId,
-            @Param("orgUnitId") Long orgUnitId,
+            @Param("departmentId") Long departmentId,
             @Param("archiveYear") int archiveYear,
             @Param("userId") Long userId);
 
@@ -90,7 +90,7 @@ public interface ArchiveMapper {
             @Param("electronicStatus") String electronicStatus,
             @Param("securityLevelId") Long securityLevelId,
             @Param("retentionPeriodId") Long retentionPeriodId,
-            @Param("orgUnitId") Long orgUnitId,
+            @Param("departmentId") Long departmentId,
             @Param("archiveYear") int archiveYear,
             @Param("userId") Long userId);
 
