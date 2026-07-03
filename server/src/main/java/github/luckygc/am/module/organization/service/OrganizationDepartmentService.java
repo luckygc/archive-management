@@ -70,9 +70,13 @@ public class OrganizationDepartmentService {
             department.setDepartmentName(
                     requireText(request.departmentName(), "departmentName", "部门名称不能为空"));
         }
-        if (request.parentId() != null) {
-            validateParent(id, request.parentId());
-            department.setParentId(request.parentId());
+        ParentUpdate parentUpdate = request.parentUpdate();
+        if (parentUpdate.changing()) {
+            Long parentId = parentUpdate.parentId();
+            if (parentId != null) {
+                validateParent(id, parentId);
+            }
+            department.setParentId(parentId);
         }
         if (request.enabled() != null) {
             department.setEnabled(request.enabled());
@@ -119,11 +123,12 @@ public class OrganizationDepartmentService {
     }
 
     private Set<Long> descendantIds(Long id) {
+        List<OrganizationDepartment> departments = departmentRepository.list();
         Set<Long> descendants = new HashSet<>();
         boolean changed;
         do {
             changed = false;
-            for (OrganizationDepartment department : departmentRepository.list()) {
+            for (OrganizationDepartment department : departments) {
                 Long parentId = department.getParentId();
                 if (parentId != null
                         && (parentId.equals(id) || descendants.contains(parentId))
@@ -162,12 +167,85 @@ public class OrganizationDepartmentService {
             @Nullable Boolean enabled,
             @Nullable Integer sortOrder) {}
 
-    public record UpdateOrganizationDepartmentRequest(
-            @Nullable String departmentCode,
-            @Nullable String departmentName,
-            @Nullable Long parentId,
-            @Nullable Boolean enabled,
-            @Nullable Integer sortOrder) {}
+    public static final class UpdateOrganizationDepartmentRequest {
+
+        private final @Nullable String departmentCode;
+        private final @Nullable String departmentName;
+        private final ParentUpdate parentUpdate;
+        private final @Nullable Boolean enabled;
+        private final @Nullable Integer sortOrder;
+
+        public UpdateOrganizationDepartmentRequest(
+                @Nullable String departmentCode,
+                @Nullable String departmentName,
+                @Nullable Long parentId,
+                @Nullable Boolean enabled,
+                @Nullable Integer sortOrder) {
+            this(
+                    departmentCode,
+                    departmentName,
+                    ParentUpdate.changeTo(parentId),
+                    enabled,
+                    sortOrder);
+        }
+
+        private UpdateOrganizationDepartmentRequest(
+                @Nullable String departmentCode,
+                @Nullable String departmentName,
+                ParentUpdate parentUpdate,
+                @Nullable Boolean enabled,
+                @Nullable Integer sortOrder) {
+            this.departmentCode = departmentCode;
+            this.departmentName = departmentName;
+            this.parentUpdate = parentUpdate;
+            this.enabled = enabled;
+            this.sortOrder = sortOrder;
+        }
+
+        public static UpdateOrganizationDepartmentRequest withoutParentChange(
+                @Nullable String departmentCode,
+                @Nullable String departmentName,
+                @Nullable Boolean enabled,
+                @Nullable Integer sortOrder) {
+            return new UpdateOrganizationDepartmentRequest(
+                    departmentCode,
+                    departmentName,
+                    ParentUpdate.withoutChange(),
+                    enabled,
+                    sortOrder);
+        }
+
+        public @Nullable String departmentCode() {
+            return departmentCode;
+        }
+
+        public @Nullable String departmentName() {
+            return departmentName;
+        }
+
+        public ParentUpdate parentUpdate() {
+            return parentUpdate;
+        }
+
+        public @Nullable Boolean enabled() {
+            return enabled;
+        }
+
+        public @Nullable Integer sortOrder() {
+            return sortOrder;
+        }
+    }
+
+    public record ParentUpdate(boolean changing, @Nullable Long parentId) {
+
+        public static ParentUpdate changeTo(@Nullable Long parentId) {
+            return new ParentUpdate(true, parentId);
+        }
+
+        public static ParentUpdate withoutChange() {
+            return new ParentUpdate(false, null);
+        }
+    }
 
     public record OrganizationDepartmentResponse(
             Long id,

@@ -21,12 +21,6 @@ comment on column am_organization_department.department_name is '部门名称';
 comment on column am_organization_department.parent_id is '父部门 ID';
 comment on column am_organization_department.enabled is '是否启用';
 
-alter table am_archive_volume
-    rename column org_unit_id to department_id;
-
-alter table am_archive_item
-    rename column org_unit_id to department_id;
-
 comment on column am_archive_volume.department_id is '所属部门 ID';
 comment on column am_archive_item.department_id is '所属部门 ID';
 

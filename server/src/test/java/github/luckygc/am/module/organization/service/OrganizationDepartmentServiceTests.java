@@ -107,6 +107,39 @@ class OrganizationDepartmentServiceTests {
     }
 
     @Test
+    @DisplayName("更新父级为空时将子部门移动为根部门")
+    void updateDepartmentShouldMoveChildToRoot() {
+        OrganizationDepartment child = department(2L, "CHILD", 1L);
+        when(departmentRepository.findById(2L)).thenReturn(Optional.of(child));
+        when(departmentRepository.update(any(OrganizationDepartment.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        var response =
+                departmentService.updateDepartment(
+                        2L, new UpdateOrganizationDepartmentRequest(null, null, null, null, null));
+
+        assertThat(response.parentId()).isNull();
+    }
+
+    @Test
+    @DisplayName("只更新启用状态时保留原父级")
+    void updateDepartmentShouldPreserveParentWhenParentNotSpecified() {
+        OrganizationDepartment child = department(2L, "CHILD", 1L);
+        when(departmentRepository.findById(2L)).thenReturn(Optional.of(child));
+        when(departmentRepository.update(any(OrganizationDepartment.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        var response =
+                departmentService.updateDepartment(
+                        2L,
+                        UpdateOrganizationDepartmentRequest.withoutParentChange(
+                                null, null, false, null));
+
+        assertThat(response.parentId()).isEqualTo(1L);
+        assertThat(response.enabled()).isFalse();
+    }
+
+    @Test
     @DisplayName("校验启用部门拒绝停用部门")
     void requireEnabledDepartmentShouldRejectDisabledDepartment() {
         OrganizationDepartment department = department(1L, "DA", null);
