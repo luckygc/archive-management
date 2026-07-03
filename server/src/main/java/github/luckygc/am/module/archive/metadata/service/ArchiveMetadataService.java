@@ -32,14 +32,14 @@ import github.luckygc.am.module.archive.metadata.ArchiveManagementMode;
 import github.luckygc.am.module.archive.metadata.ArchiveRetentionPeriod;
 import github.luckygc.am.module.archive.metadata.ArchiveSecurityLevel;
 import github.luckygc.am.module.archive.metadata.ArchiveTableStatus;
-import github.luckygc.am.module.archive.metadata.OrganizationUnit;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveCategoryDataRepository;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveFieldDataRepository;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveFieldLayoutDataRepository;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveFondsDataRepository;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveRetentionPeriodDataRepository;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveSecurityLevelDataRepository;
-import github.luckygc.am.module.archive.metadata.repository.OrganizationUnitDataRepository;
+import github.luckygc.am.module.organization.service.OrganizationDepartmentService;
+import github.luckygc.am.module.organization.service.OrganizationDepartmentService.OrganizationDepartmentResponse;
 
 @Service
 public class ArchiveMetadataService {
@@ -111,7 +111,7 @@ public class ArchiveMetadataService {
     private final ArchiveFieldLayoutDataRepository fieldLayoutRepository;
     private final ArchiveSecurityLevelDataRepository securityLevelRepository;
     private final ArchiveRetentionPeriodDataRepository retentionPeriodRepository;
-    private final OrganizationUnitDataRepository organizationUnitRepository;
+    private final OrganizationDepartmentService departmentService;
 
     public ArchiveMetadataService(
             ArchiveMapper archiveMapper,
@@ -121,7 +121,7 @@ public class ArchiveMetadataService {
             ArchiveFieldLayoutDataRepository fieldLayoutRepository,
             ArchiveSecurityLevelDataRepository securityLevelRepository,
             ArchiveRetentionPeriodDataRepository retentionPeriodRepository,
-            OrganizationUnitDataRepository organizationUnitRepository) {
+            OrganizationDepartmentService departmentService) {
         this.archiveMapper = archiveMapper;
         this.fondsRepository = fondsRepository;
         this.categoryRepository = categoryRepository;
@@ -129,7 +129,7 @@ public class ArchiveMetadataService {
         this.fieldLayoutRepository = fieldLayoutRepository;
         this.securityLevelRepository = securityLevelRepository;
         this.retentionPeriodRepository = retentionPeriodRepository;
-        this.organizationUnitRepository = organizationUnitRepository;
+        this.departmentService = departmentService;
     }
 
     public List<ArchiveFondsDto> listFonds(@Nullable Boolean enabled) {
@@ -248,19 +248,18 @@ public class ArchiveMetadataService {
     }
 
     public List<OrganizationUnitDto> listOrganizationUnits(@Nullable Boolean enabled) {
-        List<OrganizationUnit> units =
-                enabled == null
-                        ? organizationUnitRepository.list()
-                        : organizationUnitRepository.list(enabled);
-        return units.stream().map(this::mapOrganizationUnit).toList();
+        return departmentService.listDepartments(enabled).stream()
+                .map(this::mapOrganizationUnit)
+                .toList();
     }
 
     public OrganizationUnitDto getOrganizationUnit(Long id) {
         requireId(id);
-        return organizationUnitRepository
-                .findById(id)
-                .map(this::mapOrganizationUnit)
-                .orElseThrow(() -> notFound("组织单元不存在"));
+        try {
+            return mapOrganizationUnit(departmentService.getDepartment(id));
+        } catch (BadRequestException ex) {
+            throw notFound("组织单元不存在");
+        }
     }
 
     public List<ArchiveCategoryDto> listCategories(@Nullable Boolean enabled) {
@@ -1398,16 +1397,16 @@ public class ArchiveMetadataService {
                 period.getUpdatedAt());
     }
 
-    private OrganizationUnitDto mapOrganizationUnit(OrganizationUnit unit) {
+    private OrganizationUnitDto mapOrganizationUnit(OrganizationDepartmentResponse unit) {
         return new OrganizationUnitDto(
-                unit.getId(),
-                unit.getUnitCode(),
-                unit.getUnitName(),
-                unit.getParentId(),
-                unit.isEnabled(),
-                unit.getSortOrder(),
-                unit.getCreatedAt(),
-                unit.getUpdatedAt());
+                unit.id(),
+                unit.departmentCode(),
+                unit.departmentName(),
+                unit.parentId(),
+                unit.enabled(),
+                unit.sortOrder(),
+                unit.createdAt(),
+                unit.updatedAt());
     }
 
     private ArchiveCategoryDto mapCategory(Map<String, Object> row) {

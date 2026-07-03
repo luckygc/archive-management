@@ -1,4 +1,4 @@
-package github.luckygc.am.module.archive.metadata;
+package github.luckygc.am.module.organization;
 
 import java.time.LocalDateTime;
 
@@ -18,18 +18,18 @@ import lombok.Data;
 
 @Data
 @Entity
-@Table(name = "am_organization_unit")
-public class OrganizationUnit {
+@Table(name = "am_organization_department")
+public class OrganizationDepartment {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "unit_code", nullable = false, length = 100)
-    private String unitCode;
+    @Column(name = "department_code", nullable = false, length = 100)
+    private String departmentCode;
 
-    @Column(name = "unit_name", nullable = false)
-    private String unitName;
+    @Column(name = "department_name", nullable = false)
+    private String departmentName;
 
     @Column(name = "parent_id")
     private @Nullable Long parentId;
