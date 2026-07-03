@@ -41,7 +41,6 @@ import github.luckygc.am.module.archive.metadata.ArchiveTableStatus;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryDto;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
-import github.luckygc.am.module.organization.service.OrganizationDepartmentService;
 
 @DisplayName("档案查询数据范围")
 class ArchiveItemDataScopeQueryTests {
@@ -69,8 +68,7 @@ class ArchiveItemDataScopeQueryTests {
                         searchProjectionService,
                         dataScopeService,
                         permissionService,
-                        auditRepository,
-                        mock(OrganizationDepartmentService.class));
+                        auditRepository);
     }
 
     @Test
@@ -272,7 +270,7 @@ class ArchiveItemDataScopeQueryTests {
                                 archiveItemRoutingService.createItem(
                                         new CreateArchiveItemRequest(
                                                 1L, null, "F001", "A-001", 2026, "DRAFT", null,
-                                                null, null, null, Map.of()),
+                                                null, null, Map.of()),
                                         9L))
                 .isInstanceOfSatisfying(
                         ResponseStatusException.class,
@@ -290,7 +288,6 @@ class ArchiveItemDataScopeQueryTests {
                         anyString(),
                         anyString(),
                         anyString(),
-                        any(),
                         any(),
                         any(),
                         anyInt(),

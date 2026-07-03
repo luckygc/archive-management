@@ -4,7 +4,9 @@
 
 **Goal:** 将现有 `organization_unit` 半成品替换为部门口径的组织架构闭环，支持组织架构维护、用户所属部门、部门数据范围和前端页面。
 
-**Architecture:** 新增 `module/organization` 作为组织架构业务模块，部门固定表使用 Jakarta Data Repository。`authentication`、`archive.authorization`、`archive.item` 只通过 `OrganizationDepartmentService` 依赖部门能力，旧 `OrganizationUnit`、`ORG_UNIT` 和 `/api/v1/organization-units` 不保留兼容分支。
+**Architecture:** 新增 `module/organization` 作为组织架构业务模块，部门固定表使用 Jakarta Data Repository。`authentication` 通过 `OrganizationDepartmentService` 依赖部门能力；`archive.authorization` 只在部门作为数据范围授权主体时依赖部门能力；`archive.item` 不依赖组织架构。旧 `OrganizationUnit`、`ORG_UNIT` 和 `/api/v1/organization-units` 不保留兼容分支。
+
+**2026-07-03 architecture correction:** 部门和档案没有必然关联。不要在 `am_archive_item`、`am_archive_volume`、档案创建/更新/导入导出 DTO 或 Mapper SQL 中新增固定 `department_id` / `departmentId`。如果某个档案门类需要形成部门、承办部门或保管部门，使用档案元数据动态字段表达，并按动态字段数据范围机制过滤。后续执行时，以 OpenSpec 当前版本为准，忽略本文后续旧示例中要求把档案固定字段改为 `department_id` 的内容。
 
 **Tech Stack:** Spring Boot、Jakarta Persistence、Jakarta Data、MyBatis、Spring Security、OpenSpec、React、Ant Design、TanStack Query、Vite+。
 
@@ -18,15 +20,15 @@
 - Create `openspec/changes/add-organization-departments/tasks.md`: Track implementation tasks.
 - Create `openspec/changes/add-organization-departments/specs/organization-departments/spec.md`: New organization department contract.
 - Create `openspec/changes/add-organization-departments/specs/login-authentication/spec.md`: User department contract delta.
-- Create `openspec/changes/add-organization-departments/specs/archive-data-scope/spec.md`: Department dimension and department subject scope delta.
+- Create `openspec/changes/add-organization-departments/specs/archive-data-scope/spec.md`: Department subject scope delta and no fixed archive department dimension.
 - Modify `server/src/main/resources/db/migration/V20260703_0100__create_organization_unit.sql`: Replace old organization unit DDL with department target structure.
 - Modify `server/src/main/resources/db/migration/V20260630_0100__create_authorization_permissions_and_archive_data_scope.sql`: Rename `ORG_UNIT` comments/seed expectations to `DEPARTMENT` and add organization permission seed.
 - Create `server/src/main/java/github/luckygc/am/module/organization/**`: Entity, repository, service, web controller, package info.
 - Delete `server/src/main/java/github/luckygc/am/module/archive/metadata/OrganizationUnit.java`.
 - Delete `server/src/main/java/github/luckygc/am/module/archive/metadata/repository/OrganizationUnitDataRepository.java`.
 - Modify `server/src/main/java/github/luckygc/am/module/archive/metadata/service/ArchiveMetadataService.java`: Remove organization unit DTO and query methods.
-- Modify `server/src/main/java/github/luckygc/am/module/archive/authorization/**`: Rename `ORG_UNIT` dimension/subject to `DEPARTMENT`, validate via organization service, include user department subject scopes.
-- Modify `server/src/main/java/github/luckygc/am/module/archive/item/**` and `server/src/main/resources/mapper/archive/ArchiveMapper.xml`: Rename `orgUnitId` / `org_unit_id` to `departmentId` / `department_id`.
+- Modify `server/src/main/java/github/luckygc/am/module/archive/authorization/**`: Remove fixed archive department dimension, keep department as a data scope subject, include user department subject scopes.
+- Modify `server/src/main/java/github/luckygc/am/module/archive/item/**` and `server/src/main/resources/mapper/archive/ArchiveMapper.xml`: Remove old organization unit fields from archive item and volume contracts instead of renaming them to fixed department fields.
 - Modify `server/src/main/java/github/luckygc/am/module/authentication/**`: Add user `departmentId` and response display fields.
 - Modify `server/src/main/java/github/luckygc/am/module/authorization/service/AuthorizationPermissionCode.java` and `AuthorizationPermissionService.java`: Add `organization:department:manage`.
 - Create backend tests under `server/src/test/java/github/luckygc/am/module/organization/service/`.
@@ -35,8 +37,8 @@
 - Create `web/src/pages/organization-departments/OrganizationDepartmentsPage.tsx` and test.
 - Modify `web/src/app/routes.tsx` and `web/src/layout/AppShell.tsx`: Add system menu entry.
 - Modify `web/src/pages/authentication-users/AuthenticationUsersPage.tsx` and test: Department column and selector.
-- Modify `web/src/pages/archive-data-scopes/ArchiveDataScopesPage.tsx`: Department dimension.
-- Modify archive item management components if `orgUnitId` appears in request mapping.
+- Modify `web/src/pages/archive-data-scopes/ArchiveDataScopesPage.tsx`: Department subject binding only; no fixed archive department dimension.
+- Modify archive item management components if `orgUnitId` appears in request mapping: remove the fixed organization field.
 
 ---
 
@@ -134,15 +136,15 @@ Create `openspec/changes/add-organization-departments/tasks.md`:
 - [ ] 2.1 Replace organization unit migration and model with organization department.
 - [ ] 2.2 Add department service, API, permission, and tests.
 - [ ] 2.3 Add user department ownership.
-- [ ] 2.4 Replace archive data scope `ORG_UNIT` with `DEPARTMENT`.
-- [ ] 2.5 Rename archive item and volume department fields.
+- [ ] 2.4 Replace archive data scope subject `ORG_UNIT` with `DEPARTMENT`, and remove fixed archive department dimension.
+- [ ] 2.5 Remove archive item and volume fixed organization fields.
 
 ## 3. Frontend
 
 - [ ] 3.1 Add department API and types.
 - [ ] 3.2 Add organization departments page and menu.
 - [ ] 3.3 Update user management department display and edit flow.
-- [ ] 3.4 Update data scope and archive item department fields.
+- [ ] 3.4 Update data scope department subject UI and remove archive item fixed organization fields.
 
 ## 4. Verification
 
@@ -181,7 +183,7 @@ Create `openspec/changes/add-organization-departments/specs/organization-departm
 
 - **WHEN** 管理员停用部门
 - **THEN** 系统 SHALL 保留历史引用
-- **AND** 系统 SHALL NOT 允许该部门被新用户归属、新档案记录或新数据范围条件选择
+- **AND** 系统 SHALL NOT 允许该部门被新用户归属或新数据范围主体绑定选择
 
 #### Scenario: 查询启用部门
 
@@ -193,9 +195,15 @@ Create `openspec/changes/add-organization-departments/specs/organization-departm
 
 系统 SHALL 使用独立功能权限控制组织架构管理。
 
+#### Scenario: 读取部门选项
+
+- **WHEN** 用户调用组织架构部门读取 API
+- **THEN** 系统 SHALL 要求用户至少具备 `organization:department:manage`、`authentication:user:manage` 或 `archive:data-scope:manage` 之一
+- **AND** 超级管理员 SHALL 默认拥有读取能力
+
 #### Scenario: 管理组织架构
 
-- **WHEN** 用户调用组织架构管理 API
+- **WHEN** 用户调用组织架构部门创建或更新 API
 - **THEN** 系统 SHALL 要求 `organization:department:manage`
 - **AND** 超级管理员 SHALL 默认拥有该权限
 ```
@@ -229,14 +237,13 @@ Create `openspec/changes/add-organization-departments/specs/archive-data-scope/s
 
 ### Requirement: 固定维度范围条件
 
-系统 SHALL 使用部门作为档案所属组织维度。
+系统 SHALL NOT 将组织部门建模为所有档案记录共有的固定维度范围条件。
 
-#### Scenario: 保存档案所属部门范围
+#### Scenario: 不提供档案所属部门固定范围
 
-- **WHEN** 管理员选择档案所属部门范围
-- **THEN** 系统 SHALL 保存维度类型 `DEPARTMENT`
-- **AND** 系统 SHALL 校验部门存在且启用
-- **AND** 查询编译时 SHALL 将部门 ID 条件应用到档案主表 `department_id`
+- **WHEN** 管理员配置档案数据范围固定维度
+- **THEN** 系统 SHALL NOT 提供 `DEPARTMENT` 固定维度
+- **AND** 系统 SHALL NOT 在档案主表使用 `department_id` 进行范围过滤
 
 ### Requirement: 授权主体绑定档案数据范围
 
@@ -461,22 +468,6 @@ comment on column am_organization_department.department_name is '部门名称';
 comment on column am_organization_department.parent_id is '父部门 ID';
 comment on column am_organization_department.enabled is '是否启用';
 
-alter table am_archive_volume
-    rename column org_unit_id to department_id;
-
-alter table am_archive_item
-    rename column org_unit_id to department_id;
-
-comment on column am_archive_volume.department_id is '所属部门 ID';
-comment on column am_archive_item.department_id is '所属部门 ID';
-
-alter table am_archive_volume
-    add constraint fk_am_archive_volume_department
-        foreign key (department_id) references am_organization_department (id);
-
-alter table am_archive_item
-    add constraint fk_am_archive_item_department
-        foreign key (department_id) references am_organization_department (id);
 ```
 
 - [ ] **Step 4: Create department entity and repository**
@@ -1076,160 +1067,24 @@ git commit -m "feat: add organization department api"
 - Modify: `server/src/main/java/github/luckygc/am/module/archive/item/service/ArchiveItemImportExportService.java`
 - Modify: `server/src/main/java/github/luckygc/am/module/archive/metadata/service/ArchiveMetadataService.java`
 - Test: `server/src/test/java/github/luckygc/am/module/archive/authorization/service/ArchiveDataScopeServiceTests.java`
-- Test: `server/src/test/java/github/luckygc/am/module/archive/mapper/ArchiveMapperDataScopeSqlTests.java`
 
-- [ ] **Step 1: Update failing archive data scope tests**
+- [ ] **Step 1: Remove fixed archive department dimension**
 
-In `ArchiveDataScopeServiceTests`, replace organization unit test names and assertions with department terminology. Add this test:
+Delete `DEPARTMENT` from `ArchiveDataScopeDimensionType`. Keep `DEPARTMENT` only in `ArchiveDataScopeSubjectType`, where it means a department can be a subject that owns data scopes.
 
-```java
-@Test
-@DisplayName("部门范围拒绝停用部门")
-void validateScopeShouldRejectDisabledDepartmentDimension() {
-    ArchiveDataScope scope = scope(1L, ArchiveDataScopeType.CONDITIONAL, true);
-    ArchiveDataScopeDimension dimension = new ArchiveDataScopeDimension();
-    dimension.setDimensionType(ArchiveDataScopeDimensionType.DEPARTMENT);
-    dimension.setTargetId(5L);
-    when(departmentService.requireEnabledDepartment(5L))
-            .thenThrow(new BadRequestException("部门已停用", "departmentId", "部门已停用"));
+Remove department fixed-field compilation from `ArchiveDataScopeService`, `ArchiveDataScopeSqlGroup`, and `ArchiveMapper.xml`. No generated SQL should reference `i.department_id`.
 
-    assertThatThrownBy(() -> dataScopeService.validateScopeDefinition(scope, List.of(dimension)))
-            .isInstanceOf(BadRequestException.class)
-            .hasMessageContaining("部门已停用");
-}
-```
+- [ ] **Step 2: Remove archive fixed organization fields**
 
-Update the test fixture constructor to pass a mocked `OrganizationDepartmentService departmentService` into `ArchiveDataScopeService`.
+Remove any old `orgUnitId` / `org_unit_id` fields from `ArchiveItem`, `ArchiveVolume`, `ArchiveItemRoutingService`, `ArchiveVolumeService`, import/export DTO mapping, `ArchiveMapper.java`, and `ArchiveMapper.xml`. Do not replace them with `departmentId` / `department_id`.
 
-In `ArchiveMapperDataScopeSqlTests`, rename the display name and expected SQL:
+- [ ] **Step 3: Preserve dynamic field data-scope behavior**
 
-```java
-@DisplayName("部门范围生成主表 department_id 谓词")
-void listDynamicItemsShouldApplyDepartmentDataScope() throws Exception {
-    parameters.put(
-            "dataScopeGroups",
-            List.of(new ArchiveDataScopeSqlGroup(List.of(), List.of(), List.of(), List.of(5L), List.of())));
+If a category needs a business department field such as `formed_department` or `owner_department`, define it as a normal archive metadata dynamic field and mark it data-scope-filterable. Existing dynamic field compilation remains the filtering mechanism.
 
-    String sql = statement.getBoundSql(parameters).getSql().replaceAll("\\s+", " ");
+- [ ] **Step 4: Remove organization unit API from data scope controller**
 
-    assertThat(sql).contains("i.department_id in ( ? )");
-}
-```
-
-- [ ] **Step 2: Run tests to verify failure**
-
-Run:
-
-```bash
-cd server && mvn -q -Dtest=ArchiveDataScopeServiceTests,ArchiveMapperDataScopeSqlTests test
-```
-
-Expected: FAIL because `DEPARTMENT`, `departmentService`, and SQL rename are not implemented.
-
-- [ ] **Step 3: Rename enums and service dependencies**
-
-In `ArchiveDataScopeDimensionType.java`, replace `ORG_UNIT` with:
-
-```java
-DEPARTMENT
-```
-
-In `ArchiveDataScopeSubjectType.java`, replace `ORG_UNIT` with:
-
-```java
-DEPARTMENT
-```
-
-In `ArchiveDataScopeService`, replace `ArchiveMetadataService.OrganizationUnitDto` imports and validation with `OrganizationDepartmentService`. Constructor adds:
-
-```java
-private final OrganizationDepartmentService departmentService;
-```
-
-Use this validation branch:
-
-```java
-case DEPARTMENT -> {
-    if (dimension.getTargetId() == null) {
-        throw new BadRequestException("部门范围必须指定部门 ID", "dimensions", "部门范围必须指定部门 ID");
-    }
-    departmentService.requireEnabledDepartment(dimension.getTargetId());
-}
-```
-
-In range compilation, rename local lists:
-
-```java
-List<Long> scopeDepartmentIds = new ArrayList<>();
-```
-
-Use branch:
-
-```java
-case DEPARTMENT -> {
-    if (dimension.getTargetId() != null) {
-        scopeDepartmentIds.add(dimension.getTargetId());
-    }
-}
-```
-
-- [ ] **Step 4: Rename mapper group and SQL**
-
-In `ArchiveDataScopeSqlGroup.java`, rename record component from `orgUnitIds` to:
-
-```java
-List<Long> departmentIds
-```
-
-In `ArchiveMapper.xml`, replace:
-
-```xml
-group.orgUnitIds
-dataScopeOrgUnitId
-i.org_unit_id
-```
-
-with:
-
-```xml
-group.departmentIds
-dataScopeDepartmentId
-i.department_id
-```
-
-In `ArchiveMapper.java`, replace method parameters named `orgUnitId` with `departmentId`.
-
-- [ ] **Step 5: Rename archive item and volume fixed fields**
-
-In `ArchiveItem.java` and `ArchiveVolume.java`, rename:
-
-```java
-@Column(name = "org_unit_id")
-private Long orgUnitId;
-```
-
-to:
-
-```java
-@Column(name = "department_id")
-private Long departmentId;
-```
-
-In request/response records under `ArchiveItemRoutingService`, rename `orgUnitId` to `departmentId`. Replace validation method with:
-
-```java
-private @Nullable Long validateDepartmentForWrite(@Nullable Long departmentId) {
-    if (departmentId == null) {
-        return null;
-    }
-    if (departmentId <= 0) {
-        throw badRequest("部门不合法", "departmentId", "部门不合法");
-    }
-    return departmentService.requireEnabledDepartment(departmentId).id();
-}
-```
-
-Add `OrganizationDepartmentService departmentService` as a constructor dependency where `ArchiveItemRoutingService` currently uses `ArchiveMetadataService` for organization unit validation.
+Delete the old `/api/v1/organization-units` helper endpoint and remove `OrganizationUnitDto`, `listOrganizationUnits`, and repository constructor wiring from `ArchiveMetadataService`.
 
 - [ ] **Step 6: Remove organization unit API from data scope controller**
 

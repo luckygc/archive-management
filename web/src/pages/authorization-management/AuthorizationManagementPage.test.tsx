@@ -6,6 +6,7 @@ import { AuthorizationManagementPage } from "./AuthorizationManagementPage";
 
 const archiveApiMocks = vi.hoisted(() => ({
     getAuthenticationUser: vi.fn(),
+    getDepartmentArchiveDataScopes: vi.fn(),
     getRoleArchiveDataScopes: vi.fn(),
     getRolePermissions: vi.fn(),
     getUserArchiveDataScopes: vi.fn(),
@@ -13,6 +14,8 @@ const archiveApiMocks = vi.hoisted(() => ({
     listAuthenticationUsers: vi.fn(),
     listAuthorizationPermissions: vi.fn(),
     listAuthorizationRoles: vi.fn(),
+    listOrganizationDepartments: vi.fn(),
+    saveDepartmentArchiveDataScopes: vi.fn(),
     saveRoleArchiveDataScopes: vi.fn(),
     saveRolePermissions: vi.fn(),
     saveUserArchiveDataScopes: vi.fn(),
@@ -38,11 +41,28 @@ beforeEach(() => {
         ],
     });
     archiveApiMocks.listAuthenticationUsers.mockResolvedValue({ items: [] });
+    archiveApiMocks.listOrganizationDepartments.mockResolvedValue({
+        items: [
+            {
+                id: 3,
+                departmentCode: "D003",
+                departmentName: "综合部",
+                enabled: true,
+                sortOrder: 0,
+                createdAt: "2026-07-03T00:00:00",
+                updatedAt: "2026-07-03T00:00:00",
+            },
+        ],
+    });
     archiveApiMocks.getRolePermissions.mockResolvedValue({
         roleId: 2,
         permissionCodes: ["archive:item:read"],
     });
     archiveApiMocks.getRoleArchiveDataScopes.mockResolvedValue({ roleId: 2, scopeIds: [1] });
+    archiveApiMocks.getDepartmentArchiveDataScopes.mockResolvedValue({
+        departmentId: 3,
+        scopeIds: [1],
+    });
     archiveApiMocks.listAuthorizationPermissions.mockResolvedValue({
         items: [
             {
@@ -92,6 +112,25 @@ describe("AuthorizationManagementPage", () => {
             expect(archiveApiMocks.listArchiveDataScopes).toHaveBeenCalled();
         });
         expect((await screen.findAllByText("读取档案")).length).toBeGreaterThan(0);
+        expect((await screen.findAllByText("全部档案")).length).toBeGreaterThan(0);
+    });
+
+    it("loads department data scopes when department subject is selected", async () => {
+        render(
+            <QueryClientProvider client={new QueryClient()}>
+                <AuthorizationManagementPage />
+            </QueryClientProvider>,
+        );
+
+        fireEvent.click(await screen.findByText("部门"));
+        const selector = await screen.findByRole("combobox");
+        fireEvent.mouseDown(selector);
+        fireEvent.click(await screen.findByText("D003 综合部"));
+
+        await waitFor(() => {
+            expect(archiveApiMocks.getDepartmentArchiveDataScopes).toHaveBeenCalledWith(3);
+            expect(archiveApiMocks.listArchiveDataScopes).toHaveBeenCalled();
+        });
         expect((await screen.findAllByText("全部档案")).length).toBeGreaterThan(0);
     });
 });

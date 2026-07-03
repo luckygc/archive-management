@@ -57,9 +57,6 @@ public class ArchiveVolume implements CreationAuditable, UpdateAuditable {
     @Column(name = "retention_period_id")
     private Long retentionPeriodId;
 
-    @Column(name = "department_id")
-    private Long departmentId;
-
     @Column(name = "sort_order", nullable = false)
     private int sortOrder;
 

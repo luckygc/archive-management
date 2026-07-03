@@ -27,7 +27,6 @@ import {
     listArchiveFonds,
     listArchiveRetentionPeriods,
     listArchiveSecurityLevels,
-    listOrganizationUnits,
     updateArchiveDataScope,
 } from "@/shared/api/archive";
 import type {
@@ -41,7 +40,6 @@ type ScopeFormValues = ArchiveDataScopeRequest & {
     categoryIds?: number[];
     securityLevelIds?: number[];
     retentionPeriodIds?: number[];
-    orgUnitIds?: number[];
     includeCategoryDescendants?: boolean;
 };
 
@@ -84,10 +82,6 @@ export function ArchiveDataScopesPage() {
     const retentionPeriodsQuery = useQuery({
         queryKey: ["archive-retention-periods", "enabled"],
         queryFn: () => listArchiveRetentionPeriods(true),
-    });
-    const organizationUnitsQuery = useQuery({
-        queryKey: ["organization-units", "enabled"],
-        queryFn: () => listOrganizationUnits(true),
     });
     const dataScopeFieldQueries = useQueries({
         queries: dynamicCategoryIds.map((categoryId) => ({
@@ -298,18 +292,6 @@ export function ArchiveDataScopesPage() {
                                     )}
                                 />
                             </Form.Item>
-                            <Form.Item label="组织单元范围" name="orgUnitIds">
-                                <Select
-                                    allowClear
-                                    mode="multiple"
-                                    options={(organizationUnitsQuery.data?.items ?? []).map(
-                                        (item) => ({
-                                            label: `${item.unitCode} ${item.unitName}`,
-                                            value: item.id,
-                                        }),
-                                    )}
-                                />
-                            </Form.Item>
                             <Form.List name={["dynamicCondition", "dynamicFields"]}>
                                 {(fields, operations) => (
                                     <Space direction="vertical" style={{ width: "100%" }}>
@@ -457,11 +439,6 @@ function toRequest(values: ScopeFormValues): ArchiveDataScopeRequest {
                 targetId,
                 includeDescendants: false,
             })),
-            ...(values.orgUnitIds ?? []).map((targetId) => ({
-                dimensionType: "ORG_UNIT" as const,
-                targetId,
-                includeDescendants: false,
-            })),
         ],
         dynamicCondition:
             (values.dynamicCondition?.dynamicFields?.length ?? 0) > 0
@@ -494,10 +471,6 @@ function toFormValues(row: ArchiveDataScopeDto): ScopeFormValues {
             .filter((item): item is number => typeof item === "number"),
         retentionPeriodIds: row.dimensions
             .filter((item) => item.dimensionType === "RETENTION_PERIOD")
-            .map((item) => item.targetId)
-            .filter((item): item is number => typeof item === "number"),
-        orgUnitIds: row.dimensions
-            .filter((item) => item.dimensionType === "ORG_UNIT")
             .map((item) => item.targetId)
             .filter((item): item is number => typeof item === "number"),
         includeCategoryDescendants: row.dimensions.some(

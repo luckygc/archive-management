@@ -45,9 +45,12 @@ import type {
     UpdateAuthorizationRoleRequest,
     CursorPageResponse,
     CurrentUserPermissionsDto,
-    OrganizationUnitDto,
+    CreateOrganizationDepartmentRequest,
+    DepartmentArchiveDataScopesDto,
+    OrganizationDepartmentDto,
     RoleArchiveDataScopesDto,
     RolePermissionsDto,
+    UpdateOrganizationDepartmentRequest,
     UserArchiveDataScopesDto,
 } from "../types/archive";
 
@@ -367,9 +370,27 @@ export function listArchiveDataScopeFields(categoryId: number) {
     );
 }
 
-export function listOrganizationUnits(enabled?: boolean) {
-    return httpClient.get<CollectionResponse<OrganizationUnitDto>>(
-        `/api/v1/organization-units${queryString({ enabled })}`,
+export function listOrganizationDepartments(enabled?: boolean) {
+    return httpClient.get<CollectionResponse<OrganizationDepartmentDto>>(
+        `/api/v1/organization-departments${queryString({ enabled })}`,
+    );
+}
+
+export function getOrganizationDepartment(id: number) {
+    return httpClient.get<OrganizationDepartmentDto>(`/api/v1/organization-departments/${id}`);
+}
+
+export function createOrganizationDepartment(payload: CreateOrganizationDepartmentRequest) {
+    return httpClient.post<OrganizationDepartmentDto>("/api/v1/organization-departments", payload);
+}
+
+export function updateOrganizationDepartment(
+    id: number,
+    payload: UpdateOrganizationDepartmentRequest,
+) {
+    return httpClient.patch<OrganizationDepartmentDto>(
+        `/api/v1/organization-departments/${id}`,
+        payload,
     );
 }
 
@@ -404,6 +425,19 @@ export function getUserArchiveDataScopes(userId: number) {
 export function saveUserArchiveDataScopes(userId: number, scopeIds: number[]) {
     return httpClient.put<UserArchiveDataScopesDto>(
         `/api/v1/authorization-users/${userId}/archive-data-scopes`,
+        { scopeIds },
+    );
+}
+
+export function getDepartmentArchiveDataScopes(departmentId: number) {
+    return httpClient.get<DepartmentArchiveDataScopesDto>(
+        `/api/v1/organization-departments/${departmentId}/archive-data-scopes`,
+    );
+}
+
+export function saveDepartmentArchiveDataScopes(departmentId: number, scopeIds: number[]) {
+    return httpClient.put<DepartmentArchiveDataScopesDto>(
+        `/api/v1/organization-departments/${departmentId}/archive-data-scopes`,
         { scopeIds },
     );
 }

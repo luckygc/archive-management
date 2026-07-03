@@ -37,6 +37,9 @@ public class AuthenticationUser {
     @Column(name = "mobile_phone", length = 50)
     private String mobilePhone;
 
+    @Column(name = "department_id")
+    private Long departmentId;
+
     private boolean enabled = true;
 
     @Column(name = "created_at", nullable = false)

@@ -34,7 +34,6 @@ import github.luckygc.am.module.archive.metadata.ArchiveTableStatus;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryDto;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
-import github.luckygc.am.module.organization.service.OrganizationDepartmentService;
 
 @DisplayName("档案写入全宗校验")
 class ArchiveItemFondsValidationTests {
@@ -64,8 +63,7 @@ class ArchiveItemFondsValidationTests {
                         searchProjectionService,
                         dataScopeService,
                         permissionService,
-                        auditRepository,
-                        mock(OrganizationDepartmentService.class));
+                        auditRepository);
         archiveVolumeService =
                 new ArchiveVolumeService(
                         archiveMapper, archiveMetadataService, archiveItemRoutingService);
@@ -85,7 +83,7 @@ class ArchiveItemFondsValidationTests {
                                 archiveItemRoutingService.createItem(
                                         new CreateArchiveItemRequest(
                                                 1L, null, "F001", "A-001", 2026, "DRAFT", null,
-                                                null, null, null, Map.of()),
+                                                null, null, Map.of()),
                                         9L))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("全宗不可用");
@@ -100,7 +98,6 @@ class ArchiveItemFondsValidationTests {
                         anyString(),
                         any(),
                         anyString(),
-                        any(),
                         any(),
                         any(),
                         anyInt(),
@@ -129,7 +126,7 @@ class ArchiveItemFondsValidationTests {
                                         10L,
                                         new UpdateArchiveItemRequest(
                                                 null, "F001", "A-002", 2026, "DRAFT", null, null,
-                                                null, null, Map.of()),
+                                                null, Map.of()),
                                         9L))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("全宗不可用");
@@ -142,7 +139,6 @@ class ArchiveItemFondsValidationTests {
                         anyString(),
                         any(),
                         anyString(),
-                        any(),
                         any(),
                         any(),
                         anyInt(),

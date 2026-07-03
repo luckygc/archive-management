@@ -22,6 +22,7 @@ import {
     getAuthenticationUser,
     listAuthenticationUsers,
     listAuthorizationRoles,
+    listOrganizationDepartments,
     resetAuthenticationUserPassword,
     saveAuthenticationUserRoles,
     updateAuthenticationUser,
@@ -61,6 +62,11 @@ export function AuthenticationUsersPage() {
     const rolesQuery = useQuery({
         queryKey: ["authorization-roles", true],
         queryFn: () => listAuthorizationRoles(true, 1000),
+    });
+
+    const departmentsQuery = useQuery({
+        queryKey: ["organization-departments", true],
+        queryFn: () => listOrganizationDepartments(true),
     });
 
     const createMutation = useMutation({
@@ -140,6 +146,7 @@ export function AuthenticationUsersPage() {
                     displayName: detail.displayName,
                     email: detail.email ?? "",
                     mobilePhone: detail.mobilePhone ?? "",
+                    departmentId: detail.departmentId,
                     enabled: detail.enabled,
                 });
             } finally {
@@ -169,6 +176,7 @@ export function AuthenticationUsersPage() {
                 displayName: values.displayName,
                 email: values.email || undefined,
                 mobilePhone: values.mobilePhone || undefined,
+                departmentId: values.departmentId ?? undefined,
             });
         } else if (editingUserId != null) {
             updateMutation.mutate({
@@ -177,6 +185,7 @@ export function AuthenticationUsersPage() {
                     displayName: values.displayName,
                     email: values.email || undefined,
                     mobilePhone: values.mobilePhone || undefined,
+                    departmentId: values.departmentId ?? null,
                     enabled: values.enabled,
                 },
             });
@@ -221,6 +230,11 @@ export function AuthenticationUsersPage() {
 
     const users = usersQuery.data?.items ?? [];
     const allRoles = rolesQuery.data?.items ?? [];
+    const departments = departmentsQuery.data?.items ?? [];
+    const departmentOptions = departments.map((department) => ({
+        label: `${department.departmentCode} ${department.departmentName}`,
+        value: department.id,
+    }));
 
     // 跟踪分页游标
     useEffect(() => {
@@ -246,6 +260,16 @@ export function AuthenticationUsersPage() {
             key: "mobilePhone",
             width: 130,
             render: (v?: string) => v ?? "-",
+        },
+        {
+            title: "所属部门",
+            dataIndex: "departmentName",
+            key: "departmentName",
+            width: 160,
+            render: (_: string | undefined, row) =>
+                row.departmentName
+                    ? `${row.departmentCode ? `${row.departmentCode} ` : ""}${row.departmentName}`
+                    : "-",
         },
         {
             title: "状态",
@@ -343,7 +367,7 @@ export function AuthenticationUsersPage() {
                 onOk={handleSubmit}
                 onCancel={handleModalClose}
                 confirmLoading={createMutation.isPending || updateMutation.isPending}
-                destroyOnClose
+                destroyOnHidden
             >
                 <Spin spinning={editUserLoading}>
                     <Form form={form} layout="vertical">
@@ -378,6 +402,16 @@ export function AuthenticationUsersPage() {
                         <Form.Item name="mobilePhone" label="手机号">
                             <Input placeholder="13800138000" />
                         </Form.Item>
+                        <Form.Item name="departmentId" label="所属部门">
+                            <Select
+                                allowClear
+                                showSearch
+                                loading={departmentsQuery.isLoading}
+                                optionFilterProp="label"
+                                options={departmentOptions}
+                                placeholder="选择所属部门"
+                            />
+                        </Form.Item>
                         {modalMode === "edit" && (
                             <Form.Item name="enabled" label="启用" valuePropName="checked">
                                 <Switch checkedChildren="启用" unCheckedChildren="停用" />
@@ -400,7 +434,7 @@ export function AuthenticationUsersPage() {
                 }}
                 confirmLoading={saveRolesMutation.isPending}
                 okButtonProps={{ disabled: roleLoading || roleLoadFailed }}
-                destroyOnClose
+                destroyOnHidden
             >
                 <Spin spinning={roleLoading}>
                     {roleLoadFailed && (
@@ -436,7 +470,7 @@ export function AuthenticationUsersPage() {
                     pwForm.resetFields();
                 }}
                 confirmLoading={resetPwMutation.isPending}
-                destroyOnClose
+                destroyOnHidden
             >
                 <Form form={pwForm} layout="vertical">
                     <Form.Item

@@ -65,7 +65,6 @@
                electronic_status,
                security_level_id,
                retention_period_id,
-               department_id,
                archive_year,
                display_order,
                created_at,
@@ -124,7 +123,6 @@
                i.electronic_status,
                i.security_level_id,
                i.retention_period_id,
-               i.department_id,
                i.archive_year,
                i.display_order,
                i.created_at,
@@ -197,16 +195,7 @@
                         #{dataScopeRetentionPeriodId}
                     </foreach>
                 </if>
-                <if test="group.departmentIds != null and group.departmentIds.size > 0">
-                    <if test="(group.fondsCodes != null and group.fondsCodes.size > 0) or (group.securityLevelIds != null and group.securityLevelIds.size > 0) or (group.retentionPeriodIds != null and group.retentionPeriodIds.size > 0) or (group.conditions != null and group.conditions.size > 0)">
-                        and
-                    </if>
-                    i.department_id in
-                    <foreach collection="group.departmentIds" item="dataScopeDepartmentId" open="(" separator="," close=")">
-                        #{dataScopeDepartmentId}
-                    </foreach>
-                </if>
-                <if test="(group.fondsCodes == null or group.fondsCodes.size == 0) and (group.securityLevelIds == null or group.securityLevelIds.size == 0) and (group.retentionPeriodIds == null or group.retentionPeriodIds.size == 0) and (group.departmentIds == null or group.departmentIds.size == 0) and (group.conditions == null or group.conditions.size == 0)">
+                <if test="(group.fondsCodes == null or group.fondsCodes.size == 0) and (group.securityLevelIds == null or group.securityLevelIds.size == 0) and (group.retentionPeriodIds == null or group.retentionPeriodIds.size == 0) and (group.conditions == null or group.conditions.size == 0)">
                     false
                 </if>
                 )
@@ -344,11 +333,11 @@
     <select id="insertArchiveItem" resultType="long">
         insert into am_archive_item
             (volume_id, fonds_code, fonds_name, category_code, category_name,
-             archive_no, electronic_status, security_level_id, retention_period_id, department_id,
+             archive_no, electronic_status, security_level_id, retention_period_id,
              archive_year, created_by, updated_by)
         values
             (#{volumeId}, #{fondsCode}, #{fondsName}, #{categoryCode}, #{categoryName},
-             #{archiveNo}, #{electronicStatus}, #{securityLevelId}, #{retentionPeriodId}, #{departmentId},
+             #{archiveNo}, #{electronicStatus}, #{securityLevelId}, #{retentionPeriodId},
              #{archiveYear}, #{userId}, #{userId})
         returning id
     </select>
@@ -381,7 +370,6 @@
             electronic_status = #{electronicStatus},
             security_level_id = #{securityLevelId},
             retention_period_id = #{retentionPeriodId},
-            department_id = #{departmentId},
             archive_year = #{archiveYear},
             updated_by = #{userId},
             version = version + 1,
@@ -425,7 +413,6 @@
                electronic_status,
                security_level_id,
                retention_period_id,
-               department_id,
                archive_year,
                locked_flag,
                lock_reason,

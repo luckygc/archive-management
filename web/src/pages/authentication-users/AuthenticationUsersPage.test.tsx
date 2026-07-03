@@ -9,6 +9,7 @@ const archiveApiMocks = vi.hoisted(() => ({
     getAuthenticationUser: vi.fn(),
     listAuthenticationUsers: vi.fn(),
     listAuthorizationRoles: vi.fn(),
+    listOrganizationDepartments: vi.fn(),
     resetAuthenticationUserPassword: vi.fn(),
     saveAuthenticationUserRoles: vi.fn(),
     updateAuthenticationUser: vi.fn(),
@@ -29,6 +30,8 @@ beforeEach(() => {
                 id: 7,
                 username: "zhangsan",
                 displayName: "张三",
+                departmentCode: "D001",
+                departmentName: "综合部",
                 enabled: true,
                 createdAt: "2026-07-03T00:00:00",
             },
@@ -36,6 +39,19 @@ beforeEach(() => {
     });
     archiveApiMocks.listAuthorizationRoles.mockResolvedValue({
         items: [{ id: 1, roleName: "档案管理员", enabled: true, createdAt: "2026-07-03T00:00:00" }],
+    });
+    archiveApiMocks.listOrganizationDepartments.mockResolvedValue({
+        items: [
+            {
+                id: 1,
+                departmentCode: "D001",
+                departmentName: "综合部",
+                enabled: true,
+                sortOrder: 0,
+                createdAt: "2026-07-03T00:00:00",
+                updatedAt: "2026-07-03T00:00:00",
+            },
+        ],
     });
 });
 
@@ -55,6 +71,7 @@ describe("AuthenticationUsersPage", () => {
         );
 
         fireEvent.click(await screen.findByRole("button", { name: /角\s*色/ }));
+        expect(await screen.findByText("D001 综合部")).toBeInTheDocument();
         await waitFor(() => {
             expect(archiveApiMocks.getAuthenticationUser).toHaveBeenCalledWith(7);
         });

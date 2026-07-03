@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import github.luckygc.am.common.api.CollectionResponse;
 import github.luckygc.am.common.api.CursorPageRequest;
 import github.luckygc.am.common.api.CursorPageResponse;
+import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.authentication.service.AuthenticationUserManagementService;
 import github.luckygc.am.module.authentication.service.AuthenticationUserManagementService.AuthenticationUserDetailDto;
@@ -25,6 +26,8 @@ import github.luckygc.am.module.authentication.service.AuthenticationUserManagem
 import github.luckygc.am.module.authentication.service.AuthenticationUserManagementService.RoleSummary;
 import github.luckygc.am.module.authentication.service.AuthenticationUserManagementService.SaveUserRolesRequest;
 import github.luckygc.am.module.authentication.service.AuthenticationUserManagementService.UpdateAuthenticationUserRequest;
+
+import tools.jackson.databind.JsonNode;
 
 @RestController
 public class AuthenticationUserManagementController {
@@ -70,11 +73,11 @@ public class AuthenticationUserManagementController {
     @PatchMapping("/api/v1/authentication-users/{id}")
     public AuthenticationUserDto updateUser(
             @PathVariable Long id,
-            @RequestBody UpdateAuthenticationUserRequest request,
+            @RequestBody JsonNode request,
             @Nullable Authentication authentication) {
         return userService.updateUser(
                 id,
-                request,
+                toUpdateRequest(request),
                 AuthenticatedUsers.requireUserId(
                         authentication == null ? null : authentication.getPrincipal()));
     }
@@ -113,5 +116,58 @@ public class AuthenticationUserManagementController {
                         request,
                         AuthenticatedUsers.requireUserId(
                                 authentication == null ? null : authentication.getPrincipal())));
+    }
+
+    private UpdateAuthenticationUserRequest toUpdateRequest(JsonNode request) {
+        if (request == null || !request.isObject()) {
+            throw new BadRequestException("请求体不能为空");
+        }
+        String displayName = nullableText(request, "displayName");
+        String email = nullableText(request, "email");
+        String mobilePhone = nullableText(request, "mobilePhone");
+        Boolean enabled = nullableBoolean(request, "enabled");
+        if (request.has("departmentId")) {
+            return new UpdateAuthenticationUserRequest(
+                    displayName,
+                    email,
+                    mobilePhone,
+                    enabled,
+                    nullableLong(request, "departmentId"));
+        }
+        return UpdateAuthenticationUserRequest.withoutDepartmentChange(
+                displayName, email, mobilePhone, enabled);
+    }
+
+    private @Nullable String nullableText(JsonNode request, String fieldName) {
+        JsonNode value = request.get(fieldName);
+        if (value == null || value.isNull()) {
+            return null;
+        }
+        if (!value.isTextual()) {
+            throw new BadRequestException(fieldName + "不合法", fieldName, fieldName + "不合法");
+        }
+        return value.asText();
+    }
+
+    private @Nullable Long nullableLong(JsonNode request, String fieldName) {
+        JsonNode value = request.get(fieldName);
+        if (value == null || value.isNull()) {
+            return null;
+        }
+        if (!value.isIntegralNumber() || !value.canConvertToLong()) {
+            throw new BadRequestException(fieldName + "不合法", fieldName, fieldName + "不合法");
+        }
+        return value.asLong();
+    }
+
+    private @Nullable Boolean nullableBoolean(JsonNode request, String fieldName) {
+        JsonNode value = request.get(fieldName);
+        if (value == null || value.isNull()) {
+            return null;
+        }
+        if (!value.isBoolean()) {
+            throw new BadRequestException(fieldName + "不合法", fieldName, fieldName + "不合法");
+        }
+        return value.asBoolean();
     }
 }

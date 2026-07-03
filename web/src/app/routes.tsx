@@ -30,6 +30,7 @@ import { DashboardPage } from "@/pages/dashboard/DashboardPage";
 import { IntakePage } from "@/pages/intake/IntakePage";
 import { LoginPage } from "@/pages/login/LoginPage";
 import { LoginSessionsPage } from "@/pages/login-sessions/LoginSessionsPage";
+import { OrganizationDepartmentsPage } from "@/pages/organization-departments/OrganizationDepartmentsPage";
 import { PlaceholderPage } from "@/pages/placeholder/PlaceholderPage";
 import { AuthenticationGate } from "@/shared/authentication/AuthenticationGate";
 
@@ -124,6 +125,16 @@ export function createAppRouter() {
                             handle: {
                                 title: "归档接收",
                                 icon: <ImportOutlined />,
+                                isMenu: true,
+                                keepAlive: true,
+                            } satisfies AppRouteHandle,
+                        },
+                        {
+                            path: "system/organization-departments",
+                            element: <OrganizationDepartmentsPage />,
+                            handle: {
+                                title: "组织架构",
+                                icon: <ApartmentOutlined />,
                                 isMenu: true,
                                 keepAlive: true,
                             } satisfies AppRouteHandle,

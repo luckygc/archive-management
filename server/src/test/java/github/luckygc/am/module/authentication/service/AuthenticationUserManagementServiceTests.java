@@ -33,6 +33,8 @@ import github.luckygc.am.module.authorization.repository.AuthorizationRoleDataRe
 import github.luckygc.am.module.authorization.repository.AuthorizationUserRoleRelationDataRepository;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionCode;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
+import github.luckygc.am.module.organization.service.OrganizationDepartmentService;
+import github.luckygc.am.module.organization.service.OrganizationDepartmentService.OrganizationDepartmentResponse;
 
 @DisplayName("用户管理服务")
 class AuthenticationUserManagementServiceTests {
@@ -41,6 +43,7 @@ class AuthenticationUserManagementServiceTests {
     private AuthorizationRoleDataRepository roleRepository;
     private AuthorizationUserRoleRelationDataRepository userRoleRelationRepository;
     private AuthorizationPermissionService permissionService;
+    private OrganizationDepartmentService departmentService;
     private PasswordEncoder passwordEncoder;
     private AuthenticationUserManagementService userService;
 
@@ -52,6 +55,7 @@ class AuthenticationUserManagementServiceTests {
         roleRepository = mock(AuthorizationRoleDataRepository.class);
         userRoleRelationRepository = mock(AuthorizationUserRoleRelationDataRepository.class);
         permissionService = mock(AuthorizationPermissionService.class);
+        departmentService = mock(OrganizationDepartmentService.class);
         passwordEncoder = mock(PasswordEncoder.class);
         userService =
                 new AuthenticationUserManagementService(
@@ -59,6 +63,7 @@ class AuthenticationUserManagementServiceTests {
                         roleRepository,
                         userRoleRelationRepository,
                         permissionService,
+                        departmentService,
                         passwordEncoder);
     }
 
@@ -158,6 +163,48 @@ class AuthenticationUserManagementServiceTests {
         verify(passwordEncoder).encode("secret123");
     }
 
+    @Test
+    @DisplayName("创建用户保存所属部门并返回部门展示字段")
+    void createUserShouldSaveDepartment() {
+        CreateAuthenticationUserRequest request =
+                new CreateAuthenticationUserRequest("zhangsan", "secret123", "张三", null, null, 3L);
+        when(userRepository.findOptionalByUsername("zhangsan")).thenReturn(null);
+        when(passwordEncoder.encode("secret123")).thenReturn("encoded-password");
+        when(departmentService.requireEnabledDepartment(3L)).thenReturn(department(3L, true));
+        when(departmentService.getDepartment(3L)).thenReturn(department(3L, true));
+        when(userRepository.insert(any()))
+                .thenAnswer(
+                        inv -> {
+                            AuthenticationUser u = inv.getArgument(0);
+                            u.setId(10L);
+                            return u;
+                        });
+
+        AuthenticationUserDto result = userService.createUser(request, OPERATOR_ID);
+
+        assertThat(result.departmentId()).isEqualTo(3L);
+        assertThat(result.departmentCode()).isEqualTo("D003");
+        assertThat(result.departmentName()).isEqualTo("档案部");
+        verify(departmentService).requireEnabledDepartment(3L);
+    }
+
+    @Test
+    @DisplayName("创建用户拒绝停用部门")
+    void createUserShouldRejectDisabledDepartment() {
+        CreateAuthenticationUserRequest request =
+                new CreateAuthenticationUserRequest("zhangsan", "secret123", null, null, null, 3L);
+        when(userRepository.findOptionalByUsername("zhangsan")).thenReturn(null);
+        doThrow(new BadRequestException("部门已停用", "departmentId", "部门已停用"))
+                .when(departmentService)
+                .requireEnabledDepartment(3L);
+
+        assertThatThrownBy(() -> userService.createUser(request, OPERATOR_ID))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("部门已停用");
+
+        verify(userRepository, never()).insert(any());
+    }
+
     // ── updateUser ──
 
     @Test
@@ -226,6 +273,45 @@ class AuthenticationUserManagementServiceTests {
                         OPERATOR_ID);
 
         assertThat(result.enabled()).isFalse();
+    }
+
+    @Test
+    @DisplayName("更新用户可以设置所属部门")
+    void updateUserShouldSetDepartment() {
+        AuthenticationUser user = userEntity(10L, "zhangsan");
+        when(userRepository.findById(10L)).thenReturn(Optional.of(user));
+        when(departmentService.requireEnabledDepartment(3L)).thenReturn(department(3L, true));
+        when(departmentService.getDepartment(3L)).thenReturn(department(3L, true));
+        when(userRepository.update(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        AuthenticationUserDto result =
+                userService.updateUser(
+                        10L,
+                        new UpdateAuthenticationUserRequest(null, null, null, null, 3L),
+                        OPERATOR_ID);
+
+        assertThat(result.departmentId()).isEqualTo(3L);
+        assertThat(result.departmentCode()).isEqualTo("D003");
+        verify(departmentService).requireEnabledDepartment(3L);
+    }
+
+    @Test
+    @DisplayName("更新用户显式清空所属部门")
+    void updateUserShouldClearDepartment() {
+        AuthenticationUser user = userEntity(10L, "zhangsan");
+        user.setDepartmentId(3L);
+        when(userRepository.findById(10L)).thenReturn(Optional.of(user));
+        when(userRepository.update(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        AuthenticationUserDto result =
+                userService.updateUser(
+                        10L,
+                        new UpdateAuthenticationUserRequest(null, null, null, null, null),
+                        OPERATOR_ID);
+
+        assertThat(result.departmentId()).isNull();
+        assertThat(result.departmentCode()).isNull();
+        assertThat(result.departmentName()).isNull();
     }
 
     // ── resetPassword ──
@@ -410,5 +496,10 @@ class AuthenticationUserManagementServiceTests {
         AuthorizationRole role = enabledRole(id, roleName);
         role.setEnabled(false);
         return role;
+    }
+
+    private static OrganizationDepartmentResponse department(Long id, boolean enabled) {
+        LocalDateTime now = LocalDateTime.of(2026, 1, 1, 0, 0);
+        return new OrganizationDepartmentResponse(id, "D003", "档案部", null, enabled, 0, now, now);
     }
 }

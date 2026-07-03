@@ -34,7 +34,6 @@ import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFondsDto;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
-import github.luckygc.am.module.organization.service.OrganizationDepartmentService;
 
 @DisplayName("档案条目操作审计写入")
 class ArchiveItemAuditWriteTests {
@@ -64,8 +63,7 @@ class ArchiveItemAuditWriteTests {
                         searchProjectionService,
                         dataScopeService,
                         permissionService,
-                        auditRepository,
-                        mock(OrganizationDepartmentService.class));
+                        auditRepository);
     }
 
     @Test
@@ -90,7 +88,6 @@ class ArchiveItemAuditWriteTests {
                         eq("DRAFT"),
                         isNull(),
                         isNull(),
-                        isNull(),
                         eq(2026),
                         eq(9L)))
                 .thenReturn(10L);
@@ -98,7 +95,7 @@ class ArchiveItemAuditWriteTests {
 
         archiveItemRoutingService.createItem(
                 new CreateArchiveItemRequest(
-                        1L, null, "F001", "A-001", 2026, "DRAFT", null, null, null, null, Map.of()),
+                        1L, null, "F001", "A-001", 2026, "DRAFT", null, null, null, Map.of()),
                 9L);
 
         verifyAudit("CREATE", null);
@@ -120,7 +117,6 @@ class ArchiveItemAuditWriteTests {
                         eq("DRAFT"),
                         isNull(),
                         isNull(),
-                        isNull(),
                         eq(2026),
                         eq(9L)))
                 .thenReturn(1);
@@ -128,7 +124,7 @@ class ArchiveItemAuditWriteTests {
         archiveItemRoutingService.updateItem(
                 10L,
                 new UpdateArchiveItemRequest(
-                        null, "F001", "A-002", 2026, "DRAFT", null, null, null, null, Map.of()),
+                        null, "F001", "A-002", 2026, "DRAFT", null, null, null, Map.of()),
                 9L);
 
         verifyAudit("UPDATE", null);

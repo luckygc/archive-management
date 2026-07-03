@@ -2,20 +2,19 @@
 
 ### Requirement: 固定维度范围条件
 
-系统 SHALL 在既有档案数据范围能力中使用部门作为档案所属组织维度，并使用 `DEPARTMENT` 替代 `ORG_UNIT`。
+系统 SHALL NOT 将组织部门建模为所有档案记录共有的固定维度范围条件。
 
-#### Scenario: 保存档案所属部门范围
+#### Scenario: 不提供档案所属部门固定范围
 
-- **WHEN** 管理员选择档案所属部门范围
-- **THEN** 系统 SHALL 保存维度类型 `DEPARTMENT`
-- **AND** 系统 SHALL 校验部门存在且启用
-- **AND** 查询编译时 SHALL 将部门 ID 条件应用到档案主表 `department_id`
+- **WHEN** 管理员配置档案数据范围固定维度
+- **THEN** 系统 SHALL NOT 提供 `DEPARTMENT` 固定维度
+- **AND** 系统 SHALL NOT 在档案主表使用 `department_id` 进行范围过滤
 
-#### Scenario: 停用部门不能作为新范围条件
+#### Scenario: 业务部门条件通过动态字段表达
 
-- **WHEN** 管理员保存档案所属部门范围并提交停用部门
-- **THEN** 系统 SHALL 拒绝保存
-- **AND** 系统 SHALL NOT 将停用部门写入新的 `DEPARTMENT` 维度条件
+- **WHEN** 某个档案门类需要按形成部门、承办部门或保管部门过滤
+- **THEN** 系统 SHALL 通过该门类的档案元数据动态字段表达
+- **AND** 动态字段是否可用于数据范围 SHALL 继续由字段配置控制
 
 ### Requirement: 授权主体绑定档案数据范围
 
@@ -27,7 +26,6 @@
 - **THEN** 系统 SHALL 保存主体类型 `subject_type=DEPARTMENT`
 - **AND** `subject_id` SHALL 使用部门 ID
 - **AND** 系统 SHALL 校验部门存在且启用
-- **AND** 系统 SHALL NOT 将部门主体绑定与档案所属部门维度条件混用
 
 #### Scenario: 停用部门不能新增主体绑定
 

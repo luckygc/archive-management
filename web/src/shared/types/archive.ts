@@ -275,7 +275,6 @@ export interface CreateArchiveRecordRequest {
     electronicStatus?: ArchiveElectronicStatus;
     securityLevelId?: number;
     retentionPeriodId?: number;
-    orgUnitId?: number;
     physicalObject: ArchivePhysicalObjectRequest;
     dynamicFields: Record<string, unknown>;
 }
@@ -288,7 +287,6 @@ export interface UpdateArchiveRecordRequest {
     electronicStatus?: ArchiveElectronicStatus;
     securityLevelId?: number;
     retentionPeriodId?: number;
-    orgUnitId?: number;
     physicalObject: ArchivePhysicalObjectRequest;
     dynamicFields: Record<string, unknown>;
 }
@@ -312,7 +310,6 @@ export interface ArchiveRecordDto {
     electronicStatus: ArchiveElectronicStatus;
     securityLevelId?: number;
     retentionPeriodId?: number;
-    orgUnitId?: number;
     archiveYear: number;
     lockedFlag: boolean;
     lockReason?: string;
@@ -370,8 +367,7 @@ export type ArchiveDataScopeDimensionType =
     | "FONDS"
     | "CATEGORY"
     | "SECURITY_LEVEL"
-    | "RETENTION_PERIOD"
-    | "ORG_UNIT";
+    | "RETENTION_PERIOD";
 
 export interface ArchiveDataScopeDto {
     id: number;
@@ -433,6 +429,9 @@ export interface AuthenticationUserDto {
     displayName: string;
     email?: string;
     mobilePhone?: string;
+    departmentId?: number;
+    departmentCode?: string;
+    departmentName?: string;
     enabled: boolean;
     createdAt: string;
 }
@@ -452,12 +451,14 @@ export interface CreateAuthenticationUserRequest {
     displayName?: string;
     email?: string;
     mobilePhone?: string;
+    departmentId?: number | null;
 }
 
 export interface UpdateAuthenticationUserRequest {
     displayName?: string;
     email?: string;
     mobilePhone?: string;
+    departmentId?: number | null;
     enabled?: boolean;
 }
 
@@ -507,15 +508,36 @@ export interface UserArchiveDataScopesDto {
     scopeIds: number[];
 }
 
-export interface OrganizationUnitDto {
+export interface DepartmentArchiveDataScopesDto {
+    departmentId: number;
+    scopeIds: number[];
+}
+
+export interface OrganizationDepartmentDto {
     id: number;
-    unitCode: string;
-    unitName: string;
+    departmentCode: string;
+    departmentName: string;
     parentId?: number;
     enabled: boolean;
     sortOrder: number;
     createdAt: string;
     updatedAt: string;
+}
+
+export interface CreateOrganizationDepartmentRequest {
+    departmentCode?: string;
+    departmentName?: string;
+    parentId?: number | null;
+    enabled?: boolean;
+    sortOrder?: number;
+}
+
+export interface UpdateOrganizationDepartmentRequest {
+    departmentCode?: string;
+    departmentName?: string;
+    parentId?: number | null;
+    enabled?: boolean;
+    sortOrder?: number;
 }
 
 export interface ArchiveItemElectronicFileRequest {

@@ -20,6 +20,7 @@ import { useState } from "react";
 
 import {
     getAuthenticationUser,
+    getDepartmentArchiveDataScopes,
     getRoleArchiveDataScopes,
     getRolePermissions,
     getUserArchiveDataScopes,
@@ -27,13 +28,15 @@ import {
     listAuthenticationUsers,
     listAuthorizationPermissions,
     listAuthorizationRoles,
+    listOrganizationDepartments,
+    saveDepartmentArchiveDataScopes,
     saveRoleArchiveDataScopes,
     saveRolePermissions,
     saveUserArchiveDataScopes,
 } from "@/shared/api/archive";
 import type { ArchiveDataScopeDto, AuthorizationPermissionDto } from "@/shared/types/archive";
 
-type SubjectType = "role" | "user";
+type SubjectType = "role" | "user" | "department";
 
 // ── 权限编码可读映射 ──
 
@@ -41,6 +44,7 @@ const moduleNameMap: Record<string, string> = {
     archive: "档案",
     authorization: "授权",
     authentication: "认证",
+    organization: "组织",
 };
 
 const resourceNameMap: Record<string, string> = {
@@ -53,6 +57,7 @@ const resourceNameMap: Record<string, string> = {
     role: "角色",
     session: "会话",
     user: "用户",
+    department: "部门",
 };
 
 const actionNameMap: Record<string, string> = {
@@ -98,6 +103,7 @@ export function AuthorizationManagementPage() {
     const [subjectType, setSubjectType] = useState<SubjectType>("role");
     const [selectedRoleId, setSelectedRoleId] = useState<number | null>(null);
     const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+    const [selectedDepartmentId, setSelectedDepartmentId] = useState<number | null>(null);
 
     // Permission edit modal
     const [permissionModalOpen, setPermissionModalOpen] = useState(false);
@@ -109,7 +115,8 @@ export function AuthorizationManagementPage() {
 
     const hasSubject =
         (subjectType === "role" && selectedRoleId != null) ||
-        (subjectType === "user" && selectedUserId != null);
+        (subjectType === "user" && selectedUserId != null) ||
+        (subjectType === "department" && selectedDepartmentId != null);
 
     // ── Lists ──
 
@@ -121,6 +128,11 @@ export function AuthorizationManagementPage() {
     const usersQuery = useQuery({
         queryKey: ["authentication-users", ""],
         queryFn: () => listAuthenticationUsers(undefined, 1000),
+    });
+
+    const departmentsQuery = useQuery({
+        queryKey: ["organization-departments", true],
+        queryFn: () => listOrganizationDepartments(true),
     });
 
     const allPermissionsQuery = useQuery({
@@ -159,6 +171,12 @@ export function AuthorizationManagementPage() {
         queryKey: ["user-data-scopes", selectedUserId],
         queryFn: () => getUserArchiveDataScopes(selectedUserId!),
         enabled: subjectType === "user" && selectedUserId != null,
+    });
+
+    const departmentScopesQuery = useQuery({
+        queryKey: ["department-data-scopes", selectedDepartmentId],
+        queryFn: () => getDepartmentArchiveDataScopes(selectedDepartmentId!),
+        enabled: subjectType === "department" && selectedDepartmentId != null,
     });
 
     // User permissions come from their roles — fetch each role's permissions concurrently
@@ -218,12 +236,30 @@ export function AuthorizationManagementPage() {
         onError: (e: Error) => message.error(e.message),
     });
 
+    const saveDepartmentScopesMutation = useMutation({
+        mutationFn: ({ departmentId, scopeIds }: { departmentId: number; scopeIds: number[] }) =>
+            saveDepartmentArchiveDataScopes(departmentId, scopeIds),
+        onSuccess: () => {
+            message.success("数据范围已保存");
+            setScopeModalOpen(false);
+            queryClient.invalidateQueries({
+                queryKey: ["department-data-scopes", selectedDepartmentId],
+            });
+        },
+        onError: (e: Error) => message.error(e.message),
+    });
+
     // ── Derived ──
 
     const roles = rolesQuery.data?.items ?? [];
     const users = usersQuery.data?.items ?? [];
+    const departments = departmentsQuery.data?.items ?? [];
     const selectedRole = selectedRoleId != null ? roles.find((r) => r.id === selectedRoleId) : null;
     const selectedUser = selectedUserId != null ? users.find((u) => u.id === selectedUserId) : null;
+    const selectedDepartment =
+        selectedDepartmentId != null
+            ? departments.find((department) => department.id === selectedDepartmentId)
+            : null;
 
     const isLoadingDetail =
         (subjectType === "role" &&
@@ -233,19 +269,26 @@ export function AuthorizationManagementPage() {
             selectedUserId != null &&
             (userDetailQuery.isLoading ||
                 userScopesQuery.isLoading ||
-                userPermissionsQuery.isLoading));
+                userPermissionsQuery.isLoading)) ||
+        (subjectType === "department" &&
+            selectedDepartmentId != null &&
+            departmentScopesQuery.isLoading);
 
     // Permissions display
     const displayPermissionCodes: string[] =
         subjectType === "role"
             ? (rolePermissionsQuery.data?.permissionCodes ?? [])
-            : (userPermissionsQuery.data ?? []);
+            : subjectType === "user"
+              ? (userPermissionsQuery.data ?? [])
+              : [];
 
     // Data scopes display
     const displayScopeIds: number[] =
         subjectType === "role"
             ? (roleScopesQuery.data?.scopeIds ?? [])
-            : (userScopesQuery.data?.scopeIds ?? []);
+            : subjectType === "user"
+              ? (userScopesQuery.data?.scopeIds ?? [])
+              : (departmentScopesQuery.data?.scopeIds ?? []);
 
     // ── Permission name lookup ──
     const allPermissions = allPermissionsQuery.data?.items ?? [];
@@ -333,6 +376,11 @@ export function AuthorizationManagementPage() {
                 userId: selectedUserId,
                 scopeIds: editingScopeIds,
             });
+        } else if (subjectType === "department" && selectedDepartmentId != null) {
+            saveDepartmentScopesMutation.mutate({
+                departmentId: selectedDepartmentId,
+                scopeIds: editingScopeIds,
+            });
         }
     }
 
@@ -345,18 +393,20 @@ export function AuthorizationManagementPage() {
             <Row gutter={[16, 16]}>
                 <Col xs={24} md={8}>
                     <Card title="授权主体">
-                        <Space direction="vertical" style={{ width: "100%" }} size="middle">
+                        <Space orientation="vertical" style={{ width: "100%" }} size="middle">
                             <Segmented
                                 block
                                 options={[
                                     { label: "角色", value: "role" },
                                     { label: "用户", value: "user" },
+                                    { label: "部门", value: "department" },
                                 ]}
                                 value={subjectType}
                                 onChange={(v) => {
                                     setSubjectType(v as SubjectType);
                                     setSelectedRoleId(null);
                                     setSelectedUserId(null);
+                                    setSelectedDepartmentId(null);
                                 }}
                             />
                             {subjectType === "role" ? (
@@ -380,7 +430,7 @@ export function AuthorizationManagementPage() {
                                         value: r.id,
                                     }))}
                                 />
-                            ) : (
+                            ) : subjectType === "user" ? (
                                 <Select
                                     showSearch
                                     allowClear
@@ -401,6 +451,27 @@ export function AuthorizationManagementPage() {
                                         value: u.id,
                                     }))}
                                 />
+                            ) : (
+                                <Select
+                                    showSearch
+                                    allowClear
+                                    placeholder="搜索并选择部门"
+                                    style={{ width: "100%" }}
+                                    loading={departmentsQuery.isLoading}
+                                    filterOption={(input, option) =>
+                                        (option?.label as string)
+                                            ?.toLowerCase()
+                                            .includes(input.toLowerCase())
+                                    }
+                                    value={selectedDepartmentId}
+                                    onChange={(v) => {
+                                        setSelectedDepartmentId(v ?? null);
+                                    }}
+                                    options={departments.map((department) => ({
+                                        label: `${department.departmentCode} ${department.departmentName}`,
+                                        value: department.id,
+                                    }))}
+                                />
                             )}
                         </Space>
                     </Card>
@@ -408,7 +479,7 @@ export function AuthorizationManagementPage() {
                     {/* Subject info */}
                     {selectedRole && (
                         <Card size="small" style={{ marginTop: 12 }}>
-                            <Space direction="vertical">
+                            <Space orientation="vertical">
                                 <Typography.Text strong>{selectedRole.roleName}</Typography.Text>
                                 <Typography.Text type="secondary">
                                     {selectedRole.description ?? "无说明"}
@@ -419,9 +490,24 @@ export function AuthorizationManagementPage() {
                             </Space>
                         </Card>
                     )}
+                    {selectedDepartment && (
+                        <Card size="small" style={{ marginTop: 12 }}>
+                            <Space orientation="vertical">
+                                <Typography.Text strong>
+                                    {selectedDepartment.departmentName}
+                                </Typography.Text>
+                                <Typography.Text type="secondary">
+                                    {selectedDepartment.departmentCode}
+                                </Typography.Text>
+                                <Tag color={selectedDepartment.enabled ? "green" : "default"}>
+                                    {selectedDepartment.enabled ? "启用" : "停用"}
+                                </Tag>
+                            </Space>
+                        </Card>
+                    )}
                     {selectedUser && (
                         <Card size="small" style={{ marginTop: 12 }}>
-                            <Space direction="vertical">
+                            <Space orientation="vertical">
                                 <Typography.Text strong>{selectedUser.displayName}</Typography.Text>
                                 <Typography.Text type="secondary">
                                     {selectedUser.username}
@@ -442,47 +528,50 @@ export function AuthorizationManagementPage() {
                                 <Empty description="请在左侧选择授权主体" />
                             </Card>
                         ) : (
-                            <Space direction="vertical" style={{ width: "100%" }} size="middle">
-                                {/* 功能权限 */}
-                                <Card
-                                    title="功能权限"
-                                    extra={
-                                        subjectType === "role" && (
-                                            <Button
-                                                size="small"
-                                                type="primary"
-                                                onClick={openPermissionEdit}
+                            <Space orientation="vertical" style={{ width: "100%" }} size="middle">
+                                {subjectType !== "department" && (
+                                    <Card
+                                        title="功能权限"
+                                        extra={
+                                            subjectType === "role" && (
+                                                <Button
+                                                    size="small"
+                                                    type="primary"
+                                                    onClick={openPermissionEdit}
+                                                >
+                                                    编辑
+                                                </Button>
+                                            )
+                                        }
+                                    >
+                                        {subjectType === "user" && (
+                                            <Typography.Text
+                                                type="secondary"
+                                                style={{ display: "block", marginBottom: 8 }}
                                             >
-                                                编辑
-                                            </Button>
-                                        )
-                                    }
-                                >
-                                    {subjectType === "user" && (
-                                        <Typography.Text
-                                            type="secondary"
-                                            style={{ display: "block", marginBottom: 8 }}
-                                        >
-                                            用户权限由其角色决定
-                                        </Typography.Text>
-                                    )}
-                                    {displayPermissionCodes.length === 0 ? (
-                                        <Empty
-                                            description="暂无功能权限"
-                                            image={Empty.PRESENTED_IMAGE_SIMPLE}
-                                        />
-                                    ) : (
-                                        <Table<AuthorizationPermissionDto>
-                                            columns={permColumns}
-                                            dataSource={allPermissions.filter((p) =>
-                                                displayPermissionCodes.includes(p.permissionCode),
-                                            )}
-                                            pagination={false}
-                                            rowKey="permissionCode"
-                                            size="small"
-                                        />
-                                    )}
-                                </Card>
+                                                用户权限由其角色决定
+                                            </Typography.Text>
+                                        )}
+                                        {displayPermissionCodes.length === 0 ? (
+                                            <Empty
+                                                description="暂无功能权限"
+                                                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                                            />
+                                        ) : (
+                                            <Table<AuthorizationPermissionDto>
+                                                columns={permColumns}
+                                                dataSource={allPermissions.filter((p) =>
+                                                    displayPermissionCodes.includes(
+                                                        p.permissionCode,
+                                                    ),
+                                                )}
+                                                pagination={false}
+                                                rowKey="permissionCode"
+                                                size="small"
+                                            />
+                                        )}
+                                    </Card>
+                                )}
 
                                 {/* 数据范围 */}
                                 <Card
@@ -543,7 +632,7 @@ export function AuthorizationManagementPage() {
                 onOk={handleSavePermissions}
                 onCancel={() => setPermissionModalOpen(false)}
                 confirmLoading={saveRolePermsMutation.isPending}
-                destroyOnClose
+                destroyOnHidden
                 width={640}
             >
                 <Spin spinning={allPermissionsQuery.isLoading}>
@@ -568,9 +657,11 @@ export function AuthorizationManagementPage() {
                 onOk={handleSaveScopes}
                 onCancel={() => setScopeModalOpen(false)}
                 confirmLoading={
-                    saveRoleScopesMutation.isPending || saveUserScopesMutation.isPending
+                    saveRoleScopesMutation.isPending ||
+                    saveUserScopesMutation.isPending ||
+                    saveDepartmentScopesMutation.isPending
                 }
-                destroyOnClose
+                destroyOnHidden
                 width={640}
             >
                 <Spin spinning={allScopesQuery.isLoading}>

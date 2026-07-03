@@ -8,14 +8,15 @@ import org.apache.commons.lang3.StringUtils;
 import org.jspecify.annotations.Nullable;
 import org.springframework.http.MediaType;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import github.luckygc.am.common.exception.BadRequestException;
+
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
 final class PageRequestParameters {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final JsonMapper JSON_MAPPER = JsonMapper.builder().build();
 
     private final HttpServletRequest request;
     private final @Nullable JsonNode jsonBody;
@@ -56,8 +57,8 @@ final class PageRequestParameters {
             return null;
         }
         try {
-            return OBJECT_MAPPER.readTree(body);
-        } catch (IOException exception) {
+            return JSON_MAPPER.readTree(body);
+        } catch (JacksonException exception) {
             throw new BadRequestException("请求体 JSON 无效", "body", "JSON 格式无效");
         }
     }

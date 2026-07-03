@@ -21,13 +21,10 @@ comment on column am_organization_department.department_name is '部门名称';
 comment on column am_organization_department.parent_id is '父部门 ID';
 comment on column am_organization_department.enabled is '是否启用';
 
-comment on column am_archive_volume.department_id is '所属部门 ID';
-comment on column am_archive_item.department_id is '所属部门 ID';
+alter table am_authentication_user
+    add column department_id bigint references am_organization_department (id);
 
-alter table am_archive_volume
-    add constraint fk_am_archive_volume_department
-        foreign key (department_id) references am_organization_department (id);
+create index idx_am_authentication_user_department
+    on am_authentication_user (department_id);
 
-alter table am_archive_item
-    add constraint fk_am_archive_item_department
-        foreign key (department_id) references am_organization_department (id);
+comment on column am_authentication_user.department_id is '所属部门 ID';

@@ -54,7 +54,6 @@ public class ArchiveMetadataService {
                     "electronic_status",
                     "security_level_id",
                     "retention_period_id",
-                    "department_id",
                     "sort_order",
                     "archived_at",
                     "archive_year",
@@ -94,8 +93,6 @@ public class ArchiveMetadataService {
                             "密级",
                             ArchiveFieldType.INTEGER,
                             "security_level_id"),
-                    new BuiltinDataScopeField(
-                            "department_id", "所属部门", ArchiveFieldType.INTEGER, "department_id"),
                     new BuiltinDataScopeField(
                             "created_by", "创建人", ArchiveFieldType.INTEGER, "created_by"));
     private static final int DEFAULT_TEXT_LENGTH = 500;

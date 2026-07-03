@@ -14,11 +14,11 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import github.luckygc.am.common.exception.BadRequestException;
+
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
 @Component
 public class CursorHttpFingerprint {
@@ -30,7 +30,7 @@ public class CursorHttpFingerprint {
     private static final String CSRF_PARAM = "_csrf";
     private static final int MAX_JSON_DEPTH = 100;
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final JsonMapper jsonMapper = JsonMapper.builder().build();
 
     public String fingerprint(HttpServletRequest request) {
         StringBuilder builder = new StringBuilder();
@@ -71,9 +71,9 @@ public class CursorHttpFingerprint {
             return;
         }
         try {
-            JsonNode node = objectMapper.readTree(body);
+            JsonNode node = jsonMapper.readTree(body);
             builder.append("b:").append(canonicalJson(node, true, 0)).append('\n');
-        } catch (IOException exception) {
+        } catch (JacksonException exception) {
             throw new BadRequestException("请求体 JSON 无效", "body", "JSON 格式无效");
         }
     }
@@ -98,8 +98,7 @@ public class CursorHttpFingerprint {
         }
     }
 
-    private String canonicalJson(JsonNode node, boolean root, int depth)
-            throws JsonProcessingException {
+    private String canonicalJson(JsonNode node, boolean root, int depth) throws JacksonException {
         if (depth > MAX_JSON_DEPTH) {
             throw new BadRequestException("请求体 JSON 无效", "body", "JSON 嵌套层级过深");
         }
@@ -107,8 +106,8 @@ public class CursorHttpFingerprint {
             StringBuilder builder = new StringBuilder("{");
             boolean first = true;
             TreeMap<String, JsonNode> fields = new TreeMap<>();
-            node.fields()
-                    .forEachRemaining(
+            node.properties()
+                    .forEach(
                             entry -> {
                                 if (!root || !isPaginationParameter(entry.getKey())) {
                                     fields.put(entry.getKey(), entry.getValue());
@@ -119,7 +118,7 @@ public class CursorHttpFingerprint {
                     builder.append(',');
                 }
                 first = false;
-                builder.append(objectMapper.writeValueAsString(entry.getKey()))
+                builder.append(jsonMapper.writeValueAsString(entry.getKey()))
                         .append(':')
                         .append(canonicalJson(entry.getValue(), false, depth + 1));
             }
@@ -137,6 +136,6 @@ public class CursorHttpFingerprint {
             }
             return builder.append(']').toString();
         }
-        return objectMapper.writeValueAsString(node);
+        return jsonMapper.writeValueAsString(node);
     }
 }

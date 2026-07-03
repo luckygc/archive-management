@@ -74,7 +74,12 @@ public class AuthorizationPermissionService {
                     new PermissionDefinition(
                             "authentication:user:manage", "管理用户", "authentication", "创建、编辑用户和分配角色"),
                     new PermissionDefinition(
-                            "authorization:role:manage", "管理角色", "authorization", "创建、编辑和删除角色"));
+                            "authorization:role:manage", "管理角色", "authorization", "创建、编辑和删除角色"),
+                    new PermissionDefinition(
+                            "organization:department:manage",
+                            "管理组织架构",
+                            "organization",
+                            "维护组织架构部门树"));
 
     private final AuthorizationPermissionDataRepository permissionRepository;
     private final AuthorizationRoleDataRepository roleRepository;

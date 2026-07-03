@@ -260,7 +260,6 @@ public class ArchiveItemImportExportService {
                             null,
                             null,
                             null,
-                            null,
                             dynamicFields);
             rows.add(new ArchiveImportRow(rowNumber, request, null, parseErrors));
         }
@@ -406,7 +405,6 @@ public class ArchiveItemImportExportService {
                 check.request().fondsCode(),
                 check.request().securityLevelId(),
                 check.request().retentionPeriodId(),
-                check.request().departmentId(),
                 dynamicRow)) {
             check.errors().add(new ArchiveImportRowError(check.rowNumber(), "*", "数据范围不足"));
         }
@@ -506,7 +504,6 @@ public class ArchiveItemImportExportService {
                     createRequest.electronicStatus(),
                     createRequest.securityLevelId(),
                     createRequest.retentionPeriodId(),
-                    createRequest.departmentId(),
                     createRequest.physicalFields(),
                     createRequest.dynamicFields());
         }

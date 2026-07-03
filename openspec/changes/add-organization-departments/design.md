@@ -9,6 +9,7 @@
 - 在存储、Java、API 和前端合同中统一使用部门作为组织架构节点。
 - 由 `organization` 业务模块拥有部门实体、服务和接口。
 - 支持用户所属部门，并让用户所属启用部门绑定的数据范围参与运行期范围计算。
+- 组织部门不作为档案记录的固定归属字段；档案门类若需要部门类业务字段，通过元数据动态字段定义。
 - 明确停用部门的历史引用保留和新选择限制。
 
 **Non-Goals:**
@@ -29,15 +30,23 @@
 
 ### Department API has no delete method
 
-组织架构部门资源使用 `/api/v1/organization-departments`。首版只提供列表、详情、创建和 `PATCH` 更新；启停通过更新 `enabled` 字段表达，排序通过 `sortOrder` 字段表达。部门不提供删除接口，避免破坏已有用户、档案和数据范围历史引用。
+组织架构部门资源使用 `/api/v1/organization-departments`。首版只提供列表、详情、创建和 `PATCH` 更新；启停通过更新 `enabled` 字段表达，排序通过 `sortOrder` 字段表达。部门不提供删除接口，避免破坏已有用户和数据范围主体历史引用。
+
+### Department reads support related selectors
+
+部门创建和更新只允许 `organization:department:manage`。部门列表和详情同时服务组织架构页、用户所属部门选择和部门数据范围主体选择，因此读取允许 `organization:department:manage`、`authentication:user:manage` 或 `archive:data-scope:manage` 任一权限。
 
 ### Direct department scope only
 
 运行期档案数据范围只纳入用户所属启用部门直接绑定的启用数据范围。父部门绑定不在本 change 中自动包含子部门用户。
 
+### Departments are not archive-owned fields
+
+档案条目和案卷基础表不新增 `department_id`，档案创建、更新和导入导出合同也不接收固定 `departmentId`。如果某个门类需要形成部门、承办部门或保管部门，由档案元数据动态字段配置，并可按现有动态字段数据范围机制参与过滤。
+
 ### Department references are historical-safe
 
-停用部门可以继续被已有用户、档案记录和数据范围行引用。停用部门不能被新用户归属、新档案写入或新数据范围条件选择。
+停用部门可以继续被已有用户和数据范围主体关系引用。停用部门不能被新用户归属或新数据范围主体绑定选择。
 
 ## Risks / Trade-offs
 

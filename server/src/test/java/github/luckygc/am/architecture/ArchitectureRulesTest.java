@@ -182,6 +182,13 @@ class ArchitectureRulesTest {
                     .resideInAnyPackage("org.springframework.data..");
 
     @ArchTest
+    static final ArchRule project_should_not_depend_on_jackson2 =
+            noClasses()
+                    .should()
+                    .dependOnClassesThat()
+                    .resideInAnyPackage("com.fasterxml.jackson..");
+
+    @ArchTest
     static final ArchRule module_should_not_use_jdbc_client =
             noClasses()
                     .that()

@@ -40,9 +40,9 @@
 
 - **WHEN** 管理员通过 `PATCH /api/v1/organization-departments/{organizationDepartment}` 更新 `enabled`
 - **THEN** 系统 SHALL 保存部门启用状态
-- **AND** 启用部门后系统 SHALL 允许该部门被新用户归属、新档案记录和新数据范围条件选择
+- **AND** 启用部门后系统 SHALL 允许该部门被新用户归属和新数据范围主体绑定选择
 - **AND** 停用部门后系统 SHALL 保留历史引用
-- **AND** 停用部门 SHALL NOT 被新用户归属、新档案记录或新数据范围条件选择
+- **AND** 停用部门 SHALL NOT 被新用户归属或新数据范围主体绑定选择
 
 #### Scenario: 调整部门排序
 
@@ -58,7 +58,7 @@
 
 #### Scenario: 停用部门保留历史引用
 
-- **WHEN** 管理员停用部门后系统读取已有用户、档案记录或数据范围行
+- **WHEN** 管理员停用部门后系统读取已有用户或数据范围主体关系
 - **THEN** 系统 SHALL 保留历史引用
 - **AND** 系统 SHALL 允许响应继续展示该停用部门的编码和名称
 
@@ -72,12 +72,17 @@
 
 系统 SHALL 使用独立功能权限控制组织架构管理。
 
-#### Scenario: 管理组织架构部门接口
+#### Scenario: 读取部门选项
 
 - **WHEN** 用户调用 `GET /api/v1/organization-departments`
 - **OR** 用户调用 `GET /api/v1/organization-departments?enabled=true`
 - **OR** 用户调用 `GET /api/v1/organization-departments/{organizationDepartment}`
-- **OR** 用户调用 `POST /api/v1/organization-departments`
+- **THEN** 系统 SHALL 要求用户至少具备 `organization:department:manage`、`authentication:user:manage` 或 `archive:data-scope:manage` 之一
+- **AND** 超级管理员 SHALL 默认拥有读取能力
+
+#### Scenario: 管理组织架构部门接口
+
+- **WHEN** 用户调用 `POST /api/v1/organization-departments`
 - **OR** 用户调用 `PATCH /api/v1/organization-departments/{organizationDepartment}`
 - **THEN** 系统 SHALL 要求 `organization:department:manage`
 - **AND** 超级管理员 SHALL 默认拥有该权限

@@ -2,7 +2,11 @@ package github.luckygc.am.module.archive.authorization.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDateTime;
@@ -12,6 +16,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.archive.ArchiveLevel;
@@ -44,6 +49,7 @@ import github.luckygc.am.module.authorization.repository.AuthorizationRoleDataRe
 import github.luckygc.am.module.authorization.repository.AuthorizationUserRoleRelationDataRepository;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
 import github.luckygc.am.module.organization.service.OrganizationDepartmentService;
+import github.luckygc.am.module.organization.service.OrganizationDepartmentService.OrganizationDepartmentResponse;
 
 @DisplayName("档案数据范围服务")
 class ArchiveDataScopeServiceTests {
@@ -54,8 +60,8 @@ class ArchiveDataScopeServiceTests {
     private AuthorizationRoleDataRepository roleRepository;
     private AuthorizationUserRoleRelationDataRepository userRoleRelationRepository;
     private AuthenticationUserDataRepository authenticationUserRepository;
-    private ArchiveMetadataService archiveMetadataService;
     private OrganizationDepartmentService departmentService;
+    private ArchiveMetadataService archiveMetadataService;
     private ArchiveDataScopeService dataScopeService;
 
     @BeforeEach
@@ -66,8 +72,8 @@ class ArchiveDataScopeServiceTests {
         roleRepository = mock(AuthorizationRoleDataRepository.class);
         userRoleRelationRepository = mock(AuthorizationUserRoleRelationDataRepository.class);
         authenticationUserRepository = mock(AuthenticationUserDataRepository.class);
-        archiveMetadataService = mock(ArchiveMetadataService.class);
         departmentService = mock(OrganizationDepartmentService.class);
+        archiveMetadataService = mock(ArchiveMetadataService.class);
         dataScopeService =
                 new ArchiveDataScopeService(
                         dataScopeRepository,
@@ -76,8 +82,8 @@ class ArchiveDataScopeServiceTests {
                         roleRepository,
                         userRoleRelationRepository,
                         authenticationUserRepository,
-                        archiveMetadataService,
-                        departmentService);
+                        departmentService,
+                        archiveMetadataService);
     }
 
     @Test
@@ -126,22 +132,6 @@ class ArchiveDataScopeServiceTests {
         assertThatThrownBy(() -> dataScopeService.validateScopeDefinition(scope, List.of()))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("动态字段不允许用于数据范围");
-    }
-
-    @Test
-    @DisplayName("部门范围拒绝停用部门")
-    void validateScopeShouldRejectDisabledDepartmentDimension() {
-        ArchiveDataScope scope = scope(1L, ArchiveDataScopeType.CONDITIONAL, true);
-        ArchiveDataScopeDimension dimension = new ArchiveDataScopeDimension();
-        dimension.setDimensionType(ArchiveDataScopeDimensionType.DEPARTMENT);
-        dimension.setTargetId(5L);
-        when(departmentService.requireEnabledDepartment(5L))
-                .thenThrow(new BadRequestException("部门已停用", "departmentId", "部门已停用"));
-
-        assertThatThrownBy(
-                        () -> dataScopeService.validateScopeDefinition(scope, List.of(dimension)))
-                .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("部门已停用");
     }
 
     @Test
@@ -200,6 +190,55 @@ class ArchiveDataScopeServiceTests {
         assertThat(resolved.empty()).isFalse();
         assertThat(resolved.scopes()).hasSize(1);
         assertThat(resolved.scopes().getFirst().dimensions()).containsExactly(dimension);
+    }
+
+    @Test
+    @DisplayName("用户所属启用部门绑定的数据范围参与范围计算")
+    void resolveUserScopeShouldIncludeEnabledDepartmentScopes() {
+        AuthenticationUser user = enabledUser(7L);
+        user.setDepartmentId(3L);
+        ArchiveDataScope scope = scope(100L, ArchiveDataScopeType.CONDITIONAL, true);
+        ArchiveDataScopeDimension dimension = new ArchiveDataScopeDimension();
+        dimension.setScopeId(100L);
+        dimension.setDimensionType(ArchiveDataScopeDimensionType.FONDS);
+        dimension.setTargetCode("F001");
+        when(subjectRelationRepository.findBySubjectTypeAndSubjectId(
+                        ArchiveDataScopeSubjectType.USER, 7L))
+                .thenReturn(List.of());
+        when(authenticationUserRepository.findById(7L)).thenReturn(Optional.of(user));
+        when(departmentService.getDepartment(3L)).thenReturn(department(3L, true));
+        when(subjectRelationRepository.findBySubjectTypeAndSubjectId(
+                        ArchiveDataScopeSubjectType.DEPARTMENT, 3L))
+                .thenReturn(
+                        List.of(subjectScope(ArchiveDataScopeSubjectType.DEPARTMENT, 3L, 100L)));
+        when(dataScopeRepository.findById(100L)).thenReturn(Optional.of(scope));
+        when(dimensionRepository.findByScopeId(100L)).thenReturn(List.of(dimension));
+        when(userRoleRelationRepository.findByUserId(7L)).thenReturn(List.of());
+
+        ArchiveDataScopeService.ResolvedArchiveDataScope resolved =
+                dataScopeService.resolveUserDataScope(7L);
+
+        assertThat(resolved.empty()).isFalse();
+        assertThat(resolved.scopes()).hasSize(1);
+        assertThat(resolved.scopes().getFirst().dimensions()).containsExactly(dimension);
+    }
+
+    @Test
+    @DisplayName("用户所属停用部门绑定的数据范围不参与范围计算")
+    void resolveUserScopeShouldIgnoreDisabledDepartmentScopes() {
+        AuthenticationUser user = enabledUser(7L);
+        user.setDepartmentId(3L);
+        when(subjectRelationRepository.findBySubjectTypeAndSubjectId(
+                        ArchiveDataScopeSubjectType.USER, 7L))
+                .thenReturn(List.of());
+        when(authenticationUserRepository.findById(7L)).thenReturn(Optional.of(user));
+        when(departmentService.getDepartment(3L)).thenReturn(department(3L, false));
+        when(userRoleRelationRepository.findByUserId(7L)).thenReturn(List.of());
+
+        ArchiveDataScopeService.ResolvedArchiveDataScope resolved =
+                dataScopeService.resolveUserDataScope(7L);
+
+        assertThat(resolved.empty()).isTrue();
     }
 
     @Test
@@ -302,28 +341,6 @@ class ArchiveDataScopeServiceTests {
     }
 
     @Test
-    @DisplayName("部门范围编译为主表固定 ID 条件")
-    void buildItemFilterShouldCompileDepartmentIds() {
-        ArchiveDataScope scope = scope(100L, ArchiveDataScopeType.CONDITIONAL, true);
-        ArchiveDataScopeDimension departmentDimension = new ArchiveDataScopeDimension();
-        departmentDimension.setScopeId(100L);
-        departmentDimension.setDimensionType(ArchiveDataScopeDimensionType.DEPARTMENT);
-        departmentDimension.setTargetId(5L);
-        bindDirectUserScope(scope, List.of(departmentDimension));
-        when(archiveMetadataService.listCategories(true)).thenReturn(List.of(category(11L, null)));
-        when(archiveMetadataService.listFields(11L)).thenReturn(List.of());
-
-        ArchiveDataScopeService.ArchiveDataScopeFilter filter =
-                dataScopeService.buildItemFilter(7L, 11L, null);
-
-        assertThat(filter.empty()).isFalse();
-        assertThat(filter.groups())
-                .containsExactly(
-                        new ArchiveDataScopeSqlGroup(
-                                List.of(), List.of(), List.of(), List.of(5L), List.of()));
-    }
-
-    @Test
     @DisplayName("动态字段范围条件编译为受控 MyBatis 条件")
     void buildItemFilterShouldCompileDynamicConditions() {
         ArchiveDataScope scope = scope(100L, ArchiveDataScopeType.CONDITIONAL, true);
@@ -388,6 +405,49 @@ class ArchiveDataScopeServiceTests {
                 .hasMessageContaining("用户不存在");
     }
 
+    @Test
+    @DisplayName("保存部门数据范围写入部门主体绑定")
+    void saveDepartmentDataScopesShouldPersistDepartmentSubject() {
+        ArchiveDataScope scope = scope(100L, ArchiveDataScopeType.CONDITIONAL, true);
+        when(departmentService.requireEnabledDepartment(3L)).thenReturn(department(3L, true));
+        when(dataScopeRepository.findById(100L)).thenReturn(Optional.of(scope));
+        when(subjectRelationRepository.findBySubjectTypeAndSubjectId(
+                        ArchiveDataScopeSubjectType.DEPARTMENT, 3L))
+                .thenReturn(
+                        List.of(subjectScope(ArchiveDataScopeSubjectType.DEPARTMENT, 3L, 100L)));
+
+        ArchiveDataScopeService.DepartmentArchiveDataScopesResponse response =
+                dataScopeService.saveDepartmentDataScopes(3L, List.of(100L));
+
+        ArgumentCaptor<ArchiveDataScopeSubjectRelation> captor =
+                ArgumentCaptor.forClass(ArchiveDataScopeSubjectRelation.class);
+        verify(subjectRelationRepository)
+                .deleteBySubjectTypeAndSubjectId(ArchiveDataScopeSubjectType.DEPARTMENT, 3L);
+        verify(subjectRelationRepository).insert(captor.capture());
+        assertThat(captor.getValue().getSubjectType())
+                .isEqualTo(ArchiveDataScopeSubjectType.DEPARTMENT);
+        assertThat(captor.getValue().getSubjectId()).isEqualTo(3L);
+        assertThat(captor.getValue().getScopeId()).isEqualTo(100L);
+        assertThat(response.departmentId()).isEqualTo(3L);
+        assertThat(response.scopeIds()).containsExactly(100L);
+    }
+
+    @Test
+    @DisplayName("保存部门数据范围拒绝停用部门")
+    void saveDepartmentDataScopesShouldRejectDisabledDepartment() {
+        doThrow(new BadRequestException("部门已停用", "departmentId", "部门已停用"))
+                .when(departmentService)
+                .requireEnabledDepartment(3L);
+
+        assertThatThrownBy(() -> dataScopeService.saveDepartmentDataScopes(3L, List.of(100L)))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("部门已停用");
+
+        verify(subjectRelationRepository, never())
+                .deleteBySubjectTypeAndSubjectId(ArchiveDataScopeSubjectType.DEPARTMENT, 3L);
+        verify(subjectRelationRepository, never()).insert(any());
+    }
+
     private static ArchiveDataScope scope(
             Long id, ArchiveDataScopeType scopeType, boolean enabled) {
         ArchiveDataScope scope = new ArchiveDataScope();
@@ -420,6 +480,12 @@ class ArchiveDataScopeServiceTests {
         user.setDisplayName("用户" + id);
         user.setEnabled(true);
         return user;
+    }
+
+    private static OrganizationDepartmentResponse department(Long id, boolean enabled) {
+        LocalDateTime now = LocalDateTime.of(2026, 6, 30, 10, 0);
+        return new OrganizationDepartmentResponse(
+                id, "D" + id, "部门" + id, null, enabled, 0, now, now);
     }
 
     private static AuthorizationUserRoleRelation userRole(Long userId, Long roleId) {
