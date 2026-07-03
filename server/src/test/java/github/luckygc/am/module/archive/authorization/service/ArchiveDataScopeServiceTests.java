@@ -36,6 +36,7 @@ import github.luckygc.am.module.archive.metadata.ArchiveTableStatus;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFieldDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.OrganizationUnitDto;
 import github.luckygc.am.module.authentication.AuthenticationUser;
 import github.luckygc.am.module.authentication.repository.AuthenticationUserDataRepository;
 import github.luckygc.am.module.authorization.AuthorizationRole;
@@ -122,6 +123,21 @@ class ArchiveDataScopeServiceTests {
         assertThatThrownBy(() -> dataScopeService.validateScopeDefinition(scope, List.of()))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("动态字段不允许用于数据范围");
+    }
+
+    @Test
+    @DisplayName("组织单元范围拒绝停用组织单元")
+    void validateScopeShouldRejectDisabledOrgUnitDimension() {
+        ArchiveDataScope scope = scope(1L, ArchiveDataScopeType.CONDITIONAL, true);
+        ArchiveDataScopeDimension dimension = new ArchiveDataScopeDimension();
+        dimension.setDimensionType(ArchiveDataScopeDimensionType.ORG_UNIT);
+        dimension.setTargetId(5L);
+        when(archiveMetadataService.getOrganizationUnit(5L)).thenReturn(orgUnit(5L, false));
+
+        assertThatThrownBy(
+                        () -> dataScopeService.validateScopeDefinition(scope, List.of(dimension)))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("组织单元已停用");
     }
 
     @Test
@@ -282,6 +298,28 @@ class ArchiveDataScopeServiceTests {
     }
 
     @Test
+    @DisplayName("组织单元范围编译为主表固定 ID 条件")
+    void buildItemFilterShouldCompileOrgUnitIds() {
+        ArchiveDataScope scope = scope(100L, ArchiveDataScopeType.CONDITIONAL, true);
+        ArchiveDataScopeDimension orgUnitDimension = new ArchiveDataScopeDimension();
+        orgUnitDimension.setScopeId(100L);
+        orgUnitDimension.setDimensionType(ArchiveDataScopeDimensionType.ORG_UNIT);
+        orgUnitDimension.setTargetId(5L);
+        bindDirectUserScope(scope, List.of(orgUnitDimension));
+        when(archiveMetadataService.listCategories(true)).thenReturn(List.of(category(11L, null)));
+        when(archiveMetadataService.listFields(11L)).thenReturn(List.of());
+
+        ArchiveDataScopeService.ArchiveDataScopeFilter filter =
+                dataScopeService.buildItemFilter(7L, 11L, null);
+
+        assertThat(filter.empty()).isFalse();
+        assertThat(filter.groups())
+                .containsExactly(
+                        new ArchiveDataScopeSqlGroup(
+                                List.of(), List.of(), List.of(), List.of(5L), List.of()));
+    }
+
+    @Test
     @DisplayName("动态字段范围条件编译为受控 MyBatis 条件")
     void buildItemFilterShouldCompileDynamicConditions() {
         ArchiveDataScope scope = scope(100L, ArchiveDataScopeType.CONDITIONAL, true);
@@ -427,6 +465,11 @@ class ArchiveDataScopeServiceTests {
                 now);
     }
 
+    private static OrganizationUnitDto orgUnit(Long id, boolean enabled) {
+        LocalDateTime now = LocalDateTime.of(2026, 6, 30, 10, 0);
+        return new OrganizationUnitDto(id, "OU" + id, "组织" + id, null, enabled, 0, now, now);
+    }
+
     private static ArchiveFieldDto field(
             Long id, Long categoryId, String fieldCode, boolean dataScopeFilterable) {
         return new ArchiveFieldDto(
@@ -455,6 +498,7 @@ class ArchiveDataScopeServiceTests {
                 dataScopeFilterable,
                 true,
                 0,
+                null,
                 null,
                 null);
     }

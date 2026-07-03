@@ -12,11 +12,11 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 
 import github.luckygc.am.module.authentication.LoginBlockedException;
 import github.luckygc.am.module.authentication.LoginFailureLimit;
 import github.luckygc.am.module.authentication.LoginFailureLimitProperties;
+import github.luckygc.am.module.authentication.mapper.LoginFailureLimitMapper;
 import github.luckygc.am.module.authentication.repository.LoginFailureLimitDataRepository;
 
 @DisplayName("登录失败限制服务")
@@ -26,25 +26,38 @@ class LoginFailureLimitServiceTests {
     @DisplayName("失败达到阈值时锁定登录名")
     void recordFailureShouldLockUsernameWhenThresholdReached() {
         LoginFailureLimitDataRepository repository = mock(LoginFailureLimitDataRepository.class);
+        LoginFailureLimitMapper mapper = mock(LoginFailureLimitMapper.class);
         LoginFailureLimit limit = limit(1, 0, LocalDateTime.now().minusMinutes(1), null);
-        when(repository.findById("admin")).thenReturn(Optional.of(limit));
-        LoginFailureLimitService service = service(repository);
+        when(mapper.insertFirstFailureIfAbsent(
+                        org.mockito.Mockito.eq("admin"),
+                        org.mockito.Mockito.any(),
+                        org.mockito.Mockito.any()))
+                .thenReturn(0);
+        when(mapper.findByUsernameForUpdate("admin")).thenReturn(limit);
+        LoginFailureLimitService service = service(repository, mapper);
 
         service.recordFailure("admin");
 
         assertThat(limit.getFailureCount()).isEqualTo(2);
         assertThat(limit.getLockLevel()).isEqualTo(1);
         assertThat(limit.getLockedUntil()).isAfter(LocalDateTime.now().plusMinutes(4));
-        verify(repository).update(limit);
+        verify(mapper).findByUsernameForUpdate("admin");
+        verify(mapper).update(limit);
     }
 
     @Test
     @DisplayName("锁定时长按锁定次数指数递增并封顶半小时")
     void recordFailureShouldIncreaseLockDurationWithThirtyMinutesCap() {
         LoginFailureLimitDataRepository repository = mock(LoginFailureLimitDataRepository.class);
+        LoginFailureLimitMapper mapper = mock(LoginFailureLimitMapper.class);
         LoginFailureLimit limit = limit(1, 3, LocalDateTime.now().minusMinutes(1), null);
-        when(repository.findById("admin")).thenReturn(Optional.of(limit));
-        LoginFailureLimitService service = service(repository);
+        when(mapper.insertFirstFailureIfAbsent(
+                        org.mockito.Mockito.eq("admin"),
+                        org.mockito.Mockito.any(),
+                        org.mockito.Mockito.any()))
+                .thenReturn(0);
+        when(mapper.findByUsernameForUpdate("admin")).thenReturn(limit);
+        LoginFailureLimitService service = service(repository, mapper);
 
         service.recordFailure("admin");
 
@@ -64,7 +77,7 @@ class LoginFailureLimitServiceTests {
                         LocalDateTime.now().minusMinutes(1),
                         LocalDateTime.now().plusMinutes(5));
         when(repository.findById("admin")).thenReturn(Optional.of(limit));
-        LoginFailureLimitService service = service(repository);
+        LoginFailureLimitService service = service(repository, mock(LoginFailureLimitMapper.class));
 
         assertThatThrownBy(() -> service.assertLoginAllowed("admin"))
                 .isInstanceOf(LoginBlockedException.class);
@@ -74,14 +87,20 @@ class LoginFailureLimitServiceTests {
     @DisplayName("锁定过期后的失败重新开始计数并保留锁定级别")
     void recordFailureShouldStartNewWindowAfterLockExpired() {
         LoginFailureLimitDataRepository repository = mock(LoginFailureLimitDataRepository.class);
+        LoginFailureLimitMapper mapper = mock(LoginFailureLimitMapper.class);
         LoginFailureLimit limit =
                 limit(
                         2,
                         1,
                         LocalDateTime.now().minusMinutes(6),
                         LocalDateTime.now().minusMinutes(1));
-        when(repository.findById("admin")).thenReturn(Optional.of(limit));
-        LoginFailureLimitService service = service(repository);
+        when(mapper.insertFirstFailureIfAbsent(
+                        org.mockito.Mockito.eq("admin"),
+                        org.mockito.Mockito.any(),
+                        org.mockito.Mockito.any()))
+                .thenReturn(0);
+        when(mapper.findByUsernameForUpdate("admin")).thenReturn(limit);
+        LoginFailureLimitService service = service(repository, mapper);
 
         service.recordFailure("admin");
 
@@ -96,7 +115,7 @@ class LoginFailureLimitServiceTests {
         LoginFailureLimitDataRepository repository = mock(LoginFailureLimitDataRepository.class);
         when(repository.findById("admin"))
                 .thenReturn(Optional.of(limit(2, 1, LocalDateTime.now(), null)));
-        LoginFailureLimitService service = service(repository);
+        LoginFailureLimitService service = service(repository, mock(LoginFailureLimitMapper.class));
 
         service.clear("admin");
 
@@ -107,25 +126,61 @@ class LoginFailureLimitServiceTests {
     @DisplayName("首次失败写入未锁定状态")
     void firstFailureShouldInsertUnlockedState() {
         LoginFailureLimitDataRepository repository = mock(LoginFailureLimitDataRepository.class);
-        when(repository.findById("admin")).thenReturn(Optional.empty());
-        LoginFailureLimitService service = service(repository);
+        LoginFailureLimitMapper mapper = mock(LoginFailureLimitMapper.class);
+        when(mapper.insertFirstFailureIfAbsent(
+                        org.mockito.Mockito.eq("admin"),
+                        org.mockito.Mockito.any(),
+                        org.mockito.Mockito.any()))
+                .thenReturn(1);
+        LoginFailureLimitService service = service(repository, mapper);
 
         service.recordFailure(" admin ");
 
-        ArgumentCaptor<LoginFailureLimit> captor = ArgumentCaptor.forClass(LoginFailureLimit.class);
-        verify(repository).insert(captor.capture());
-        assertThat(captor.getValue().getUsername()).isEqualTo("admin");
-        assertThat(captor.getValue().getFailureCount()).isEqualTo(1);
-        assertThat(captor.getValue().getLockLevel()).isZero();
-        assertThat(captor.getValue().getLockedUntil()).isNull();
+        verify(mapper)
+                .insertFirstFailureIfAbsent(
+                        org.mockito.Mockito.eq("admin"),
+                        org.mockito.Mockito.any(),
+                        org.mockito.Mockito.any());
     }
 
-    private static LoginFailureLimitService service(LoginFailureLimitDataRepository repository) {
+    @Test
+    @DisplayName("失败阈值为一次时首次失败后立即锁定")
+    void firstFailureShouldLockWhenThresholdIsOne() {
+        LoginFailureLimitDataRepository repository = mock(LoginFailureLimitDataRepository.class);
+        LoginFailureLimitMapper mapper = mock(LoginFailureLimitMapper.class);
+        LoginFailureLimit limit = limit(1, 0, LocalDateTime.now().minusSeconds(1), null);
+        when(mapper.insertFirstFailureIfAbsent(
+                        org.mockito.Mockito.eq("admin"),
+                        org.mockito.Mockito.any(),
+                        org.mockito.Mockito.any()))
+                .thenReturn(1);
+        when(mapper.findByUsernameForUpdate("admin")).thenReturn(limit);
+        LoginFailureLimitService service = service(repository, mapper, 1);
+
+        service.recordFailure("admin");
+
+        assertThat(limit.getFailureCount()).isEqualTo(1);
+        assertThat(limit.getLockLevel()).isEqualTo(1);
+        assertThat(limit.getLockedUntil()).isAfter(LocalDateTime.now().plusMinutes(4));
+        verify(mapper).findByUsernameForUpdate("admin");
+        verify(mapper).update(limit);
+    }
+
+    private static LoginFailureLimitService service(
+            LoginFailureLimitDataRepository repository, LoginFailureLimitMapper mapper) {
+        return service(repository, mapper, 2);
+    }
+
+    private static LoginFailureLimitService service(
+            LoginFailureLimitDataRepository repository,
+            LoginFailureLimitMapper mapper,
+            int maxFailures) {
         return new LoginFailureLimitService(
                 repository,
+                mapper,
                 new LoginFailureLimitProperties(
                         Duration.ofMinutes(10),
-                        2,
+                        maxFailures,
                         Duration.ofMinutes(5),
                         3,
                         Duration.ofHours(24),

@@ -34,6 +34,7 @@ import github.luckygc.am.module.archive.mapper.ArchiveSqlCondition;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFieldDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.OrganizationUnitDto;
 import github.luckygc.am.module.authentication.AuthenticationUser;
 import github.luckygc.am.module.authentication.repository.AuthenticationUserDataRepository;
 import github.luckygc.am.module.authorization.AuthorizationRole;
@@ -241,6 +242,8 @@ public class ArchiveDataScopeService {
         for (ResolvedScope scope : resolved.scopes()) {
             List<String> scopeFondsCodes = new ArrayList<>();
             List<Long> scopeSecurityLevelIds = new ArrayList<>();
+            List<Long> scopeRetentionPeriodIds = new ArrayList<>();
+            List<Long> scopeOrgUnitIds = new ArrayList<>();
             boolean scopeHasCategoryDimension = false;
             boolean scopeCategoryMatched = false;
             for (ArchiveDataScopeDimension dimension : scope.dimensions()) {
@@ -261,6 +264,16 @@ public class ArchiveDataScopeService {
                             scopeSecurityLevelIds.add(dimension.getTargetId());
                         }
                     }
+                    case RETENTION_PERIOD -> {
+                        if (dimension.getTargetId() != null) {
+                            scopeRetentionPeriodIds.add(dimension.getTargetId());
+                        }
+                    }
+                    case ORG_UNIT -> {
+                        if (dimension.getTargetId() != null) {
+                            scopeOrgUnitIds.add(dimension.getTargetId());
+                        }
+                    }
                 }
             }
             if (scopeHasCategoryDimension && !scopeCategoryMatched) {
@@ -278,6 +291,14 @@ public class ArchiveDataScopeService {
                             .distinct()
                             .sorted()
                             .toList();
+            List<Long> normalizedRetentionPeriodIds =
+                    scopeRetentionPeriodIds.stream()
+                            .filter(Objects::nonNull)
+                            .distinct()
+                            .sorted()
+                            .toList();
+            List<Long> normalizedOrgUnitIds =
+                    scopeOrgUnitIds.stream().filter(Objects::nonNull).distinct().sorted().toList();
             if (fondsCode != null
                     && !normalizedFondsCodes.isEmpty()
                     && !normalizedFondsCodes.contains(fondsCode)) {
@@ -292,7 +313,11 @@ public class ArchiveDataScopeService {
             }
             groups.add(
                     new ArchiveDataScopeSqlGroup(
-                            normalizedFondsCodes, normalizedSecurityLevelIds, dynamicConditions));
+                            normalizedFondsCodes,
+                            normalizedSecurityLevelIds,
+                            normalizedRetentionPeriodIds,
+                            normalizedOrgUnitIds,
+                            dynamicConditions));
         }
         return groups.isEmpty()
                 ? ArchiveDataScopeFilter.none()
@@ -303,6 +328,8 @@ public class ArchiveDataScopeService {
             ArchiveDataScopeFilter filter,
             @Nullable String fondsCode,
             @Nullable Long securityLevelId,
+            @Nullable Long retentionPeriodId,
+            @Nullable Long orgUnitId,
             Map<String, @Nullable Object> dynamicRow) {
         if (filter.allData()) {
             return true;
@@ -315,6 +342,12 @@ public class ArchiveDataScopeService {
                 continue;
             }
             if (!matchesSecurityLevel(group.securityLevelIds(), securityLevelId)) {
+                continue;
+            }
+            if (!matchesRetentionPeriod(group.retentionPeriodIds(), retentionPeriodId)) {
+                continue;
+            }
+            if (!matchesOrgUnit(group.orgUnitIds(), orgUnitId)) {
                 continue;
             }
             if (group.conditions().stream()
@@ -334,6 +367,18 @@ public class ArchiveDataScopeService {
             List<Long> allowedSecurityLevelIds, @Nullable Long securityLevelId) {
         return allowedSecurityLevelIds.isEmpty()
                 || (securityLevelId != null && allowedSecurityLevelIds.contains(securityLevelId));
+    }
+
+    private boolean matchesRetentionPeriod(
+            List<Long> allowedRetentionPeriodIds, @Nullable Long retentionPeriodId) {
+        return allowedRetentionPeriodIds.isEmpty()
+                || (retentionPeriodId != null
+                        && allowedRetentionPeriodIds.contains(retentionPeriodId));
+    }
+
+    private boolean matchesOrgUnit(List<Long> allowedOrgUnitIds, @Nullable Long orgUnitId) {
+        return allowedOrgUnitIds.isEmpty()
+                || (orgUnitId != null && allowedOrgUnitIds.contains(orgUnitId));
     }
 
     private boolean matchesCondition(
@@ -501,6 +546,23 @@ public class ArchiveDataScopeService {
                     if (dimension.getTargetId() == null) {
                         throw new BadRequestException(
                                 "密级范围必须指定密级 ID", "dimensions", "密级范围必须指定密级 ID");
+                    }
+                }
+                case RETENTION_PERIOD -> {
+                    if (dimension.getTargetId() == null) {
+                        throw new BadRequestException(
+                                "保管期限范围必须指定保管期限 ID", "dimensions", "保管期限范围必须指定保管期限 ID");
+                    }
+                }
+                case ORG_UNIT -> {
+                    if (dimension.getTargetId() == null) {
+                        throw new BadRequestException(
+                                "组织单元范围必须指定组织单元 ID", "dimensions", "组织单元范围必须指定组织单元 ID");
+                    }
+                    OrganizationUnitDto unit =
+                            archiveMetadataService.getOrganizationUnit(dimension.getTargetId());
+                    if (!unit.enabled()) {
+                        throw new BadRequestException("组织单元已停用", "dimensions", "组织单元已停用");
                     }
                 }
             }

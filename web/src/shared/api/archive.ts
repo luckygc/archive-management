@@ -33,8 +33,19 @@ import type {
     ArchiveDataScopeRequest,
     ArchiveDataScopeDto,
     AuthorizationPermissionDto,
+    AuthenticationUserDto,
+    AuthenticationUserDetailDto,
+    CreateAuthenticationUserRequest,
+    UpdateAuthenticationUserRequest,
+    ResetPasswordRequest,
+    SaveUserRolesRequest,
+    RoleSummaryDto,
+    AuthorizationRoleDto,
+    CreateAuthorizationRoleRequest,
+    UpdateAuthorizationRoleRequest,
     CursorPageResponse,
     CurrentUserPermissionsDto,
+    OrganizationUnitDto,
     RoleArchiveDataScopesDto,
     RolePermissionsDto,
     UserArchiveDataScopesDto,
@@ -356,6 +367,12 @@ export function listArchiveDataScopeFields(categoryId: number) {
     );
 }
 
+export function listOrganizationUnits(enabled?: boolean) {
+    return httpClient.get<CollectionResponse<OrganizationUnitDto>>(
+        `/api/v1/organization-units${queryString({ enabled })}`,
+    );
+}
+
 export function getRoleArchiveDataScopes(roleId: number) {
     return httpClient.get<RoleArchiveDataScopesDto>(
         `/api/v1/authorization-roles/${roleId}/archive-data-scopes`,
@@ -389,4 +406,77 @@ export function saveUserArchiveDataScopes(userId: number, scopeIds: number[]) {
         `/api/v1/authorization-users/${userId}/archive-data-scopes`,
         { scopeIds },
     );
+}
+
+// ────────────────────────────── 用户管理 ──────────────────────────────
+
+export function listAuthenticationUsers(keyword?: string, limit = 100, cursor?: string) {
+    const params = new URLSearchParams();
+    if (keyword) {
+        params.set("keyword", keyword);
+    }
+    params.set("limit", String(limit));
+    if (cursor) {
+        params.set("cursor", cursor);
+    }
+    return httpClient.get<CursorPageResponse<AuthenticationUserDto>>(
+        `/api/v1/authentication-users?${params.toString()}`,
+    );
+}
+
+export function createAuthenticationUser(payload: CreateAuthenticationUserRequest) {
+    return httpClient.post<AuthenticationUserDto>("/api/v1/authentication-users", payload);
+}
+
+export function getAuthenticationUser(id: number) {
+    return httpClient.get<AuthenticationUserDetailDto>(`/api/v1/authentication-users/${id}`);
+}
+
+export function updateAuthenticationUser(id: number, payload: UpdateAuthenticationUserRequest) {
+    return httpClient.patch<AuthenticationUserDto>(`/api/v1/authentication-users/${id}`, payload);
+}
+
+export function resetAuthenticationUserPassword(id: number, payload: ResetPasswordRequest) {
+    return httpClient.post<void>(`/api/v1/authentication-users/${id}:resetPassword`, payload);
+}
+
+export function listAuthenticationUserRoles(id: number) {
+    return httpClient.get<CollectionResponse<RoleSummaryDto>>(
+        `/api/v1/authentication-users/${id}/roles`,
+    );
+}
+
+export function saveAuthenticationUserRoles(id: number, payload: SaveUserRolesRequest) {
+    return httpClient.put<CollectionResponse<RoleSummaryDto>>(
+        `/api/v1/authentication-users/${id}/roles`,
+        payload,
+    );
+}
+
+// ────────────────────────────── 角色管理 ──────────────────────────────
+
+export function listAuthorizationRoles(enabled?: boolean, limit = 100, cursor?: string) {
+    const params = new URLSearchParams();
+    if (enabled !== undefined) {
+        params.set("enabled", String(enabled));
+    }
+    params.set("limit", String(limit));
+    if (cursor) {
+        params.set("cursor", cursor);
+    }
+    return httpClient.get<CursorPageResponse<AuthorizationRoleDto>>(
+        `/api/v1/authorization-roles?${params.toString()}`,
+    );
+}
+
+export function createAuthorizationRole(payload: CreateAuthorizationRoleRequest) {
+    return httpClient.post<AuthorizationRoleDto>("/api/v1/authorization-roles", payload);
+}
+
+export function updateAuthorizationRole(id: number, payload: UpdateAuthorizationRoleRequest) {
+    return httpClient.patch<AuthorizationRoleDto>(`/api/v1/authorization-roles/${id}`, payload);
+}
+
+export function deleteAuthorizationRole(id: number) {
+    return httpClient.delete<void>(`/api/v1/authorization-roles/${id}`);
 }

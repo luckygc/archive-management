@@ -83,7 +83,7 @@ class ArchiveItemFondsValidationTests {
                                 archiveItemRoutingService.createItem(
                                         new CreateArchiveItemRequest(
                                                 1L, null, "F001", "A-001", 2026, "DRAFT", null,
-                                                null, null, Map.of()),
+                                                null, null, null, Map.of()),
                                         9L))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("全宗不可用");
@@ -98,6 +98,7 @@ class ArchiveItemFondsValidationTests {
                         anyString(),
                         any(),
                         anyString(),
+                        any(),
                         any(),
                         any(),
                         anyInt(),
@@ -126,7 +127,7 @@ class ArchiveItemFondsValidationTests {
                                         10L,
                                         new UpdateArchiveItemRequest(
                                                 null, "F001", "A-002", 2026, "DRAFT", null, null,
-                                                null, Map.of()),
+                                                null, null, Map.of()),
                                         9L))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("全宗不可用");
@@ -139,6 +140,7 @@ class ArchiveItemFondsValidationTests {
                         anyString(),
                         any(),
                         anyString(),
+                        any(),
                         any(),
                         any(),
                         anyInt(),

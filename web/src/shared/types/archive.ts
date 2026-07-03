@@ -81,8 +81,6 @@ export interface ArchiveCategoryDto {
     managementMode: ArchiveManagementMode;
     volumeTableName?: string;
     itemTableName?: string;
-    volumePhysicalTableName?: string;
-    itemPhysicalTableName?: string;
     tableStatus: ArchiveTableStatus;
     builtAt?: string;
     enabled: boolean;
@@ -125,6 +123,7 @@ export interface ArchiveFieldDto {
     dataScopeFilterable: boolean;
     enabled: boolean;
     sortOrder: number;
+    fieldSource?: "BUILTIN" | "METADATA";
     createdAt: string;
     updatedAt: string;
 }
@@ -276,6 +275,7 @@ export interface CreateArchiveRecordRequest {
     electronicStatus?: ArchiveElectronicStatus;
     securityLevelId?: number;
     retentionPeriodId?: number;
+    orgUnitId?: number;
     physicalObject: ArchivePhysicalObjectRequest;
     dynamicFields: Record<string, unknown>;
 }
@@ -288,6 +288,7 @@ export interface UpdateArchiveRecordRequest {
     electronicStatus?: ArchiveElectronicStatus;
     securityLevelId?: number;
     retentionPeriodId?: number;
+    orgUnitId?: number;
     physicalObject: ArchivePhysicalObjectRequest;
     dynamicFields: Record<string, unknown>;
 }
@@ -311,6 +312,7 @@ export interface ArchiveRecordDto {
     electronicStatus: ArchiveElectronicStatus;
     securityLevelId?: number;
     retentionPeriodId?: number;
+    orgUnitId?: number;
     archiveYear: number;
     lockedFlag: boolean;
     lockReason?: string;
@@ -364,7 +366,12 @@ export interface ArchiveImportRowError {
 }
 
 export type ArchiveDataScopeType = "ALL" | "CONDITIONAL";
-export type ArchiveDataScopeDimensionType = "FONDS" | "CATEGORY" | "SECURITY_LEVEL";
+export type ArchiveDataScopeDimensionType =
+    | "FONDS"
+    | "CATEGORY"
+    | "SECURITY_LEVEL"
+    | "RETENTION_PERIOD"
+    | "ORG_UNIT";
 
 export interface ArchiveDataScopeDto {
     id: number;
@@ -420,6 +427,67 @@ export interface AuthorizationPermissionDto {
     description: string;
 }
 
+export interface AuthenticationUserDto {
+    id: number;
+    username: string;
+    displayName: string;
+    email?: string;
+    mobilePhone?: string;
+    enabled: boolean;
+    createdAt: string;
+}
+
+export interface AuthenticationUserDetailDto extends AuthenticationUserDto {
+    roles: RoleSummaryDto[];
+}
+
+export interface RoleSummaryDto {
+    id: number;
+    roleName: string;
+}
+
+export interface CreateAuthenticationUserRequest {
+    username: string;
+    password: string;
+    displayName?: string;
+    email?: string;
+    mobilePhone?: string;
+}
+
+export interface UpdateAuthenticationUserRequest {
+    displayName?: string;
+    email?: string;
+    mobilePhone?: string;
+    enabled?: boolean;
+}
+
+export interface ResetPasswordRequest {
+    newPassword: string;
+}
+
+export interface SaveUserRolesRequest {
+    roleIds: number[];
+}
+
+export interface AuthorizationRoleDto {
+    id: number;
+    roleName: string;
+    description?: string;
+    enabled: boolean;
+    createdAt: string;
+}
+
+export interface CreateAuthorizationRoleRequest {
+    roleName: string;
+    description?: string;
+}
+
+export interface UpdateAuthorizationRoleRequest {
+    roleName?: string;
+    description?: string;
+    enabled?: boolean;
+}
+
 export interface CurrentUserPermissionsDto {
     permissionCodes: string[];
 }
@@ -437,6 +505,17 @@ export interface RoleArchiveDataScopesDto {
 export interface UserArchiveDataScopesDto {
     userId: number;
     scopeIds: number[];
+}
+
+export interface OrganizationUnitDto {
+    id: number;
+    unitCode: string;
+    unitName: string;
+    parentId?: number;
+    enabled: boolean;
+    sortOrder: number;
+    createdAt: string;
+    updatedAt: string;
 }
 
 export interface ArchiveItemElectronicFileRequest {

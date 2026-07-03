@@ -16,6 +16,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.storage.FileStorageResource;
@@ -53,6 +54,35 @@ class StorageObjectServiceTests {
         assertThatThrownBy(() -> storageObjectService.getActiveObject(20L))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("文件记录不存在");
+    }
+
+    @Test
+    @DisplayName("只允许创建人继续使用临时存储对象")
+    void getActiveObjectForOwnerShouldRejectOtherUserObject() {
+        StorageObject object = storageObject();
+        object.setCreatedBy(8L);
+        when(storageObjectRepository.findById(20L)).thenReturn(Optional.of(object));
+
+        assertThatThrownBy(() -> storageObjectService.getActiveObjectForOwner(20L, 9L))
+                .isInstanceOfSatisfying(
+                        ResponseStatusException.class,
+                        exception ->
+                                assertThat(exception.getStatusCode())
+                                        .isEqualTo(HttpStatus.NOT_FOUND));
+    }
+
+    @Test
+    @DisplayName("创建人可以继续使用自己的临时存储对象")
+    void getActiveObjectForOwnerShouldReturnOwnerObject() {
+        StorageObject object = storageObject();
+        object.setCreatedBy(9L);
+        when(storageObjectRepository.findById(20L)).thenReturn(Optional.of(object));
+
+        StorageObjectService.StorageObjectDto dto =
+                storageObjectService.getActiveObjectForOwner(20L, 9L);
+
+        assertThat(dto.id()).isEqualTo(20L);
+        assertThat(dto.createdBy()).isEqualTo(9L);
     }
 
     @Test

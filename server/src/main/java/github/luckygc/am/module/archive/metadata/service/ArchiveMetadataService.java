@@ -24,6 +24,7 @@ import github.luckygc.am.module.archive.metadata.ArchiveField;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldControl;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldLayout;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldScope;
+import github.luckygc.am.module.archive.metadata.ArchiveFieldSource;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldType;
 import github.luckygc.am.module.archive.metadata.ArchiveFonds;
 import github.luckygc.am.module.archive.metadata.ArchiveLayoutSurface;
@@ -31,12 +32,14 @@ import github.luckygc.am.module.archive.metadata.ArchiveManagementMode;
 import github.luckygc.am.module.archive.metadata.ArchiveRetentionPeriod;
 import github.luckygc.am.module.archive.metadata.ArchiveSecurityLevel;
 import github.luckygc.am.module.archive.metadata.ArchiveTableStatus;
+import github.luckygc.am.module.archive.metadata.OrganizationUnit;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveCategoryDataRepository;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveFieldDataRepository;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveFieldLayoutDataRepository;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveFondsDataRepository;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveRetentionPeriodDataRepository;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveSecurityLevelDataRepository;
+import github.luckygc.am.module.archive.metadata.repository.OrganizationUnitDataRepository;
 
 @Service
 public class ArchiveMetadataService {
@@ -53,6 +56,7 @@ public class ArchiveMetadataService {
                     "electronic_status",
                     "security_level_id",
                     "retention_period_id",
+                    "org_unit_id",
                     "sort_order",
                     "archived_at",
                     "archive_year",
@@ -69,6 +73,33 @@ public class ArchiveMetadataService {
                     "updated_at",
                     "fonds_code",
                     "fonds_name");
+    private static final List<BuiltinDataScopeField> BUILTIN_DATA_SCOPE_FIELDS =
+            List.of(
+                    new BuiltinDataScopeField(
+                            "archive_year", "年度", ArchiveFieldType.INTEGER, "archive_year"),
+                    new BuiltinDataScopeField(
+                            "retention_period_id",
+                            "保管期限",
+                            ArchiveFieldType.INTEGER,
+                            "retention_period_id"),
+                    new BuiltinDataScopeField(
+                            "electronic_status",
+                            "电子状态",
+                            ArchiveFieldType.TEXT,
+                            "electronic_status"),
+                    new BuiltinDataScopeField(
+                            "fonds_code", "全宗编码", ArchiveFieldType.TEXT, "fonds_code"),
+                    new BuiltinDataScopeField(
+                            "category_code", "分类编码", ArchiveFieldType.TEXT, "category_code"),
+                    new BuiltinDataScopeField(
+                            "security_level_id",
+                            "密级",
+                            ArchiveFieldType.INTEGER,
+                            "security_level_id"),
+                    new BuiltinDataScopeField(
+                            "org_unit_id", "组织单元", ArchiveFieldType.INTEGER, "org_unit_id"),
+                    new BuiltinDataScopeField(
+                            "created_by", "创建人", ArchiveFieldType.INTEGER, "created_by"));
     private static final int DEFAULT_TEXT_LENGTH = 500;
     private static final int DEFAULT_DECIMAL_PRECISION = 18;
     private static final int DEFAULT_DECIMAL_SCALE = 2;
@@ -80,6 +111,7 @@ public class ArchiveMetadataService {
     private final ArchiveFieldLayoutDataRepository fieldLayoutRepository;
     private final ArchiveSecurityLevelDataRepository securityLevelRepository;
     private final ArchiveRetentionPeriodDataRepository retentionPeriodRepository;
+    private final OrganizationUnitDataRepository organizationUnitRepository;
 
     public ArchiveMetadataService(
             ArchiveMapper archiveMapper,
@@ -88,7 +120,8 @@ public class ArchiveMetadataService {
             ArchiveFieldDataRepository fieldRepository,
             ArchiveFieldLayoutDataRepository fieldLayoutRepository,
             ArchiveSecurityLevelDataRepository securityLevelRepository,
-            ArchiveRetentionPeriodDataRepository retentionPeriodRepository) {
+            ArchiveRetentionPeriodDataRepository retentionPeriodRepository,
+            OrganizationUnitDataRepository organizationUnitRepository) {
         this.archiveMapper = archiveMapper;
         this.fondsRepository = fondsRepository;
         this.categoryRepository = categoryRepository;
@@ -96,6 +129,7 @@ public class ArchiveMetadataService {
         this.fieldLayoutRepository = fieldLayoutRepository;
         this.securityLevelRepository = securityLevelRepository;
         this.retentionPeriodRepository = retentionPeriodRepository;
+        this.organizationUnitRepository = organizationUnitRepository;
     }
 
     public List<ArchiveFondsDto> listFonds(@Nullable Boolean enabled) {
@@ -213,6 +247,22 @@ public class ArchiveMetadataService {
         return mapRetentionPeriod(retentionPeriodRepository.update(period));
     }
 
+    public List<OrganizationUnitDto> listOrganizationUnits(@Nullable Boolean enabled) {
+        List<OrganizationUnit> units =
+                enabled == null
+                        ? organizationUnitRepository.list()
+                        : organizationUnitRepository.list(enabled);
+        return units.stream().map(this::mapOrganizationUnit).toList();
+    }
+
+    public OrganizationUnitDto getOrganizationUnit(Long id) {
+        requireId(id);
+        return organizationUnitRepository
+                .findById(id)
+                .map(this::mapOrganizationUnit)
+                .orElseThrow(() -> notFound("组织单元不存在"));
+    }
+
     public List<ArchiveCategoryDto> listCategories(@Nullable Boolean enabled) {
         List<ArchiveCategory> categories =
                 enabled == null ? categoryRepository.list() : categoryRepository.list(enabled);
@@ -307,6 +357,10 @@ public class ArchiveMetadataService {
                 .stream()
                 .map(this::mapField)
                 .toList();
+    }
+
+    public List<ArchiveFieldDto> listBuiltinDataScopeFields() {
+        return BUILTIN_DATA_SCOPE_FIELDS.stream().map(this::toBuiltinFieldDto).toList();
     }
 
     public List<ArchiveFieldDto> listEffectiveFields(
@@ -1155,6 +1209,7 @@ public class ArchiveMetadataService {
                 field.dataScopeFilterable(),
                 field.enabled(),
                 field.sortOrder(),
+                field.fieldSource(),
                 field.createdAt(),
                 field.updatedAt());
     }
@@ -1343,6 +1398,18 @@ public class ArchiveMetadataService {
                 period.getUpdatedAt());
     }
 
+    private OrganizationUnitDto mapOrganizationUnit(OrganizationUnit unit) {
+        return new OrganizationUnitDto(
+                unit.getId(),
+                unit.getUnitCode(),
+                unit.getUnitName(),
+                unit.getParentId(),
+                unit.isEnabled(),
+                unit.getSortOrder(),
+                unit.getCreatedAt(),
+                unit.getUpdatedAt());
+    }
+
     private ArchiveCategoryDto mapCategory(Map<String, Object> row) {
         Number parentId = numberOrNull(row, "parentId");
         return new ArchiveCategoryDto(
@@ -1409,8 +1476,41 @@ public class ArchiveMetadataService {
                 field.isDataScopeFilterable(),
                 field.isEnabled(),
                 field.getSortOrder(),
+                ArchiveFieldSource.METADATA,
                 field.getCreatedAt(),
                 field.getUpdatedAt());
+    }
+
+    private ArchiveFieldDto toBuiltinFieldDto(BuiltinDataScopeField field) {
+        return new ArchiveFieldDto(
+                0L,
+                0L,
+                ArchiveLevel.ITEM,
+                ArchiveFieldScope.METADATA,
+                field.fieldCode(),
+                field.fieldName(),
+                field.fieldType(),
+                field.columnName(),
+                null,
+                null,
+                null,
+                ArchiveFieldControl.INPUT,
+                true,
+                null,
+                0,
+                true,
+                1,
+                0,
+                true,
+                1,
+                0,
+                false,
+                true,
+                true,
+                0,
+                ArchiveFieldSource.BUILTIN,
+                null,
+                null);
     }
 
     private ArchiveFieldLayoutItemDto mapFieldLayoutItem(
@@ -1529,6 +1629,16 @@ public class ArchiveMetadataService {
             LocalDateTime createdAt,
             LocalDateTime updatedAt) {}
 
+    public record OrganizationUnitDto(
+            Long id,
+            String unitCode,
+            String unitName,
+            @Nullable Long parentId,
+            boolean enabled,
+            int sortOrder,
+            LocalDateTime createdAt,
+            LocalDateTime updatedAt) {}
+
     public record ArchiveCategoryRequest(
             @Nullable String categoryCode,
             @Nullable String categoryName,
@@ -1604,6 +1714,7 @@ public class ArchiveMetadataService {
             boolean dataScopeFilterable,
             boolean enabled,
             int sortOrder,
+            @Nullable ArchiveFieldSource fieldSource,
             @Nullable LocalDateTime createdAt,
             @Nullable LocalDateTime updatedAt) {}
 
@@ -1659,6 +1770,9 @@ public class ArchiveMetadataService {
             String fieldCode,
             String fieldName,
             String columnName) {}
+
+    private record BuiltinDataScopeField(
+            String fieldCode, String fieldName, ArchiveFieldType fieldType, String columnName) {}
 
     private record FieldValues(
             ArchiveLevel archiveLevel,

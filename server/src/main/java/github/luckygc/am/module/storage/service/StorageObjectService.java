@@ -45,6 +45,22 @@ public class StorageObjectService {
     }
 
     @Transactional(readOnly = true)
+    public StorageObjectDto getActiveObjectForOwner(Long storageObjectId, Long ownerUserId) {
+        StorageObject storageObject =
+                storageObjectRepository
+                        .findById(storageObjectId)
+                        .orElseThrow(
+                                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "文件记录不存在"));
+        if (storageObject.getDeletedAt() != null
+                || isExpired(storageObject)
+                || storageObject.getCreatedBy() == null
+                || !storageObject.getCreatedBy().equals(ownerUserId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "文件记录不存在");
+        }
+        return toDto(storageObject);
+    }
+
+    @Transactional(readOnly = true)
     public StorageObjectDownload openObject(Long storageObjectId) {
         StorageObjectDto storageObject = getActiveObject(storageObjectId);
         try {
@@ -68,7 +84,8 @@ public class StorageObjectService {
                 storageObject.getOriginalFilename(),
                 storageObject.getFileSize(),
                 storageObject.getContentType(),
-                storageObject.getChecksumSha256());
+                storageObject.getChecksumSha256(),
+                storageObject.getCreatedBy());
     }
 
     private boolean isExpired(StorageObject storageObject) {
@@ -84,7 +101,8 @@ public class StorageObjectService {
             String originalFilename,
             long fileSize,
             @Nullable String contentType,
-            @Nullable String checksumSha256) {}
+            @Nullable String checksumSha256,
+            @Nullable Long createdBy) {}
 
     public record StorageObjectDownload(String originalFilename, FileStorageResource resource) {}
 }

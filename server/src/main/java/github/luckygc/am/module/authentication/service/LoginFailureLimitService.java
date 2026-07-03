@@ -11,17 +11,22 @@ import org.springframework.transaction.annotation.Transactional;
 import github.luckygc.am.module.authentication.LoginBlockedException;
 import github.luckygc.am.module.authentication.LoginFailureLimit;
 import github.luckygc.am.module.authentication.LoginFailureLimitProperties;
+import github.luckygc.am.module.authentication.mapper.LoginFailureLimitMapper;
 import github.luckygc.am.module.authentication.repository.LoginFailureLimitDataRepository;
 
 @Service
 public class LoginFailureLimitService {
 
     private final LoginFailureLimitDataRepository repository;
+    private final LoginFailureLimitMapper mapper;
     private final LoginFailureLimitProperties properties;
 
     public LoginFailureLimitService(
-            LoginFailureLimitDataRepository repository, LoginFailureLimitProperties properties) {
+            LoginFailureLimitDataRepository repository,
+            LoginFailureLimitMapper mapper,
+            LoginFailureLimitProperties properties) {
         this.repository = repository;
+        this.mapper = mapper;
         this.properties = properties;
     }
 
@@ -47,9 +52,17 @@ public class LoginFailureLimitService {
             return;
         }
         LocalDateTime now = LocalDateTime.now();
-        LoginFailureLimit limit = repository.findById(username).orElse(null);
+        int inserted =
+                mapper.insertFirstFailureIfAbsent(
+                        username, now, now.plus(properties.cleanupDelay()));
+        if (inserted == 1) {
+            if (properties.maxFailures() <= 1) {
+                lockInsertedFirstFailure(username, now);
+            }
+            return;
+        }
+        LoginFailureLimit limit = mapper.findByUsernameForUpdate(username);
         if (limit == null) {
-            insertFirstFailure(username, now);
             return;
         }
         if (locked(limit, now)) {
@@ -65,7 +78,17 @@ public class LoginFailureLimitService {
             lock(limit, now);
         }
         limit.setCleanupAfter(cleanupAfter(limit, now));
-        repository.update(limit);
+        mapper.update(limit);
+    }
+
+    private void lockInsertedFirstFailure(String username, LocalDateTime now) {
+        LoginFailureLimit limit = mapper.findByUsernameForUpdate(username);
+        if (limit == null || locked(limit, now)) {
+            return;
+        }
+        lock(limit, now);
+        limit.setCleanupAfter(cleanupAfter(limit, now));
+        mapper.update(limit);
     }
 
     @Transactional(rollbackFor = Throwable.class)
@@ -74,20 +97,6 @@ public class LoginFailureLimitService {
         if (username != null && repository.findById(username).isPresent()) {
             repository.deleteById(username);
         }
-    }
-
-    private void insertFirstFailure(String username, LocalDateTime now) {
-        LoginFailureLimit limit = new LoginFailureLimit();
-        limit.setUsername(username);
-        limit.setFailureCount(1);
-        limit.setLockLevel(0);
-        limit.setFirstFailedAt(now);
-        limit.setLastFailedAt(now);
-        if (limit.getFailureCount() >= properties.maxFailures()) {
-            lock(limit, now);
-        }
-        limit.setCleanupAfter(now.plus(properties.cleanupDelay()));
-        repository.insert(limit);
     }
 
     private boolean locked(LoginFailureLimit limit, LocalDateTime now) {

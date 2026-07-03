@@ -70,7 +70,11 @@ public class AuthorizationPermissionService {
                             "authentication",
                             "查询登录、退出和踢下线审计事件"),
                     new PermissionDefinition(
-                            "archive:data-scope:manage", "管理档案数据范围", "archive", "维护档案数据范围和主体范围绑定"));
+                            "archive:data-scope:manage", "管理档案数据范围", "archive", "维护档案数据范围和主体范围绑定"),
+                    new PermissionDefinition(
+                            "authentication:user:manage", "管理用户", "authentication", "创建、编辑用户和分配角色"),
+                    new PermissionDefinition(
+                            "authorization:role:manage", "管理角色", "authorization", "创建、编辑和删除角色"));
 
     private final AuthorizationPermissionDataRepository permissionRepository;
     private final AuthorizationRoleDataRepository roleRepository;

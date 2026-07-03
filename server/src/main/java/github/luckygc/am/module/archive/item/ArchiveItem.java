@@ -60,6 +60,9 @@ public class ArchiveItem implements CreationAuditable, UpdateAuditable {
     @Column(name = "retention_period_id")
     private Long retentionPeriodId;
 
+    @Column(name = "org_unit_id")
+    private Long orgUnitId;
+
     @Column(name = "sort_order", nullable = false)
     private int sortOrder;
 

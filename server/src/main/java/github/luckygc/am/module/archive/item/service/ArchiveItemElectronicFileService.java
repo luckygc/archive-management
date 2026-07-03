@@ -75,7 +75,7 @@ public class ArchiveItemElectronicFileService {
         archiveItemRoutingService.assertItemInDataScope(archiveItemId, userId);
         ensureArchiveItemExists(archiveItemId);
         StorageObjectDto storageObject =
-                storageObjectService.getActiveObject(request.storageObjectId());
+                storageObjectService.getActiveObjectForOwner(request.storageObjectId(), userId);
         String usageType = usageType(request.usageType());
         int displayOrder = request.displayOrder() == null ? 0 : request.displayOrder();
         Long electronicFileId;

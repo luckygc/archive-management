@@ -6,6 +6,7 @@ import jakarta.annotation.Nonnull;
 import jakarta.data.repository.Find;
 import jakarta.data.repository.Repository;
 
+import org.hibernate.annotations.processing.HQL;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,4 +21,11 @@ public interface AuthorizationUserRoleRelationDataRepository
     @Transactional(readOnly = true)
     @Find
     List<AuthorizationUserRoleRelation> findByUserId(@Nonnull Long userId);
+
+    @Transactional(readOnly = true)
+    @Find
+    List<AuthorizationUserRoleRelation> findByRoleId(@Nonnull Long roleId);
+
+    @HQL("delete from AuthorizationUserRoleRelation where userId = ?1")
+    void deleteByUserId(@Nonnull Long userId);
 }

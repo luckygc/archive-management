@@ -1,5 +1,6 @@
 package github.luckygc.am.module.archive.authorization.web;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.jspecify.annotations.Nullable;
@@ -112,10 +113,21 @@ public class ArchiveDataScopeController {
             @RequestParam(defaultValue = "ITEM") ArchiveLevel archiveLevel,
             @Nullable Authentication authentication) {
         requirePermission(authentication);
-        return CollectionResponse.of(
+        List<ArchiveFieldDto> fields =
+                new ArrayList<>(archiveMetadataService.listBuiltinDataScopeFields());
+        fields.addAll(
                 archiveMetadataService.listEnabledFields(archiveCategory, archiveLevel).stream()
                         .filter(ArchiveFieldDto::dataScopeFilterable)
                         .toList());
+        return CollectionResponse.of(fields);
+    }
+
+    @GetMapping("/api/v1/organization-units")
+    public CollectionResponse<ArchiveMetadataService.OrganizationUnitDto> listOrganizationUnits(
+            @RequestParam(defaultValue = "true") boolean enabled,
+            @Nullable Authentication authentication) {
+        requirePermission(authentication);
+        return CollectionResponse.of(archiveMetadataService.listOrganizationUnits(enabled));
     }
 
     public record UpdateRoleArchiveDataScopesRequest(List<Long> scopeIds) {}

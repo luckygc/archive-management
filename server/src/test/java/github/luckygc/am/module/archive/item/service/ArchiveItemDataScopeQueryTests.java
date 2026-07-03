@@ -270,7 +270,7 @@ class ArchiveItemDataScopeQueryTests {
                                 archiveItemRoutingService.createItem(
                                         new CreateArchiveItemRequest(
                                                 1L, null, "F001", "A-001", 2026, "DRAFT", null,
-                                                null, null, Map.of()),
+                                                null, null, null, Map.of()),
                                         9L))
                 .isInstanceOfSatisfying(
                         ResponseStatusException.class,
@@ -288,6 +288,7 @@ class ArchiveItemDataScopeQueryTests {
                         anyString(),
                         anyString(),
                         anyString(),
+                        any(),
                         any(),
                         any(),
                         anyInt(),

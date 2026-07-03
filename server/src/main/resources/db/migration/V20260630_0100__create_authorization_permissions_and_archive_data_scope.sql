@@ -83,7 +83,7 @@ create index idx_am_archive_data_scope_dimension_scope_id
 
 comment on table am_archive_data_scope_dimension is '档案数据范围固定维度条件表';
 comment on column am_archive_data_scope_dimension.scope_id is '数据范围 ID';
-comment on column am_archive_data_scope_dimension.dimension_type is '维度类型：FONDS、CATEGORY、SECURITY_LEVEL';
+comment on column am_archive_data_scope_dimension.dimension_type is '维度类型：FONDS、CATEGORY、SECURITY_LEVEL、RETENTION_PERIOD、ORG_UNIT';
 comment on column am_archive_data_scope_dimension.target_id is '目标 ID，例如分类 ID';
 comment on column am_archive_data_scope_dimension.target_code is '目标编码，例如全宗编码或密级编码';
 comment on column am_archive_data_scope_dimension.include_descendants is '是否包含树形子级';
@@ -130,7 +130,9 @@ values
     ('authorization:permission:manage', '管理功能权限', 'authorization', '查看权限点并维护角色功能权限'),
     ('authentication:session:manage', '管理登录会话', 'authentication', '查看登录会话并踢出其他会话'),
     ('authentication:audit:read', '查询认证审计', 'authentication', '查询登录、退出和踢下线审计事件'),
-    ('archive:data-scope:manage', '管理档案数据范围', 'archive', '维护档案数据范围和主体范围绑定');
+    ('archive:data-scope:manage', '管理档案数据范围', 'archive', '维护档案数据范围和主体范围绑定'),
+    ('authentication:user:manage', '管理用户', 'authentication', '创建、编辑用户和分配角色'),
+    ('authorization:role:manage', '管理角色', 'authorization', '创建、编辑和删除角色');
 
 insert into am_archive_data_scope (scope_code, scope_name, scope_type, description)
 values ('*', '全部档案', 'ALL', '系统内置任意档案数据范围');

@@ -106,4 +106,19 @@ class CursorPageTokenCodecTests {
                 .isInstanceOf(BadRequestException.class)
                 .hasMessage("分页 cursor 无效");
     }
+
+    @Test
+    @DisplayName("配置不同 cursor 密钥后旧 token 失效")
+    void tokenShouldDependOnConfiguredSecret() {
+        CursorPageTokenCodec.configureSecret("0123456789abcdef0123456789abcdef");
+        String token = CursorPageTokenCodec.encode("next", List.of(99L));
+        CursorPageTokenCodec.configureSecret("abcdef0123456789abcdef0123456789");
+
+        assertThatThrownBy(() -> CursorPageTokenCodec.pageRequest(20, token, false))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("分页 cursor 无效");
+
+        CursorPageTokenCodec.configureSecret("0123456789abcdef0123456789abcdef");
+        assertThat(CursorPageTokenCodec.pageRequest(20, token, false).cursor()).isPresent();
+    }
 }

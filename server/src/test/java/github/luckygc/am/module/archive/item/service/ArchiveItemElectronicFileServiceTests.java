@@ -75,7 +75,7 @@ class ArchiveItemElectronicFileServiceTests {
     @DisplayName("新增档案条目电子文件")
     void createElectronicFileShouldInsertElectronicFile() {
         when(archiveMapper.getArchiveItem(10L)).thenReturn(Map.of("id", 10L));
-        when(storageObjectService.getActiveObject(20L)).thenReturn(storageObject());
+        when(storageObjectService.getActiveObjectForOwner(20L, 9L)).thenReturn(storageObject());
         when(archiveMapper.insertArchiveItemElectronicFile(10L, 20L, "ORIGINAL", 7, 9L))
                 .thenReturn(30L);
 
@@ -89,6 +89,8 @@ class ArchiveItemElectronicFileServiceTests {
         assertThat(response.usageType()).isEqualTo("ORIGINAL");
         assertThat(response.displayOrder()).isEqualTo(7);
         assertThat(response.originalFilename()).isEqualTo("demo.pdf");
+        verify(storageObjectService).getActiveObjectForOwner(20L, 9L);
+        verify(storageObjectService, never()).getActiveObject(20L);
         verify(archiveMapper).insertArchiveItemElectronicFile(10L, 20L, "ORIGINAL", 7, 9L);
     }
 
@@ -96,7 +98,7 @@ class ArchiveItemElectronicFileServiceTests {
     @DisplayName("有档案创建权限且档案在数据范围内时允许新增电子文件")
     void createElectronicFileShouldAllowItemCreatePermission() {
         when(archiveMapper.getArchiveItem(10L)).thenReturn(Map.of("id", 10L));
-        when(storageObjectService.getActiveObject(20L)).thenReturn(storageObject());
+        when(storageObjectService.getActiveObjectForOwner(20L, 9L)).thenReturn(storageObject());
         when(archiveMapper.insertArchiveItemElectronicFile(10L, 20L, "ORIGINAL", 7, 9L))
                 .thenReturn(30L);
 
@@ -112,7 +114,7 @@ class ArchiveItemElectronicFileServiceTests {
     void createElectronicFileShouldAllowItemUpdatePermission() {
         when(permissionService.hasPermission(9L, "archive:item:create")).thenReturn(false);
         when(archiveMapper.getArchiveItem(10L)).thenReturn(Map.of("id", 10L));
-        when(storageObjectService.getActiveObject(20L)).thenReturn(storageObject());
+        when(storageObjectService.getActiveObjectForOwner(20L, 9L)).thenReturn(storageObject());
         when(archiveMapper.insertArchiveItemElectronicFile(10L, 20L, "ORIGINAL", 7, 9L))
                 .thenReturn(30L);
 
@@ -280,7 +282,8 @@ class ArchiveItemElectronicFileServiceTests {
                 "demo.pdf",
                 1024L,
                 "application/pdf",
-                "abc");
+                "abc",
+                9L);
     }
 
     private ArchiveItem archiveItem() {

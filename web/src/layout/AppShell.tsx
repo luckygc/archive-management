@@ -9,7 +9,9 @@ import {
     LockOutlined,
     MonitorOutlined,
     ReloadOutlined,
+    SafetyOutlined,
     SettingOutlined,
+    TeamOutlined,
     UserOutlined,
 } from "@ant-design/icons";
 import { Button, Dropdown, Layout, Menu, Space, Tabs, Tooltip, Typography } from "antd";
@@ -72,9 +74,14 @@ const menuItems: MenuProps["items"] = [
                 icon: <UserOutlined />,
             },
             {
+                key: "/system/authorization",
+                label: <Link to="/system/authorization">授权管理</Link>,
+                icon: <SafetyOutlined />,
+            },
+            {
                 key: "/system/roles",
                 label: <Link to="/system/roles">角色管理</Link>,
-                icon: <LockOutlined />,
+                icon: <TeamOutlined />,
             },
             {
                 key: "/system/data-scopes",

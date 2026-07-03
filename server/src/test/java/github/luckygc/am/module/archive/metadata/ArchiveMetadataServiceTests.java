@@ -27,6 +27,7 @@ import github.luckygc.am.module.archive.metadata.repository.ArchiveFieldLayoutDa
 import github.luckygc.am.module.archive.metadata.repository.ArchiveFondsDataRepository;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveRetentionPeriodDataRepository;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveSecurityLevelDataRepository;
+import github.luckygc.am.module.archive.metadata.repository.OrganizationUnitDataRepository;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveUniqueConstraintDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveUniqueConstraintRequest;
@@ -52,6 +53,8 @@ class ArchiveMetadataServiceTests {
                 mock(ArchiveSecurityLevelDataRepository.class);
         ArchiveRetentionPeriodDataRepository retentionPeriodRepository =
                 mock(ArchiveRetentionPeriodDataRepository.class);
+        OrganizationUnitDataRepository organizationUnitRepository =
+                mock(OrganizationUnitDataRepository.class);
         service =
                 new ArchiveMetadataService(
                         archiveMapper,
@@ -60,7 +63,8 @@ class ArchiveMetadataServiceTests {
                         fieldRepository,
                         fieldLayoutRepository,
                         securityLevelRepository,
-                        retentionPeriodRepository);
+                        retentionPeriodRepository,
+                        organizationUnitRepository);
     }
 
     @Test

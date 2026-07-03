@@ -8,7 +8,9 @@ import {
     ImportOutlined,
     LockOutlined,
     MonitorOutlined,
+    SafetyOutlined,
     SettingOutlined,
+    TeamOutlined,
     UserOutlined,
 } from "@ant-design/icons";
 import type { ReactNode } from "react";
@@ -21,6 +23,9 @@ import { ArchiveFondsPage } from "@/pages/archive-fonds/ArchiveFondsPage";
 import { ArchiveItemManagementPage } from "@/pages/archive-items/ArchiveItemManagementPage";
 import { ArchiveLibraryPage } from "@/pages/archive-library/ArchiveLibraryPage";
 import { AuthenticationEventsPage } from "@/pages/authentication-events/AuthenticationEventsPage";
+import { AuthenticationUsersPage } from "@/pages/authentication-users/AuthenticationUsersPage";
+import { AuthorizationManagementPage } from "@/pages/authorization-management/AuthorizationManagementPage";
+import { AuthorizationRolesPage } from "@/pages/authorization-roles/AuthorizationRolesPage";
 import { DashboardPage } from "@/pages/dashboard/DashboardPage";
 import { IntakePage } from "@/pages/intake/IntakePage";
 import { LoginPage } from "@/pages/login/LoginPage";
@@ -125,7 +130,7 @@ export function createAppRouter() {
                         },
                         {
                             path: "system/users",
-                            element: <PlaceholderPage title="用户管理" />,
+                            element: <AuthenticationUsersPage />,
                             handle: {
                                 title: "用户管理",
                                 icon: <UserOutlined />,
@@ -133,11 +138,20 @@ export function createAppRouter() {
                             } satisfies AppRouteHandle,
                         },
                         {
+                            path: "system/authorization",
+                            element: <AuthorizationManagementPage />,
+                            handle: {
+                                title: "授权管理",
+                                icon: <SafetyOutlined />,
+                                isMenu: true,
+                            } satisfies AppRouteHandle,
+                        },
+                        {
                             path: "system/roles",
-                            element: <PlaceholderPage title="角色管理" />,
+                            element: <AuthorizationRolesPage />,
                             handle: {
                                 title: "角色管理",
-                                icon: <LockOutlined />,
+                                icon: <TeamOutlined />,
                                 isMenu: true,
                             } satisfies AppRouteHandle,
                         },

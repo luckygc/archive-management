@@ -2,6 +2,7 @@ package github.luckygc.am.common.api;
 
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
 import java.sql.Date;
 import java.sql.Timestamp;
 import java.time.LocalDate;
@@ -26,12 +27,20 @@ public final class CursorPageTokenCodec {
 
     private static final String VERSION = "v1";
     private static final String CONTEXT_VERSION = "v2";
-    private static final String SECRET = "archive-management-page-token-v1";
+    private static volatile byte[] secretKey = randomSecretKey();
     private static final Base64.Encoder BASE64_URL_ENCODER =
             Base64.getUrlEncoder().withoutPadding();
     private static final Base64.Decoder BASE64_URL_DECODER = Base64.getUrlDecoder();
 
     private CursorPageTokenCodec() {}
+
+    public static void configureSecret(String secret) {
+        String normalized = StringUtils.trimToNull(secret);
+        if (normalized == null || normalized.length() < 32) {
+            throw new IllegalArgumentException("cursor token secret 长度不能小于 32");
+        }
+        secretKey = normalized.getBytes(StandardCharsets.UTF_8);
+    }
 
     public static PageRequest pageRequest(int limit, @Nullable String token, boolean requestTotal) {
         PageRequest pageRequest =
@@ -241,7 +250,13 @@ public final class CursorPageTokenCodec {
     }
 
     private static String hmacHex(String payload) {
-        return new HmacUtils(HmacAlgorithms.HMAC_SHA_256, SECRET).hmacHex(payload);
+        return new HmacUtils(HmacAlgorithms.HMAC_SHA_256, secretKey).hmacHex(payload);
+    }
+
+    private static byte[] randomSecretKey() {
+        byte[] bytes = new byte[32];
+        new SecureRandom().nextBytes(bytes);
+        return bytes;
     }
 
     private static BadRequestException invalidCursor(String reason) {

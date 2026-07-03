@@ -3,5 +3,7 @@ package github.luckygc.am.module.archive.authorization;
 public enum ArchiveDataScopeDimensionType {
     FONDS,
     CATEGORY,
-    SECURITY_LEVEL
+    SECURITY_LEVEL,
+    RETENTION_PERIOD,
+    ORG_UNIT
 }

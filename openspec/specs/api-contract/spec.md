@@ -186,6 +186,8 @@ Controller SHALL 显式声明完整 URL。
 - **WHEN** 客户端提交带 `cursor` 的键集分页请求
 - **THEN** 服务端 SHALL 校验 cursor 的版本、方向、边界值和查询指纹
 - **AND** 需要防篡改的外部接口 SHALL 额外校验 cursor 签名
+- **AND** cursor 签名密钥 SHALL 来自运行时配置或安全随机生成，不得使用源码内固定默认密钥
+- **AND** 显式配置的 cursor 签名密钥 SHALL 满足最小长度要求
 - **AND** 查询指纹 SHALL 覆盖首次请求的筛选、搜索、排序、分页大小和业务范围参数
 - **AND** 如果当前请求参数与 cursor 绑定的查询指纹不一致，服务端 SHALL 拒绝请求
 - **AND** 服务端 SHALL 返回 `INVALID_ARGUMENT` 或 `FAILED_PRECONDITION` 类 ProblemDetail 错误

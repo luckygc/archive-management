@@ -7,7 +7,6 @@ import {
     Drawer,
     Form,
     Input,
-    InputNumber,
     Select,
     Space,
     Switch,
@@ -22,18 +21,13 @@ import { useState } from "react";
 import {
     createArchiveDataScope,
     getCurrentUserPermissions,
-    getRoleArchiveDataScopes,
-    getRolePermissions,
-    getUserArchiveDataScopes,
     listArchiveCategories,
     listArchiveDataScopeFields,
     listArchiveDataScopes,
     listArchiveFonds,
+    listArchiveRetentionPeriods,
     listArchiveSecurityLevels,
-    listAuthorizationPermissions,
-    saveRoleArchiveDataScopes,
-    saveRolePermissions,
-    saveUserArchiveDataScopes,
+    listOrganizationUnits,
     updateArchiveDataScope,
 } from "@/shared/api/archive";
 import type {
@@ -46,16 +40,10 @@ type ScopeFormValues = ArchiveDataScopeRequest & {
     fondsCodes?: string[];
     categoryIds?: number[];
     securityLevelIds?: number[];
+    retentionPeriodIds?: number[];
+    orgUnitIds?: number[];
     includeCategoryDescendants?: boolean;
 };
-
-interface BindingFormValues {
-    roleId?: number;
-    userId?: number;
-    permissionCodes?: string[];
-    roleScopeIds?: number[];
-    userScopeIds?: number[];
-}
 
 const dataScopeQueryKey = ["archive-data-scopes"] as const;
 
@@ -64,7 +52,6 @@ export function ArchiveDataScopesPage() {
     const queryClient = useQueryClient();
     const [editing, setEditing] = useState<ArchiveDataScopeDto>();
     const [open, setOpen] = useState(false);
-    const [bindingForm] = Form.useForm<BindingFormValues>();
     const scopeType = Form.useWatch("scopeType", form);
     const dynamicFields =
         (Form.useWatch(["dynamicCondition", "dynamicFields"], form) as
@@ -82,9 +69,6 @@ export function ArchiveDataScopesPage() {
     const canManageDataScopes = Boolean(
         currentPermissionsQuery.data?.permissionCodes.includes("archive:data-scope:manage"),
     );
-    const canManagePermissions = Boolean(
-        currentPermissionsQuery.data?.permissionCodes.includes("authorization:permission:manage"),
-    );
     const fondsQuery = useQuery({
         queryKey: ["archive-fonds", "enabled"],
         queryFn: () => listArchiveFonds(true),
@@ -97,9 +81,13 @@ export function ArchiveDataScopesPage() {
         queryKey: ["archive-security-levels", "enabled"],
         queryFn: () => listArchiveSecurityLevels(true),
     });
-    const permissionQuery = useQuery({
-        queryKey: ["authorization-permissions"],
-        queryFn: () => listAuthorizationPermissions(),
+    const retentionPeriodsQuery = useQuery({
+        queryKey: ["archive-retention-periods", "enabled"],
+        queryFn: () => listArchiveRetentionPeriods(true),
+    });
+    const organizationUnitsQuery = useQuery({
+        queryKey: ["organization-units", "enabled"],
+        queryFn: () => listOrganizationUnits(true),
     });
     const dataScopeFieldQueries = useQueries({
         queries: dynamicCategoryIds.map((categoryId) => ({
@@ -129,55 +117,6 @@ export function ArchiveDataScopesPage() {
             void message.error(error instanceof Error ? error.message : "保存失败");
         },
     });
-    const loadRoleBindingMutation = useMutation({
-        mutationFn: async (roleId: number) => {
-            const [permissions, scopes] = await Promise.all([
-                getRolePermissions(roleId),
-                getRoleArchiveDataScopes(roleId),
-            ]);
-            return { permissions, scopes };
-        },
-        onSuccess: ({ permissions, scopes }) => {
-            bindingForm.setFieldsValue({
-                permissionCodes: permissions.permissionCodes,
-                roleScopeIds: scopes.scopeIds,
-            });
-        },
-        onError: (error) => {
-            void message.error(error instanceof Error ? error.message : "读取角色授权失败");
-        },
-    });
-    const loadUserBindingMutation = useMutation({
-        mutationFn: (userId: number) => getUserArchiveDataScopes(userId),
-        onSuccess: (scopes) => {
-            bindingForm.setFieldsValue({ userScopeIds: scopes.scopeIds });
-        },
-        onError: (error) => {
-            void message.error(error instanceof Error ? error.message : "读取用户数据范围失败");
-        },
-    });
-    const saveBindingMutation = useMutation({
-        mutationFn: async (values: BindingFormValues) => {
-            if (values.roleId) {
-                if (canManagePermissions) {
-                    await saveRolePermissions(values.roleId, values.permissionCodes ?? []);
-                }
-                if (canManageDataScopes) {
-                    await saveRoleArchiveDataScopes(values.roleId, values.roleScopeIds ?? []);
-                }
-            }
-            if (values.userId && canManageDataScopes) {
-                await saveUserArchiveDataScopes(values.userId, values.userScopeIds ?? []);
-            }
-        },
-        onSuccess: () => {
-            void message.success("授权绑定已保存");
-        },
-        onError: (error) => {
-            void message.error(error instanceof Error ? error.message : "保存授权绑定失败");
-        },
-    });
-
     const columns: TableColumnsType<ArchiveDataScopeDto> = [
         { title: "范围编码", dataIndex: "scopeCode", key: "scopeCode", width: 180 },
         { title: "范围名称", dataIndex: "scopeName", key: "scopeName" },
@@ -266,80 +205,6 @@ export function ArchiveDataScopesPage() {
                     rowKey="id"
                 />
             </Card>
-            <Card title="授权绑定">
-                <Form<BindingFormValues>
-                    form={bindingForm}
-                    layout="vertical"
-                    onFinish={(values) => saveBindingMutation.mutate(values)}
-                >
-                    <Space align="start" wrap>
-                        <Form.Item label="角色 ID" name="roleId">
-                            <InputNumber min={1} precision={0} />
-                        </Form.Item>
-                        <Form.Item label="用户 ID" name="userId">
-                            <InputNumber min={1} precision={0} />
-                        </Form.Item>
-                        <Form.Item label=" " colon={false}>
-                            <Space>
-                                <Button
-                                    loading={loadRoleBindingMutation.isPending}
-                                    onClick={() => {
-                                        const roleId = bindingForm.getFieldValue("roleId");
-                                        if (roleId) {
-                                            loadRoleBindingMutation.mutate(roleId);
-                                        }
-                                    }}
-                                >
-                                    读取角色
-                                </Button>
-                                <Button
-                                    loading={loadUserBindingMutation.isPending}
-                                    onClick={() => {
-                                        const userId = bindingForm.getFieldValue("userId");
-                                        if (userId) {
-                                            loadUserBindingMutation.mutate(userId);
-                                        }
-                                    }}
-                                >
-                                    读取用户
-                                </Button>
-                            </Space>
-                        </Form.Item>
-                    </Space>
-                    <Form.Item label="角色功能权限" name="permissionCodes">
-                        <Select
-                            disabled={!canManagePermissions}
-                            mode="multiple"
-                            options={(permissionQuery.data?.items ?? []).map((item) => ({
-                                label: `${item.permissionName} ${item.permissionCode}`,
-                                value: item.permissionCode,
-                            }))}
-                        />
-                    </Form.Item>
-                    <Form.Item label="角色数据范围" name="roleScopeIds">
-                        <Select
-                            disabled={!canManageDataScopes}
-                            mode="multiple"
-                            options={scopeOptions(scopesQuery.data?.items)}
-                        />
-                    </Form.Item>
-                    <Form.Item label="用户直接数据范围" name="userScopeIds">
-                        <Select
-                            disabled={!canManageDataScopes}
-                            mode="multiple"
-                            options={scopeOptions(scopesQuery.data?.items)}
-                        />
-                    </Form.Item>
-                    <Button
-                        disabled={!canManageDataScopes && !canManagePermissions}
-                        loading={saveBindingMutation.isPending}
-                        type="primary"
-                        htmlType="submit"
-                    >
-                        保存绑定
-                    </Button>
-                </Form>
-            </Card>
             <Drawer
                 destroyOnClose
                 open={open}
@@ -416,6 +281,30 @@ export function ArchiveDataScopesPage() {
                                     options={(securityLevelsQuery.data?.items ?? []).map(
                                         (item) => ({
                                             label: item.levelName,
+                                            value: item.id,
+                                        }),
+                                    )}
+                                />
+                            </Form.Item>
+                            <Form.Item label="保管期限范围" name="retentionPeriodIds">
+                                <Select
+                                    allowClear
+                                    mode="multiple"
+                                    options={(retentionPeriodsQuery.data?.items ?? []).map(
+                                        (item) => ({
+                                            label: item.periodName,
+                                            value: item.id,
+                                        }),
+                                    )}
+                                />
+                            </Form.Item>
+                            <Form.Item label="组织单元范围" name="orgUnitIds">
+                                <Select
+                                    allowClear
+                                    mode="multiple"
+                                    options={(organizationUnitsQuery.data?.items ?? []).map(
+                                        (item) => ({
+                                            label: `${item.unitCode} ${item.unitName}`,
                                             value: item.id,
                                         }),
                                     )}
@@ -523,17 +412,12 @@ function uniqueNumbers(values: unknown[]) {
 }
 
 function fieldOptions(fields?: ArchiveFieldDto[]) {
-    return (fields ?? []).map((field) => ({
-        label: field.fieldName,
-        value: field.fieldCode,
-    }));
-}
-
-function scopeOptions(scopes?: ArchiveDataScopeDto[]) {
-    return (scopes ?? []).map((scope) => ({
-        label: `${scope.scopeName} ${scope.scopeCode}`,
-        value: scope.id,
-    }));
+    return (fields ?? [])
+        .filter((field) => field.fieldSource !== "BUILTIN")
+        .map((field) => ({
+            label: field.fieldName,
+            value: field.fieldCode,
+        }));
 }
 
 function toRequest(values: ScopeFormValues): ArchiveDataScopeRequest {
@@ -568,6 +452,16 @@ function toRequest(values: ScopeFormValues): ArchiveDataScopeRequest {
                 targetId,
                 includeDescendants: false,
             })),
+            ...(values.retentionPeriodIds ?? []).map((targetId) => ({
+                dimensionType: "RETENTION_PERIOD" as const,
+                targetId,
+                includeDescendants: false,
+            })),
+            ...(values.orgUnitIds ?? []).map((targetId) => ({
+                dimensionType: "ORG_UNIT" as const,
+                targetId,
+                includeDescendants: false,
+            })),
         ],
         dynamicCondition:
             (values.dynamicCondition?.dynamicFields?.length ?? 0) > 0
@@ -596,6 +490,14 @@ function toFormValues(row: ArchiveDataScopeDto): ScopeFormValues {
             .filter((item): item is number => typeof item === "number"),
         securityLevelIds: row.dimensions
             .filter((item) => item.dimensionType === "SECURITY_LEVEL")
+            .map((item) => item.targetId)
+            .filter((item): item is number => typeof item === "number"),
+        retentionPeriodIds: row.dimensions
+            .filter((item) => item.dimensionType === "RETENTION_PERIOD")
+            .map((item) => item.targetId)
+            .filter((item): item is number => typeof item === "number"),
+        orgUnitIds: row.dimensions
+            .filter((item) => item.dimensionType === "ORG_UNIT")
             .map((item) => item.targetId)
             .filter((item): item is number => typeof item === "number"),
         includeCategoryDescendants: row.dimensions.some(

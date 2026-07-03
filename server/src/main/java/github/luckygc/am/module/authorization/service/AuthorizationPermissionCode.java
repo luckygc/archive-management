@@ -14,7 +14,9 @@ public enum AuthorizationPermissionCode {
     AUTHORIZATION_PERMISSION_MANAGE("authorization:permission:manage"),
     AUTHENTICATION_SESSION_MANAGE("authentication:session:manage"),
     AUTHENTICATION_AUDIT_READ("authentication:audit:read"),
-    ARCHIVE_DATA_SCOPE_MANAGE("archive:data-scope:manage");
+    ARCHIVE_DATA_SCOPE_MANAGE("archive:data-scope:manage"),
+    AUTHENTICATION_USER_MANAGE("authentication:user:manage"),
+    AUTHORIZATION_ROLE_MANAGE("authorization:role:manage");
 
     private final String code;
 

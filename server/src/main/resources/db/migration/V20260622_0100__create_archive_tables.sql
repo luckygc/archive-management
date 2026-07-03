@@ -240,6 +240,7 @@ create table am_archive_volume
     electronic_status varchar(50)  not null,
     security_level_id bigint references am_archive_security_level (id),
     retention_period_id bigint references am_archive_retention_period (id),
+    org_unit_id   bigint,
     sort_order     integer      not null default 0,
     display_order  integer      not null default 0,
     archived_at    timestamp,
@@ -269,6 +270,9 @@ create index idx_am_archive_volume_fonds_active
 create index idx_am_archive_volume_year_active
     on am_archive_volume (archive_year)
     where deleted_flag = false;
+create index idx_am_archive_volume_org_unit_active
+    on am_archive_volume (org_unit_id, category_code)
+    where deleted_flag = false;
 create index idx_am_archive_volume_random_bucket_active
     on am_archive_volume (random_bucket, id)
     where deleted_flag = false;
@@ -293,6 +297,7 @@ comment on column am_archive_volume.archive_no is '档号';
 comment on column am_archive_volume.electronic_status is '电子档案状态';
 comment on column am_archive_volume.security_level_id is '密级 ID';
 comment on column am_archive_volume.retention_period_id is '保管期限 ID';
+comment on column am_archive_volume.org_unit_id is '组织单元 ID';
 comment on column am_archive_volume.sort_order is '排序字段';
 comment on column am_archive_volume.archived_at is '归档时间';
 comment on column am_archive_volume.archive_year is '年度';
@@ -322,6 +327,7 @@ create table am_archive_item
     electronic_status varchar(50)  not null,
     security_level_id bigint references am_archive_security_level (id),
     retention_period_id bigint references am_archive_retention_period (id),
+    org_unit_id   bigint,
     sort_order     integer      not null default 0,
     display_order  integer      not null default 0,
     archived_at    timestamp,
@@ -354,6 +360,9 @@ create index idx_am_archive_volume_data_active
 create index idx_am_archive_item_year_active
     on am_archive_item (archive_year)
     where deleted_flag = false;
+create index idx_am_archive_item_org_unit_active
+    on am_archive_item (org_unit_id, category_code)
+    where deleted_flag = false;
 create index idx_am_archive_item_random_bucket_active
     on am_archive_item (random_bucket, id)
     where deleted_flag = false;
@@ -379,6 +388,7 @@ comment on column am_archive_item.archive_no is '档号';
 comment on column am_archive_item.electronic_status is '电子档案状态';
 comment on column am_archive_item.security_level_id is '密级 ID';
 comment on column am_archive_item.retention_period_id is '保管期限 ID';
+comment on column am_archive_item.org_unit_id is '组织单元 ID';
 comment on column am_archive_item.sort_order is '排序字段';
 comment on column am_archive_item.display_order is '同一案卷内卷内排序';
 comment on column am_archive_item.archived_at is '归档时间';
