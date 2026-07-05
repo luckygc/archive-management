@@ -68,6 +68,8 @@
 - **AND** 系统 SHALL 对文本输入执行 `trimToNull`
 - **AND** 系统 SHALL 使用大写枚举值表达操作符，例如 `EQ`、`CONTAINS`、`STARTS_WITH`、`GTE`、`LTE`、`BETWEEN`、`IS_EMPTY`、`IS_NOT_EMPTY`
 - **AND** 系统 SHALL 按字段类型限制可用操作符和前端控件
+- **AND** `where.conditions` SHALL 固定按 `AND` 组合
+- **AND** 请求体 SHALL NOT 提供 `logic` 字段切换条件组合方式
 
 #### Scenario: 使用不允许精确筛选的字段过滤
 
@@ -79,6 +81,7 @@
 
 - **WHEN** 客户端提交 `orderBy`
 - **THEN** `orderBy.field` SHALL 支持固定排序字段编码或可搜索动态字段编码
+- **AND** cursor 搜索接口 SHALL 在 JSON 请求体中提交 `orderBy`
 - **AND** 可搜索动态字段 SHALL 指字段定义中 `exact_searchable=true` 或唯一约束索引覆盖的字段
 - **AND** 系统 SHALL 使用字段元数据将动态字段编码映射为当前分类动态表列名
 - **AND** 系统 SHALL 拒绝不可搜索动态字段排序

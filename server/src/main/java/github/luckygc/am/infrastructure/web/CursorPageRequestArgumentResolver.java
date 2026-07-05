@@ -12,7 +12,6 @@ import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 
 import github.luckygc.am.common.api.CursorPageRequest;
-import github.luckygc.am.common.api.CursorPageTokenContext;
 import github.luckygc.am.common.exception.BadRequestException;
 
 @Component
@@ -20,12 +19,6 @@ public class CursorPageRequestArgumentResolver implements HandlerMethodArgumentR
 
     private static final int DEFAULT_LIMIT = 100;
     private static final int MAX_LIMIT = 1000;
-
-    private final CursorHttpFingerprint fingerprint;
-
-    public CursorPageRequestArgumentResolver(CursorHttpFingerprint fingerprint) {
-        this.fingerprint = fingerprint;
-    }
 
     @Override
     public boolean supportsParameter(MethodParameter parameter) {
@@ -47,12 +40,8 @@ public class CursorPageRequestArgumentResolver implements HandlerMethodArgumentR
         int limit = limit(parameters.value("limit"));
         String cursor = StringUtils.trimToNull(parameters.value("cursor"));
         boolean requestTotal = Boolean.parseBoolean(parameters.value("requestTotal"));
-        CursorPageTokenContext context =
-                new CursorPageTokenContext(
-                        request.getMethod() + " " + request.getRequestURI(),
-                        fingerprint.fingerprint(request),
-                        userKey(request));
-        return CursorPageRequest.of(limit, cursor, requestTotal, context);
+        return CursorPageRequest.of(
+                limit, cursor, requestTotal, CursorPageTokenValidationFilter.context(request));
     }
 
     private int limit(@Nullable String value) {
@@ -71,9 +60,5 @@ public class CursorPageRequestArgumentResolver implements HandlerMethodArgumentR
         } catch (NumberFormatException exception) {
             throw new BadRequestException("分页参数不合法", "limit", "limit 必须为正整数");
         }
-    }
-
-    private String userKey(HttpServletRequest request) {
-        return request.getUserPrincipal() == null ? "" : request.getUserPrincipal().getName();
     }
 }

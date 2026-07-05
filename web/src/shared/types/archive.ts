@@ -220,9 +220,13 @@ export interface SearchArchiveRecordsRequest {
     keyword?: string;
     where?: ArchiveItemWhere;
     relatedGroups?: ArchiveItemRelatedGroup[];
+    orderBy?: ArchiveRecordOrderBy[];
+}
+
+export interface SearchArchiveRecordsQuery extends SearchArchiveRecordsRequest {
     limit?: number;
     cursor?: string;
-    orderBy?: ArchiveRecordOrderBy[];
+    requestTotal?: boolean;
 }
 
 export interface ArchiveRecordOrderBy {
@@ -241,7 +245,6 @@ export type ArchiveRecordSortField =
     | (string & {});
 
 export interface ArchiveItemWhere {
-    logic?: "AND";
     conditions?: ArchiveItemQueryCondition[];
 }
 
@@ -275,7 +278,7 @@ export interface CreateArchiveRecordRequest {
     electronicStatus?: ArchiveElectronicStatus;
     securityLevelId?: number;
     retentionPeriodId?: number;
-    physicalObject: ArchivePhysicalObjectRequest;
+    physicalFields?: Record<string, unknown>;
     dynamicFields: Record<string, unknown>;
 }
 
@@ -287,7 +290,7 @@ export interface UpdateArchiveRecordRequest {
     electronicStatus?: ArchiveElectronicStatus;
     securityLevelId?: number;
     retentionPeriodId?: number;
-    physicalObject: ArchivePhysicalObjectRequest;
+    physicalFields?: Record<string, unknown>;
     dynamicFields: Record<string, unknown>;
 }
 
@@ -339,11 +342,12 @@ export interface ArchiveRecordListDto {
 }
 
 export interface ArchiveRecordDetailDto {
-    record: ArchiveRecordDto;
+    item: ArchiveRecordDto;
     category: ArchiveCategoryDto;
     fields: ArchiveFieldDto[];
     dynamicFields: Record<string, unknown>;
-    physicalObject?: ArchivePhysicalObjectDto;
+    physicalFields: ArchiveFieldDto[];
+    physicalFieldValues: Record<string, unknown>;
 }
 
 export interface SearchProjectionRebuildResult {
@@ -491,6 +495,7 @@ export interface UpdateAuthorizationRoleRequest {
 
 export interface CurrentUserPermissionsDto {
     permissionCodes: string[];
+    superAdmin: boolean;
 }
 
 export interface RolePermissionsDto {
@@ -540,8 +545,7 @@ export interface UpdateOrganizationDepartmentRequest {
     sortOrder?: number;
 }
 
-export interface ArchiveItemElectronicFileRequest {
-    storageObjectId: number;
+export interface ArchiveItemElectronicFileUploadOptions {
     usageType?: string;
     displayOrder?: number;
 }

@@ -6,6 +6,7 @@ import java.net.URI;
 import org.apache.commons.lang3.StringUtils;
 
 import github.luckygc.am.common.storage.FileStorageResource;
+import github.luckygc.am.common.storage.ObjectKeys;
 import github.luckygc.am.common.storage.StorageObjectInfo;
 import github.luckygc.am.common.storage.StorageType;
 

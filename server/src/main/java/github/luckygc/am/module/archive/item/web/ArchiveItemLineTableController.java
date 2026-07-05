@@ -28,8 +28,12 @@ public class ArchiveItemLineTableController {
 
     @GetMapping("/api/v1/archive-categories/{categoryId}/item-line-tables")
     public CollectionResponse<ArchiveItemLineTableDto> listLineTables(
-            @PathVariable Long categoryId) {
-        return CollectionResponse.of(archiveItemLineTableService.listLineTables(categoryId));
+            @PathVariable Long categoryId, Authentication authentication) {
+        return CollectionResponse.of(
+                archiveItemLineTableService.listLineTables(
+                        categoryId,
+                        AuthenticatedUsers.requireUserId(
+                                authentication == null ? null : authentication.getPrincipal())));
     }
 
     @PostMapping("/api/v1/archive-categories/{categoryId}/item-line-tables")
@@ -46,8 +50,12 @@ public class ArchiveItemLineTableController {
     }
 
     @GetMapping("/api/v1/archive-item-line-tables/{lineTableId}")
-    public ArchiveItemLineTableDto getLineTable(@PathVariable Long lineTableId) {
-        return archiveItemLineTableService.getLineTable(lineTableId);
+    public ArchiveItemLineTableDto getLineTable(
+            @PathVariable Long lineTableId, Authentication authentication) {
+        return archiveItemLineTableService.getLineTable(
+                lineTableId,
+                AuthenticatedUsers.requireUserId(
+                        authentication == null ? null : authentication.getPrincipal()));
     }
 
     @PostMapping("/api/v1/archive-item-line-tables/{lineTableId}:build")
@@ -61,8 +69,12 @@ public class ArchiveItemLineTableController {
 
     @GetMapping("/api/v1/archive-item-line-tables/{lineTableId}/fields")
     public CollectionResponse<ArchiveItemLineFieldDto> listLineFields(
-            @PathVariable Long lineTableId) {
-        return CollectionResponse.of(archiveItemLineTableService.listLineFields(lineTableId));
+            @PathVariable Long lineTableId, Authentication authentication) {
+        return CollectionResponse.of(
+                archiveItemLineTableService.listLineFields(
+                        lineTableId,
+                        AuthenticatedUsers.requireUserId(
+                                authentication == null ? null : authentication.getPrincipal())));
     }
 
     @PostMapping("/api/v1/archive-item-line-tables/{lineTableId}/fields")

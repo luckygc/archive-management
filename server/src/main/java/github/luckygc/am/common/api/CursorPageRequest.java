@@ -21,6 +21,6 @@ public record CursorPageRequest(
                 cursor,
                 requestTotal,
                 context,
-                CursorPageTokenCodec.pageRequest(limit, cursor, requestTotal, context));
+                CursorPageTokenCodec.pageRequest(limit, cursor, requestTotal));
     }
 }

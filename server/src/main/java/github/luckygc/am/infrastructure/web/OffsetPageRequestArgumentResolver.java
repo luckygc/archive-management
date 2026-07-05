@@ -17,8 +17,9 @@ import github.luckygc.am.common.exception.BadRequestException;
 @Component
 public class OffsetPageRequestArgumentResolver implements HandlerMethodArgumentResolver {
 
-    private static final int DEFAULT_LIMIT = 100;
-    private static final int MAX_LIMIT = 1000;
+    private static final int DEFAULT_PAGE_NO = 1;
+    private static final int DEFAULT_PAGE_SIZE = 100;
+    private static final int MAX_PAGE_SIZE = 1000;
 
     @Override
     public boolean supportsParameter(MethodParameter parameter) {
@@ -38,39 +39,39 @@ public class OffsetPageRequestArgumentResolver implements HandlerMethodArgumentR
         PageRequestContentTypeGuard.rejectMultipart(request);
         PageRequestParameters parameters = PageRequestParameters.from(request);
         return new OffsetPageRequest(
-                limit(parameters.value("limit")), offset(parameters.value("offset")));
+                pageSize(parameters.value("pageSize")), pageNo(parameters.value("pageNo")));
     }
 
-    private int limit(@Nullable String value) {
+    private int pageSize(@Nullable String value) {
         if (StringUtils.isBlank(value)) {
-            return DEFAULT_LIMIT;
+            return DEFAULT_PAGE_SIZE;
         }
         try {
-            int limit = Integer.parseInt(value);
-            if (limit <= 0) {
-                throw new NumberFormatException("limit must be positive");
+            int pageSize = Integer.parseInt(value);
+            if (pageSize <= 0) {
+                throw new NumberFormatException("pageSize must be positive");
             }
-            if (limit > MAX_LIMIT) {
-                throw new BadRequestException("分页参数不合法", "limit", "limit 不能大于 1000");
+            if (pageSize > MAX_PAGE_SIZE) {
+                throw new BadRequestException("分页参数不合法", "pageSize", "pageSize 不能大于 1000");
             }
-            return limit;
+            return pageSize;
         } catch (NumberFormatException exception) {
-            throw new BadRequestException("分页参数不合法", "limit", "limit 必须为正整数");
+            throw new BadRequestException("分页参数不合法", "pageSize", "pageSize 必须为正整数");
         }
     }
 
-    private long offset(@Nullable String value) {
+    private int pageNo(@Nullable String value) {
         if (StringUtils.isBlank(value)) {
-            return 0L;
+            return DEFAULT_PAGE_NO;
         }
         try {
-            long offset = Long.parseLong(value);
-            if (offset < 0) {
-                throw new NumberFormatException("offset must be non-negative");
+            int pageNo = Integer.parseInt(value);
+            if (pageNo <= 0) {
+                throw new NumberFormatException("pageNo must be positive");
             }
-            return offset;
+            return pageNo;
         } catch (NumberFormatException exception) {
-            throw new BadRequestException("分页参数不合法", "offset", "offset 必须为非负整数");
+            throw new BadRequestException("分页参数不合法", "pageNo", "pageNo 必须为正整数");
         }
     }
 }

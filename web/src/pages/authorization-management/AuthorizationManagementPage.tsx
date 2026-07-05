@@ -67,7 +67,6 @@ const actionNameMap: Record<string, string> = {
     delete: "删除",
     lock: "锁定",
     manage: "管理",
-    "preview-electronic-file": "预览电子文件",
     "download-electronic-file": "下载电子文件",
 };
 

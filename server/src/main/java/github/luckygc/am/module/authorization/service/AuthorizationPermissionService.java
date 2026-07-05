@@ -38,16 +38,10 @@ public class AuthorizationPermissionService {
                             "archive:item:delete", "删除档案", "archive", "逻辑删除档案条目和案卷"),
                     new PermissionDefinition("archive:item:lock", "锁定档案", "archive", "锁定和解锁档案条目"),
                     new PermissionDefinition(
-                            "archive:item:preview-electronic-file",
-                            "预览档案电子文件",
-                            "archive",
-                            "在线预览档案电子文件"),
-                    new PermissionDefinition(
                             "archive:item:download-electronic-file",
                             "下载档案电子文件",
                             "archive",
                             "下载档案电子文件或创建下载短链"),
-                    new PermissionDefinition("archive:audit:read", "查询档案审计", "archive", "查询档案操作审计"),
                     new PermissionDefinition("archive:export", "导出档案", "archive", "按查询条件导出档案数据"),
                     new PermissionDefinition(
                             "archive:metadata:manage",

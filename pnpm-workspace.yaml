@@ -21,10 +21,10 @@ allowBuilds:
 
 catalog:
     "@ant-design/cli": ^6.5.0
-    "@ant-design/icons": ^6.2.5
+    "@ant-design/icons": ^6.3.2
     "@ant-design/pro-components": 3.1.12-0
     "@cap.js/wasm": ^0.0.7
-    "@tanstack/react-query": ^5.101.1
+    "@tanstack/react-query": ^5.101.2
     "@testing-library/jest-dom": ^6.9.1
     "@testing-library/react": ^16.3.2
     "@types/react": ^19.2.17
@@ -34,7 +34,7 @@ catalog:
     "@types/babel__core": ^7.20.5
     "@vitejs/plugin-react": ^6.0.3
     babel-plugin-react-compiler: ^1.0.0
-    antd: ^6.4.5
+    antd: ^6.5.0
     antd-mobile: ^5.42.0
     axios: ^1.18.1
     cap-widget: ^0.1.56
@@ -44,9 +44,9 @@ catalog:
     keepalive-for-react-router: ^5.0.7
     react: ^19.2.7
     react-dom: ^19.2.7
-    react-router: ^8.0.1
+    react-router: ^8.1.0
     vite: ^8.0.16
-    vite-plus: ^0.2.1
+    vite-plus: ^0.2.2
     vitest: ^4.1.9
     zod: ^4.4.3
     zustand: ^5.0.14

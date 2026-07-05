@@ -66,7 +66,11 @@ class ArchiveItemFondsValidationTests {
                         auditRepository);
         archiveVolumeService =
                 new ArchiveVolumeService(
-                        archiveMapper, archiveMetadataService, archiveItemRoutingService);
+                        archiveMapper,
+                        archiveMetadataService,
+                        archiveItemRoutingService,
+                        permissionService,
+                        dataScopeService);
     }
 
     @Test

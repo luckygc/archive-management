@@ -53,10 +53,9 @@ class CursorPageTokenCodecTests {
     }
 
     @Test
-    @DisplayName("token 绑定接口、页大小、查询指纹和用户")
-    void tokenShouldBindEndpointLimitFingerprintAndUser() {
-        CursorPageTokenContext context =
-                new CursorPageTokenContext("GET /api/v1/audits", "fingerprint-a", "9");
+    @DisplayName("token 绑定页大小、查询指纹和用户")
+    void tokenShouldBindLimitFingerprintAndUser() {
+        CursorPageTokenContext context = new CursorPageTokenContext("fingerprint-a", "9");
         String token = CursorPageTokenCodec.encode("next", List.of(99L), 20, context);
 
         PageRequest pageRequest = CursorPageTokenCodec.pageRequest(20, token, false, context);
@@ -71,8 +70,7 @@ class CursorPageTokenCodecTests {
                                         20,
                                         token,
                                         false,
-                                        new CursorPageTokenContext(
-                                                "GET /api/v1/audits", "fingerprint-b", "9")))
+                                        new CursorPageTokenContext("fingerprint-b", "9")))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessage("分页 cursor 无效");
         assertThatThrownBy(
@@ -81,18 +79,7 @@ class CursorPageTokenCodecTests {
                                         20,
                                         token,
                                         false,
-                                        new CursorPageTokenContext(
-                                                "GET /api/v1/other", "fingerprint-a", "9")))
-                .isInstanceOf(BadRequestException.class)
-                .hasMessage("分页 cursor 无效");
-        assertThatThrownBy(
-                        () ->
-                                CursorPageTokenCodec.pageRequest(
-                                        20,
-                                        token,
-                                        false,
-                                        new CursorPageTokenContext(
-                                                "GET /api/v1/audits", "fingerprint-a", "10")))
+                                        new CursorPageTokenContext("fingerprint-a", "10")))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessage("分页 cursor 无效");
     }

@@ -41,7 +41,7 @@ public class ArchiveItemAuditSearchService {
             @Nullable ListArchiveItemAuditsRequest query,
             CursorPageRequest pageRequest,
             Long userId) {
-        requireSuperAdmin(userId);
+        userId = requireAuditReadPermission(userId);
         ListArchiveItemAuditsRequest effectiveQuery =
                 query == null ? ListArchiveItemAuditsRequest.empty() : query;
         AuditSearchCriteria criteria = AuditSearchCriteria.from(effectiveQuery);
@@ -50,11 +50,12 @@ public class ArchiveItemAuditSearchService {
         return CursorPageResponse.from(page, pageRequest, this::toResponse);
     }
 
-    private void requireSuperAdmin(Long userId) {
+    private Long requireAuditReadPermission(Long userId) {
         userId = AuthenticatedUsers.requireResolvedUserId(userId);
         if (!permissionService.isSuperAdmin(userId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "权限不足");
         }
+        return userId;
     }
 
     private Restriction<ArchiveItemAudit> auditRestriction(AuditSearchCriteria criteria) {

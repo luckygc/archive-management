@@ -1,7 +1,6 @@
 package github.luckygc.am.module.archive.item.service;
 
 import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
 import java.sql.Date;
 import java.sql.Timestamp;
 import java.time.LocalDate;
@@ -9,16 +8,12 @@ import java.time.LocalDateTime;
 import java.time.Year;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import org.apache.commons.codec.digest.HmacAlgorithms;
-import org.apache.commons.codec.digest.HmacUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jspecify.annotations.Nullable;
 import org.mybatis.spring.MyBatisSystemException;
@@ -29,6 +24,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import github.luckygc.am.common.api.CursorPageTokenCodec;
+import github.luckygc.am.common.api.CursorPageTokenContext;
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.archive.ArchiveLevel;
@@ -68,9 +65,6 @@ public class ArchiveItemRoutingService {
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final int DEFAULT_PAGE_LIMIT = 100;
     private static final int MAX_PAGE_LIMIT = 1000;
-    private static final String CURSOR_HMAC_KEY = "archive-item-cursor-v1";
-    private static final LocalDateTime CURSOR_TIME_EPOCH = LocalDateTime.of(1970, 1, 1, 0, 0);
-
     private final ArchiveMetadataService archiveMetadataService;
     private final ArchiveMapper archiveMapper;
     private final ArchiveItemSearchProjectionService searchProjectionService;
@@ -103,17 +97,38 @@ public class ArchiveItemRoutingService {
 
     public ArchiveItemListDto searchItems(
             @Nullable SearchArchiveItemsRequest request, Long userId) {
-        return queryItems(request, userId, false, false, false);
+        return searchItems(request, userId, null);
+    }
+
+    public ArchiveItemListDto searchItems(
+            @Nullable SearchArchiveItemsRequest request,
+            Long userId,
+            @Nullable CursorPageTokenContext cursorContext) {
+        return queryItems(request, userId, false, false, false, cursorContext);
     }
 
     public ArchiveItemListDto discoverItems(
             @Nullable SearchArchiveItemsRequest request, Long userId) {
-        return queryItems(request, userId, true, true, false);
+        return discoverItems(request, userId, null);
+    }
+
+    public ArchiveItemListDto discoverItems(
+            @Nullable SearchArchiveItemsRequest request,
+            Long userId,
+            @Nullable CursorPageTokenContext cursorContext) {
+        return queryItems(request, userId, true, true, false, cursorContext);
     }
 
     public ArchiveItemListDto searchDeletedItems(
             @Nullable SearchArchiveItemsRequest request, Long userId) {
-        return queryItems(request, userId, false, false, true);
+        return searchDeletedItems(request, userId, null);
+    }
+
+    public ArchiveItemListDto searchDeletedItems(
+            @Nullable SearchArchiveItemsRequest request,
+            Long userId,
+            @Nullable CursorPageTokenContext cursorContext) {
+        return queryItems(request, userId, false, false, true, cursorContext);
     }
 
     public List<ArchiveRelatedFilterCategoryDto> listRelatedFilterCategories(Long categoryId) {
@@ -135,7 +150,8 @@ public class ArchiveItemRoutingService {
             Long userId,
             boolean allowKeyword,
             boolean requireAuthenticatedUser,
-            boolean deleted) {
+            boolean deleted,
+            @Nullable CursorPageTokenContext cursorContext) {
         requirePermission(userId, "archive:item:read");
         String keyword = StringUtils.trimToNull(request == null ? null : request.keyword());
         if (StringUtils.isNotBlank(keyword) && !allowKeyword) {
@@ -178,7 +194,7 @@ public class ArchiveItemRoutingService {
         List<String> indexedFieldCodes = indexedFieldCodes(request.categoryId(), archiveLevel);
         List<ArchiveSqlOrder> orderBy =
                 deleted ? deletedOrderBy() : orderBy(request.orderBy(), fields, indexedFieldCodes);
-        Cursor cursor = decodeCursor(request.cursor(), queryFingerprint(request, orderBy));
+        Cursor cursor = decodeCursor(request.cursor());
         List<ArchiveSqlCondition> conditions =
                 buildSearchConditions(request.categoryId(), archiveLevel, fields, request.where());
         List<ArchiveSqlRelatedGroup> relatedGroups =
@@ -216,16 +232,19 @@ public class ArchiveItemRoutingService {
         }
         List<Map<String, @Nullable Object>> pageItems =
                 normalizeDynamicFieldValues(rawPageItems, visibleFields);
-        String fingerprint = queryFingerprint(request, orderBy);
+        CursorPageTokenContext tokenContext =
+                cursorContext == null ? new CursorPageTokenContext("", "") : cursorContext;
         String prev =
                 cursor == null || rawPageItems.isEmpty()
                         ? null
-                        : encodeCursor("prev", fingerprint, orderBy, rawPageItems.getFirst());
+                        : encodeCursor(
+                                "prev", tokenContext, limit, orderBy, rawPageItems.getFirst());
         String next =
                 rawPageItems.isEmpty()
                                 || (cursor != null && "prev".equals(cursor.direction()) && !hasMore)
                         ? null
-                        : encodeCursor("next", fingerprint, orderBy, rawPageItems.getLast());
+                        : encodeCursor(
+                                "next", tokenContext, limit, orderBy, rawPageItems.getLast());
         if ((cursor == null || "next".equals(cursor.direction())) && !hasMore) {
             next = null;
         }
@@ -235,7 +254,8 @@ public class ArchiveItemRoutingService {
                 true,
                 encodeCursor(
                         "self",
-                        fingerprint,
+                        tokenContext,
+                        limit,
                         orderBy,
                         rawPageItems.isEmpty() ? null : rawPageItems.getFirst()),
                 prev,
@@ -383,69 +403,28 @@ public class ArchiveItemRoutingService {
         return cursor == null ? List.of() : cursor.values();
     }
 
-    private @Nullable Cursor decodeCursor(@Nullable String token, String fingerprint) {
-        if (StringUtils.isBlank(token)) {
+    private @Nullable Cursor decodeCursor(@Nullable String token) {
+        CursorPageTokenCodec.DecodedCursor decoded = CursorPageTokenCodec.decode(token);
+        if (decoded == null) {
             return null;
         }
-        String[] parts = token.split("\\.", 2);
-        if (parts.length != 2) {
-            throw badRequest("分页 cursor 无效", "cursor", "cursor 格式无效");
-        }
-        String payload =
-                new String(Base64.getUrlDecoder().decode(parts[0]), StandardCharsets.UTF_8);
-        String expected = cursorHmacHex(payload);
-        if (!Objects.equals(expected, parts[1])) {
-            throw badRequest("分页 cursor 无效", "cursor", "cursor 签名无效");
-        }
-        String[] fields = payload.split("\\|", -1);
-        if (fields.length < 3 || !Objects.equals(fingerprint, fields[1])) {
-            throw badRequest("分页条件已变化，请重新搜索", "cursor", "cursor 与当前查询条件不匹配");
-        }
-        List<Object> values = new ArrayList<>();
-        for (int i = 2; i < fields.length; i++) {
-            values.add(decodeCursorValue(fields[i]));
-        }
-        return new Cursor(fields[0], values);
-    }
-
-    private Object decodeCursorValue(String value) {
-        if (value.startsWith("L:")) {
-            return Long.valueOf(value.substring(2));
-        }
-        if (value.startsWith("I:")) {
-            return Integer.valueOf(value.substring(2));
-        }
-        if (value.startsWith("U:")) {
-            return CURSOR_TIME_EPOCH.plus(Long.parseLong(value.substring(2)), ChronoUnit.MICROS);
-        }
-        if (value.startsWith("D:")) {
-            return Date.valueOf(value.substring(2));
-        }
-        return value.substring(2);
+        return new Cursor(decoded.direction(), decoded.values());
     }
 
     private @Nullable String encodeCursor(
             String direction,
-            String fingerprint,
+            CursorPageTokenContext context,
+            int limit,
             List<ArchiveSqlOrder> orders,
             @Nullable Map<String, @Nullable Object> row) {
         if (row == null) {
             return null;
         }
-        List<String> values = new ArrayList<>();
+        List<Object> values = new ArrayList<>();
         for (ArchiveSqlOrder order : orders) {
-            values.add(encodeCursorValue(cursorRowValue(row, order.expression())));
+            values.add(cursorRowValue(row, order.expression()));
         }
-        String payload = direction + "|" + fingerprint + "|" + String.join("|", values);
-        return Base64.getUrlEncoder()
-                        .withoutPadding()
-                        .encodeToString(payload.getBytes(StandardCharsets.UTF_8))
-                + "."
-                + cursorHmacHex(payload);
-    }
-
-    private String cursorHmacHex(String payload) {
-        return new HmacUtils(HmacAlgorithms.HMAC_SHA_256, CURSOR_HMAC_KEY).hmacHex(payload);
+        return CursorPageTokenCodec.encode(direction, values, limit, context);
     }
 
     private @Nullable Object cursorRowValue(Map<String, @Nullable Object> row, String expression) {
@@ -484,38 +463,6 @@ public class ArchiveItemRoutingService {
             return number.intValue();
         }
         return Integer.valueOf(value.toString());
-    }
-
-    private String encodeCursorValue(@Nullable Object value) {
-        return switch (value) {
-            case Long longValue -> "L:" + longValue;
-            case Integer intValue -> "I:" + intValue;
-            case Number number -> "L:" + number.longValue();
-            case LocalDateTime dateTime -> "U:" + cursorTimeMicros(dateTime);
-            case Timestamp timestamp -> "U:" + cursorTimeMicros(timestamp.toLocalDateTime());
-            case LocalDate date -> "D:" + date;
-            case Date date -> "D:" + date.toLocalDate();
-            default -> "S:" + value;
-        };
-    }
-
-    private long cursorTimeMicros(LocalDateTime dateTime) {
-        return ChronoUnit.MICROS.between(
-                CURSOR_TIME_EPOCH, dateTime.truncatedTo(ChronoUnit.MICROS));
-    }
-
-    private String queryFingerprint(
-            SearchArchiveItemsRequest request, List<ArchiveSqlOrder> orderBy) {
-        return Integer.toHexString(
-                Objects.hash(
-                        request.categoryId(),
-                        ArchiveLevel.ITEM,
-                        StringUtils.trimToNull(request.fondsCode()),
-                        StringUtils.trimToNull(request.keyword()),
-                        request.where(),
-                        request.relatedGroups(),
-                        request.limit(),
-                        orderBy.stream().map(ArchiveSqlOrder::sql).toList()));
     }
 
     @Transactional
@@ -1099,10 +1046,6 @@ public class ArchiveItemRoutingService {
         if (where == null || where.conditions() == null || where.conditions().isEmpty()) {
             return List.of();
         }
-        String logic = StringUtils.defaultIfBlank(where.logic(), "and");
-        if (!"and".equalsIgnoreCase(logic)) {
-            throw badRequest("暂不支持 OR 查询条件", fieldPath + ".logic", "当前只支持 AND 条件组合");
-        }
         List<ArchiveSqlCondition> conditions = new ArrayList<>();
         for (ArchiveItemQueryCondition condition : where.conditions()) {
             String fieldCode =
@@ -1564,12 +1507,18 @@ public class ArchiveItemRoutingService {
             @Nullable List<@Nullable ArchiveItemRelatedGroup> relatedGroups,
             @Nullable Integer limit,
             @Nullable String cursor,
-            @Nullable List<@Nullable ArchiveItemOrderBy> orderBy) {}
+            @Nullable List<@Nullable ArchiveItemOrderBy> orderBy) {
+
+        public SearchArchiveItemsRequest withPage(
+                @Nullable Integer limit, @Nullable String cursor) {
+            return new SearchArchiveItemsRequest(
+                    categoryId, fondsCode, keyword, where, relatedGroups, limit, cursor, orderBy);
+        }
+    }
 
     public record ArchiveItemOrderBy(@Nullable String field, @Nullable String direction) {}
 
     public record ArchiveItemWhere(
-            @Nullable String logic,
             @Nullable List<@Nullable ArchiveItemQueryCondition> conditions) {}
 
     public record ArchiveItemQueryCondition(

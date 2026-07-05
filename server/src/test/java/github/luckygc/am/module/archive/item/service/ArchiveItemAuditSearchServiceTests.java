@@ -76,6 +76,7 @@ class ArchiveItemAuditSearchServiceTests {
                                 9L,
                                 operatedAt));
         verify(auditRepository).find(any(), any());
+        verify(permissionService).isSuperAdmin(9L);
     }
 
     @Test
@@ -88,7 +89,7 @@ class ArchiveItemAuditSearchServiceTests {
         when(auditRepository.find(any(), any())).thenReturn(firstRepositoryPage);
         CursorPageResponse<ArchiveItemAuditResponse> firstPage =
                 auditSearchService.listAudits(
-                        new ListArchiveItemAuditsRequest(null, null, null, null, null, null),
+                        new ListArchiveItemAuditsRequest(10L, null, null, null, null, null),
                         firstPage(1, true),
                         9L);
 
@@ -98,7 +99,7 @@ class ArchiveItemAuditSearchServiceTests {
 
         CursorPageResponse<ArchiveItemAuditResponse> nextPage =
                 auditSearchService.listAudits(
-                        new ListArchiveItemAuditsRequest(null, null, null, null, null, null),
+                        new ListArchiveItemAuditsRequest(10L, null, null, null, null, null),
                         tokenPage(1, firstPage.next()),
                         9L);
 
@@ -171,7 +172,7 @@ class ArchiveItemAuditSearchServiceTests {
     }
 
     private static CursorPageTokenContext context() {
-        return new CursorPageTokenContext("GET /api/v1/archive-item-audits", "fingerprint", "9");
+        return new CursorPageTokenContext("fingerprint", "9");
     }
 
     private static ArchiveItemAudit audit(Long id, LocalDateTime operatedAt) {

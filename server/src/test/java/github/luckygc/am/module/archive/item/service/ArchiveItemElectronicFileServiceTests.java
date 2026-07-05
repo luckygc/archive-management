@@ -2,6 +2,8 @@ package github.luckygc.am.module.archive.item.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -29,7 +31,7 @@ import github.luckygc.am.module.archive.item.ArchiveItemAudit;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemAuditDataRepository;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemDataRepository;
 import github.luckygc.am.module.archive.item.service.ArchiveItemElectronicFileService.ArchiveItemElectronicFileResponse;
-import github.luckygc.am.module.archive.item.service.ArchiveItemElectronicFileService.CreateArchiveItemElectronicFileRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemElectronicFileService.UploadArchiveItemElectronicFileCommand;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
 import github.luckygc.am.module.storage.service.StorageObjectService;
@@ -72,16 +74,26 @@ class ArchiveItemElectronicFileServiceTests {
     }
 
     @Test
-    @DisplayName("新增档案条目电子文件")
-    void createElectronicFileShouldInsertElectronicFile() {
+    @DisplayName("在档案下上传附件并写入电子文件关系")
+    void uploadElectronicFileShouldStoreObjectAndInsertElectronicFile() {
         when(archiveMapper.getArchiveItem(10L)).thenReturn(Map.of("id", 10L));
-        when(storageObjectService.getActiveObjectForOwner(20L, 9L)).thenReturn(storageObject());
+        when(storageObjectService.storeObject(
+                        any(StorageObjectService.StoreStorageObjectCommand.class), eq(9L)))
+                .thenReturn(storageObject());
         when(archiveMapper.insertArchiveItemElectronicFile(10L, 20L, "ORIGINAL", 7, 9L))
                 .thenReturn(30L);
 
         ArchiveItemElectronicFileResponse response =
-                electronicFileService.createFile(
-                        10L, new CreateArchiveItemElectronicFileRequest(20L, " ORIGINAL ", 7), 9L);
+                electronicFileService.uploadFile(
+                        10L,
+                        new UploadArchiveItemElectronicFileCommand(
+                                "demo.pdf",
+                                "application/pdf",
+                                1024,
+                                new ByteArrayInputStream(new byte[] {1, 2, 3}),
+                                " ORIGINAL ",
+                                7),
+                        9L);
 
         assertThat(response.id()).isEqualTo(30L);
         assertThat(response.archiveItemId()).isEqualTo(10L);
@@ -89,37 +101,38 @@ class ArchiveItemElectronicFileServiceTests {
         assertThat(response.usageType()).isEqualTo("ORIGINAL");
         assertThat(response.displayOrder()).isEqualTo(7);
         assertThat(response.originalFilename()).isEqualTo("demo.pdf");
-        verify(storageObjectService).getActiveObjectForOwner(20L, 9L);
-        verify(storageObjectService, never()).getActiveObject(20L);
+        verify(storageObjectService, never()).getActiveObjectForOwner(20L, 9L);
         verify(archiveMapper).insertArchiveItemElectronicFile(10L, 20L, "ORIGINAL", 7, 9L);
     }
 
     @Test
-    @DisplayName("有档案创建权限且档案在数据范围内时允许新增电子文件")
-    void createElectronicFileShouldAllowItemCreatePermission() {
+    @DisplayName("有档案创建权限且档案在数据范围内时允许上传附件")
+    void uploadElectronicFileShouldAllowItemCreatePermission() {
         when(archiveMapper.getArchiveItem(10L)).thenReturn(Map.of("id", 10L));
-        when(storageObjectService.getActiveObjectForOwner(20L, 9L)).thenReturn(storageObject());
+        when(storageObjectService.storeObject(
+                        any(StorageObjectService.StoreStorageObjectCommand.class), eq(9L)))
+                .thenReturn(storageObject());
         when(archiveMapper.insertArchiveItemElectronicFile(10L, 20L, "ORIGINAL", 7, 9L))
                 .thenReturn(30L);
 
-        electronicFileService.createFile(
-                10L, new CreateArchiveItemElectronicFileRequest(20L, " ORIGINAL ", 7), 9L);
+        electronicFileService.uploadFile(10L, uploadCommand(), 9L);
 
         verify(archiveItemRoutingService).assertItemInDataScope(10L, 9L);
         verify(archiveMapper).insertArchiveItemElectronicFile(10L, 20L, "ORIGINAL", 7, 9L);
     }
 
     @Test
-    @DisplayName("有档案编辑权限且无创建权限时允许新增电子文件")
-    void createElectronicFileShouldAllowItemUpdatePermission() {
+    @DisplayName("有档案编辑权限且无创建权限时允许上传附件")
+    void uploadElectronicFileShouldAllowItemUpdatePermission() {
         when(permissionService.hasPermission(9L, "archive:item:create")).thenReturn(false);
         when(archiveMapper.getArchiveItem(10L)).thenReturn(Map.of("id", 10L));
-        when(storageObjectService.getActiveObjectForOwner(20L, 9L)).thenReturn(storageObject());
+        when(storageObjectService.storeObject(
+                        any(StorageObjectService.StoreStorageObjectCommand.class), eq(9L)))
+                .thenReturn(storageObject());
         when(archiveMapper.insertArchiveItemElectronicFile(10L, 20L, "ORIGINAL", 7, 9L))
                 .thenReturn(30L);
 
-        electronicFileService.createFile(
-                10L, new CreateArchiveItemElectronicFileRequest(20L, " ORIGINAL ", 7), 9L);
+        electronicFileService.uploadFile(10L, uploadCommand(), 9L);
 
         verify(archiveMapper).insertArchiveItemElectronicFile(10L, 20L, "ORIGINAL", 7, 9L);
     }
@@ -292,5 +305,15 @@ class ArchiveItemElectronicFileServiceTests {
         archiveItem.setFondsCode("F001");
         archiveItem.setCategoryCode("contract");
         return archiveItem;
+    }
+
+    private UploadArchiveItemElectronicFileCommand uploadCommand() {
+        return new UploadArchiveItemElectronicFileCommand(
+                "demo.pdf",
+                "application/pdf",
+                1024,
+                new ByteArrayInputStream(new byte[] {1, 2, 3}),
+                " ORIGINAL ",
+                7);
     }
 }

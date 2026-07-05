@@ -18,6 +18,7 @@ import type {
     ArchiveRecordDetailDto,
     ArchiveRecordDto,
     ArchiveRecordListDto,
+    SearchArchiveRecordsQuery,
     SearchArchiveRecordsRequest,
     UpdateArchiveRecordRequest,
     ArchiveRelatedFilterCategoryDto,
@@ -28,7 +29,7 @@ import type {
     ArchiveImportResult,
     ArchiveItemAuditDto,
     ListArchiveItemAuditsRequest,
-    ArchiveItemElectronicFileRequest,
+    ArchiveItemElectronicFileUploadOptions,
     ArchiveItemElectronicFileDto,
     ArchiveDataScopeRequest,
     ArchiveDataScopeDto,
@@ -226,12 +227,20 @@ export function listArchiveRecords(params: { categoryId?: number; fondsCode?: st
     return httpClient.get<ArchiveRecordListDto>(`/api/v1/archive-items${queryString(params)}`);
 }
 
-export function searchArchiveRecords(query: SearchArchiveRecordsRequest) {
-    return httpClient.post<ArchiveRecordListDto>("/api/v1/archive-items:search", query);
+export function searchArchiveRecords(query: SearchArchiveRecordsQuery) {
+    const request = archiveRecordSearchRequest(query);
+    return httpClient.post<ArchiveRecordListDto>(
+        `/api/v1/archive-items:search${request.query}`,
+        request.body,
+    );
 }
 
-export function discoverArchiveRecords(query: SearchArchiveRecordsRequest) {
-    return httpClient.post<ArchiveRecordListDto>("/api/v1/archive-items:discover", query);
+export function discoverArchiveRecords(query: SearchArchiveRecordsQuery) {
+    const request = archiveRecordSearchRequest(query);
+    return httpClient.post<ArchiveRecordListDto>(
+        `/api/v1/archive-items:discover${request.query}`,
+        request.body,
+    );
 }
 
 export function createArchiveRecord(payload: CreateArchiveRecordRequest) {
@@ -271,9 +280,11 @@ export function importArchiveRecords(categoryId: number, file: File) {
     );
 }
 
-export function exportArchiveRecords(query: SearchArchiveRecordsRequest): DownloadLink {
+export function exportArchiveRecords(query: SearchArchiveRecordsQuery): DownloadLink {
     return httpClient.download(
-        `/api/v1/archive-items:export${queryString({ query: encodeDownloadQuery(query) })}`,
+        `/api/v1/archive-items:export${queryString({
+            query: encodeDownloadQuery(archiveRecordSearchRequest(query).body),
+        })}`,
     );
 }
 
@@ -283,13 +294,22 @@ export function listArchiveItemElectronicFiles(archiveItemId: number) {
     );
 }
 
-export function bindArchiveItemElectronicFile(
+export function uploadArchiveItemElectronicFile(
     archiveItemId: number,
-    payload: ArchiveItemElectronicFileRequest,
+    file: File,
+    options: ArchiveItemElectronicFileUploadOptions = {},
 ) {
+    const formData = new FormData();
+    formData.set("file", file);
+    if (options.usageType) {
+        formData.set("usageType", options.usageType);
+    }
+    if (typeof options.displayOrder === "number") {
+        formData.set("displayOrder", String(options.displayOrder));
+    }
     return httpClient.post<ArchiveItemElectronicFileDto>(
         `/api/v1/archive-items/${archiveItemId}/electronic-files`,
-        payload,
+        formData,
     );
 }
 
@@ -405,6 +425,23 @@ export function saveRoleArchiveDataScopes(roleId: number, scopeIds: number[]) {
         `/api/v1/authorization-roles/${roleId}/archive-data-scopes`,
         { scopeIds },
     );
+}
+
+function archiveRecordSearchRequest(query: SearchArchiveRecordsQuery): {
+    query: string;
+    body: SearchArchiveRecordsRequest;
+} {
+    const { limit, cursor, requestTotal, ...body } = query;
+    return {
+        query: queryString({ limit, cursor, requestTotal }),
+        body: compactObject(body),
+    };
+}
+
+function compactObject<T extends object>(value: T): T {
+    return Object.fromEntries(
+        Object.entries(value).filter(([, entryValue]) => entryValue !== undefined),
+    ) as T;
 }
 
 function encodeDownloadQuery(query: SearchArchiveRecordsRequest) {

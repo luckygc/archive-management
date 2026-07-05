@@ -5,19 +5,23 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import { ArchiveItemManagementPage } from "./ArchiveItemManagementPage";
 
 const mocks = vi.hoisted(() => ({
-    bindArchiveItemElectronicFile: vi.fn(),
+    createArchiveRecord: vi.fn(),
     downloadArchiveImportTemplate: vi.fn(),
     downloadArchiveItemElectronicFile: vi.fn(),
     exportArchiveRecords: vi.fn(),
+    getArchiveRecord: vi.fn(),
     getCurrentUserPermissions: vi.fn(),
     importArchiveRecords: vi.fn(),
     listArchiveCategories: vi.fn(),
+    listArchiveFonds: vi.fn(),
     listArchiveFields: vi.fn(),
     listArchiveItemAudits: vi.fn(),
     listArchiveItemElectronicFiles: vi.fn(),
     listArchiveRelatedFilterCategories: vi.fn(),
     searchArchiveRecords: vi.fn(),
     unbindArchiveItemElectronicFile: vi.fn(),
+    updateArchiveRecord: vi.fn(),
+    uploadArchiveItemElectronicFile: vi.fn(),
 }));
 
 vi.mock("@/shared/api/archive", () => mocks);
@@ -40,6 +44,7 @@ vi.mock("@/pages/archive-library/ArchiveResultTable", () => ({
 
 beforeEach(() => {
     mocks.listArchiveCategories.mockResolvedValue({ items: [] });
+    mocks.listArchiveFonds.mockResolvedValue({ items: [] });
     mocks.listArchiveFields.mockResolvedValue({ items: [] });
     mocks.listArchiveRelatedFilterCategories.mockResolvedValue({ items: [] });
     mocks.searchArchiveRecords.mockResolvedValue({
@@ -82,7 +87,10 @@ afterEach(() => {
 
 describe("ArchiveItemManagementPage", () => {
     it("disables mutation entries when current user has no matching permissions", async () => {
-        mocks.getCurrentUserPermissions.mockResolvedValue({ permissionCodes: [] });
+        mocks.getCurrentUserPermissions.mockResolvedValue({
+            permissionCodes: [],
+            superAdmin: false,
+        });
 
         renderPage();
 
@@ -94,13 +102,12 @@ describe("ArchiveItemManagementPage", () => {
 
     it("opens file and audit entries after querying records with permissions", async () => {
         mocks.getCurrentUserPermissions.mockResolvedValue({
+            superAdmin: true,
             permissionCodes: [
                 "archive:item:read",
                 "archive:item:create",
                 "archive:item:update",
-                "archive:item:preview-electronic-file",
                 "archive:item:download-electronic-file",
-                "archive:audit:read",
                 "archive:export",
             ],
         });
@@ -113,7 +120,8 @@ describe("ArchiveItemManagementPage", () => {
 
         fireEvent.click(screen.getByRole("button", { name: /文件/ }));
         expect(await screen.findByText("合同.pdf")).toBeTruthy();
-        expect(screen.getByRole("button", { name: /绑定/ })).toBeEnabled();
+        expect(screen.queryByPlaceholderText("文件记录 ID")).toBeNull();
+        expect(screen.getByRole("button", { name: /上传附件/ })).toBeEnabled();
 
         fireEvent.click(screen.getByRole("tab", { name: "审计记录" }));
         await waitFor(() => {
