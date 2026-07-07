@@ -36,7 +36,6 @@ class ArchiveItemAuditControllerTests {
     }
 
     private CursorPageRequest firstPage() {
-        return CursorPageRequest.of(
-                100, null, false, new CursorPageTokenContext("fingerprint", ""));
+        return CursorPageRequest.of(100, null, false, new CursorPageTokenContext("fingerprint"));
     }
 }

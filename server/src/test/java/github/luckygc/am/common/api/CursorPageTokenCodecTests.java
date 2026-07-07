@@ -53,9 +53,9 @@ class CursorPageTokenCodecTests {
     }
 
     @Test
-    @DisplayName("token 绑定页大小、查询指纹和用户")
-    void tokenShouldBindLimitFingerprintAndUser() {
-        CursorPageTokenContext context = new CursorPageTokenContext("fingerprint-a", "9");
+    @DisplayName("token 绑定页大小和查询摘要")
+    void tokenShouldBindLimitAndQueryDigest() {
+        CursorPageTokenContext context = new CursorPageTokenContext("digest-a");
         String token = CursorPageTokenCodec.encode("next", List.of(99L), 20, context);
 
         PageRequest pageRequest = CursorPageTokenCodec.pageRequest(20, token, false, context);
@@ -63,25 +63,34 @@ class CursorPageTokenCodecTests {
         assertThat(pageRequest.cursor().orElseThrow().elements()).isEqualTo(List.of(99L));
         assertThatThrownBy(() -> CursorPageTokenCodec.pageRequest(50, token, false, context))
                 .isInstanceOf(BadRequestException.class)
-                .hasMessage("分页 cursor 无效");
+                .hasMessage("分页 cursor 无效")
+                .satisfies(
+                        exception ->
+                                assertThat(((BadRequestException) exception).fieldViolations())
+                                        .singleElement()
+                                        .satisfies(
+                                                violation ->
+                                                        assertThat(violation.message())
+                                                                .isEqualTo(
+                                                                        "分页大小已变化，请从第一页重新查询")));
         assertThatThrownBy(
                         () ->
                                 CursorPageTokenCodec.pageRequest(
                                         20,
                                         token,
                                         false,
-                                        new CursorPageTokenContext("fingerprint-b", "9")))
+                                        new CursorPageTokenContext("digest-b")))
                 .isInstanceOf(BadRequestException.class)
-                .hasMessage("分页 cursor 无效");
-        assertThatThrownBy(
-                        () ->
-                                CursorPageTokenCodec.pageRequest(
-                                        20,
-                                        token,
-                                        false,
-                                        new CursorPageTokenContext("fingerprint-a", "10")))
-                .isInstanceOf(BadRequestException.class)
-                .hasMessage("分页 cursor 无效");
+                .hasMessage("分页 cursor 无效")
+                .satisfies(
+                        exception ->
+                                assertThat(((BadRequestException) exception).fieldViolations())
+                                        .singleElement()
+                                        .satisfies(
+                                                violation ->
+                                                        assertThat(violation.message())
+                                                                .isEqualTo(
+                                                                        "查询条件已变化，请从第一页重新查询")));
     }
 
     @Test

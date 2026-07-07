@@ -21,6 +21,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.api.CursorPageRequest;
 import github.luckygc.am.common.api.CursorPageResponse;
+import github.luckygc.am.common.api.CursorPageTokenCodec;
 import github.luckygc.am.common.api.CursorPageTokenContext;
 import github.luckygc.am.common.security.UnauthenticatedException;
 import github.luckygc.am.module.archive.item.ArchiveItemAudit;
@@ -61,7 +62,7 @@ class ArchiveItemAuditSearchServiceTests {
                         9L);
 
         assertThat(page.total()).isEqualTo(1);
-        assertThat(page.next()).isNull();
+        assertThat(page.nextValues()).isNull();
         assertThat(page.items())
                 .containsExactly(
                         new ArchiveItemAuditResponse(
@@ -100,7 +101,7 @@ class ArchiveItemAuditSearchServiceTests {
         CursorPageResponse<ArchiveItemAuditResponse> nextPage =
                 auditSearchService.listAudits(
                         new ListArchiveItemAuditsRequest(10L, null, null, null, null, null),
-                        tokenPage(1, firstPage.next()),
+                        tokenPage(1, CursorPageTokenCodec.encode("next", firstPage.nextValues())),
                         9L);
 
         assertThat(nextPage.total()).isNull();
@@ -172,7 +173,7 @@ class ArchiveItemAuditSearchServiceTests {
     }
 
     private static CursorPageTokenContext context() {
-        return new CursorPageTokenContext("fingerprint", "9");
+        return new CursorPageTokenContext("fingerprint");
     }
 
     private static ArchiveItemAudit audit(Long id, LocalDateTime operatedAt) {

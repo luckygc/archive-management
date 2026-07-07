@@ -4,10 +4,14 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.core.Authentication;
 
+import github.luckygc.am.common.api.CursorPageRequest;
+import github.luckygc.am.common.api.CursorPageTokenCodec;
 import github.luckygc.am.common.api.CursorPageTokenContext;
 import github.luckygc.am.common.security.AuthenticatedUser;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService;
@@ -27,14 +31,16 @@ class ArchiveItemControllerTests {
         SearchArchiveItemsRequest body =
                 new SearchArchiveItemsRequest(1L, "F001", "合同", null, null, 10, "body", null);
         Authentication authentication = authentication(9L);
-        CursorPageTokenContext context = new CursorPageTokenContext("fingerprint", "user");
+        CursorPageTokenContext context = new CursorPageTokenContext("fingerprint");
+        String cursor = CursorPageTokenCodec.encode("next", List.of(99L), 50, context);
+        CursorPageRequest page = CursorPageRequest.of(50, cursor, false, context);
 
-        controller.searchItems(body, 50, "url", context, authentication);
+        controller.searchItems(body, page, authentication);
 
         verify(archiveItemRoutingService)
-                .searchItems(
-                        new SearchArchiveItemsRequest(
-                                1L, "F001", "合同", null, null, 50, "url", null),
+                        .searchItems(
+                                new SearchArchiveItemsRequest(
+                                        1L, "F001", "合同", null, null, 50, cursor, null),
                         9L,
                         context);
     }

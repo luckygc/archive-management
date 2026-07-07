@@ -237,7 +237,7 @@ public class ArchiveItemRoutingService {
         List<Map<String, @Nullable Object>> pageItems =
                 normalizeDynamicFieldValues(rawPageItems, visibleFields);
         CursorPageTokenContext tokenContext =
-                cursorContext == null ? new CursorPageTokenContext("", "") : cursorContext;
+                cursorContext == null ? new CursorPageTokenContext("") : cursorContext;
         String prev =
                 cursor == null || rawPageItems.isEmpty()
                         ? null

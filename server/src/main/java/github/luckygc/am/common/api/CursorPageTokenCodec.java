@@ -26,7 +26,7 @@ import github.luckygc.am.common.exception.BadRequestException;
 public final class CursorPageTokenCodec {
 
     private static final String VERSION = "v1";
-    private static final String CONTEXT_VERSION = "v3";
+    private static final String CONTEXT_VERSION = "v4";
     private static volatile byte[] secretKey = randomSecretKey();
     private static final Base64.Encoder BASE64_URL_ENCODER =
             Base64.getUrlEncoder().withoutPadding();
@@ -69,17 +69,22 @@ public final class CursorPageTokenCodec {
         return pageRequest(limit, token, requestTotal);
     }
 
-    public static void validate(@Nullable String token, int limit, CursorPageTokenContext context) {
+    public static @Nullable DecodedCursor validate(
+            @Nullable String token, int limit, CursorPageTokenContext context) {
         DecodedCursor cursor = decode(token);
         if (cursor == null) {
-            return;
+            return null;
         }
-        if (cursor.limit() == null
-                || cursor.context() == null
-                || cursor.limit() != limit
-                || !cursor.context().equals(context)) {
+        if (cursor.limit() == null || cursor.context() == null) {
             throw invalidCursor("cursor 查询条件不匹配");
         }
+        if (cursor.limit() != limit) {
+            throw invalidCursor("分页大小已变化，请从第一页重新查询");
+        }
+        if (!cursor.context().equals(context)) {
+            throw invalidCursor("查询条件已变化，请从第一页重新查询");
+        }
+        return cursor;
     }
 
     public static @Nullable String encode(PageRequest pageRequest) {
@@ -133,12 +138,11 @@ public final class CursorPageTokenCodec {
         if (values == null || values.isEmpty()) {
             return null;
         }
-        List<String> fields = new ArrayList<>(values.size() + 5);
+        List<String> fields = new ArrayList<>(values.size() + 4);
         fields.add(CONTEXT_VERSION);
         fields.add(direction);
         fields.add(Integer.toString(limit));
-        fields.add(context.queryFingerprint());
-        fields.add(encodeString(context.userKey()));
+        fields.add(context.queryDigest());
         values.forEach(value -> fields.add(encodeValue(value)));
         String payload = String.join("|", fields);
         return BASE64_URL_ENCODER.encodeToString(payload.getBytes(StandardCharsets.UTF_8))
@@ -161,21 +165,21 @@ public final class CursorPageTokenCodec {
                 throw invalidCursor("cursor 签名无效");
             }
             String[] fields = payload.split("\\|", -1);
-            if (fields.length >= 6 && CONTEXT_VERSION.equals(fields[0])) {
+            if (fields.length >= 5 && CONTEXT_VERSION.equals(fields[0])) {
                 if (!"next".equals(fields[1])
                         && !"prev".equals(fields[1])
                         && !"self".equals(fields[1])) {
                     throw invalidCursor("cursor 格式无效");
                 }
-                List<Object> values = new ArrayList<>(fields.length - 5);
-                for (int index = 5; index < fields.length; index++) {
+                List<Object> values = new ArrayList<>(fields.length - 4);
+                for (int index = 4; index < fields.length; index++) {
                     values.add(decodeValue(fields[index]));
                 }
                 return new DecodedCursor(
                         fields[1],
                         values,
                         Integer.valueOf(fields[2]),
-                        new CursorPageTokenContext(fields[3], decodeString(fields[4])));
+                        new CursorPageTokenContext(fields[3]));
             }
             if (fields.length < 3 || !VERSION.equals(fields[0])) {
                 throw invalidCursor("cursor 格式无效");
@@ -214,14 +218,6 @@ public final class CursorPageTokenCodec {
                             + BASE64_URL_ENCODER.encodeToString(
                                     value.toString().getBytes(StandardCharsets.UTF_8));
         };
-    }
-
-    private static String encodeString(String value) {
-        return BASE64_URL_ENCODER.encodeToString(value.getBytes(StandardCharsets.UTF_8));
-    }
-
-    private static String decodeString(String value) {
-        return new String(BASE64_URL_DECODER.decode(value), StandardCharsets.UTF_8);
     }
 
     private static @Nullable Object decodeValue(String value) {

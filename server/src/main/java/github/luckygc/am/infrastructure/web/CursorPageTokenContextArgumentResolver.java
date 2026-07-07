@@ -31,6 +31,6 @@ public class CursorPageTokenContextArgumentResolver implements HandlerMethodArgu
         if (request == null) {
             throw new BadRequestException("请求上下文无效", "request", "缺少 HTTP 请求上下文");
         }
-        return CursorPageTokenValidationFilter.context(request);
+        return CursorPageTokenValidationInterceptor.context(request);
     }
 }

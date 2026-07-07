@@ -35,13 +35,13 @@ public class CursorPageRequestArgumentResolver implements HandlerMethodArgumentR
         if (request == null) {
             throw new BadRequestException("请求上下文无效", "request", "缺少 HTTP 请求上下文");
         }
-        PageRequestContentTypeGuard.rejectMultipart(request);
+        PageRequestContentTypeGuard.rejectUnsupportedBodyContentType(request);
         PageRequestParameters parameters = PageRequestParameters.from(request);
         int limit = limit(parameters.value("limit"));
         String cursor = StringUtils.trimToNull(parameters.value("cursor"));
         boolean requestTotal = Boolean.parseBoolean(parameters.value("requestTotal"));
         return CursorPageRequest.of(
-                limit, cursor, requestTotal, CursorPageTokenValidationFilter.context(request));
+                limit, cursor, requestTotal, CursorPageTokenValidationInterceptor.context(request));
     }
 
     private int limit(@Nullable String value) {

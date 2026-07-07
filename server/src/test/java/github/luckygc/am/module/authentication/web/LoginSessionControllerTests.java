@@ -144,8 +144,7 @@ class LoginSessionControllerTests {
     }
 
     private static CursorPageRequest pageRequest() {
-        return CursorPageRequest.of(
-                20, null, false, new CursorPageTokenContext("fingerprint", "user:7"));
+        return CursorPageRequest.of(20, null, false, new CursorPageTokenContext("fingerprint"));
     }
 
     private static UsernamePasswordAuthenticationToken authentication(Long userId) {
