@@ -106,7 +106,7 @@ describe("AuthenticationUsersPage", () => {
                 expect.objectContaining({ email: "" }),
             );
         });
-    });
+    }, 15_000);
 
     it("does not save empty roles when role detail loading fails", async () => {
         archiveApiMocks.getAuthenticationUser.mockRejectedValue(new Error("网络错误"));

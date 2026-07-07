@@ -30,6 +30,7 @@ import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService.ArchiveDataScopeFilter;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService.ResolvedArchiveDataScope;
+import github.luckygc.am.module.archive.governance.service.ArchiveGovernanceService;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemAuditDataRepository;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveItemRelationRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.CreateArchiveItemRequest;
@@ -47,6 +48,7 @@ class ArchiveItemDataScopeQueryTests {
 
     private ArchiveMapper archiveMapper;
     private ArchiveMetadataService archiveMetadataService;
+    private ArchiveGovernanceService governanceService;
     private ArchiveDataScopeService dataScopeService;
     private AuthorizationPermissionService permissionService;
     private ArchiveItemRoutingService archiveItemRoutingService;
@@ -55,6 +57,7 @@ class ArchiveItemDataScopeQueryTests {
     void setUp() {
         archiveMapper = mock(ArchiveMapper.class);
         archiveMetadataService = mock(ArchiveMetadataService.class);
+        governanceService = mock(ArchiveGovernanceService.class);
         ArchiveItemSearchProjectionService searchProjectionService =
                 mock(ArchiveItemSearchProjectionService.class);
         dataScopeService = mock(ArchiveDataScopeService.class);
@@ -64,6 +67,7 @@ class ArchiveItemDataScopeQueryTests {
         archiveItemRoutingService =
                 new ArchiveItemRoutingService(
                         archiveMetadataService,
+                        governanceService,
                         archiveMapper,
                         searchProjectionService,
                         dataScopeService,
@@ -291,11 +295,13 @@ class ArchiveItemDataScopeQueryTests {
                         any(),
                         any(),
                         anyInt(),
+                        any(),
                         anyLong());
     }
 
     private ArchiveCategoryDto category() {
         return new ArchiveCategoryDto(
+                1L,
                 1L,
                 null,
                 "contract",

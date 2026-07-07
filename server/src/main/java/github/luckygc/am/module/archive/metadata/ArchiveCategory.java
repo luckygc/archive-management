@@ -34,6 +34,9 @@ public class ArchiveCategory implements CreationAuditable, UpdateAuditable {
     @Column(name = "parent_id")
     private Long parentId;
 
+    @Column(name = "scheme_id", nullable = false)
+    private Long schemeId;
+
     @Column(name = "category_code", nullable = false, length = 100)
     private String categoryCode;
 

@@ -18,6 +18,7 @@ import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService.ArchiveDataScopeFilter;
+import github.luckygc.am.module.archive.governance.service.ArchiveGovernanceService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveItemDto;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.metadata.ArchiveManagementMode;
@@ -35,6 +36,7 @@ public class ArchiveVolumeService {
 
     private final ArchiveMapper archiveMapper;
     private final ArchiveMetadataService archiveMetadataService;
+    private final ArchiveGovernanceService governanceService;
     private final ArchiveItemRoutingService archiveItemRoutingService;
     private final AuthorizationPermissionService permissionService;
     private final ArchiveDataScopeService dataScopeService;
@@ -42,11 +44,13 @@ public class ArchiveVolumeService {
     public ArchiveVolumeService(
             ArchiveMapper archiveMapper,
             ArchiveMetadataService archiveMetadataService,
+            ArchiveGovernanceService governanceService,
             ArchiveItemRoutingService archiveItemRoutingService,
             AuthorizationPermissionService permissionService,
             ArchiveDataScopeService dataScopeService) {
         this.archiveMapper = archiveMapper;
         this.archiveMetadataService = archiveMetadataService;
+        this.governanceService = governanceService;
         this.archiveItemRoutingService = archiveItemRoutingService;
         this.permissionService = permissionService;
         this.dataScopeService = dataScopeService;
@@ -68,6 +72,11 @@ public class ArchiveVolumeService {
         ArchiveVolumeDto volume = loadVolume(id);
         assertVolumeInDataScope(volume, userId);
         return volume;
+    }
+
+    public void assertVolumeInDataScope(Long id, Long userId) {
+        ArchiveVolumeDto volume = loadVolume(id);
+        assertVolumeInDataScope(volume, userId);
     }
 
     private ArchiveVolumeDto loadVolume(Long id) {
@@ -100,6 +109,11 @@ public class ArchiveVolumeService {
                 request.archiveYear() == null ? Year.now().getValue() : request.archiveYear();
         String archiveNo = StringUtils.trimToNull(request.archiveNo());
         ensureVolumeArchiveNoUnique(category.categoryCode(), archiveNo);
+        Long governanceSchemeVersionId =
+                governanceService
+                        .requireDefaultVersionForNewArchive(
+                                fonds.fondsCode(), category.categoryCode())
+                        .getId();
         Long id;
         try {
             id =
@@ -111,6 +125,7 @@ public class ArchiveVolumeService {
                             archiveNo,
                             StringUtils.defaultIfBlank(request.electronicStatus(), "DRAFT"),
                             archiveYear,
+                            governanceSchemeVersionId,
                             userId);
         } catch (DuplicateKeyException exception) {
             throw duplicateArchiveNo();

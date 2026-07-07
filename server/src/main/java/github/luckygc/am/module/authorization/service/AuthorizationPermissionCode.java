@@ -9,6 +9,7 @@ public enum AuthorizationPermissionCode {
     ARCHIVE_ITEM_DOWNLOAD_ELECTRONIC_FILE("archive:item:download-electronic-file"),
     ARCHIVE_EXPORT("archive:export"),
     ARCHIVE_METADATA_MANAGE("archive:metadata:manage"),
+    ARCHIVE_GOVERNANCE_MANAGE("archive:governance:manage"),
     AUTHORIZATION_PERMISSION_MANAGE("authorization:permission:manage"),
     AUTHENTICATION_SESSION_MANAGE("authentication:session:manage"),
     AUTHENTICATION_AUDIT_READ("authentication:audit:read"),

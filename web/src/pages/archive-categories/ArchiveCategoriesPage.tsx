@@ -29,19 +29,28 @@ import {
     deleteArchiveCategory,
     deleteArchiveField,
     listArchiveCategories,
+    listArchiveClassificationSchemes,
     listArchiveFields,
+    listArchiveFonds,
+    listArchiveFondsCategoryScopes,
+    saveArchiveFondsCategoryScopes,
     updateArchiveCategory,
     updateArchiveField,
 } from "@/shared/api/archive";
 import type {
     ArchiveCategoryDto,
+    ArchiveClassificationSchemeDto,
     ArchiveFieldDto,
     ArchiveFieldType,
+    ArchiveFondsCategoryScopeRequest,
+    ArchiveFondsDto,
     ArchiveLevel,
     ArchiveManagementMode,
 } from "@/shared/types/archive";
 
 const categoryQueryKey = ["archive-categories"] as const;
+const schemeQueryKey = ["archive-classification-schemes"] as const;
+const fondsQueryKey = ["archive-fonds", "enabled"] as const;
 
 const managementModeLabels: Record<ArchiveManagementMode, string> = {
     ITEM_ONLY: "仅允许著录条目",
@@ -85,10 +94,16 @@ function buildCategoryTree(categories: ArchiveCategoryDto[]): DataNode[] {
 export function ArchiveCategoriesPage() {
     const queryClient = useQueryClient();
     const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
+    const [selectedSchemeId, setSelectedSchemeId] = useState<number | null>(null);
     const [modalOpen, setModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState<"create" | "edit">("create");
     const [editingCategory, setEditingCategory] = useState<ArchiveCategoryDto | null>(null);
     const [form] = Form.useForm();
+    const modalSchemeId = Form.useWatch("schemeId", form);
+
+    const [scopeModalOpen, setScopeModalOpen] = useState(false);
+    const [scopeFondsCode, setScopeFondsCode] = useState<string | null>(null);
+    const [scopeForm] = Form.useForm();
 
     // ── 字段 CRUD ──
     const [fieldModalOpen, setFieldModalOpen] = useState(false);
@@ -99,6 +114,22 @@ export function ArchiveCategoriesPage() {
     const categoriesQuery = useQuery({
         queryKey: categoryQueryKey,
         queryFn: () => listArchiveCategories(),
+    });
+
+    const schemesQuery = useQuery({
+        queryKey: schemeQueryKey,
+        queryFn: () => listArchiveClassificationSchemes(),
+    });
+
+    const fondsQuery = useQuery({
+        queryKey: fondsQueryKey,
+        queryFn: () => listArchiveFonds(true),
+    });
+
+    const scopesQuery = useQuery({
+        queryKey: ["archive-fonds-category-scopes", scopeFondsCode],
+        queryFn: () => listArchiveFondsCategoryScopes(scopeFondsCode!),
+        enabled: scopeModalOpen && scopeFondsCode != null,
     });
 
     const fieldsQuery = useQuery({
@@ -154,6 +185,24 @@ export function ArchiveCategoriesPage() {
         onError: (e: Error) => message.error(e.message),
     });
 
+    const saveScopeMutation = useMutation({
+        mutationFn: ({
+            fondsCode,
+            payload,
+        }: {
+            fondsCode: string;
+            payload: ArchiveFondsCategoryScopeRequest[];
+        }) => saveArchiveFondsCategoryScopes(fondsCode, payload),
+        onSuccess: () => {
+            message.success("全宗可用分类已保存");
+            queryClient.invalidateQueries({
+                queryKey: ["archive-fonds-category-scopes", scopeFondsCode],
+            });
+            handleScopeModalClose();
+        },
+        onError: (e: Error) => message.error(e.message),
+    });
+
     const createFieldMutation = useMutation({
         mutationFn: ({
             categoryId,
@@ -199,16 +248,64 @@ export function ArchiveCategoriesPage() {
     });
 
     const categories = categoriesQuery.data?.items ?? [];
-    const selectedCategory = categories.find((c) => c.id === selectedCategoryId);
+    const schemes = schemesQuery.data?.items ?? [];
+    const enabledSchemes = schemes.filter((scheme) => scheme.enabled);
+    const fonds = fondsQuery.data?.items ?? [];
+    const schemeNameById = useMemo(
+        () => new Map(schemes.map((scheme) => [scheme.id, scheme.schemeName])),
+        [schemes],
+    );
+    const selectedScheme = schemes.find((scheme) => scheme.id === selectedSchemeId);
+    const visibleCategories = useMemo(
+        () =>
+            selectedSchemeId == null
+                ? categories
+                : categories.filter((category) => category.schemeId === selectedSchemeId),
+        [categories, selectedSchemeId],
+    );
+    const selectedCategory = visibleCategories.find((c) => c.id === selectedCategoryId);
 
     useEffect(() => {
-        const exists = categories.some((c) => c.id === selectedCategoryId);
-        if (!exists) {
-            setSelectedCategoryId(categories.length > 0 ? categories[0].id : null);
+        if (schemes.length === 0) {
+            setSelectedSchemeId(null);
+            return;
         }
-    }, [categories, selectedCategoryId]);
+        const exists = schemes.some((scheme) => scheme.id === selectedSchemeId);
+        if (!exists) {
+            const defaultScheme = schemes.find((scheme) => scheme.defaultFlag) ?? schemes[0];
+            setSelectedSchemeId(defaultScheme.id);
+        }
+    }, [schemes, selectedSchemeId]);
 
-    const treeData = buildCategoryTree(categories);
+    useEffect(() => {
+        const exists = visibleCategories.some((c) => c.id === selectedCategoryId);
+        if (!exists) {
+            setSelectedCategoryId(visibleCategories.length > 0 ? visibleCategories[0].id : null);
+        }
+    }, [visibleCategories, selectedCategoryId]);
+
+    useEffect(() => {
+        if (scopeModalOpen && scopeFondsCode == null && fonds.length > 0) {
+            const firstFondsCode = fonds[0].fondsCode;
+            setScopeFondsCode(firstFondsCode);
+            scopeForm.setFieldValue("fondsCode", firstFondsCode);
+        }
+    }, [scopeForm, scopeFondsCode, scopeModalOpen, fonds]);
+
+    useEffect(() => {
+        if (!scopeModalOpen || scopesQuery.data == null) {
+            return;
+        }
+        scopeForm.setFieldsValue({
+            items: scopesQuery.data.items.map((scope) => ({
+                categoryId: scope.categoryId,
+                defaultFlag: scope.defaultFlag,
+                sortOrder: scope.sortOrder,
+            })),
+        });
+    }, [scopeForm, scopeModalOpen, scopesQuery.data]);
+
+    const treeData = buildCategoryTree(visibleCategories);
 
     function handleModalClose() {
         setModalOpen(false);
@@ -217,10 +314,13 @@ export function ArchiveCategoriesPage() {
     }
 
     function openCreateModal(parentId?: number) {
+        const parent = parentId == null ? undefined : categories.find((c) => c.id === parentId);
+        const schemeId = parent?.schemeId ?? selectedSchemeId ?? enabledSchemes[0]?.id;
         setModalMode("create");
         setEditingCategory(null);
         form.resetFields();
         form.setFieldsValue({
+            schemeId,
             parentId: parentId ?? undefined,
             enabled: true,
             sortOrder: 0,
@@ -233,6 +333,7 @@ export function ArchiveCategoriesPage() {
         setModalMode("edit");
         setEditingCategory(category);
         form.setFieldsValue({
+            schemeId: category.schemeId,
             parentId: category.parentId ?? undefined,
             categoryCode: category.categoryCode,
             categoryName: category.categoryName,
@@ -246,6 +347,7 @@ export function ArchiveCategoriesPage() {
     async function handleSubmit() {
         const values = await form.validateFields();
         const payload = {
+            schemeId: values.schemeId,
             parentId: values.parentId ?? undefined,
             categoryCode: values.categoryCode,
             categoryName: values.categoryName,
@@ -261,6 +363,28 @@ export function ArchiveCategoriesPage() {
                 payload: payload as Parameters<typeof updateArchiveCategory>[1],
             });
         }
+    }
+
+    function openScopeModal() {
+        setScopeModalOpen(true);
+    }
+
+    function handleScopeModalClose() {
+        setScopeModalOpen(false);
+        setScopeFondsCode(null);
+        scopeForm.resetFields();
+    }
+
+    async function handleScopeSubmit() {
+        const values = await scopeForm.validateFields();
+        const fondsCode = values.fondsCode as string | undefined;
+        if (!fondsCode) {
+            return;
+        }
+        saveScopeMutation.mutate({
+            fondsCode,
+            payload: (values.items ?? []) as ArchiveFondsCategoryScopeRequest[],
+        });
     }
 
     // ── 字段 Modal ──
@@ -425,12 +549,34 @@ export function ArchiveCategoriesPage() {
     );
 
     const hasSelectedCategory = selectedCategory != null;
+    const parentCategoryOptions = categories
+        .filter((c) => c.schemeId === modalSchemeId)
+        .filter((c) => editingCategory == null || c.id !== editingCategory.id)
+        .map((c) => ({
+            label: `${c.categoryName}（${c.categoryCode}）`,
+            value: c.id,
+        }));
+    const schemeOptions = enabledSchemes.map((scheme) => ({
+        label: schemeLabel(scheme),
+        value: scheme.id,
+    }));
+    const categoryScopeOptions = categories
+        .filter((category) => category.enabled)
+        .map((category) => ({
+            label: `${schemeNameById.get(category.schemeId) ?? "未知方案"} / ${category.categoryName}（${category.categoryCode}）`,
+            value: category.id,
+        }));
+    const fondsOptions = fonds.map((row: ArchiveFondsDto) => ({
+        label: `${row.fondsName}（${row.fondsCode}）`,
+        value: row.fondsCode,
+    }));
 
     return (
         <section className="am-page">
             <div className="am-page__header">
                 <Typography.Title level={1}>档案分类</Typography.Title>
                 <Space>
+                    <Button onClick={openScopeModal}>全宗可用分类</Button>
                     <Button
                         type="primary"
                         onClick={() => openCreateModal(selectedCategoryId ?? undefined)}
@@ -449,24 +595,46 @@ export function ArchiveCategoriesPage() {
             </div>
             <Row gutter={[16, 16]}>
                 <Col xs={24} lg={7}>
-                    <Card title="分类树" loading={categoriesQuery.isLoading}>
-                        {treeData.length === 0 && !categoriesQuery.isLoading ? (
-                            <Typography.Text type="secondary">暂无分类，请新建</Typography.Text>
-                        ) : (
-                            <Tree
-                                blockNode
-                                defaultExpandAll
-                                selectedKeys={
-                                    selectedCategoryId != null ? [selectedCategoryId] : []
-                                }
-                                treeData={treeData}
-                                onSelect={(keys) => {
-                                    if (keys.length > 0) {
-                                        setSelectedCategoryId(keys[0] as number);
-                                    }
-                                }}
+                    <Card
+                        title="分类树"
+                        loading={categoriesQuery.isLoading || schemesQuery.isLoading}
+                    >
+                        <Space direction="vertical" style={{ width: "100%" }}>
+                            <Select
+                                aria-label="当前方案"
+                                loading={schemesQuery.isLoading}
+                                placeholder="选择分类方案"
+                                style={{ width: "100%" }}
+                                value={selectedSchemeId ?? undefined}
+                                options={schemes.map((scheme) => ({
+                                    label: schemeLabel(scheme),
+                                    value: scheme.id,
+                                }))}
+                                onChange={(value) => setSelectedSchemeId(value)}
                             />
-                        )}
+                            {selectedScheme && (
+                                <Typography.Text type="secondary">
+                                    {selectedScheme.schemeCode}
+                                </Typography.Text>
+                            )}
+                            {treeData.length === 0 && !categoriesQuery.isLoading ? (
+                                <Typography.Text type="secondary">暂无分类，请新建</Typography.Text>
+                            ) : (
+                                <Tree
+                                    blockNode
+                                    defaultExpandAll
+                                    selectedKeys={
+                                        selectedCategoryId != null ? [selectedCategoryId] : []
+                                    }
+                                    treeData={treeData}
+                                    onSelect={(keys) => {
+                                        if (keys.length > 0) {
+                                            setSelectedCategoryId(keys[0] as number);
+                                        }
+                                    }}
+                                />
+                            )}
+                        </Space>
                     </Card>
                 </Col>
                 <Col xs={24} lg={17}>
@@ -483,6 +651,7 @@ export function ArchiveCategoriesPage() {
                                     <Typography.Text type="secondary">
                                         {managementModeLabels[selectedCategory.managementMode]}
                                     </Typography.Text>
+                                    <Tag>{schemeNameById.get(selectedCategory.schemeId)}</Tag>
                                     {selectedCategory.tableStatus === "BUILT" &&
                                         selectedCategory.itemTableName && (
                                             <Typography.Text code>
@@ -542,21 +711,25 @@ export function ArchiveCategoriesPage() {
                 onOk={handleSubmit}
                 onCancel={handleModalClose}
                 confirmLoading={createMutation.isPending || updateMutation.isPending}
-                destroyOnClose
+                destroyOnHidden
             >
                 <Form form={form} layout="vertical">
+                    <Form.Item
+                        name="schemeId"
+                        label="分类方案"
+                        rules={[{ required: true, message: "请选择分类方案" }]}
+                    >
+                        <Select
+                            placeholder="请选择分类方案"
+                            options={schemeOptions}
+                            onChange={() => form.setFieldValue("parentId", undefined)}
+                        />
+                    </Form.Item>
                     <Form.Item name="parentId" label="父级分类">
                         <Select
                             allowClear
                             placeholder="留空则为根分类"
-                            options={categories
-                                .filter(
-                                    (c) => editingCategory == null || c.id !== editingCategory.id,
-                                )
-                                .map((c) => ({
-                                    label: `${c.categoryName}（${c.categoryCode}）`,
-                                    value: c.id,
-                                }))}
+                            options={parentCategoryOptions}
                         />
                     </Form.Item>
                     <Form.Item
@@ -603,7 +776,7 @@ export function ArchiveCategoriesPage() {
                 onOk={handleFieldSubmit}
                 onCancel={handleFieldModalClose}
                 confirmLoading={createFieldMutation.isPending || updateFieldMutation.isPending}
-                destroyOnClose
+                destroyOnHidden
                 width={640}
             >
                 <Form form={fieldForm} layout="vertical">
@@ -765,6 +938,102 @@ export function ArchiveCategoriesPage() {
                     </Row>
                 </Form>
             </Modal>
+
+            <Modal
+                title="全宗可用分类范围"
+                open={scopeModalOpen}
+                onOk={handleScopeSubmit}
+                onCancel={handleScopeModalClose}
+                confirmLoading={saveScopeMutation.isPending}
+                destroyOnHidden
+                width={720}
+            >
+                <Form form={scopeForm} layout="vertical">
+                    <Form.Item
+                        name="fondsCode"
+                        label="全宗"
+                        rules={[{ required: true, message: "请选择全宗" }]}
+                    >
+                        <Select
+                            loading={fondsQuery.isLoading}
+                            options={fondsOptions}
+                            placeholder="请选择全宗"
+                            onChange={(value) => {
+                                setScopeFondsCode(value);
+                                scopeForm.setFieldsValue({ items: [] });
+                            }}
+                        />
+                    </Form.Item>
+                    <Form.List name="items">
+                        {(fields, { add, remove }) => (
+                            <Space direction="vertical" style={{ width: "100%" }}>
+                                {fields.map(({ key, name, ...restField }) => (
+                                    <Row gutter={12} key={key} align="middle">
+                                        <Col span={12}>
+                                            <Form.Item
+                                                {...restField}
+                                                name={[name, "categoryId"]}
+                                                label="可用分类"
+                                                rules={[
+                                                    {
+                                                        required: true,
+                                                        message: "请选择分类",
+                                                    },
+                                                ]}
+                                            >
+                                                <Select
+                                                    showSearch
+                                                    optionFilterProp="label"
+                                                    options={categoryScopeOptions}
+                                                />
+                                            </Form.Item>
+                                        </Col>
+                                        <Col span={5}>
+                                            <Form.Item
+                                                {...restField}
+                                                name={[name, "defaultFlag"]}
+                                                label="默认"
+                                                valuePropName="checked"
+                                            >
+                                                <Switch />
+                                            </Form.Item>
+                                        </Col>
+                                        <Col span={5}>
+                                            <Form.Item
+                                                {...restField}
+                                                name={[name, "sortOrder"]}
+                                                label="排序"
+                                            >
+                                                <InputNumber min={0} style={{ width: "100%" }} />
+                                            </Form.Item>
+                                        </Col>
+                                        <Col span={2}>
+                                            <Button danger onClick={() => remove(name)}>
+                                                删除
+                                            </Button>
+                                        </Col>
+                                    </Row>
+                                ))}
+                                <Button
+                                    type="dashed"
+                                    onClick={() =>
+                                        add({
+                                            defaultFlag: fields.length === 0,
+                                            sortOrder: fields.length,
+                                        })
+                                    }
+                                >
+                                    添加分类
+                                </Button>
+                            </Space>
+                        )}
+                    </Form.List>
+                </Form>
+            </Modal>
         </section>
     );
+}
+
+function schemeLabel(scheme: ArchiveClassificationSchemeDto) {
+    return `${scheme.schemeName}（${scheme.schemeCode}）`;
 }

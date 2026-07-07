@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -21,10 +22,14 @@ import github.luckygc.am.module.archive.metadata.ArchiveLayoutSurface;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryRequest;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveClassificationSchemeDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveClassificationSchemeRequest;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFieldDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFieldLayoutDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFieldLayoutRequest;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFieldRequest;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFondsCategoryScopeDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFondsCategoryScopeRequest;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFondsDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFondsRequest;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveRetentionPeriodDto;
@@ -77,6 +82,52 @@ public class ArchiveMetadataController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteFonds(@PathVariable Long id, Authentication authentication) {
         archiveMetadataService.deleteFonds(id, requireMetadataManage(authentication));
+    }
+
+    @GetMapping("/api/v1/archive-fonds/{fondsCode}/category-scopes")
+    public CollectionResponse<ArchiveFondsCategoryScopeDto> listFondsCategoryScopes(
+            @PathVariable String fondsCode) {
+        return CollectionResponse.of(archiveMetadataService.listFondsCategoryScopes(fondsCode));
+    }
+
+    @PutMapping("/api/v1/archive-fonds/{fondsCode}/category-scopes")
+    public CollectionResponse<ArchiveFondsCategoryScopeDto> saveFondsCategoryScopes(
+            @PathVariable String fondsCode,
+            @RequestBody java.util.List<ArchiveFondsCategoryScopeRequest> requests,
+            Authentication authentication) {
+        return CollectionResponse.of(
+                archiveMetadataService.saveFondsCategoryScopes(
+                        fondsCode, requests, requireMetadataManage(authentication)));
+    }
+
+    @GetMapping("/api/v1/archive-fonds/{fondsCode}/categories")
+    public CollectionResponse<ArchiveCategoryDto> listCategoriesForFonds(
+            @PathVariable String fondsCode, Boolean enabled) {
+        return CollectionResponse.of(
+                archiveMetadataService.listCategoriesForFonds(fondsCode, enabled));
+    }
+
+    @GetMapping("/api/v1/archive-classification-schemes")
+    public CollectionResponse<ArchiveClassificationSchemeDto> listClassificationSchemes(
+            Boolean enabled) {
+        return CollectionResponse.of(archiveMetadataService.listClassificationSchemes(enabled));
+    }
+
+    @PostMapping("/api/v1/archive-classification-schemes")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ArchiveClassificationSchemeDto createClassificationScheme(
+            @RequestBody ArchiveClassificationSchemeRequest request, Authentication authentication) {
+        return archiveMetadataService.createClassificationScheme(
+                request, requireMetadataManage(authentication));
+    }
+
+    @PatchMapping("/api/v1/archive-classification-schemes/{id}")
+    public ArchiveClassificationSchemeDto updateClassificationScheme(
+            @PathVariable Long id,
+            @RequestBody ArchiveClassificationSchemeRequest request,
+            Authentication authentication) {
+        return archiveMetadataService.updateClassificationScheme(
+                id, request, requireMetadataManage(authentication));
     }
 
     @GetMapping("/api/v1/archive-security-levels")

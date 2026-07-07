@@ -31,6 +31,7 @@ import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService.ArchiveDataScopeFilter;
+import github.luckygc.am.module.archive.governance.service.ArchiveGovernanceService;
 import github.luckygc.am.module.archive.item.ArchiveItemAudit;
 import github.luckygc.am.module.archive.item.ArchiveItemQueryOperator;
 import github.luckygc.am.module.archive.item.ArchiveItemRelationDirection;
@@ -66,6 +67,7 @@ public class ArchiveItemRoutingService {
     private static final int DEFAULT_PAGE_LIMIT = 100;
     private static final int MAX_PAGE_LIMIT = 1000;
     private final ArchiveMetadataService archiveMetadataService;
+    private final ArchiveGovernanceService governanceService;
     private final ArchiveMapper archiveMapper;
     private final ArchiveItemSearchProjectionService searchProjectionService;
     private final ArchiveDataScopeService dataScopeService;
@@ -74,12 +76,14 @@ public class ArchiveItemRoutingService {
 
     public ArchiveItemRoutingService(
             ArchiveMetadataService archiveMetadataService,
+            ArchiveGovernanceService governanceService,
             ArchiveMapper archiveMapper,
             ArchiveItemSearchProjectionService searchProjectionService,
             ArchiveDataScopeService dataScopeService,
             AuthorizationPermissionService permissionService,
             ArchiveItemAuditDataRepository auditRepository) {
         this.archiveMetadataService = archiveMetadataService;
+        this.governanceService = governanceService;
         this.archiveMapper = archiveMapper;
         this.searchProjectionService = searchProjectionService;
         this.dataScopeService = dataScopeService;
@@ -518,6 +522,11 @@ public class ArchiveItemRoutingService {
                 request.retentionPeriodId(),
                 fields,
                 convertedDynamicFields);
+        Long governanceSchemeVersionId =
+                governanceService
+                        .requireDefaultVersionForNewArchive(
+                                fonds.fondsCode(), category.categoryCode())
+                        .getId();
 
         Long recordId;
         try {
@@ -534,6 +543,7 @@ public class ArchiveItemRoutingService {
                             request.securityLevelId(),
                             request.retentionPeriodId(),
                             archiveYear,
+                            governanceSchemeVersionId,
                             userId);
         } catch (DuplicateKeyException exception) {
             throw duplicateArchiveNo();

@@ -18,6 +18,7 @@
 - [档号与全宗规则](./reference-code-and-fonds-rules.md)：全宗设置、档号组成、编号模板和唯一性边界。
 - [高校与档案馆实践](./archive-institution-practices.md)：国内高校、国外大学档案馆和综合档案馆的公开管理做法。
 - [档案系统能力地图](./archive-system-capability-map.md)：完整能力、基础能力、最小 POC 和 MVP 分层。
+- [通用本体、本地规则与治理方案](./governance-ontology-and-rules.md)：面向多行业档案平台的本体、规则、治理方案、存储和检索抽象。
 - [法规底座](./legal-and-regulatory-baseline.md)：档案法、实施条例和机关档案管理规则对系统边界的影响。
 - [电子档案系统能力](./electronic-archive-system.md)：电子文件管理系统、电子档案管理系统的功能视角。
 - [归档、移交与单套管理](./filing-transfer-and-single-copy.md)：归档、接收、移交、单套管理的流程理解。
@@ -32,15 +33,17 @@
 2. 再读 [档案专业术语](./professional-terminology.md)，统一“全宗、案卷、件、档号、著录、归档”等基础语言。
 3. 读 [常用档案分类](./classification-reference.md) 和 [档号与全宗规则](./reference-code-and-fonds-rules.md)，明确分类、全宗、档号如何落到模型。
 4. 读 [档案系统能力地图](./archive-system-capability-map.md)，确认当前讨论处在 POC、MVP、基础能力还是完整能力层。
-5. 如果目标是 MVP，读 [MVP 实施缺口](./mvp-implementation-gap.md)，确认必须补齐和可以推迟的能力。
-6. 做通用档案能力时读法规底座、系统能力、归档移交、元数据封装和四性文档。
-7. 做高校、档案馆或标杆调研时读 [高校与档案馆实践](./archive-institution-practices.md)。
-8. 做会计、财务报销、ERP 或业务系统归档时，再读专题文档。
-9. 需要落地实现时，把已确认要求迁入 OpenSpec，再改代码和测试。
+5. 如果目标是多行业完整平台底座，读 [通用本体、本地规则与治理方案](./governance-ontology-and-rules.md)，先确认本体、规则、治理方案、存储和检索边界。
+6. 如果目标是 MVP，读 [MVP 实施缺口](./mvp-implementation-gap.md)，确认必须补齐和可以推迟的能力。
+7. 做通用档案能力时读法规底座、系统能力、归档移交、元数据封装和四性文档。
+8. 做高校、档案馆或标杆调研时读 [高校与档案馆实践](./archive-institution-practices.md)。
+9. 做会计、财务报销、ERP 或业务系统归档时，再读专题文档。
+10. 需要落地实现时，把已确认要求迁入 OpenSpec，再改代码和测试。
 
 ## 当前项目优先关注
 
 - 档案分类、全宗、档案条目、案卷、卷内文件和关联档案的业务模型。
+- 治理方案、本体核心和本地规则引擎已通过 `add-archive-governance-foundation` 进入 OpenSpec 合同，后续以 `archive-governance-scheme`、`archive-ontology-core` 和 `archive-local-rule-engine` 规格为准。
 - 电子文件归档、档案移交接收、单套管理和长期保存能力。
 - 元数据、动态字段、全文检索、对象存储、审计日志和权限控制。
 - 四性检测、证据效力维护、备份恢复和导入导出验收。

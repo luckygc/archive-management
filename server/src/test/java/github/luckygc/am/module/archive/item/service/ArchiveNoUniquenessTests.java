@@ -25,6 +25,8 @@ import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService.ArchiveDataScopeFilter;
+import github.luckygc.am.module.archive.governance.ArchiveGovernanceSchemeVersion;
+import github.luckygc.am.module.archive.governance.service.ArchiveGovernanceService;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemAuditDataRepository;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.CreateArchiveItemRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.UpdateArchiveItemRequest;
@@ -42,6 +44,7 @@ class ArchiveNoUniquenessTests {
 
     private ArchiveMapper archiveMapper;
     private ArchiveMetadataService archiveMetadataService;
+    private ArchiveGovernanceService governanceService;
     private ArchiveItemRoutingService archiveItemRoutingService;
     private ArchiveVolumeService archiveVolumeService;
 
@@ -49,6 +52,7 @@ class ArchiveNoUniquenessTests {
     void setUp() {
         archiveMapper = mock(ArchiveMapper.class);
         archiveMetadataService = mock(ArchiveMetadataService.class);
+        governanceService = mock(ArchiveGovernanceService.class);
         ArchiveItemSearchProjectionService searchProjectionService =
                 mock(ArchiveItemSearchProjectionService.class);
         ArchiveDataScopeService dataScopeService = mock(ArchiveDataScopeService.class);
@@ -58,9 +62,12 @@ class ArchiveNoUniquenessTests {
                 mock(AuthorizationPermissionService.class);
         ArchiveItemAuditDataRepository auditRepository = mock(ArchiveItemAuditDataRepository.class);
         when(permissionService.hasPermission(anyLong(), anyString())).thenReturn(true);
+        when(governanceService.requireDefaultVersionForNewArchive(anyString(), anyString()))
+                .thenReturn(governanceVersion());
         archiveItemRoutingService =
                 new ArchiveItemRoutingService(
                         archiveMetadataService,
+                        governanceService,
                         archiveMapper,
                         searchProjectionService,
                         dataScopeService,
@@ -70,6 +77,7 @@ class ArchiveNoUniquenessTests {
                 new ArchiveVolumeService(
                         archiveMapper,
                         archiveMetadataService,
+                        governanceService,
                         archiveItemRoutingService,
                         permissionService,
                         dataScopeService);
@@ -106,6 +114,7 @@ class ArchiveNoUniquenessTests {
                         any(),
                         any(),
                         anyInt(),
+                        any(),
                         any());
     }
 
@@ -128,6 +137,7 @@ class ArchiveNoUniquenessTests {
                         any(),
                         any(),
                         anyInt(),
+                        any(),
                         any()))
                 .thenThrow(new DuplicateKeyException("duplicate archive_no"));
 
@@ -244,6 +254,7 @@ class ArchiveNoUniquenessTests {
                         any(),
                         anyString(),
                         anyInt(),
+                        any(),
                         any());
     }
 
@@ -261,6 +272,7 @@ class ArchiveNoUniquenessTests {
                         any(),
                         anyString(),
                         anyInt(),
+                        any(),
                         any()))
                 .thenThrow(new DuplicateKeyException("duplicate archive_no"));
 
@@ -279,6 +291,12 @@ class ArchiveNoUniquenessTests {
         return new ArchiveFondsDto(1L, "F001", "启用全宗", true, 0, now, now);
     }
 
+    private ArchiveGovernanceSchemeVersion governanceVersion() {
+        ArchiveGovernanceSchemeVersion version = new ArchiveGovernanceSchemeVersion();
+        version.setId(77L);
+        return version;
+    }
+
     private ArchiveCategoryDto itemCategory() {
         return category(ArchiveManagementMode.ITEM_ONLY, null, "am_archive_item_contract");
     }
@@ -294,6 +312,7 @@ class ArchiveNoUniquenessTests {
             ArchiveManagementMode managementMode, String volumeTableName, String itemTableName) {
         LocalDateTime now = LocalDateTime.of(2026, 6, 30, 10, 0);
         return new ArchiveCategoryDto(
+                1L,
                 1L,
                 null,
                 "contract",

@@ -68,6 +68,7 @@ public interface ArchiveMapper {
             @Param("securityLevelId") Long securityLevelId,
             @Param("retentionPeriodId") Long retentionPeriodId,
             @Param("archiveYear") int archiveYear,
+            @Param("governanceSchemeVersionId") Long governanceSchemeVersionId,
             @Param("userId") Long userId);
 
     int countArchiveItemsByArchiveNo(
@@ -120,6 +121,7 @@ public interface ArchiveMapper {
             @Param("archiveNo") String archiveNo,
             @Param("electronicStatus") String electronicStatus,
             @Param("archiveYear") int archiveYear,
+            @Param("governanceSchemeVersionId") Long governanceSchemeVersionId,
             @Param("userId") Long userId);
 
     int countArchiveVolumesByArchiveNo(

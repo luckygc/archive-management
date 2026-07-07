@@ -35,9 +35,57 @@ comment on column am_archive_fonds.created_at is '创建时间';
 comment on column am_archive_fonds.updated_by is '更新人用户 ID';
 comment on column am_archive_fonds.updated_at is '更新时间';
 
+create table am_archive_classification_scheme
+(
+    id           bigserial primary key,
+    scheme_code  varchar(100)  not null,
+    scheme_name  varchar(255)  not null,
+    description  varchar(1000),
+    default_flag boolean       not null default false,
+    enabled      boolean       not null default true,
+    sort_order   integer       not null default 0,
+    deleted_flag boolean       not null default false,
+    version      integer       not null default 0,
+    created_by   bigint,
+    created_at   timestamp     not null default localtimestamp,
+    updated_by   bigint,
+    updated_at   timestamp     not null default localtimestamp
+);
+
+create unique index uk_am_archive_classification_scheme_code_active
+    on am_archive_classification_scheme (scheme_code)
+    where deleted_flag = false;
+create unique index uk_am_archive_classification_scheme_default_active
+    on am_archive_classification_scheme (default_flag)
+    where deleted_flag = false and default_flag = true;
+create index idx_am_archive_classification_scheme_sort_active
+    on am_archive_classification_scheme (sort_order, id)
+    where deleted_flag = false;
+
+comment on table am_archive_classification_scheme is '档案分类方案表';
+comment on column am_archive_classification_scheme.id is '主键';
+comment on column am_archive_classification_scheme.scheme_code is '分类方案编码';
+comment on column am_archive_classification_scheme.scheme_name is '分类方案名称';
+comment on column am_archive_classification_scheme.description is '分类方案说明';
+comment on column am_archive_classification_scheme.default_flag is '是否默认分类方案';
+comment on column am_archive_classification_scheme.enabled is '是否启用';
+comment on column am_archive_classification_scheme.sort_order is '排序字段';
+comment on column am_archive_classification_scheme.deleted_flag is '删除标记';
+comment on column am_archive_classification_scheme.version is '乐观锁版本号';
+comment on column am_archive_classification_scheme.created_by is '创建人用户 ID';
+comment on column am_archive_classification_scheme.created_at is '创建时间';
+comment on column am_archive_classification_scheme.updated_by is '更新人用户 ID';
+comment on column am_archive_classification_scheme.updated_at is '更新时间';
+
+insert into am_archive_classification_scheme
+    (scheme_code, scheme_name, description, default_flag, enabled, sort_order)
+values
+    ('default_classification', '默认分类方案', '原型初始分类方案', true, true, 0);
+
 create table am_archive_category
 (
     id                bigserial primary key,
+    scheme_id         bigint       not null references am_archive_classification_scheme (id),
     parent_id         bigint references am_archive_category (id),
     category_code     varchar(100) not null,
     category_name     varchar(255) not null,
@@ -58,15 +106,19 @@ create table am_archive_category
     updated_at        timestamp    not null default localtimestamp
 );
 
-create unique index uk_am_archive_category_code_active
-    on am_archive_category (category_code)
+create unique index uk_am_archive_category_scheme_code_active
+    on am_archive_category (scheme_id, category_code)
     where deleted_flag = false;
 create index idx_am_archive_category_sort_active
     on am_archive_category (parent_id, sort_order, id)
     where deleted_flag = false;
+create index idx_am_archive_category_scheme_sort_active
+    on am_archive_category (scheme_id, parent_id, sort_order, id)
+    where deleted_flag = false;
 
 comment on table am_archive_category is '档案分类表';
 comment on column am_archive_category.id is '主键';
+comment on column am_archive_category.scheme_id is '所属分类方案 ID';
 comment on column am_archive_category.parent_id is '父级档案分类 ID';
 comment on column am_archive_category.category_code is '档案分类编码';
 comment on column am_archive_category.category_name is '档案分类名称';
@@ -85,6 +137,42 @@ comment on column am_archive_category.created_by is '创建人用户 ID';
 comment on column am_archive_category.created_at is '创建时间';
 comment on column am_archive_category.updated_by is '更新人用户 ID';
 comment on column am_archive_category.updated_at is '更新时间';
+
+create table am_archive_fonds_category_scope
+(
+    id           bigserial primary key,
+    fonds_code   varchar(100) not null,
+    category_id  bigint       not null references am_archive_category (id),
+    default_flag boolean      not null default false,
+    sort_order   integer      not null default 0,
+    version      integer      not null default 0,
+    created_by   bigint,
+    created_at   timestamp    not null default localtimestamp,
+    updated_by   bigint,
+    updated_at   timestamp    not null default localtimestamp
+);
+
+create unique index uk_am_archive_fonds_category_scope_active
+    on am_archive_fonds_category_scope (fonds_code, category_id);
+create unique index uk_am_archive_fonds_category_scope_default
+    on am_archive_fonds_category_scope (fonds_code)
+    where default_flag = true;
+create index idx_am_archive_fonds_category_scope_sort
+    on am_archive_fonds_category_scope (fonds_code, sort_order, id);
+create index idx_am_archive_fonds_category_scope_category
+    on am_archive_fonds_category_scope (category_id);
+
+comment on table am_archive_fonds_category_scope is '全宗可用分类范围表';
+comment on column am_archive_fonds_category_scope.id is '主键';
+comment on column am_archive_fonds_category_scope.fonds_code is '全宗编码';
+comment on column am_archive_fonds_category_scope.category_id is '分类 ID';
+comment on column am_archive_fonds_category_scope.default_flag is '是否该全宗默认分类';
+comment on column am_archive_fonds_category_scope.sort_order is '排序字段';
+comment on column am_archive_fonds_category_scope.version is '乐观锁版本号';
+comment on column am_archive_fonds_category_scope.created_by is '创建人用户 ID';
+comment on column am_archive_fonds_category_scope.created_at is '创建时间';
+comment on column am_archive_fonds_category_scope.updated_by is '更新人用户 ID';
+comment on column am_archive_fonds_category_scope.updated_at is '更新时间';
 
 create table am_archive_field
 (

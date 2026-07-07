@@ -20,8 +20,12 @@ import { AppShell } from "@/layout/AppShell";
 import { ArchiveCategoriesPage } from "@/pages/archive-categories/ArchiveCategoriesPage";
 import { ArchiveDataScopesPage } from "@/pages/archive-data-scopes/ArchiveDataScopesPage";
 import { ArchiveFondsPage } from "@/pages/archive-fonds/ArchiveFondsPage";
+import { ArchiveGovernancePage } from "@/pages/archive-governance/ArchiveGovernancePage";
 import { ArchiveItemManagementPage } from "@/pages/archive-items/ArchiveItemManagementPage";
 import { ArchiveLibraryPage } from "@/pages/archive-library/ArchiveLibraryPage";
+import { ArchiveOntologyPage } from "@/pages/archive-ontology/ArchiveOntologyPage";
+import { ArchiveRuleTracesPage } from "@/pages/archive-rule-traces/ArchiveRuleTracesPage";
+import { ArchiveRulesPage } from "@/pages/archive-rules/ArchiveRulesPage";
 import { AuthenticationEventsPage } from "@/pages/authentication-events/AuthenticationEventsPage";
 import { AuthenticationUsersPage } from "@/pages/authentication-users/AuthenticationUsersPage";
 import { AuthorizationManagementPage } from "@/pages/authorization-management/AuthorizationManagementPage";
@@ -105,6 +109,46 @@ export function createAppRouter() {
                             handle: {
                                 title: "档案分类",
                                 icon: <AppstoreOutlined />,
+                                isMenu: true,
+                                keepAlive: true,
+                            } satisfies AppRouteHandle,
+                        },
+                        {
+                            path: "archive/governance/schemes",
+                            element: <ArchiveGovernancePage />,
+                            handle: {
+                                title: "治理方案",
+                                icon: <DatabaseOutlined />,
+                                isMenu: true,
+                                keepAlive: true,
+                            } satisfies AppRouteHandle,
+                        },
+                        {
+                            path: "archive/governance/ontology",
+                            element: <ArchiveOntologyPage />,
+                            handle: {
+                                title: "本体管理",
+                                icon: <AppstoreOutlined />,
+                                isMenu: true,
+                                keepAlive: true,
+                            } satisfies AppRouteHandle,
+                        },
+                        {
+                            path: "archive/governance/rules",
+                            element: <ArchiveRulesPage />,
+                            handle: {
+                                title: "本地规则",
+                                icon: <SafetyOutlined />,
+                                isMenu: true,
+                                keepAlive: true,
+                            } satisfies AppRouteHandle,
+                        },
+                        {
+                            path: "archive/governance/rule-traces",
+                            element: <ArchiveRuleTracesPage />,
+                            handle: {
+                                title: "规则追踪",
+                                icon: <FileSearchOutlined />,
                                 isMenu: true,
                                 keepAlive: true,
                             } satisfies AppRouteHandle,

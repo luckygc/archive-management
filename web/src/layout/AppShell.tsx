@@ -64,6 +64,33 @@ const menuItems: MenuProps["items"] = [
         icon: <ImportOutlined />,
     },
     {
+        key: "/archive/governance",
+        label: "档案治理",
+        icon: <DatabaseOutlined />,
+        children: [
+            {
+                key: "/archive/governance/schemes",
+                label: <Link to="/archive/governance/schemes">治理方案</Link>,
+                icon: <DatabaseOutlined />,
+            },
+            {
+                key: "/archive/governance/ontology",
+                label: <Link to="/archive/governance/ontology">本体管理</Link>,
+                icon: <AppstoreOutlined />,
+            },
+            {
+                key: "/archive/governance/rules",
+                label: <Link to="/archive/governance/rules">本地规则</Link>,
+                icon: <SafetyOutlined />,
+            },
+            {
+                key: "/archive/governance/rule-traces",
+                label: <Link to="/archive/governance/rule-traces">规则追踪</Link>,
+                icon: <FileSearchOutlined />,
+            },
+        ],
+    },
+    {
         key: "/system",
         label: "系统配置",
         icon: <SettingOutlined />,
@@ -179,7 +206,7 @@ export function AppShell() {
                     <Typography.Text strong>档案管理系统</Typography.Text>
                 </div>
                 <Menu
-                    defaultOpenKeys={["/archive/catalog", "/system"]}
+                    defaultOpenKeys={["/archive/catalog", "/archive/governance", "/system"]}
                     items={menuItems}
                     mode="inline"
                     selectedKeys={[location.pathname]}
