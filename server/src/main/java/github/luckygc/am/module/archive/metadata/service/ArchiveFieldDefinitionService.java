@@ -20,7 +20,7 @@ import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFieldRequest;
 
 @Service
-class ArchiveFieldDefinitionService {
+public class ArchiveFieldDefinitionService {
 
     private static final Pattern FIELD_CODE_PATTERN = Pattern.compile("[a-z][a-z0-9_]*");
     private static final int POSTGRESQL_IDENTIFIER_LIMIT = 63;

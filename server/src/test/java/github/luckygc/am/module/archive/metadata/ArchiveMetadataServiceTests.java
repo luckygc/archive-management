@@ -29,6 +29,7 @@ import github.luckygc.am.module.archive.metadata.repository.ArchiveFondsCategory
 import github.luckygc.am.module.archive.metadata.repository.ArchiveFondsDataRepository;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveRetentionPeriodDataRepository;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveSecurityLevelDataRepository;
+import github.luckygc.am.module.archive.metadata.service.ArchiveFieldDefinitionService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveClassificationSchemeDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveClassificationSchemeRequest;
@@ -71,7 +72,8 @@ class ArchiveMetadataServiceTests {
                         fieldRepository,
                         fieldLayoutRepository,
                         securityLevelRepository,
-                        retentionPeriodRepository);
+                        retentionPeriodRepository,
+                        new ArchiveFieldDefinitionService());
     }
 
     @Test
