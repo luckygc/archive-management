@@ -31,6 +31,7 @@ import github.luckygc.am.module.archive.metadata.repository.ArchiveRetentionPeri
 import github.luckygc.am.module.archive.metadata.repository.ArchiveSecurityLevelDataRepository;
 import github.luckygc.am.module.archive.metadata.service.ArchiveDynamicTableService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveFieldDefinitionService;
+import github.luckygc.am.module.archive.metadata.service.ArchiveFieldLayoutService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveClassificationSchemeDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveClassificationSchemeRequest;
@@ -66,6 +67,8 @@ class ArchiveMetadataServiceTests {
         ArchiveFieldDefinitionService fieldDefinitionService = new ArchiveFieldDefinitionService();
         ArchiveDynamicTableService dynamicTableService =
                 new ArchiveDynamicTableService(archiveMapper, fieldDefinitionService);
+        ArchiveFieldLayoutService fieldLayoutService =
+                new ArchiveFieldLayoutService(fieldLayoutRepository, fieldDefinitionService);
         service =
                 new ArchiveMetadataService(
                         archiveMapper,
@@ -74,11 +77,11 @@ class ArchiveMetadataServiceTests {
                         fondsCategoryScopeRepository,
                         categoryRepository,
                         fieldRepository,
-                        fieldLayoutRepository,
                         securityLevelRepository,
                         retentionPeriodRepository,
                         fieldDefinitionService,
-                        dynamicTableService);
+                        dynamicTableService,
+                        fieldLayoutService);
     }
 
     @Test

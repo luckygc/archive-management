@@ -23,7 +23,6 @@ import github.luckygc.am.module.archive.metadata.ArchiveCategory;
 import github.luckygc.am.module.archive.metadata.ArchiveClassificationScheme;
 import github.luckygc.am.module.archive.metadata.ArchiveField;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldControl;
-import github.luckygc.am.module.archive.metadata.ArchiveFieldLayout;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldScope;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldSource;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldType;
@@ -37,7 +36,6 @@ import github.luckygc.am.module.archive.metadata.ArchiveTableStatus;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveCategoryDataRepository;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveClassificationSchemeDataRepository;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveFieldDataRepository;
-import github.luckygc.am.module.archive.metadata.repository.ArchiveFieldLayoutDataRepository;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveFondsCategoryScopeDataRepository;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveFondsDataRepository;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveRetentionPeriodDataRepository;
@@ -79,11 +77,11 @@ public class ArchiveMetadataService {
     private final ArchiveFondsCategoryScopeDataRepository fondsCategoryScopeRepository;
     private final ArchiveCategoryDataRepository categoryRepository;
     private final ArchiveFieldDataRepository fieldRepository;
-    private final ArchiveFieldLayoutDataRepository fieldLayoutRepository;
     private final ArchiveSecurityLevelDataRepository securityLevelRepository;
     private final ArchiveRetentionPeriodDataRepository retentionPeriodRepository;
     private final ArchiveFieldDefinitionService fieldDefinitionService;
     private final ArchiveDynamicTableService dynamicTableService;
+    private final ArchiveFieldLayoutService fieldLayoutService;
 
     public ArchiveMetadataService(
             ArchiveMapper archiveMapper,
@@ -92,22 +90,22 @@ public class ArchiveMetadataService {
             ArchiveFondsCategoryScopeDataRepository fondsCategoryScopeRepository,
             ArchiveCategoryDataRepository categoryRepository,
             ArchiveFieldDataRepository fieldRepository,
-            ArchiveFieldLayoutDataRepository fieldLayoutRepository,
             ArchiveSecurityLevelDataRepository securityLevelRepository,
             ArchiveRetentionPeriodDataRepository retentionPeriodRepository,
             ArchiveFieldDefinitionService fieldDefinitionService,
-            ArchiveDynamicTableService dynamicTableService) {
+            ArchiveDynamicTableService dynamicTableService,
+            ArchiveFieldLayoutService fieldLayoutService) {
         this.archiveMapper = archiveMapper;
         this.fondsRepository = fondsRepository;
         this.classificationSchemeRepository = classificationSchemeRepository;
         this.fondsCategoryScopeRepository = fondsCategoryScopeRepository;
         this.categoryRepository = categoryRepository;
         this.fieldRepository = fieldRepository;
-        this.fieldLayoutRepository = fieldLayoutRepository;
         this.securityLevelRepository = securityLevelRepository;
         this.retentionPeriodRepository = retentionPeriodRepository;
         this.fieldDefinitionService = fieldDefinitionService;
         this.dynamicTableService = dynamicTableService;
+        this.fieldLayoutService = fieldLayoutService;
     }
 
     public List<ArchiveFondsDto> listFonds(@Nullable Boolean enabled) {
@@ -440,7 +438,7 @@ public class ArchiveMetadataService {
             ArchiveLayoutSurface surface,
             Long userId) {
         List<ArchiveFieldDto> fields = listEnabledFields(categoryId, archiveLevel, fieldScope);
-        return applyEffectiveLayout(categoryId, surface, fields);
+        return fieldLayoutService.applyEffectiveLayout(categoryId, surface, fields);
     }
 
     public ArchiveFieldLayoutDto getFieldLayout(
@@ -460,7 +458,9 @@ public class ArchiveMetadataService {
         List<ArchiveFieldDto> fields =
                 listEnabledFields(categoryId, normalizedLevel, normalizedScope);
         return new ArchiveFieldLayoutDto(
-                surface, "public", publicLayoutItems(categoryId, surface, fields));
+                surface,
+                "public",
+                fieldLayoutService.publicLayoutItems(categoryId, surface, fields));
     }
 
     @Transactional
@@ -482,10 +482,18 @@ public class ArchiveMetadataService {
             ArchiveLayoutSurface surface,
             @Nullable ArchiveFieldLayoutRequest request,
             Long userId) {
-        saveFieldLayout(
-                new UpdateFieldLayoutRequest(
-                        categoryId, archiveLevel, fieldScope, surface, request, userId));
-        return getFieldLayout(categoryId, archiveLevel, fieldScope, surface);
+        requireId(categoryId);
+        ArchiveCategoryDto category = getCategory(categoryId);
+        ArchiveLevel normalizedLevel = fieldDefinitionService.normalizeArchiveLevel(archiveLevel);
+        ArchiveFieldScope normalizedScope = fieldDefinitionService.normalizeFieldScope(fieldScope);
+        fieldDefinitionService.ensureArchiveLevelAllowed(category, normalizedLevel);
+        fieldLayoutService.savePublicLayout(
+                categoryId,
+                surface,
+                listEnabledFields(categoryId, normalizedLevel, normalizedScope),
+                request,
+                userId);
+        return getFieldLayout(categoryId, normalizedLevel, normalizedScope, surface);
     }
 
     @Transactional
@@ -883,245 +891,6 @@ public class ArchiveMetadataService {
         }
     }
 
-    private List<ArchiveFieldDto> applyEffectiveLayout(
-            Long categoryId, ArchiveLayoutSurface surface, List<ArchiveFieldDto> fields) {
-        Map<Long, ArchiveFieldLayoutItemDto> layoutsByFieldId =
-                publicLayoutItems(categoryId, surface, fields).stream()
-                        .collect(
-                                java.util.stream.Collectors.toMap(
-                                        ArchiveFieldLayoutItemDto::fieldId, item -> item));
-        return fields.stream()
-                .map(field -> applyLayout(field, surface, layoutsByFieldId.get(field.id())))
-                .sorted(
-                        java.util.Comparator.comparingInt(
-                                        (ArchiveFieldDto field) -> layoutOrder(surface, field))
-                                .thenComparing(ArchiveFieldDto::id))
-                .toList();
-    }
-
-    private List<ArchiveFieldLayoutItemDto> publicLayoutItems(
-            Long categoryId, ArchiveLayoutSurface surface, List<ArchiveFieldDto> fields) {
-        List<ArchiveFieldLayoutItemDto> publicItems = layoutItems(categoryId, surface, fields);
-        return publicItems.isEmpty() ? defaultLayoutItems(surface, fields) : publicItems;
-    }
-
-    private List<ArchiveFieldLayoutItemDto> layoutItems(
-            Long categoryId, ArchiveLayoutSurface surface, List<ArchiveFieldDto> fields) {
-        Map<Long, ArchiveFieldDto> fieldsById =
-                fields.stream()
-                        .collect(
-                                java.util.stream.Collectors.toMap(
-                                        ArchiveFieldDto::id, field -> field));
-        ArchiveLevel archiveLevel =
-                fields.isEmpty() ? ArchiveLevel.ITEM : fields.getFirst().archiveLevel();
-        ArchiveFieldScope fieldScope =
-                fields.isEmpty() ? ArchiveFieldScope.METADATA : fields.getFirst().fieldScope();
-        return fieldLayoutRepository.list(categoryId, surface).stream()
-                .filter(layout -> fieldsById.containsKey(layout.getFieldId()))
-                .filter(
-                        layout ->
-                                fieldsById.get(layout.getFieldId()).archiveLevel() == archiveLevel)
-                .filter(layout -> fieldsById.get(layout.getFieldId()).fieldScope() == fieldScope)
-                .map(layout -> mapFieldLayoutItem(layout, fieldsById.get(layout.getFieldId())))
-                .toList();
-    }
-
-    private List<ArchiveFieldLayoutItemDto> defaultLayoutItems(
-            ArchiveLayoutSurface surface, List<ArchiveFieldDto> fields) {
-        return fields.stream()
-                .map(
-                        field ->
-                                new ArchiveFieldLayoutItemDto(
-                                        field.id(),
-                                        field.fieldCode(),
-                                        field.fieldName(),
-                                        field.fieldType(),
-                                        field.editControl(),
-                                        surfaceVisible(surface, field),
-                                        surface == ArchiveLayoutSurface.TABLE
-                                                ? field.listWidth()
-                                                : null,
-                                        surfaceColSpan(surface, field),
-                                        layoutOrder(surface, field),
-                                        0))
-                .sorted(
-                        java.util.Comparator.comparingInt(ArchiveFieldLayoutItemDto::rowOrder)
-                                .thenComparing(ArchiveFieldLayoutItemDto::fieldId))
-                .toList();
-    }
-
-    private void saveFieldLayout(UpdateFieldLayoutRequest request) {
-        requireId(request.categoryId());
-        ArchiveCategoryDto category = getCategory(request.categoryId());
-        ArchiveLevel normalizedLevel =
-                fieldDefinitionService.normalizeArchiveLevel(request.archiveLevel());
-        ArchiveFieldScope normalizedScope =
-                fieldDefinitionService.normalizeFieldScope(request.fieldScope());
-        fieldDefinitionService.ensureArchiveLevelAllowed(category, normalizedLevel);
-        List<@Nullable ArchiveFieldLayoutItemRequest> items =
-                request.request() == null || request.request().items() == null
-                        ? List.of()
-                        : request.request().items();
-        Map<Long, ArchiveFieldDto> fieldsById =
-                listEnabledFields(request.categoryId(), normalizedLevel, normalizedScope).stream()
-                        .collect(
-                                java.util.stream.Collectors.toMap(
-                                        ArchiveFieldDto::id, field -> field));
-        Set<Long> seenFieldIds = new HashSet<>();
-        fieldLayoutRepository.list(request.categoryId(), request.surface()).stream()
-                .filter(layout -> fieldsById.containsKey(layout.getFieldId()))
-                .forEach(
-                        layout -> {
-                            layout.setUpdatedBy(request.userId());
-                            fieldLayoutRepository.update(layout);
-                            fieldLayoutRepository.delete(layout);
-                        });
-        for (@Nullable ArchiveFieldLayoutItemRequest item : items) {
-            if (item == null || item.fieldId() == null || !fieldsById.containsKey(item.fieldId())) {
-                throw badRequest("布局字段只能选择当前分类字段");
-            }
-            if (!seenFieldIds.add(item.fieldId())) {
-                throw badRequest("布局字段不能重复");
-            }
-            ArchiveFieldLayout layout = new ArchiveFieldLayout();
-            layout.setCategoryId(request.categoryId());
-            layout.setSurface(request.surface());
-            layout.setFieldId(item.fieldId());
-            layout.setVisible(item.visible() == null || item.visible());
-            layout.setListWidth(
-                    request.surface() == ArchiveLayoutSurface.TABLE
-                            ? fieldDefinitionService.normalizeListWidth(item.listWidth())
-                            : null);
-            layout.setColSpan(fieldDefinitionService.normalizeColSpan(item.colSpan()));
-            layout.setRowOrder(item.rowOrder() == null ? 0 : item.rowOrder());
-            layout.setColOrder(item.colOrder() == null ? 0 : item.colOrder());
-            layout.setCreatedBy(request.userId());
-            layout.setUpdatedBy(request.userId());
-            fieldLayoutRepository.insert(layout);
-        }
-    }
-
-    private record UpdateFieldLayoutRequest(
-            Long categoryId,
-            ArchiveLevel archiveLevel,
-            ArchiveFieldScope fieldScope,
-            ArchiveLayoutSurface surface,
-            @Nullable ArchiveFieldLayoutRequest request,
-            Long userId) {}
-
-    private ArchiveFieldDto applyLayout(
-            ArchiveFieldDto field,
-            ArchiveLayoutSurface surface,
-            @Nullable ArchiveFieldLayoutItemDto item) {
-        if (item == null) {
-            return field;
-        }
-        return switch (surface) {
-            case TABLE ->
-                    copyField(
-                            field,
-                            item.visible(),
-                            item.listWidth(),
-                            item.rowOrder(),
-                            field.detailVisible(),
-                            field.detailColSpan(),
-                            field.detailSortOrder(),
-                            field.editVisible(),
-                            field.editColSpan(),
-                            field.editSortOrder());
-            case DETAIL ->
-                    copyField(
-                            field,
-                            field.listVisible(),
-                            field.listWidth(),
-                            field.listSortOrder(),
-                            item.visible(),
-                            item.colSpan(),
-                            item.rowOrder(),
-                            field.editVisible(),
-                            field.editColSpan(),
-                            field.editSortOrder());
-            case EDIT ->
-                    copyField(
-                            field,
-                            field.listVisible(),
-                            field.listWidth(),
-                            field.listSortOrder(),
-                            field.detailVisible(),
-                            field.detailColSpan(),
-                            field.detailSortOrder(),
-                            item.visible(),
-                            item.colSpan(),
-                            item.rowOrder());
-        };
-    }
-
-    private ArchiveFieldDto copyField(
-            ArchiveFieldDto field,
-            boolean listVisible,
-            Integer listWidth,
-            int listSortOrder,
-            boolean detailVisible,
-            int detailColSpan,
-            int detailSortOrder,
-            boolean editVisible,
-            int editColSpan,
-            int editSortOrder) {
-        return new ArchiveFieldDto(
-                field.id(),
-                field.categoryId(),
-                field.archiveLevel(),
-                field.fieldScope(),
-                field.fieldCode(),
-                field.fieldName(),
-                field.fieldType(),
-                field.columnName(),
-                field.textLength(),
-                field.decimalPrecision(),
-                field.decimalScale(),
-                field.editControl(),
-                listVisible,
-                listWidth,
-                listSortOrder,
-                detailVisible,
-                detailColSpan,
-                detailSortOrder,
-                editVisible,
-                editColSpan,
-                editSortOrder,
-                field.exactSearchable(),
-                field.dataScopeFilterable(),
-                field.enabled(),
-                field.sortOrder(),
-                field.fieldSource(),
-                field.createdAt(),
-                field.updatedAt());
-    }
-
-    private boolean surfaceVisible(ArchiveLayoutSurface surface, ArchiveFieldDto field) {
-        return switch (surface) {
-            case TABLE -> field.listVisible();
-            case DETAIL -> field.detailVisible();
-            case EDIT -> field.editVisible();
-        };
-    }
-
-    private int surfaceColSpan(ArchiveLayoutSurface surface, ArchiveFieldDto field) {
-        return switch (surface) {
-            case TABLE -> 1;
-            case DETAIL -> field.detailColSpan();
-            case EDIT -> field.editColSpan();
-        };
-    }
-
-    private int layoutOrder(ArchiveLayoutSurface surface, ArchiveFieldDto field) {
-        return switch (surface) {
-            case TABLE -> field.listSortOrder();
-            case DETAIL -> field.detailSortOrder();
-            case EDIT -> field.editSortOrder();
-        };
-    }
-
     private UniqueConstraintValues validateUniqueConstraintRequest(
             ArchiveCategoryDto category, ArchiveUniqueConstraintRequest request) {
         validateRequired(request.constraintCode(), "约束编码不能为空");
@@ -1381,21 +1150,6 @@ public class ArchiveMetadataService {
                 ArchiveFieldSource.BUILTIN,
                 null,
                 null);
-    }
-
-    private ArchiveFieldLayoutItemDto mapFieldLayoutItem(
-            ArchiveFieldLayout layout, ArchiveFieldDto field) {
-        return new ArchiveFieldLayoutItemDto(
-                layout.getFieldId(),
-                field.fieldCode(),
-                field.fieldName(),
-                field.fieldType(),
-                field.editControl(),
-                layout.isVisible(),
-                layout.getListWidth() == null ? field.listWidth() : layout.getListWidth(),
-                layout.getColSpan(),
-                layout.getRowOrder(),
-                layout.getColOrder());
     }
 
     private ArchiveUniqueConstraintDto mapUniqueConstraint(
