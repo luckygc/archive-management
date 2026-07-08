@@ -82,6 +82,7 @@ public class ArchiveMetadataService {
     private final ArchiveFieldDefinitionService fieldDefinitionService;
     private final ArchiveDynamicTableService dynamicTableService;
     private final ArchiveFieldLayoutService fieldLayoutService;
+    private final ArchiveUniqueConstraintService uniqueConstraintService;
 
     public ArchiveMetadataService(
             ArchiveMapper archiveMapper,
@@ -94,7 +95,8 @@ public class ArchiveMetadataService {
             ArchiveRetentionPeriodDataRepository retentionPeriodRepository,
             ArchiveFieldDefinitionService fieldDefinitionService,
             ArchiveDynamicTableService dynamicTableService,
-            ArchiveFieldLayoutService fieldLayoutService) {
+            ArchiveFieldLayoutService fieldLayoutService,
+            ArchiveUniqueConstraintService uniqueConstraintService) {
         this.archiveMapper = archiveMapper;
         this.fondsRepository = fondsRepository;
         this.classificationSchemeRepository = classificationSchemeRepository;
@@ -106,6 +108,7 @@ public class ArchiveMetadataService {
         this.fieldDefinitionService = fieldDefinitionService;
         this.dynamicTableService = dynamicTableService;
         this.fieldLayoutService = fieldLayoutService;
+        this.uniqueConstraintService = uniqueConstraintService;
     }
 
     public List<ArchiveFondsDto> listFonds(@Nullable Boolean enabled) {
@@ -600,13 +603,7 @@ public class ArchiveMetadataService {
 
     public List<ArchiveUniqueConstraintDto> listUniqueConstraints(Long categoryId) {
         requireId(categoryId);
-        return archiveMapper.listUniqueConstraints(categoryId).stream()
-                .map(
-                        row ->
-                                mapUniqueConstraint(
-                                        row,
-                                        listUniqueConstraintFields(number(row, "id").longValue())))
-                .toList();
+        return uniqueConstraintService.list(categoryId);
     }
 
     @Transactional
@@ -614,29 +611,7 @@ public class ArchiveMetadataService {
             Long categoryId, ArchiveUniqueConstraintRequest request, Long userId) {
         requireId(categoryId);
         ArchiveCategoryDto category = getCategory(categoryId);
-        UniqueConstraintValues values = validateUniqueConstraintRequest(category, request);
-        String indexName =
-                dynamicTableService.uniqueConstraintIndexName(
-                        category.categoryCode(), values.archiveLevel(), values.constraintCode());
-        Long id =
-                archiveMapper.insertUniqueConstraint(
-                        categoryId,
-                        values.archiveLevel().value(),
-                        values.constraintCode(),
-                        values.constraintName(),
-                        indexName,
-                        values.enabled(),
-                        userId);
-        replaceUniqueConstraintFields(id, values.fieldIds());
-        markUniqueConstraintFieldsSearchable(category, values.fieldIds(), userId);
-        ArchiveUniqueConstraintDto constraint = getUniqueConstraint(id);
-        if (constraint.enabled()
-                && dynamicTableService.isDynamicTableBuilt(category, constraint.archiveLevel())) {
-            dynamicTableService.createUniqueIndex(
-                    dynamicTableService.dynamicTableName(category, constraint.archiveLevel()),
-                    constraint);
-        }
-        return constraint;
+        return uniqueConstraintService.create(category, listFields(categoryId), request, userId);
     }
 
     @Transactional
@@ -652,34 +627,8 @@ public class ArchiveMetadataService {
         if (!current.categoryId().equals(categoryId)) {
             throw notFound("唯一约束不存在");
         }
-        dynamicTableService.dropIndexIfExists(current.indexName());
-        UniqueConstraintValues values = validateUniqueConstraintRequest(category, request);
-        String indexName =
-                dynamicTableService.uniqueConstraintIndexName(
-                        category.categoryCode(), values.archiveLevel(), values.constraintCode());
-        int updated =
-                archiveMapper.updateUniqueConstraint(
-                        constraintId,
-                        categoryId,
-                        values.archiveLevel().value(),
-                        values.constraintCode(),
-                        values.constraintName(),
-                        indexName,
-                        values.enabled(),
-                        userId);
-        if (updated == 0) {
-            throw notFound("唯一约束不存在");
-        }
-        replaceUniqueConstraintFields(constraintId, values.fieldIds());
-        markUniqueConstraintFieldsSearchable(category, values.fieldIds(), userId);
-        ArchiveUniqueConstraintDto constraint = getUniqueConstraint(constraintId);
-        if (constraint.enabled()
-                && dynamicTableService.isDynamicTableBuilt(category, constraint.archiveLevel())) {
-            dynamicTableService.createUniqueIndex(
-                    dynamicTableService.dynamicTableName(category, constraint.archiveLevel()),
-                    constraint);
-        }
-        return constraint;
+        return uniqueConstraintService.update(
+                category, current, listFields(categoryId), request, userId);
     }
 
     @Transactional
@@ -690,53 +639,16 @@ public class ArchiveMetadataService {
         if (!constraint.categoryId().equals(categoryId)) {
             throw notFound("唯一约束不存在");
         }
-        dynamicTableService.dropIndexIfExists(constraint.indexName());
-        int updated = archiveMapper.deleteUniqueConstraint(constraintId, categoryId, userId);
-        if (updated == 0) {
-            throw notFound("唯一约束不存在");
-        }
+        uniqueConstraintService.delete(constraint, categoryId, userId);
     }
 
     public ArchiveUniqueConstraintDto getUniqueConstraint(Long id) {
         requireId(id);
-        Map<String, @Nullable Object> row = archiveMapper.getUniqueConstraint(id);
-        if (row == null) {
+        ArchiveUniqueConstraintDto constraint = uniqueConstraintService.find(id);
+        if (constraint == null) {
             throw notFound("唯一约束不存在");
         }
-        return mapUniqueConstraint(row, listUniqueConstraintFields(id));
-    }
-
-    private List<ArchiveUniqueConstraintFieldDto> listUniqueConstraintFields(Long constraintId) {
-        return archiveMapper.listUniqueConstraintFields(constraintId).stream()
-                .map(this::mapUniqueConstraintField)
-                .toList();
-    }
-
-    private void replaceUniqueConstraintFields(Long constraintId, List<Long> fieldIds) {
-        archiveMapper.deleteUniqueConstraintFields(constraintId);
-        for (int index = 0; index < fieldIds.size(); index++) {
-            archiveMapper.insertUniqueConstraintField(constraintId, fieldIds.get(index), index + 1);
-        }
-    }
-
-    private void markUniqueConstraintFieldsSearchable(
-            ArchiveCategoryDto category, List<Long> fieldIds, Long userId) {
-        if (fieldIds.isEmpty()) {
-            return;
-        }
-        archiveMapper.markFieldsExactSearchable(category.id(), fieldIds, userId);
-        listFields(category.id()).stream()
-                .filter(field -> fieldIds.contains(field.id()))
-                .filter(
-                        field ->
-                                dynamicTableService.isDynamicTableBuilt(
-                                        category, field.archiveLevel(), field.fieldScope()))
-                .forEach(
-                        field ->
-                                dynamicTableService.createExactIndex(
-                                        dynamicTableService.dynamicTableName(
-                                                category, field.archiveLevel(), field.fieldScope()),
-                                        field.columnName()));
+        return constraint;
     }
 
     private ArchiveManagementMode normalizeManagementMode(
@@ -889,49 +801,6 @@ public class ArchiveMetadataService {
                 throw badRequest("分类不能重复");
             }
         }
-    }
-
-    private UniqueConstraintValues validateUniqueConstraintRequest(
-            ArchiveCategoryDto category, ArchiveUniqueConstraintRequest request) {
-        validateRequired(request.constraintCode(), "约束编码不能为空");
-        validateRequired(request.constraintName(), "约束名称不能为空");
-        String constraintCode = request.constraintCode().trim();
-        if (!FIELD_CODE_PATTERN.matcher(constraintCode).matches()) {
-            throw badRequest("约束编码只允许小写字母、数字和下划线，并且必须以小写字母开头");
-        }
-        List<Long> fieldIds = request.fieldIds() == null ? List.of() : request.fieldIds();
-        if (fieldIds.isEmpty()) {
-            throw badRequest("唯一约束字段不能为空");
-        }
-        if (new HashSet<>(fieldIds).size() != fieldIds.size()) {
-            throw badRequest("唯一约束字段不能重复");
-        }
-        ArchiveLevel archiveLevel =
-                fieldDefinitionService.normalizeArchiveLevel(request.archiveLevel());
-        fieldDefinitionService.ensureArchiveLevelAllowed(category, archiveLevel);
-        Map<Long, ArchiveFieldDto> fieldsById =
-                listFields(category.id()).stream()
-                        .collect(
-                                java.util.stream.Collectors.toMap(
-                                        ArchiveFieldDto::id, field -> field));
-        for (Long fieldId : fieldIds) {
-            ArchiveFieldDto field = fieldsById.get(fieldId);
-            if (field == null) {
-                throw badRequest("唯一约束只能选择当前分类字段");
-            }
-            if (field.archiveLevel() != archiveLevel) {
-                throw badRequest("唯一约束字段必须和约束层级一致");
-            }
-            if (field.fieldScope() != ArchiveFieldScope.METADATA) {
-                throw badRequest("唯一约束字段必须是案卷或卷内电子字段");
-            }
-        }
-        return new UniqueConstraintValues(
-                archiveLevel,
-                constraintCode,
-                request.constraintName().trim(),
-                request.enabled() == null || request.enabled(),
-                fieldIds);
     }
 
     private void validateParentCategory(
@@ -1150,32 +1019,6 @@ public class ArchiveMetadataService {
                 ArchiveFieldSource.BUILTIN,
                 null,
                 null);
-    }
-
-    private ArchiveUniqueConstraintDto mapUniqueConstraint(
-            Map<String, @Nullable Object> row, List<ArchiveUniqueConstraintFieldDto> fields) {
-        return new ArchiveUniqueConstraintDto(
-                number(row, "id").longValue(),
-                number(row, "categoryId").longValue(),
-                ArchiveLevel.fromValue(string(row, "archiveLevel")),
-                string(row, "constraintCode"),
-                string(row, "constraintName"),
-                string(row, "indexName"),
-                bool(row, "enabled"),
-                fields,
-                dateTime(row, "createdAt"),
-                dateTime(row, "updatedAt"));
-    }
-
-    private ArchiveUniqueConstraintFieldDto mapUniqueConstraintField(
-            Map<String, @Nullable Object> row) {
-        return new ArchiveUniqueConstraintFieldDto(
-                number(row, "fieldId").longValue(),
-                number(row, "fieldOrder").intValue(),
-                ArchiveLevel.fromValue(string(row, "archiveLevel")),
-                string(row, "fieldCode"),
-                string(row, "fieldName"),
-                string(row, "columnName"));
     }
 
     private @Nullable String string(Map<String, @Nullable Object> row, String key) {
@@ -1428,11 +1271,4 @@ public class ArchiveMetadataService {
             @Nullable String description,
             boolean enabled,
             int sortOrder) {}
-
-    private record UniqueConstraintValues(
-            ArchiveLevel archiveLevel,
-            String constraintCode,
-            String constraintName,
-            boolean enabled,
-            List<Long> fieldIds) {}
 }

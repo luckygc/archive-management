@@ -38,6 +38,7 @@ import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFondsCategoryScopeRequest;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveUniqueConstraintDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveUniqueConstraintRequest;
+import github.luckygc.am.module.archive.metadata.service.ArchiveUniqueConstraintService;
 
 @DisplayName("档案元数据服务")
 class ArchiveMetadataServiceTests {
@@ -69,6 +70,9 @@ class ArchiveMetadataServiceTests {
                 new ArchiveDynamicTableService(archiveMapper, fieldDefinitionService);
         ArchiveFieldLayoutService fieldLayoutService =
                 new ArchiveFieldLayoutService(fieldLayoutRepository, fieldDefinitionService);
+        ArchiveUniqueConstraintService uniqueConstraintService =
+                new ArchiveUniqueConstraintService(
+                        archiveMapper, fieldDefinitionService, dynamicTableService);
         service =
                 new ArchiveMetadataService(
                         archiveMapper,
@@ -81,7 +85,8 @@ class ArchiveMetadataServiceTests {
                         retentionPeriodRepository,
                         fieldDefinitionService,
                         dynamicTableService,
-                        fieldLayoutService);
+                        fieldLayoutService,
+                        uniqueConstraintService);
     }
 
     @Test
