@@ -20,14 +20,14 @@ export function IntakePage() {
     if (error) {
         return (
             <main className="am-page">
-                <Alert message="归档接收入口加载失败" showIcon type="error" />
+                <Alert title="归档接收入口加载失败" showIcon type="error" />
             </main>
         );
     }
 
     return (
         <main className="am-page">
-            <Space direction="vertical" size={16} style={{ width: "100%" }}>
+            <Space orientation="vertical" size={16} style={{ width: "100%" }}>
                 <Card>
                     <Descriptions column={1} size="small" title="归档接收">
                         <Descriptions.Item label="外部连接">

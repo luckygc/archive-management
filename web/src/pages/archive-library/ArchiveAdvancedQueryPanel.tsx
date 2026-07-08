@@ -87,8 +87,7 @@ export function ArchiveAdvancedQueryPanel({
                         rules={[{ required: true, message: "请选择档案分类" }]}
                     >
                         <Select
-                            showSearch
-                            optionFilterProp="label"
+                            showSearch={{ optionFilterProp: "label" }}
                             options={categories.map((category) => ({
                                 label: category.categoryName,
                                 value: category.id,
@@ -249,8 +248,7 @@ function ConditionRow({
             <Col span={7}>
                 <Form.Item name={[...prefix, "fieldCode"]} rules={[{ required: true }]}>
                     <Select
-                        showSearch
-                        optionFilterProp="label"
+                        showSearch={{ optionFilterProp: "label" }}
                         options={fields
                             .filter(
                                 (field) =>

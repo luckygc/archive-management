@@ -2,6 +2,25 @@
 
 - Ant Design, developed by Ant Group, is a React UI library that aims to provide a high-quality design language and development framework for enterprise-level backend management systems. It offers a rich set of components and design guidelines, helping developers build modern, responsive, and high-performance web applications.
 
+## 本项目本地查询约定
+
+- 当前项目使用 `antd@6.5.0`、`@ant-design/cli@6.5.0`、`@ant-design/pro-components@3.1.12-0`。
+- 涉及 Ant Design、Ant Design Pro 或 Pro Components 的用法、迁移和 API 查询时，优先使用项目依赖提供的 Ant Design CLI：
+  - 查询组件 API：`pnpm -F @archive-management/web exec antd info <Component> --lang zh --detail --format markdown`
+  - 查询组件完整文档：`pnpm -F @archive-management/web exec antd doc <Component> --lang zh --format markdown`
+  - 扫描用法：`pnpm -F @archive-management/web exec antd usage web/src --format markdown`
+  - 检查建议：`pnpm -F @archive-management/web exec antd lint web/src --format markdown`
+- 本仓库的前端过时 API 检查命令是：`task frontend-deprecated-check`。它基于 Vite+/Oxlint 的 `typescript/no-deprecated` 规则，并开启 type-aware 检查。
+
+## 本项目 Ant Design 6.5 过时 API 迁移速查
+
+- `Alert message` 已过时，使用 `Alert title`。
+- `Drawer destroyOnClose`、`Modal destroyOnClose` 已过时，使用 `destroyOnHidden`。
+- `Drawer width`、`Drawer height` 已过时，使用 `size`；`size` 支持 `'default'`、`'large'`、`number` 和 `string`。
+- `Space direction` 已过时，使用 `orientation`。
+- `Select filterOption` 已过时，使用 `showSearch.filterOption`。
+- `Select filterSort`、`optionFilterProp`、`autoClearSearchValue` 等搜索相关配置应优先收敛到 `showSearch` 对象中。
+
 ## Navigation
 
 - [Full Documentation (EN)](./llms-full.txt)

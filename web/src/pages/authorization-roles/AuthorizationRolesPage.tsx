@@ -274,7 +274,7 @@ export function AuthorizationRolesPage() {
                 onOk={handleSubmit}
                 onCancel={handleModalClose}
                 confirmLoading={createMutation.isPending || updateMutation.isPending}
-                destroyOnClose
+                destroyOnHidden
             >
                 <Form form={form} layout="vertical">
                     <Form.Item
@@ -306,7 +306,7 @@ export function AuthorizationRolesPage() {
                 }}
                 confirmLoading={savePermissionsMutation.isPending}
                 okButtonProps={{ disabled: permissionLoading || permissionLoadFailed }}
-                destroyOnClose
+                destroyOnHidden
                 width={640}
             >
                 <Spin spinning={permissionLoading || permissionsQuery.isLoading}>

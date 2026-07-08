@@ -599,7 +599,7 @@ export function ArchiveCategoriesPage() {
                         title="分类树"
                         loading={categoriesQuery.isLoading || schemesQuery.isLoading}
                     >
-                        <Space direction="vertical" style={{ width: "100%" }}>
+                        <Space orientation="vertical" style={{ width: "100%" }}>
                             <Select
                                 aria-label="当前方案"
                                 loading={schemesQuery.isLoading}
@@ -966,7 +966,7 @@ export function ArchiveCategoriesPage() {
                     </Form.Item>
                     <Form.List name="items">
                         {(fields, { add, remove }) => (
-                            <Space direction="vertical" style={{ width: "100%" }}>
+                            <Space orientation="vertical" style={{ width: "100%" }}>
                                 {fields.map(({ key, name, ...restField }) => (
                                     <Row gutter={12} key={key} align="middle">
                                         <Col span={12}>
@@ -982,8 +982,7 @@ export function ArchiveCategoriesPage() {
                                                 ]}
                                             >
                                                 <Select
-                                                    showSearch
-                                                    optionFilterProp="label"
+                                                    showSearch={{ optionFilterProp: "label" }}
                                                     options={categoryScopeOptions}
                                                 />
                                             </Form.Item>

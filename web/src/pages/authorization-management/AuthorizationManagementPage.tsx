@@ -410,16 +410,16 @@ export function AuthorizationManagementPage() {
                             />
                             {subjectType === "role" ? (
                                 <Select
-                                    showSearch
+                                    showSearch={{
+                                        filterOption: (input, option) =>
+                                            (option?.label as string)
+                                                ?.toLowerCase()
+                                                .includes(input.toLowerCase()),
+                                    }}
                                     allowClear
                                     placeholder="搜索并选择角色"
                                     style={{ width: "100%" }}
                                     loading={rolesQuery.isLoading}
-                                    filterOption={(input, option) =>
-                                        (option?.label as string)
-                                            ?.toLowerCase()
-                                            .includes(input.toLowerCase())
-                                    }
                                     value={selectedRoleId}
                                     onChange={(v) => {
                                         setSelectedRoleId(v ?? null);
@@ -431,16 +431,16 @@ export function AuthorizationManagementPage() {
                                 />
                             ) : subjectType === "user" ? (
                                 <Select
-                                    showSearch
+                                    showSearch={{
+                                        filterOption: (input, option) =>
+                                            (option?.label as string)
+                                                ?.toLowerCase()
+                                                .includes(input.toLowerCase()),
+                                    }}
                                     allowClear
                                     placeholder="搜索并选择用户"
                                     style={{ width: "100%" }}
                                     loading={usersQuery.isLoading}
-                                    filterOption={(input, option) =>
-                                        (option?.label as string)
-                                            ?.toLowerCase()
-                                            .includes(input.toLowerCase())
-                                    }
                                     value={selectedUserId}
                                     onChange={(v) => {
                                         setSelectedUserId(v ?? null);
@@ -452,16 +452,16 @@ export function AuthorizationManagementPage() {
                                 />
                             ) : (
                                 <Select
-                                    showSearch
+                                    showSearch={{
+                                        filterOption: (input, option) =>
+                                            (option?.label as string)
+                                                ?.toLowerCase()
+                                                .includes(input.toLowerCase()),
+                                    }}
                                     allowClear
                                     placeholder="搜索并选择部门"
                                     style={{ width: "100%" }}
                                     loading={departmentsQuery.isLoading}
-                                    filterOption={(input, option) =>
-                                        (option?.label as string)
-                                            ?.toLowerCase()
-                                            .includes(input.toLowerCase())
-                                    }
                                     value={selectedDepartmentId}
                                     onChange={(v) => {
                                         setSelectedDepartmentId(v ?? null);

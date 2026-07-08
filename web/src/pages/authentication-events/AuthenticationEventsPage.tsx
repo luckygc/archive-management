@@ -60,7 +60,7 @@ export function AuthenticationEventsPage() {
             key: "client",
             width: 240,
             render: (_value, row) => (
-                <Space direction="vertical" size={0}>
+                <Space orientation="vertical" size={0}>
                     <span>{clientSummary(row)}</span>
                     <Typography.Text type="secondary">
                         {row.client.userAgent || "-"}
@@ -73,7 +73,7 @@ export function AuthenticationEventsPage() {
             key: "request",
             width: 220,
             render: (_value, row) => (
-                <Space direction="vertical" size={0}>
+                <Space orientation="vertical" size={0}>
                     <span>{row.request.remoteAddress || "-"}</span>
                     <Typography.Text type="secondary">{row.request.host || "-"}</Typography.Text>
                 </Space>

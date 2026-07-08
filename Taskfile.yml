@@ -30,6 +30,12 @@ tasks:
         cmds:
             - "{{.PNPM}} check:fix"
 
+    frontend-deprecated-check:
+        desc: 检查前端过时 API 使用
+        cmds:
+            - "{{.PNPM}} -F @archive-management/frontend-core exec vp lint --type-aware -D typescript/no-deprecated --quiet src"
+            - "{{.PNPM}} -F @archive-management/web exec vp lint --type-aware -D typescript/no-deprecated --quiet src vite.config.ts"
+
     frontend-test:
         desc: 测试全部前端包
         cmds:
@@ -64,26 +70,6 @@ tasks:
         desc: 启动 PC 前端开发服务
         cmds:
             - "{{.PNPM}} run dev:web"
-
-    mobile-check:
-        desc: 检查移动端前端
-        cmds:
-            - "{{.PNPM}} -F @archive-management/mobile check"
-
-    mobile-test:
-        desc: 测试移动端前端
-        cmds:
-            - "{{.PNPM}} -F @archive-management/mobile test"
-
-    mobile-build:
-        desc: 构建移动端前端
-        cmds:
-            - "{{.PNPM}} -F @archive-management/mobile build"
-
-    mobile-dev:
-        desc: 启动移动端前端开发服务
-        cmds:
-            - "{{.PNPM}} run dev:mobile"
 
     frontend-core-check:
         desc: 检查前端共享包
@@ -124,6 +110,12 @@ tasks:
         dir: "{{.SERVER_DIR}}"
         cmds:
             - "{{.MVN}} spotless:apply"
+
+    server-deprecated-check:
+        desc: 检查 server 过时 API 使用
+        dir: "{{.SERVER_DIR}}"
+        cmds:
+            - "{{.MVN}} -Drewrite.activeRecipes=org.openrewrite.java.search.FindDeprecatedUses -Drewrite.exportDatatables=true rewrite:dryRun"
 
     server-rewrite-dry-run:
         desc: 预览 server OpenRewrite 迁移

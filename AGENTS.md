@@ -89,7 +89,7 @@
 
 当用户询问库、框架、SDK、API、CLI 工具或云服务的用法、配置、版本迁移、调试和 setup 时，必须使用 Context7 查询当前文档；不要凭记忆回答。
 
-Ant Design 生态例外：当问题涉及 Ant Design、Ant Design Pro、Pro Components、Ant Design Mobile、`@ant-design/cli` 或相关主题、组件、布局、表单、表格用法时，优先使用项目内的 Ant Design CLI、本地 `llms.txt` 和已安装文档查询；只有 CLI 或本地文档缺失、查不到或输出不足以回答时，才回退到 Context7。不要跳过用户明确要求的 Ant Design CLI 查询路径。
+Ant Design 生态例外：当问题涉及 Ant Design、Ant Design Pro、Pro Components、`@ant-design/cli` 或相关主题、组件、布局、表单、表格用法时，优先使用项目内的 Ant Design CLI、本地 `llms.txt` 和已安装文档查询；只有 CLI 或本地文档缺失、查不到或输出不足以回答时，才回退到 Context7。不要跳过用户明确要求的 Ant Design CLI 查询路径。
 
 1. 先解析库：
 
@@ -110,21 +110,21 @@ Ant Design 生态例外：当问题涉及 Ant Design、Ant Design Pro、Pro Comp
 
 ## Vite+ 工具链
 
-本项目使用 Vite+，这是构建在 Vite、Rolldown、Vitest、tsdown、Oxlint、Oxfmt 和 Vite Task 之上的统一前端工具链。Vite+ 通过全局 CLI `vp` 管理运行时、包管理和前端任务；它不同于 Vite，运行和构建应使用 `vp dev`、`vp build`。
+本项目使用 Vite+，这是构建在 Vite、Rolldown、Vitest、tsdown、Oxlint、Oxfmt 和 Vite Task 之上的统一前端工具链。Vite+ CLI `vp` 由项目依赖提供，不要求全局安装；日常通过根目录 `package.json` 的 `pnpm` 脚本执行，确需直接调用时使用 `pnpm exec vp ...`。它不同于 Vite，运行和构建应使用项目脚本或 `pnpm exec vp build`。
 
-- 查看命令列表：`vp help`
-- 查看子命令说明：`vp <command> --help`
+- 查看命令列表：`pnpm exec vp help`
+- 查看子命令说明：`pnpm exec vp <command> --help`
 - 本地文档：`node_modules/vite-plus/docs`
 - 在线文档：https://viteplus.dev/guide/
-- Codex 不允许主动启动开发服务器；不要运行 `vp dev`、`vp run *#dev`、`npm run dev`、`pnpm dev`、`vite --host` 等长期占用端口的本地服务命令。需要预览时，只说明用户可自行启动的命令。
+- Codex 不允许主动启动开发服务器；不要运行 `pnpm run dev:web`、`pnpm exec vp dev`、`vp dev`、`vp run *#dev`、`npm run dev`、`pnpm dev`、`vite --host` 等长期占用端口的本地服务命令。需要预览时，只说明用户可自行启动的命令。
 
 ## 检查清单
 
-- 拉取远程变更后、开始开发前运行 `vp install`。
-- 前端变更运行 `vp check` 和 `vp test`，用于格式化、lint、类型检查和测试。
-- 检查 `vite.config.ts` tasks 或 `package.json` scripts 中是否有必要验证命令，并通过 `vp run <script>` 执行。
-- 如果 setup、运行时或包管理行为异常，运行 `vp env doctor` 并保留输出。
-- 后端 Maven 项目根目录是 `server/`，仓库根目录没有聚合 POM；运行 `mvn ...` 验证时必须以 `server/` 为工作目录，例如 `cd server && mvn -q -DskipTests test-compile`。
+- 拉取远程变更后、开始开发前运行 `pnpm install`。
+- 前端变更运行 `pnpm check` 和 `pnpm test`，用于格式化、lint、类型检查和测试。
+- 检查 `vite.config.ts` tasks 或 `package.json` scripts 中是否有必要验证命令，并通过 `pnpm run <script>` 或 `pnpm exec vp run <script>` 执行。
+- 如果 setup、运行时或包管理行为异常，运行 `pnpm exec vp env doctor` 并保留输出。
+- 后端 Maven 项目根目录是 `server/`，仓库根目录没有聚合 POM；运行 Maven 验证时必须以 `server/` 为工作目录，例如 `cd server && mise exec -- mvn -q -DskipTests test-compile`。如果本机已全局安装 Maven，也可以使用等价的 `mvn ...` 命令。
 - 后端改动至少运行对应 Maven 编译或测试；如果测试需要本机数据库，说明依赖和结果。
 - Java 过时 API 批量迁移优先使用 OpenRewrite；仓库根目录 `rewrite.yml` 维护可复用 recipe，后端先运行 `task server-rewrite-dry-run` 审查 `server/target/rewrite/rewrite.patch`，确认后再运行 `task server-rewrite-run`。
 - OpenRewrite recipe 只沉淀能语义化迁移的安全规则；涉及参数重排、条件改写、补 import 或复杂框架升级时，先 dry run 和编译验证，YAML 不足时新增自定义 recipe，不用正则批改 Java 源码。

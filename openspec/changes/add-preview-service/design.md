@@ -1,6 +1,6 @@
 ## Context
 
-当前仓库没有 Go 子项目，后端是 `server/` Spring Boot，前端和共享包分别在 `web/`、`mobile/`、`frontend-core/`。文件存储已经有独立规格，但在线预览需要运行 PDF、Office、图片和音视频相关解析/转换工具，这些工具依赖重、资源消耗和失败模式都不同于主业务应用。
+当前仓库没有 Go 子项目，后端是 `server/` Spring Boot，前端和共享包分别在 `web/`、`frontend-core/`。文件存储已经有独立规格，但在线预览需要运行 PDF、Office、图片和音视频相关解析/转换工具，这些工具依赖重、资源消耗和失败模式都不同于主业务应用。
 
 预览服务首版采用同仓独立 Go module：代码、测试、镜像和命令在 `preview/` 下维护，运行时作为独立 HTTP 服务部署。主业务系统后续只通过 HTTP 调用预览服务，不把转换进程嵌入 Spring Boot。
 

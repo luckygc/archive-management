@@ -200,10 +200,10 @@ export function ArchiveDataScopesPage() {
                 />
             </Card>
             <Drawer
-                destroyOnClose
+                destroyOnHidden
                 open={open}
                 title={editing ? "编辑数据范围" : "新建数据范围"}
-                width={640}
+                size={640}
                 onClose={closeDrawer}
                 extra={
                     <Button
@@ -294,7 +294,7 @@ export function ArchiveDataScopesPage() {
                             </Form.Item>
                             <Form.List name={["dynamicCondition", "dynamicFields"]}>
                                 {(fields, operations) => (
-                                    <Space direction="vertical" style={{ width: "100%" }}>
+                                    <Space orientation="vertical" style={{ width: "100%" }}>
                                         {fields.map((field) => (
                                             <Space key={field.key} align="start">
                                                 <Form.Item

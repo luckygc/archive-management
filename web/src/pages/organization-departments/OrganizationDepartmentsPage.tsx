@@ -249,8 +249,7 @@ export function OrganizationDepartmentsPage() {
                     <Form.Item label="上级部门" name="parentId">
                         <Select
                             allowClear
-                            showSearch
-                            optionFilterProp="label"
+                            showSearch={{ optionFilterProp: "label" }}
                             placeholder="选择上级部门"
                             options={departments.map((department) => ({
                                 disabled: excludedParentIds.has(department.id),

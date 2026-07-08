@@ -192,14 +192,16 @@ export function ArchiveItemManagementPage() {
                 requestTotal: true,
             }),
     });
+    const editorArchiveItemId =
+        editorState?.mode === "detail" || editorState?.mode === "edit"
+            ? editorState.archiveItemId
+            : undefined;
     const editorDetailQuery = useQuery({
-        enabled:
-            typeof editorState?.archiveItemId === "number" &&
-            (editorState.mode === "detail" || editorState.mode === "edit"),
-        queryKey: ["archive-item-detail", editorState?.archiveItemId, editorState?.mode],
+        enabled: typeof editorArchiveItemId === "number",
+        queryKey: ["archive-item-detail", editorArchiveItemId, editorState?.mode],
         queryFn: () =>
             getArchiveRecord(
-                editorState?.archiveItemId as number,
+                editorArchiveItemId as number,
                 editorState?.mode === "detail" ? "DETAIL" : "EDIT",
             ),
     });
@@ -588,7 +590,7 @@ export function ArchiveItemManagementPage() {
                 )}
             </Card>
             <Drawer
-                destroyOnClose
+                destroyOnHidden
                 open={drawerOpen}
                 size="large"
                 title={drawerState ? `档案 ${drawerState.archiveItemId}` : undefined}
@@ -601,7 +603,7 @@ export function ArchiveItemManagementPage() {
                             key: "files",
                             label: "电子文件",
                             children: (
-                                <Space direction="vertical" size={16} style={{ width: "100%" }}>
+                                <Space orientation="vertical" size={16} style={{ width: "100%" }}>
                                     <Form<FileUploadFormValues> form={fileForm} layout="inline">
                                         <Form.Item name="usageType">
                                             <Input
@@ -744,7 +746,7 @@ export function ArchiveItemManagementPage() {
                 />
             </Drawer>
             <Drawer
-                destroyOnClose
+                destroyOnHidden
                 open={editorOpen}
                 size="large"
                 title={editorTitle(editorState)}
@@ -752,7 +754,7 @@ export function ArchiveItemManagementPage() {
             >
                 {editorState?.mode === "detail" ? (
                     editorDetailQuery.data ? (
-                        <Space direction="vertical" size={16} style={{ width: "100%" }}>
+                        <Space orientation="vertical" size={16} style={{ width: "100%" }}>
                             <Descriptions
                                 bordered
                                 column={2}
@@ -796,15 +798,13 @@ export function ArchiveItemManagementPage() {
                             rules={[{ required: true, message: "请选择全宗" }]}
                         >
                             <Select
-                                disabled={editorState?.mode === "detail"}
                                 loading={fondsQuery.isFetching}
                                 options={(fondsQuery.data?.items ?? []).map((fonds) => ({
                                     value: fonds.fondsCode,
                                     label: `${fonds.fondsCode} ${fonds.fondsName}`,
                                 }))}
                                 placeholder="选择全宗"
-                                showSearch
-                                optionFilterProp="label"
+                                showSearch={{ optionFilterProp: "label" }}
                             />
                         </Form.Item>
                         <Space size={16} style={{ width: "100%" }} wrap>

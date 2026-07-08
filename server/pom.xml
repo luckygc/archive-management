@@ -24,7 +24,7 @@
         <flowable.version>8.0.0</flowable.version>
         <spring-ai.version>2.0.0</spring-ai.version>
         <spring-modulith.version>2.1.0</spring-modulith.version>
-        <postgresql.version>42.7.12</postgresql.version>
+        <postgresql.version>42.7.13</postgresql.version>
         <maven-enforcer-plugin.version>3.6.3</maven-enforcer-plugin.version>
         <rewrite-maven-plugin.version>6.43.0</rewrite-maven-plugin.version>
         <spotless.version>3.8.0</spotless.version>
@@ -243,7 +243,7 @@
             <dependency>
                 <groupId>software.amazon.awssdk</groupId>
                 <artifactId>bom</artifactId>
-                <version>2.46.21</version>
+                <version>2.47.1</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -374,7 +374,7 @@
                     </formats>
                     <java>
                         <googleJavaFormat>
-                            <version>1.28.0</version>
+                            <version>1.35.0</version>
                             <style>AOSP</style>
                             <formatJavadoc>false</formatJavadoc>
                         </googleJavaFormat>

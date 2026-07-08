@@ -1,6 +1,6 @@
 # React 前端选型
 
-当前 React 子应用参考 Ant Design Pro v6 的技术方向，但不直接照搬 Pro 脚手架运行时。仓库现有前端工具链仍以 Vite+ 为入口，运行和验证继续使用 `vp`。
+当前 React 子应用参考 Ant Design Pro v6 的技术方向，但不直接照搬 Pro 脚手架运行时。仓库现有前端工具链仍以 Vite+ 为入口，运行和验证通过根目录 `package.json` 的 `pnpm` 脚本执行；需要直接调用 Vite+ 时使用 `pnpm exec vp`，不要求全局安装 `vp`。
 
 ## 核心库
 

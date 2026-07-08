@@ -417,9 +417,8 @@ export function AuthenticationUsersPage() {
                         <Form.Item name="departmentId" label="所属部门">
                             <Select
                                 allowClear
-                                showSearch
+                                showSearch={{ optionFilterProp: "label" }}
                                 loading={departmentsQuery.isLoading}
-                                optionFilterProp="label"
                                 options={departmentOptions}
                                 placeholder="选择所属部门"
                             />

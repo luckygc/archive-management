@@ -6,7 +6,7 @@ product
 
 ## Product
 
-archive-management 是面向机构内部使用的档案管理系统。它提供 PC 主应用和移动端轻门户两类入口，支撑档案元数据配置、档案库管理、归档接收、审批待办和系统配置等工作。
+archive-management 是面向机构内部使用的档案管理系统。它提供 PC 主应用入口，支撑档案元数据配置、档案库管理、归档接收、审批待办和系统配置等工作。
 
 系统不是展示站点，也不是营销页。界面目标是让档案人员和业务经办人以稳定、可预期的方式完成日常业务操作。
 
@@ -20,7 +20,6 @@ archive-management 是面向机构内部使用的档案管理系统。它提供 
 ## Product Surfaces
 
 - `web/`：PC 主应用，使用 React、Ant Design 和 Ant Design Pro 组件体系。它承载高密度管理界面，包括侧边菜单、多页签、表格、筛选、表单、详情和系统配置。
-- `mobile/`：移动端轻门户，使用 React 和 Ant Design Mobile。它承载低密度移动任务，包括我的待办、审批办理、归档接收入口和轻量查询。
 - `frontend-core/`：前端共享基础能力，包括 API client、登录态、CAP 安全验证和认证类型。它不承载业务页面和 UI 壳层。
 - `server/`：Spring Boot 后端单体，按业务模块组织能力。
 
@@ -32,7 +31,7 @@ archive-management 是面向机构内部使用的档案管理系统。它提供 
 
 - 让档案配置、档案记录、归档接收和审批入口清晰可达。
 - 让高频表格和表单操作具备稳定反馈、明确状态和可恢复错误。
-- 让 PC 和移动端共享登录和安全能力，但保持各自适合的交互密度。
+- 让 Web 入口复用统一登录和安全能力，保持后台业务操作的稳定交互密度。
 - 让产品默认配置可交付，客户差异通过本地或部署配置覆盖。
 
 ## Brand Personality
@@ -43,9 +42,9 @@ archive-management 是面向机构内部使用的档案管理系统。它提供 
 
 产品视觉和交互应贴近 Ant Design 企业级产品语言：
 
-- 组件库优先：按钮、表单、表格、菜单、Tabs、Drawer、Modal、Notification、Empty、Skeleton 等优先使用 Ant Design / Ant Design Mobile 原生能力。
+- 组件库优先：按钮、表单、表格、菜单、Tabs、Drawer、Modal、Notification、Empty、Skeleton 等优先使用 Ant Design 原生能力。
 - Token 优先：颜色、圆角、字体、布局背景优先通过 `ConfigProvider`、组件 token 和少量 CSS 布局变量控制。
-- 信息密度优先：PC 端允许高密度表格、紧凑筛选和多页签；移动端只保留低密度任务入口和必要操作。
+- 信息密度优先：PC 端允许高密度表格、紧凑筛选和多页签。
 - 熟悉优先：不要为了“有设计感”改造标准控件，不发明非标准表单、弹窗、滚动条或按钮形态。
 
 ## Anti-references
@@ -65,7 +64,6 @@ archive-management 是面向机构内部使用的档案管理系统。它提供 
 - 菜单即结构：PC 端通过侧边菜单、页签、面包屑或当前选中态表达位置，不额外堆页面身份说明。
 - 状态明确：加载、空状态、错误、禁用、提交中、成功反馈都必须可见且文案可执行。
 - 操作稳定：列表内会改变成员、状态、排序的操作成功后刷新或同步当前列表状态。
-- 移动端克制：移动端只做门户和轻流程，不把 PC 管理配置完整搬过去。
 - 文档同步：业务合同进入 OpenSpec；设计原则进入 `PRODUCT.md` / `DESIGN.md`；协作规则进入 `AGENTS.md`。
 
 ## Accessibility & Inclusion

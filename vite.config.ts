@@ -45,15 +45,13 @@ export default defineConfig({
 
 function workspaceAliasPlugin() {
     const webSrc = fileURLToPath(new URL("./web/src", import.meta.url));
-    const mobileSrc = fileURLToPath(new URL("./mobile/src", import.meta.url));
     return {
         name: "archive-management-workspace-alias",
         async resolveId(source: string, importer?: string) {
             if (!source.startsWith("@/")) {
                 return null;
             }
-            const srcRoot = importer?.includes("/mobile/") ? mobileSrc : webSrc;
-            const resolved = await this.resolve(source.replace("@", srcRoot), importer, {
+            const resolved = await this.resolve(source.replace("@", webSrc), importer, {
                 skipSelf: true,
             });
             return resolved?.id ?? null;
