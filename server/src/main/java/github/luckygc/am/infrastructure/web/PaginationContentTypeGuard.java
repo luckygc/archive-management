@@ -3,6 +3,7 @@ package github.luckygc.am.infrastructure.web;
 import jakarta.servlet.http.HttpServletRequest;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.springframework.http.InvalidMediaTypeException;
 import org.springframework.http.MediaType;
 
@@ -17,7 +18,7 @@ final class PaginationContentTypeGuard {
         if (StringUtils.isBlank(contentType)) {
             return;
         }
-        if (StringUtils.startsWithIgnoreCase(contentType, "multipart/")) {
+        if (Strings.CI.startsWith(contentType, "multipart/")) {
             throw new BadRequestException(
                     "分页参数不合法", "pagination", "multipart 请求不能携带分页参数，请使用 URL 参数");
         }
