@@ -34,14 +34,17 @@ public class ArchiveRuleConditionEvaluator {
             return !evaluate(condition.get("not"), facts);
         }
         String field = condition.get("field").textValue();
-        ArchiveRuleOperator operator = ArchiveRuleOperator.valueOf(condition.get("operator").textValue());
+        ArchiveRuleOperator operator =
+                ArchiveRuleOperator.valueOf(condition.get("operator").textValue());
         Object actualValue = facts.get(field);
         JsonNode expectedNode = condition.get("value");
         return evaluateField(actualValue, operator, expectedNode);
     }
 
     private boolean evaluateField(
-            @Nullable Object actualValue, ArchiveRuleOperator operator, @Nullable JsonNode expectedNode) {
+            @Nullable Object actualValue,
+            ArchiveRuleOperator operator,
+            @Nullable JsonNode expectedNode) {
         return switch (operator) {
             case EQ -> compare(actualValue, expectedNode) == 0;
             case NE -> compare(actualValue, expectedNode) != 0;

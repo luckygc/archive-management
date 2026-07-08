@@ -337,7 +337,8 @@ public class ArchiveOntologyService {
     @Transactional
     public List<ArchiveOntologyEventTypeResponse> initializeBuiltInEventTypes(Long userId) {
         ArchiveOntologyObjectType objectType =
-                objectTypeRepository.findByTypeCode(ArchiveOntologyObjectTypeCode.ARCHIVE_ITEM.name());
+                objectTypeRepository.findByTypeCode(
+                        ArchiveOntologyObjectTypeCode.ARCHIVE_ITEM.name());
         if (objectType == null) {
             throw new BadRequestException("初始化事件类型前必须先初始化档案条目对象类型");
         }
@@ -454,10 +455,12 @@ public class ArchiveOntologyService {
                         : request.cardinality());
         attribute.setExactSearchable(Boolean.TRUE.equals(request.exactSearchable()));
         attribute.setSortable(Boolean.TRUE.equals(request.sortable()));
-        attribute.setDescriptionParticipating(Boolean.TRUE.equals(request.descriptionParticipating()));
+        attribute.setDescriptionParticipating(
+                Boolean.TRUE.equals(request.descriptionParticipating()));
         attribute.setReferenceCodeParticipating(
                 Boolean.TRUE.equals(request.referenceCodeParticipating()));
-        attribute.setRuleFactVisible(request.ruleFactVisible() == null || request.ruleFactVisible());
+        attribute.setRuleFactVisible(
+                request.ruleFactVisible() == null || request.ruleFactVisible());
         attribute.setDescription(StringUtils.trimToNull(request.description()));
         attribute.setEnabled(request.enabled() == null || request.enabled());
     }
@@ -516,9 +519,7 @@ public class ArchiveOntologyService {
     }
 
     private ArchiveOntologyObjectType loadObjectType(Long objectTypeId) {
-        return objectTypeRepository
-                .findById(objectTypeId)
-                .orElseThrow(() -> notFound("对象类型不存在"));
+        return objectTypeRepository.findById(objectTypeId).orElseThrow(() -> notFound("对象类型不存在"));
     }
 
     private ArchiveOntologyAttributeType loadAttributeType(Long attributeTypeId) {
@@ -534,7 +535,8 @@ public class ArchiveOntologyService {
     }
 
     private void protectOntologyReference(Long targetId) {
-        governanceService.requireTargetNotReferenced(ArchiveGovernanceBindingType.ONTOLOGY, targetId);
+        governanceService.requireTargetNotReferenced(
+                ArchiveGovernanceBindingType.ONTOLOGY, targetId);
     }
 
     private ArchiveOntologyAttributeMappingKind requireMappingKind(

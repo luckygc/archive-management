@@ -85,7 +85,8 @@ class ArchiveGovernanceServiceTests {
     @Test
     @DisplayName("发布草稿治理方案版本时记录发布人和发布时间")
     void publishVersionShouldMoveDraftToPublished() {
-        ArchiveGovernanceSchemeVersion version = version(3L, ArchiveGovernanceSchemeVersionStatus.DRAFT);
+        ArchiveGovernanceSchemeVersion version =
+                version(3L, ArchiveGovernanceSchemeVersionStatus.DRAFT);
         when(versionRepository.findById(3L)).thenReturn(Optional.of(version));
         when(versionRepository.update(version)).thenReturn(version);
 
@@ -101,18 +102,22 @@ class ArchiveGovernanceServiceTests {
     @Test
     @DisplayName("解析默认治理方案版本时按分类、全宗、全局优先级命中")
     void resolveDefaultVersionShouldPreferCategoryOverFondsAndGlobal() {
-        when(scopeRepository.findByScopeTypeAndDefaultFlag(ArchiveGovernanceScopeType.CATEGORY, true))
+        when(scopeRepository.findByScopeTypeAndDefaultFlag(
+                        ArchiveGovernanceScopeType.CATEGORY, true))
                 .thenReturn(List.of(scope(30L, ArchiveGovernanceScopeType.CATEGORY, null, "C001")));
         when(scopeRepository.findByScopeTypeAndDefaultFlag(ArchiveGovernanceScopeType.FONDS, true))
                 .thenReturn(List.of(scope(20L, ArchiveGovernanceScopeType.FONDS, "F001", null)));
         when(scopeRepository.findByScopeTypeAndDefaultFlag(ArchiveGovernanceScopeType.GLOBAL, true))
                 .thenReturn(List.of(scope(10L, ArchiveGovernanceScopeType.GLOBAL, null, null)));
         when(versionRepository.findById(30L))
-                .thenReturn(Optional.of(version(30L, ArchiveGovernanceSchemeVersionStatus.PUBLISHED)));
+                .thenReturn(
+                        Optional.of(version(30L, ArchiveGovernanceSchemeVersionStatus.PUBLISHED)));
         when(versionRepository.findById(20L))
-                .thenReturn(Optional.of(version(20L, ArchiveGovernanceSchemeVersionStatus.PUBLISHED)));
+                .thenReturn(
+                        Optional.of(version(20L, ArchiveGovernanceSchemeVersionStatus.PUBLISHED)));
         when(versionRepository.findById(10L))
-                .thenReturn(Optional.of(version(10L, ArchiveGovernanceSchemeVersionStatus.PUBLISHED)));
+                .thenReturn(
+                        Optional.of(version(10L, ArchiveGovernanceSchemeVersionStatus.PUBLISHED)));
 
         ArchiveGovernanceService.ArchiveGovernanceSchemeVersionResponse response =
                 service.resolveDefaultVersion("F001", "C001");
@@ -161,7 +166,8 @@ class ArchiveGovernanceServiceTests {
         assertThat(responses).hasSize(1);
         assertThat(responses.getFirst().id()).isEqualTo(201L);
         assertThat(responses.getFirst().schemeVersionId()).isEqualTo(11L);
-        assertThat(responses.getFirst().bindingType()).isEqualTo(ArchiveGovernanceBindingType.RULE_SET);
+        assertThat(responses.getFirst().bindingType())
+                .isEqualTo(ArchiveGovernanceBindingType.RULE_SET);
         assertThat(responses.getFirst().targetType()).isEqualTo("RULE");
         assertThat(responses.getFirst().targetId()).isEqualTo(301L);
         assertThat(responses.getFirst().targetCode()).isEqualTo("retention_rules");

@@ -253,11 +253,7 @@ public class ArchiveItemRoutingService {
                 new ArchiveDynamicItemProjection(projectionFields(visibleFields));
         ArchiveDynamicItemCriteria criteria =
                 new ArchiveDynamicItemCriteria(
-                        requestedFondsCode,
-                        dataScopeGroups,
-                        conditions,
-                        relatedGroups,
-                        keyword);
+                        requestedFondsCode, dataScopeGroups, conditions, relatedGroups, keyword);
         ArchiveDynamicItemPageWindow pageWindow =
                 new ArchiveDynamicItemPageWindow(
                         queryOrderBy, cursorPredicates(queryOrderBy, cursor), limit + 1);

@@ -213,7 +213,9 @@ class ArchiveLocalRuleServiceTests {
                                 true,
                                 7L));
 
-        assertThat(decisions).singleElement().satisfies(decision -> assertThat(decision.matched()).isTrue());
+        assertThat(decisions)
+                .singleElement()
+                .satisfies(decision -> assertThat(decision.matched()).isTrue());
         ArgumentCaptor<ArchiveRuleTrace> captor = ArgumentCaptor.forClass(ArchiveRuleTrace.class);
         verify(traceRepository).insert(captor.capture());
         assertThat(captor.getValue().getObjectId()).isNull();
@@ -226,13 +228,7 @@ class ArchiveLocalRuleServiceTests {
         when(ruleMapper.listRuleTraces(any()))
                 .thenReturn(
                         List.of(
-                                Map.of(
-                                        "id",
-                                        1L,
-                                        "objectTypeCode",
-                                        "FILING_BATCH",
-                                        "createdBy",
-                                        8L),
+                                Map.of("id", 1L, "objectTypeCode", "FILING_BATCH", "createdBy", 8L),
                                 Map.of(
                                         "id",
                                         2L,

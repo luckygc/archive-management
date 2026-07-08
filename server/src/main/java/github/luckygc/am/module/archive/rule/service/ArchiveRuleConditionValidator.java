@@ -17,9 +17,10 @@ public class ArchiveRuleConditionValidator {
 
     private static final int MAX_DEPTH = 12;
     private static final int MAX_NODES = 200;
-    private static final Set<String> ALLOWED_OBJECT_KEYS = Set.of("all", "any", "not", "field", "operator", "value");
-    private static final Map<ArchiveOntologyAttributeDataType, Set<ArchiveRuleOperator>>
-            OPERATORS = createOperatorMap();
+    private static final Set<String> ALLOWED_OBJECT_KEYS =
+            Set.of("all", "any", "not", "field", "operator", "value");
+    private static final Map<ArchiveOntologyAttributeDataType, Set<ArchiveRuleOperator>> OPERATORS =
+            createOperatorMap();
 
     private final ArchiveRuleFieldResolver fieldResolver;
 

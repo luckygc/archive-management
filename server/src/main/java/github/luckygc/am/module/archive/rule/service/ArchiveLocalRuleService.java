@@ -60,7 +60,8 @@ public class ArchiveLocalRuleService {
     private final ArchiveRuleTraceDataRepository traceRepository;
     private final ArchiveRuleMapper ruleMapper;
     private final ArchiveRuleFactResolver factResolver;
-    private final ArchiveRuleConditionEvaluator conditionEvaluator = new ArchiveRuleConditionEvaluator();
+    private final ArchiveRuleConditionEvaluator conditionEvaluator =
+            new ArchiveRuleConditionEvaluator();
     private final ArchiveDataScopeService dataScopeService;
     private final ArchiveItemRoutingService archiveItemRoutingService;
     private final ArchiveVolumeService archiveVolumeService;
@@ -88,11 +89,17 @@ public class ArchiveLocalRuleService {
     }
 
     @Transactional(readOnly = true)
-    public List<ArchiveRuleResponse> listRules(Long schemeVersionId, @Nullable ArchiveRuleStatus status) {
+    public List<ArchiveRuleResponse> listRules(
+            Long schemeVersionId, @Nullable ArchiveRuleStatus status) {
         return (status == null
                         ? ruleRepository.findBySchemeVersionId(schemeVersionId)
                         : ruleRepository.findBySchemeVersionIdAndStatus(schemeVersionId, status))
-                .stream().map(rule -> toRuleResponse(rule, effectRepository.findByRuleId(rule.getId()))).toList();
+                .stream()
+                        .map(
+                                rule ->
+                                        toRuleResponse(
+                                                rule, effectRepository.findByRuleId(rule.getId())))
+                        .toList();
     }
 
     @Transactional
@@ -126,7 +133,10 @@ public class ArchiveLocalRuleService {
             throw new BadRequestException("只有草稿规则可以发布");
         }
         List<ArchiveRuleEffect> effects = effectRepository.findByRuleId(ruleId);
-        validateRuleDefinition(rule.getRuleType(), toConditionNode(rule.getConditionJson()), toEffectRequests(effects));
+        validateRuleDefinition(
+                rule.getRuleType(),
+                toConditionNode(rule.getConditionJson()),
+                toEffectRequests(effects));
         rule.setStatus(ArchiveRuleStatus.PUBLISHED);
         rule.setPublishedBy(userId);
         rule.setPublishedAt(LocalDateTime.now());
@@ -215,7 +225,8 @@ public class ArchiveLocalRuleService {
                 effects.stream()
                         .anyMatch(
                                 effect ->
-                                        effect.effectType() == ArchiveRuleEffectType.VALIDATION_ERROR
+                                        effect.effectType()
+                                                        == ArchiveRuleEffectType.VALIDATION_ERROR
                                                 || effect.effectType()
                                                         == ArchiveRuleEffectType.DENY_ACCESS);
         ArchiveRuleDecisionSeverity severity = severity(effects);
@@ -248,7 +259,8 @@ public class ArchiveLocalRuleService {
                                 effect -> {
                                     Map<String, Object> effectTrace = new LinkedHashMap<>();
                                     effectTrace.put("effectType", effect.effectType().name());
-                                    effectTrace.put("params", redactSensitiveParams(effect.params()));
+                                    effectTrace.put(
+                                            "params", redactSensitiveParams(effect.params()));
                                     return effectTrace;
                                 })
                         .toList());
@@ -316,8 +328,7 @@ public class ArchiveLocalRuleService {
                     (nestedKey, nestedValue) ->
                             redacted.put(
                                     String.valueOf(nestedKey),
-                                    redactSensitiveValue(
-                                            String.valueOf(nestedKey), nestedValue)));
+                                    redactSensitiveValue(String.valueOf(nestedKey), nestedValue)));
             return redacted;
         }
         if (value instanceof List<?> list) {
@@ -333,8 +344,7 @@ public class ArchiveLocalRuleService {
                     (nestedKey, nestedValue) ->
                             redacted.put(
                                     String.valueOf(nestedKey),
-                                    redactSensitiveValue(
-                                            String.valueOf(nestedKey), nestedValue)));
+                                    redactSensitiveValue(String.valueOf(nestedKey), nestedValue)));
             return redacted;
         }
         return redactSensitiveValue(key, item);
@@ -370,7 +380,9 @@ public class ArchiveLocalRuleService {
             if (effect.effectType() == null) {
                 throw new BadRequestException("规则 effect 类型不能为空");
             }
-            if (!EFFECTS_BY_RULE_TYPE.getOrDefault(ruleType, Set.of()).contains(effect.effectType())) {
+            if (!EFFECTS_BY_RULE_TYPE
+                    .getOrDefault(ruleType, Set.of())
+                    .contains(effect.effectType())) {
                 throw new BadRequestException("effect 与规则类型不兼容");
             }
         }
@@ -400,9 +412,7 @@ public class ArchiveLocalRuleService {
     private List<ArchiveRuleEffect> insertEffects(
             Long ruleId, List<CreateArchiveRuleEffectRequest> requests, Long userId) {
         List<ArchiveRuleEffect> effects =
-                requests.stream()
-                        .map(request -> toEffect(ruleId, request, userId))
-                        .toList();
+                requests.stream().map(request -> toEffect(ruleId, request, userId)).toList();
         return effectRepository.insertAll(effects);
     }
 
@@ -485,7 +495,10 @@ public class ArchiveLocalRuleService {
 
     private ArchiveRuleEffectResponse toEffectResponse(ArchiveRuleEffect effect) {
         return new ArchiveRuleEffectResponse(
-                effect.getId(), effect.getEffectType(), effect.getEffectOrder(), effect.getEffectParams());
+                effect.getId(),
+                effect.getEffectType(),
+                effect.getEffectOrder(),
+                effect.getEffectParams());
     }
 
     private ArchiveRuleDecisionSeverity severity(List<ArchiveRuleEffectDecision> effects) {
@@ -497,7 +510,8 @@ public class ArchiveLocalRuleService {
                                                 == ArchiveRuleEffectType.DENY_ACCESS)) {
             return ArchiveRuleDecisionSeverity.ERROR;
         }
-        if (effects.stream().anyMatch(effect -> effect.effectType() == ArchiveRuleEffectType.WARNING)) {
+        if (effects.stream()
+                .anyMatch(effect -> effect.effectType() == ArchiveRuleEffectType.WARNING)) {
             return ArchiveRuleDecisionSeverity.WARNING;
         }
         return ArchiveRuleDecisionSeverity.INFO;
@@ -608,7 +622,10 @@ public class ArchiveLocalRuleService {
             List<ArchiveRuleEffectResponse> effects) {}
 
     public record ArchiveRuleEffectResponse(
-            Long id, ArchiveRuleEffectType effectType, int effectOrder, Map<String, Object> effectParams) {}
+            Long id,
+            ArchiveRuleEffectType effectType,
+            int effectOrder,
+            Map<String, Object> effectParams) {}
 
     public record ExecuteArchiveRulesRequest(
             Long schemeVersionId,

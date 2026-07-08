@@ -89,16 +89,14 @@ class ArchiveRuleControllerProblemDetailTests {
                                     exceptionHandler.handleResponseStatusException(
                                             exception,
                                             new MockHttpServletRequest(
-                                                    "POST",
-                                                    "/api/v1/archive-rule-traces:search"));
+                                                    "POST", "/api/v1/archive-rule-traces:search"));
                             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
                             assertThat(response.getBody()).isNotNull();
                             assertThat(response.getBody().getTitle()).isEqualTo("无访问权限");
                             assertThat(response.getBody().getProperties())
                                     .containsEntry("code", "PERMISSION_DENIED")
                                     .containsEntry("reason", "PERMISSION_DENIED_ERROR")
-                                    .containsEntry(
-                                            "path", "/api/v1/archive-rule-traces:search");
+                                    .containsEntry("path", "/api/v1/archive-rule-traces:search");
                         });
         verifyNoInteractions(ruleService);
     }

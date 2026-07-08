@@ -35,7 +35,8 @@ class ArchiveRuleConditionValidatorTests {
                         field ->
                                 switch (field) {
                                     case "item.documentNo" -> ArchiveOntologyAttributeDataType.TEXT;
-                                    case "item.archiveYear" -> ArchiveOntologyAttributeDataType.INTEGER;
+                                    case "item.archiveYear" ->
+                                            ArchiveOntologyAttributeDataType.INTEGER;
                                     default -> null;
                                 });
 
@@ -67,7 +68,8 @@ class ArchiveRuleConditionValidatorTests {
                         {"field": "item.archiveYear", "operator": "CONTAINS", "value": "20"}
                         """);
         ArchiveRuleConditionValidator validator =
-                new ArchiveRuleConditionValidator(field -> ArchiveOntologyAttributeDataType.INTEGER);
+                new ArchiveRuleConditionValidator(
+                        field -> ArchiveOntologyAttributeDataType.INTEGER);
 
         assertThatThrownBy(() -> validator.validate(condition))
                 .isInstanceOf(BadRequestException.class)

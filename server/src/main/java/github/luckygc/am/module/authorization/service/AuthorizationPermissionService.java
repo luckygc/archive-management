@@ -49,10 +49,7 @@ public class AuthorizationPermissionService {
                             "archive",
                             "维护全宗、分类、字段、布局、密级和保管期限"),
                     new PermissionDefinition(
-                            "archive:governance:manage",
-                            "管理档案治理",
-                            "archive",
-                            "维护治理方案、本体定义和本地规则"),
+                            "archive:governance:manage", "管理档案治理", "archive", "维护治理方案、本体定义和本地规则"),
                     new PermissionDefinition(
                             "authorization:permission:manage",
                             "管理功能权限",

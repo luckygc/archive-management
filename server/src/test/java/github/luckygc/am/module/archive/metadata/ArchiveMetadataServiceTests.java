@@ -21,8 +21,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
-import github.luckygc.am.module.archive.metadata.repository.ArchiveClassificationSchemeDataRepository;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveCategoryDataRepository;
+import github.luckygc.am.module.archive.metadata.repository.ArchiveClassificationSchemeDataRepository;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveFieldDataRepository;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveFieldLayoutDataRepository;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveFondsCategoryScopeDataRepository;
@@ -188,9 +188,7 @@ class ArchiveMetadataServiceTests {
 
         List<ArchiveMetadataService.ArchiveFondsCategoryScopeDto> result =
                 service.saveFondsCategoryScopes(
-                        " F001 ",
-                        List.of(new ArchiveFondsCategoryScopeRequest(12L, true, 1)),
-                        9L);
+                        " F001 ", List.of(new ArchiveFondsCategoryScopeRequest(12L, true, 1)), 9L);
 
         assertThat(result).extracting("categoryId").containsExactly(12L);
         assertThat(result).extracting("defaultFlag").containsExactly(true);

@@ -39,10 +39,11 @@ class ArchiveOntologyAttributeMappingValidatorTests {
 
         assertThatThrownBy(
                         () ->
-                                ArchiveOntologyAttributeMappingValidator.validateDynamicFieldMapping(
-                                        ArchiveOntologyObjectTypeCode.ARCHIVE_ITEM,
-                                        ArchiveOntologyAttributeDataType.DATE,
-                                        field))
+                                ArchiveOntologyAttributeMappingValidator
+                                        .validateDynamicFieldMapping(
+                                                ArchiveOntologyObjectTypeCode.ARCHIVE_ITEM,
+                                                ArchiveOntologyAttributeDataType.DATE,
+                                                field))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("属性数据类型与动态字段类型不兼容");
     }

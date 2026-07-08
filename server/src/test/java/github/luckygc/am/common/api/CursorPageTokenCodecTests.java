@@ -71,15 +71,11 @@ class CursorPageTokenCodecTests {
                                         .satisfies(
                                                 violation ->
                                                         assertThat(violation.message())
-                                                                .isEqualTo(
-                                                                        "分页大小已变化，请从第一页重新查询")));
+                                                                .isEqualTo("分页大小已变化，请从第一页重新查询")));
         assertThatThrownBy(
                         () ->
                                 CursorPageTokenCodec.pageRequest(
-                                        20,
-                                        token,
-                                        false,
-                                        new CursorPageTokenContext("digest-b")))
+                                        20, token, false, new CursorPageTokenContext("digest-b")))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessage("分页 cursor 无效")
                 .satisfies(
@@ -89,8 +85,7 @@ class CursorPageTokenCodecTests {
                                         .satisfies(
                                                 violation ->
                                                         assertThat(violation.message())
-                                                                .isEqualTo(
-                                                                        "查询条件已变化，请从第一页重新查询")));
+                                                                .isEqualTo("查询条件已变化，请从第一页重新查询")));
     }
 
     @Test

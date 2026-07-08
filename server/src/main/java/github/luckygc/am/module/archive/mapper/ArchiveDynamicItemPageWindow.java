@@ -22,8 +22,7 @@ public record ArchiveDynamicItemPageWindow(
         }
     }
 
-    public record CursorComparison(
-            String expression, Direction direction, @Nullable Object value) {
+    public record CursorComparison(String expression, Direction direction, @Nullable Object value) {
 
         public String operatorName() {
             return direction == Direction.ASC ? "GT" : "LT";

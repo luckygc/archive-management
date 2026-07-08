@@ -86,7 +86,8 @@ class ArchiveVolumePermissionTests {
     void createVolumeShouldRequireCreatePermissionAndDataScope() {
         when(permissionService.hasPermission(9L, "archive:item:create")).thenReturn(true);
         when(archiveMetadataService.getCategory(1L)).thenReturn(volumeCategory());
-        when(archiveMetadataService.listCategories(null)).thenReturn(java.util.List.of(volumeCategory()));
+        when(archiveMetadataService.listCategories(null))
+                .thenReturn(java.util.List.of(volumeCategory()));
         when(archiveMetadataService.getEnabledFondsByCode("F001")).thenReturn(activeFonds());
         when(archiveMapper.countArchiveVolumesByArchiveNo("contract", "V-001", null)).thenReturn(0);
         when(dataScopeService.buildItemFilter(9L, 1L, "F001"))
@@ -122,7 +123,8 @@ class ArchiveVolumePermissionTests {
     void createVolumeShouldSaveDefaultGovernanceVersion() {
         when(permissionService.hasPermission(9L, "archive:item:create")).thenReturn(true);
         when(archiveMetadataService.getCategory(1L)).thenReturn(volumeCategory());
-        when(archiveMetadataService.listCategories(null)).thenReturn(java.util.List.of(volumeCategory()));
+        when(archiveMetadataService.listCategories(null))
+                .thenReturn(java.util.List.of(volumeCategory()));
         when(archiveMetadataService.getEnabledFondsByCode("F001")).thenReturn(activeFonds());
         when(archiveMapper.countArchiveVolumesByArchiveNo("contract", "V-001", null)).thenReturn(0);
         when(dataScopeService.buildItemFilter(9L, 1L, "F001"))
@@ -142,8 +144,7 @@ class ArchiveVolumePermissionTests {
 
         ArchiveVolumeService.ArchiveVolumeDto volume =
                 archiveVolumeService.createVolume(
-                        new CreateArchiveVolumeRequest(1L, "F001", "V-001", 2026, "DRAFT"),
-                        9L);
+                        new CreateArchiveVolumeRequest(1L, "F001", "V-001", 2026, "DRAFT"), 9L);
 
         assertThat(volume.id()).isEqualTo(31L);
         verify(governanceService).requireDefaultVersionForNewArchive("F001", "contract");

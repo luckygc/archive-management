@@ -69,8 +69,7 @@ public class ArchiveOntologyController {
 
     @DeleteMapping("/api/v1/archive-ontology-object-types/{objectTypeId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteObjectType(
-            @PathVariable Long objectTypeId, Authentication authentication) {
+    public void deleteObjectType(@PathVariable Long objectTypeId, Authentication authentication) {
         ontologyService.deleteObjectType(objectTypeId, requireManage(authentication));
     }
 

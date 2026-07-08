@@ -120,8 +120,7 @@ public class ArchiveGovernanceService {
     public ArchiveGovernanceSchemeVersionResponse createVersion(
             Long schemeId, CreateArchiveGovernanceSchemeVersionRequest request, Long userId) {
         loadScheme(schemeId);
-        String versionCode =
-                normalizeCode(request.versionCode(), "versionCode", "治理方案版本号不能为空");
+        String versionCode = normalizeCode(request.versionCode(), "versionCode", "治理方案版本号不能为空");
         if (versionRepository.findBySchemeIdAndVersionCode(schemeId, versionCode) != null) {
             throw new BadRequestException("治理方案版本号已存在", "versionCode", "治理方案版本号已存在");
         }
@@ -140,8 +139,7 @@ public class ArchiveGovernanceService {
             Long versionId, UpdateArchiveGovernanceSchemeVersionRequest request, Long userId) {
         ArchiveGovernanceSchemeVersion version = loadVersion(versionId);
         ArchiveGovernanceVersionPolicy.requireEditable(version.getStatus());
-        String versionCode =
-                normalizeCode(request.versionCode(), "versionCode", "治理方案版本号不能为空");
+        String versionCode = normalizeCode(request.versionCode(), "versionCode", "治理方案版本号不能为空");
         ArchiveGovernanceSchemeVersion existing =
                 versionRepository.findBySchemeIdAndVersionCode(version.getSchemeId(), versionCode);
         if (existing != null && !Objects.equals(existing.getId(), versionId)) {
@@ -238,9 +236,7 @@ public class ArchiveGovernanceService {
             scopeRepository.deleteAll(existing);
         }
         List<ArchiveGovernanceScope> scopes =
-                requests.stream()
-                        .map(request -> toScope(versionId, request, userId))
-                        .toList();
+                requests.stream().map(request -> toScope(versionId, request, userId)).toList();
         return scopeRepository.insertAll(scopes).stream().map(this::toScopeResponse).toList();
     }
 
@@ -249,7 +245,8 @@ public class ArchiveGovernanceService {
             Long versionId, List<CreateArchiveGovernanceBindingRequest> requests, Long userId) {
         ArchiveGovernanceSchemeVersion version = loadVersion(versionId);
         ArchiveGovernanceVersionPolicy.requireEditable(version.getStatus());
-        List<ArchiveGovernanceBinding> existing = bindingRepository.findBySchemeVersionId(versionId);
+        List<ArchiveGovernanceBinding> existing =
+                bindingRepository.findBySchemeVersionId(versionId);
         if (!existing.isEmpty()) {
             bindingRepository.deleteAll(existing);
         }
@@ -262,7 +259,8 @@ public class ArchiveGovernanceService {
     }
 
     @Transactional(readOnly = true)
-    public void requireTargetNotReferenced(ArchiveGovernanceBindingType bindingType, Long targetId) {
+    public void requireTargetNotReferenced(
+            ArchiveGovernanceBindingType bindingType, Long targetId) {
         if (bindingRepository.countProtectedByBindingTypeAndTargetId(bindingType, targetId) > 0) {
             throw new BadRequestException("该配置已被治理方案版本引用");
         }
@@ -315,7 +313,8 @@ public class ArchiveGovernanceService {
     }
 
     private void validateBindings(Long versionId) {
-        for (ArchiveGovernanceBinding binding : bindingRepository.findBySchemeVersionId(versionId)) {
+        for (ArchiveGovernanceBinding binding :
+                bindingRepository.findBySchemeVersionId(versionId)) {
             if (binding.getTargetId() == null
                     && StringUtils.trimToNull(binding.getTargetCode()) == null) {
                 throw new BadRequestException("治理方案绑定目标不能为空");
@@ -326,7 +325,9 @@ public class ArchiveGovernanceService {
     private ArchiveGovernanceScope toScope(
             Long versionId, CreateArchiveGovernanceScopeRequest request, Long userId) {
         ArchiveGovernanceScopeType scopeType =
-                request.scopeType() == null ? ArchiveGovernanceScopeType.GLOBAL : request.scopeType();
+                request.scopeType() == null
+                        ? ArchiveGovernanceScopeType.GLOBAL
+                        : request.scopeType();
         String fondsCode = StringUtils.trimToNull(request.fondsCode());
         String categoryCode = StringUtils.trimToNull(request.categoryCode());
         switch (scopeType) {
@@ -382,8 +383,7 @@ public class ArchiveGovernanceService {
         return versionRepository.findById(versionId).orElseThrow(() -> notFound("治理方案版本不存在"));
     }
 
-    private String normalizeCode(
-            @Nullable String value, String field, String blankMessage) {
+    private String normalizeCode(@Nullable String value, String field, String blankMessage) {
         String code = StringUtils.trimToNull(value);
         if (code == null) {
             throw new BadRequestException(blankMessage, field, blankMessage);

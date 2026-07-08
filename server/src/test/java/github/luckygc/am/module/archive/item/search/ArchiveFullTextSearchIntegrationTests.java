@@ -20,7 +20,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import github.luckygc.am.app.ArchiveManagementApplication;
+import github.luckygc.am.common.api.CursorPageTokenContext;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService;
+import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveItemListDto;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveItemOrderBy;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.SearchArchiveItemsRequest;
 
@@ -103,6 +105,7 @@ class ArchiveFullTextSearchIntegrationTests {
         assertThat(firstPage.items())
                 .extracting(row -> row.get("archive_no"))
                 .containsExactly("GW-2026-001");
+        firstPage = encodePage(firstPage);
         assertThat(firstPage.next()).isNotBlank();
 
         var secondPage =
@@ -121,6 +124,7 @@ class ArchiveFullTextSearchIntegrationTests {
         assertThat(secondPage.items())
                 .extracting(row -> row.get("archive_no"))
                 .containsExactly("GW-2026-002");
+        secondPage = encodePage(secondPage);
         assertThat(secondPage.prev()).isNotBlank();
 
         var previousPage =
@@ -170,8 +174,9 @@ class ArchiveFullTextSearchIntegrationTests {
         assertThat(firstPage.items())
                 .extracting(row -> row.get("archive_no"))
                 .containsExactly("GW-2026-001");
+        firstPage = encodePage(firstPage);
         assertThat(cursorPayload(firstPage.next()))
-                .contains("v3|next|1|||T:2026-06-29T10:00:00.123456", "|L:");
+                .contains("v4|next|1|test-query|T:2026-06-29T10:00:00.123456", "|L:");
 
         var secondPage =
                 archiveItemRoutingService.searchItems(
@@ -208,6 +213,7 @@ class ArchiveFullTextSearchIntegrationTests {
         assertThat(firstPage.items())
                 .extracting(row -> row.get("archive_no"))
                 .containsExactly("GW-2026-002");
+        firstPage = encodePage(firstPage);
         assertThat(firstPage.next()).isNotBlank();
 
         var secondPage =
@@ -316,8 +322,9 @@ class ArchiveFullTextSearchIntegrationTests {
         assertThat(firstPage.items())
                 .extracting(row -> row.get("archive_no"))
                 .containsExactly("GW-TRASH-001");
+        firstPage = encodePage(firstPage);
         assertThat(cursorPayload(firstPage.next()))
-                .contains("v3|next|1|||T:2099-06-29T11:00:00.123456", "|L:");
+                .contains("v4|next|1|test-query|T:2099-06-29T11:00:00.123456", "|L:");
 
         var secondPage =
                 archiveItemRoutingService.searchDeletedItems(
@@ -382,5 +389,9 @@ class ArchiveFullTextSearchIntegrationTests {
     private String cursorPayload(String cursor) {
         return new String(
                 Base64.getUrlDecoder().decode(cursor.split("\\.", 2)[0]), StandardCharsets.UTF_8);
+    }
+
+    private ArchiveItemListDto encodePage(ArchiveItemListDto page) {
+        return page.encodeCursorTokens(new CursorPageTokenContext("test-query"));
     }
 }

@@ -9,7 +9,8 @@ import github.luckygc.am.module.archive.ontology.ArchiveOntologyAttributeDataTyp
 import github.luckygc.am.module.archive.ontology.ArchiveOntologyAttributeType;
 import github.luckygc.am.module.archive.ontology.repository.ArchiveOntologyAttributeTypeDataRepository;
 
-public class ArchiveRuleFactResolver implements ArchiveRuleConditionValidator.ArchiveRuleFieldResolver {
+public class ArchiveRuleFactResolver
+        implements ArchiveRuleConditionValidator.ArchiveRuleFieldResolver {
 
     private static final Map<String, ArchiveOntologyAttributeDataType> FIXED_FIELDS =
             Map.ofEntries(

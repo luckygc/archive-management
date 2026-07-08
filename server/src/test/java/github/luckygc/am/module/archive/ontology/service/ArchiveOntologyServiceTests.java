@@ -125,7 +125,8 @@ class ArchiveOntologyServiceTests {
     @DisplayName("创建动态字段映射时校验对象层级和字段类型")
     void createDynamicMappingShouldValidateDynamicFieldCompatibility() {
         ArchiveOntologyObjectType objectType = objectType(1L, "ARCHIVE_ITEM", true);
-        ArchiveOntologyAttributeType attribute = attribute(2L, 1L, ArchiveOntologyAttributeDataType.DATE);
+        ArchiveOntologyAttributeType attribute =
+                attribute(2L, 1L, ArchiveOntologyAttributeDataType.DATE);
         ArchiveField field = new ArchiveField();
         field.setId(8L);
         field.setCategoryId(5L);

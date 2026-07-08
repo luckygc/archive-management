@@ -116,7 +116,8 @@ public class ArchiveMetadataController {
     @PostMapping("/api/v1/archive-classification-schemes")
     @ResponseStatus(HttpStatus.CREATED)
     public ArchiveClassificationSchemeDto createClassificationScheme(
-            @RequestBody ArchiveClassificationSchemeRequest request, Authentication authentication) {
+            @RequestBody ArchiveClassificationSchemeRequest request,
+            Authentication authentication) {
         return archiveMetadataService.createClassificationScheme(
                 request, requireMetadataManage(authentication));
     }

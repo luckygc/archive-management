@@ -217,8 +217,7 @@ class ArchiveItemDataScopeQueryTests {
                             assertThat(exception.getReason()).isEqualTo("档案分类动态表未创建");
                         });
 
-        verify(archiveMapper, never())
-                .listDynamicItems(any(), any(), any(), any());
+        verify(archiveMapper, never()).listDynamicItems(any(), any(), any(), any());
     }
 
     @Test

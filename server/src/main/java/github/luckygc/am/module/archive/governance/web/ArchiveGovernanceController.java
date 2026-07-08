@@ -136,7 +136,8 @@ public class ArchiveGovernanceController {
             @RequestBody List<CreateArchiveGovernanceScopeRequest> requests,
             Authentication authentication) {
         return CollectionResponse.of(
-                governanceService.replaceScopes(versionId, requests, requireManage(authentication)));
+                governanceService.replaceScopes(
+                        versionId, requests, requireManage(authentication)));
     }
 
     @GetMapping("/api/v1/archive-governance-scheme-versions/{versionId}/bindings")
@@ -159,7 +160,8 @@ public class ArchiveGovernanceController {
         Long userId =
                 AuthenticatedUsers.requireUserId(
                         authentication == null ? null : authentication.getPrincipal());
-        permissionService.requirePermission(userId, AuthorizationPermissionCode.ARCHIVE_GOVERNANCE_MANAGE);
+        permissionService.requirePermission(
+                userId, AuthorizationPermissionCode.ARCHIVE_GOVERNANCE_MANAGE);
         return userId;
     }
 }

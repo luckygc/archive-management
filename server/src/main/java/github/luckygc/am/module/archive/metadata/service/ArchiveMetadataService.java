@@ -28,8 +28,8 @@ import github.luckygc.am.module.archive.metadata.ArchiveFieldLayout;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldScope;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldSource;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldType;
-import github.luckygc.am.module.archive.metadata.ArchiveFondsCategoryScope;
 import github.luckygc.am.module.archive.metadata.ArchiveFonds;
+import github.luckygc.am.module.archive.metadata.ArchiveFondsCategoryScope;
 import github.luckygc.am.module.archive.metadata.ArchiveLayoutSurface;
 import github.luckygc.am.module.archive.metadata.ArchiveManagementMode;
 import github.luckygc.am.module.archive.metadata.ArchiveRetentionPeriod;
@@ -230,9 +230,7 @@ public class ArchiveMetadataService {
         ClassificationSchemeValues values = validateClassificationSchemeRequest(request);
         ensureSchemeCodeAvailable(values.schemeCode(), id);
         ArchiveClassificationScheme scheme =
-                classificationSchemeRepository
-                        .findById(id)
-                        .orElseThrow(() -> notFound("分类方案不存在"));
+                classificationSchemeRepository.findById(id).orElseThrow(() -> notFound("分类方案不存在"));
         applyClassificationSchemeValues(scheme, values);
         scheme.setUpdatedBy(userId);
         return mapClassificationScheme(classificationSchemeRepository.update(scheme));
@@ -301,8 +299,7 @@ public class ArchiveMetadataService {
                                     categoriesByScheme(schemeId, enabled).stream()
                                             .filter(
                                                     category ->
-                                                            seenCategoryIds.add(
-                                                                    category.getId())))
+                                                            seenCategoryIds.add(category.getId())))
                     .map(this::mapCategory)
                     .toList();
         }
@@ -1052,9 +1049,7 @@ public class ArchiveMetadataService {
         if (id == null || id <= 0) {
             throw badRequest("分类方案不能为空");
         }
-        return classificationSchemeRepository
-                .findById(id)
-                .orElseThrow(() -> notFound("分类方案不存在"));
+        return classificationSchemeRepository.findById(id).orElseThrow(() -> notFound("分类方案不存在"));
     }
 
     private ArchiveFonds loadFondsByCode(String fondsCode) {
@@ -1062,9 +1057,7 @@ public class ArchiveMetadataService {
         if (normalizedCode == null) {
             throw badRequest("全宗编码不能为空");
         }
-        return fondsRepository
-                .find(normalizedCode)
-                .orElseThrow(() -> notFound("全宗不存在"));
+        return fondsRepository.find(normalizedCode).orElseThrow(() -> notFound("全宗不存在"));
     }
 
     private ArchiveFonds loadEnabledFondsByCode(String fondsCode) {
@@ -1550,9 +1543,7 @@ public class ArchiveMetadataService {
         }
         requireId(parentId);
         ArchiveCategory parent =
-                categoryRepository
-                        .findById(parentId)
-                        .orElseThrow(() -> notFound("档案分类不存在"));
+                categoryRepository.findById(parentId).orElseThrow(() -> notFound("档案分类不存在"));
         if (!schemeId.equals(parent.getSchemeId())) {
             throw badRequest("父级分类必须属于同一分类方案");
         }
@@ -1886,7 +1877,9 @@ public class ArchiveMetadataService {
             LocalDateTime updatedAt) {}
 
     public record ArchiveFondsCategoryScopeRequest(
-            @Nullable Long categoryId, @Nullable Boolean defaultFlag, @Nullable Integer sortOrder) {}
+            @Nullable Long categoryId,
+            @Nullable Boolean defaultFlag,
+            @Nullable Integer sortOrder) {}
 
     public record ArchiveFondsCategoryScopeDto(
             @Nullable Long id,

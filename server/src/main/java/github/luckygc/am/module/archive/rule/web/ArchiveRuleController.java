@@ -58,7 +58,8 @@ public class ArchiveRuleController {
     }
 
     @PostMapping("/api/v1/archive-rules/{ruleId}:enable")
-    public ArchiveRuleResponse enableRule(@PathVariable Long ruleId, Authentication authentication) {
+    public ArchiveRuleResponse enableRule(
+            @PathVariable Long ruleId, Authentication authentication) {
         return ruleService.updateRuleEnabled(ruleId, true, requireManage(authentication));
     }
 
