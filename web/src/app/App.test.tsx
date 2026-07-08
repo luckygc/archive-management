@@ -51,7 +51,6 @@ beforeEach(() => {
     archiveApiMocks.discoverArchiveRecords.mockResolvedValue({
         fields: [],
         items: [],
-        tableBuilt: true,
     });
     window.location.hash = "#/";
 });

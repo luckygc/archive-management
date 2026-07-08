@@ -14,6 +14,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import jakarta.data.page.CursoredPage;
+import jakarta.data.page.PageRequest;
+import jakarta.data.page.PageRequest.Cursor;
+
 import org.apache.commons.lang3.StringUtils;
 import org.jspecify.annotations.Nullable;
 import org.mybatis.spring.MyBatisSystemException;
@@ -24,8 +28,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.common.api.CursorPageTokenCodec;
 import github.luckygc.am.common.api.CursorPageTokenContext;
+import github.luckygc.am.common.api.KeysetCursoredPageRecord;
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.archive.ArchiveLevel;
@@ -36,6 +45,13 @@ import github.luckygc.am.module.archive.item.ArchiveItemAudit;
 import github.luckygc.am.module.archive.item.ArchiveItemQueryOperator;
 import github.luckygc.am.module.archive.item.ArchiveItemRelationDirection;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemAuditDataRepository;
+import github.luckygc.am.module.archive.mapper.ArchiveDataScopeSqlGroup;
+import github.luckygc.am.module.archive.mapper.ArchiveDynamicItemCriteria;
+import github.luckygc.am.module.archive.mapper.ArchiveDynamicItemPageWindow;
+import github.luckygc.am.module.archive.mapper.ArchiveDynamicItemPageWindow.CursorComparison;
+import github.luckygc.am.module.archive.mapper.ArchiveDynamicItemPageWindow.CursorPredicate;
+import github.luckygc.am.module.archive.mapper.ArchiveDynamicItemProjection;
+import github.luckygc.am.module.archive.mapper.ArchiveDynamicItemSource;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.mapper.ArchiveSqlAssignment;
 import github.luckygc.am.module.archive.mapper.ArchiveSqlCondition;
@@ -101,38 +117,32 @@ public class ArchiveItemRoutingService {
 
     public ArchiveItemListDto searchItems(
             @Nullable SearchArchiveItemsRequest request, Long userId) {
-        return searchItems(request, userId, null);
+        return queryItems(request, userId, false, false, pageRequest(request));
     }
 
     public ArchiveItemListDto searchItems(
-            @Nullable SearchArchiveItemsRequest request,
-            Long userId,
-            @Nullable CursorPageTokenContext cursorContext) {
-        return queryItems(request, userId, false, false, false, cursorContext);
+            @Nullable SearchArchiveItemsRequest request, Long userId, PageRequest pageRequest) {
+        return queryItems(request, userId, false, false, pageRequest);
     }
 
     public ArchiveItemListDto discoverItems(
             @Nullable SearchArchiveItemsRequest request, Long userId) {
-        return discoverItems(request, userId, null);
+        return queryItems(request, userId, true, false, pageRequest(request));
     }
 
     public ArchiveItemListDto discoverItems(
-            @Nullable SearchArchiveItemsRequest request,
-            Long userId,
-            @Nullable CursorPageTokenContext cursorContext) {
-        return queryItems(request, userId, true, true, false, cursorContext);
+            @Nullable SearchArchiveItemsRequest request, Long userId, PageRequest pageRequest) {
+        return queryItems(request, userId, true, false, pageRequest);
     }
 
     public ArchiveItemListDto searchDeletedItems(
             @Nullable SearchArchiveItemsRequest request, Long userId) {
-        return searchDeletedItems(request, userId, null);
+        return queryItems(request, userId, false, true, pageRequest(request));
     }
 
     public ArchiveItemListDto searchDeletedItems(
-            @Nullable SearchArchiveItemsRequest request,
-            Long userId,
-            @Nullable CursorPageTokenContext cursorContext) {
-        return queryItems(request, userId, false, false, true, cursorContext);
+            @Nullable SearchArchiveItemsRequest request, Long userId, PageRequest pageRequest) {
+        return queryItems(request, userId, false, true, pageRequest);
     }
 
     public List<ArchiveRelatedFilterCategoryDto> listRelatedFilterCategories(Long categoryId) {
@@ -153,9 +163,8 @@ public class ArchiveItemRoutingService {
             @Nullable SearchArchiveItemsRequest request,
             Long userId,
             boolean allowKeyword,
-            boolean requireAuthenticatedUser,
             boolean deleted,
-            @Nullable CursorPageTokenContext cursorContext) {
+            PageRequest pageRequest) {
         requirePermission(userId, "archive:item:read");
         String keyword = StringUtils.trimToNull(request == null ? null : request.keyword());
         if (StringUtils.isNotBlank(keyword) && !allowKeyword) {
@@ -167,13 +176,12 @@ public class ArchiveItemRoutingService {
                 throw badRequest("全文检索必须选择档案分类", "categoryId", "全文检索必须选择档案分类");
             }
             if (!dataScopeService.resolveUserDataScope(userId).allData()) {
-                return new ArchiveItemListDto(
-                        null, List.of(), true, null, null, null, null, List.of());
+                return itemList(null, List.of(), emptyPage(pageRequest, 0L));
             }
-            int limit = pageLimit(request == null ? null : request.limit());
+            int limit = pageRequest.size();
             List<Map<String, @Nullable Object>> rows =
                     archiveMapper.listItemOverview().stream().limit(limit).toList();
-            return new ArchiveItemListDto(null, List.of(), true, null, null, null, null, rows);
+            return itemList(null, List.of(), rows);
         }
 
         ArchiveCategoryDto category = archiveMetadataService.getCategory(request.categoryId());
@@ -191,81 +199,121 @@ public class ArchiveItemRoutingService {
                                         .thenComparing(ArchiveFieldDto::id))
                         .toList();
         if (!isDynamicTableBuilt(category, archiveLevel)) {
-            return new ArchiveItemListDto(
-                    category, fields, false, null, null, null, null, List.of());
+            throw new ResponseStatusException(HttpStatus.PRECONDITION_FAILED, "档案分类动态表未创建");
         }
-        int limit = pageLimit(request.limit());
         List<String> indexedFieldCodes = indexedFieldCodes(request.categoryId(), archiveLevel);
         List<ArchiveSqlOrder> orderBy =
                 deleted ? deletedOrderBy() : orderBy(request.orderBy(), fields, indexedFieldCodes);
-        Cursor cursor = decodeCursor(request.cursor());
+        Cursor cursor = cursor(pageRequest);
         List<ArchiveSqlCondition> conditions =
                 buildSearchConditions(request.categoryId(), archiveLevel, fields, request.where());
         List<ArchiveSqlRelatedGroup> relatedGroups =
                 buildRelatedGroups(request.relatedGroups(), userId);
+        String requestedFondsCode = StringUtils.trimToNull(request.fondsCode());
         ArchiveDataScopeFilter dataScopeFilter =
-                dataScopeService.buildItemFilter(
-                        userId, request.categoryId(), StringUtils.trimToNull(request.fondsCode()));
+                dataScopeService.buildItemFilter(userId, request.categoryId(), requestedFondsCode);
         if (dataScopeFilter.empty()) {
-            return new ArchiveItemListDto(
-                    category, fields, true, null, null, null, null, List.of());
+            return itemList(category, fields, emptyPage(pageRequest, 0L));
         }
-        List<ArchiveSqlOrder> queryOrderBy =
-                cursor != null && "prev".equals(cursor.direction()) ? invert(orderBy) : orderBy;
-        List<Map<String, @Nullable Object>> rows =
-                archiveMapper.listDynamicItems(
+        CursoredPage<Map<String, @Nullable Object>> itemPage =
+                queryDynamicItemPage(
+                        pageRequest,
                         tableName,
-                        selectColumns(visibleFields),
-                        archiveLevel.value(),
+                        visibleFields,
                         deleted,
-                        StringUtils.trimToNull(request.fondsCode()),
+                        requestedFondsCode,
                         dataScopeFilter.allData() ? List.of() : dataScopeFilter.groups(),
                         conditions,
                         relatedGroups,
                         keyword,
-                        userId,
-                        requireAuthenticatedUser,
-                        orderBySql(queryOrderBy),
-                        cursorPredicateSql(queryOrderBy, cursor),
-                        cursorValues(cursor),
-                        limit + 1);
+                        orderBy,
+                        cursor);
+        CursorPageResponse<Map<String, @Nullable Object>> page =
+                CursorPageResponse.from(itemPage, pageRequest, item -> item);
+        return itemList(category, fields, page);
+    }
+
+    private CursoredPage<Map<String, @Nullable Object>> queryDynamicItemPage(
+            PageRequest pageRequest,
+            String tableName,
+            List<ArchiveFieldDto> visibleFields,
+            boolean deleted,
+            @Nullable String requestedFondsCode,
+            List<ArchiveDataScopeSqlGroup> dataScopeGroups,
+            List<ArchiveSqlCondition> conditions,
+            List<ArchiveSqlRelatedGroup> relatedGroups,
+            @Nullable String keyword,
+            List<ArchiveSqlOrder> orderBy,
+            @Nullable Cursor cursor) {
+        int limit = pageRequest.size();
+        List<ArchiveSqlOrder> queryOrderBy =
+                isPreviousCursor(pageRequest) ? invert(orderBy) : orderBy;
+        ArchiveDynamicItemSource source = new ArchiveDynamicItemSource(tableName, deleted);
+        ArchiveDynamicItemProjection projection =
+                new ArchiveDynamicItemProjection(projectionFields(visibleFields));
+        ArchiveDynamicItemCriteria criteria =
+                new ArchiveDynamicItemCriteria(
+                        requestedFondsCode,
+                        dataScopeGroups,
+                        conditions,
+                        relatedGroups,
+                        keyword);
+        ArchiveDynamicItemPageWindow pageWindow =
+                new ArchiveDynamicItemPageWindow(
+                        queryOrderBy, cursorPredicates(queryOrderBy, cursor), limit + 1);
+        List<Map<String, @Nullable Object>> rows =
+                archiveMapper.listDynamicItems(source, projection, criteria, pageWindow);
         boolean hasMore = rows.size() > limit;
         List<Map<String, @Nullable Object>> rawPageItems = hasMore ? rows.subList(0, limit) : rows;
-        if (cursor != null && "prev".equals(cursor.direction())) {
+        if (isPreviousCursor(pageRequest)) {
             rawPageItems = rawPageItems.reversed();
         }
         List<Map<String, @Nullable Object>> pageItems =
                 normalizeDynamicFieldValues(rawPageItems, visibleFields);
-        CursorPageTokenContext tokenContext =
-                cursorContext == null ? new CursorPageTokenContext("") : cursorContext;
-        String prev =
-                cursor == null || rawPageItems.isEmpty()
-                        ? null
-                        : encodeCursor(
-                                "prev", tokenContext, limit, orderBy, rawPageItems.getFirst());
-        String next =
-                rawPageItems.isEmpty()
-                                || (cursor != null && "prev".equals(cursor.direction()) && !hasMore)
-                        ? null
-                        : encodeCursor(
-                                "next", tokenContext, limit, orderBy, rawPageItems.getLast());
-        if ((cursor == null || "next".equals(cursor.direction())) && !hasMore) {
-            next = null;
-        }
-        return new ArchiveItemListDto(
+        List<PageRequest.Cursor> cursors =
+                rawPageItems.stream().map(row -> rowCursor(orderBy, row)).toList();
+        Long total =
+                pageRequest.requestTotal()
+                        ? (long) archiveMapper.countDynamicItems(source, criteria)
+                        : null;
+        return new KeysetCursoredPageRecord<>(
+                pageRequest,
+                pageItems,
+                cursors,
+                cursor != null && !rawPageItems.isEmpty(),
+                hasMore && !rawPageItems.isEmpty(),
+                total);
+    }
+
+    private PageRequest pageRequest(@Nullable SearchArchiveItemsRequest request) {
+        return CursorPageTokenCodec.pageRequest(
+                pageLimit(request == null ? null : request.limit()),
+                request == null ? null : request.cursor(),
+                false);
+    }
+
+    private ArchiveItemListDto itemList(
+            @Nullable ArchiveCategoryDto category,
+            List<ArchiveFieldDto> fields,
+            List<Map<String, @Nullable Object>> items) {
+        return itemList(
                 category,
                 fields,
-                true,
-                encodeCursor(
-                        "self",
-                        tokenContext,
-                        limit,
-                        orderBy,
-                        rawPageItems.isEmpty() ? null : rawPageItems.getFirst()),
-                prev,
-                next,
-                null,
-                pageItems);
+                CursorPageResponse.withCursorValues(items, 0, null, null, null, null, null));
+    }
+
+    private ArchiveItemListDto itemList(
+            @Nullable ArchiveCategoryDto category,
+            List<ArchiveFieldDto> fields,
+            CursorPageResponse<Map<String, @Nullable Object>> page) {
+        return new ArchiveItemListDto(category, fields, page);
+    }
+
+    private CursorPageResponse<Map<String, @Nullable Object>> emptyPage(
+            PageRequest pageRequest, @Nullable Long total) {
+        Long responseTotal = pageRequest.requestTotal() ? total : null;
+        return CursorPageResponse.<Map<String, @Nullable Object>>withCursorValues(
+                List.of(), pageRequest.size(), null, null, null, null, responseTotal);
     }
 
     private int pageLimit(@Nullable Integer limit) {
@@ -365,13 +413,6 @@ public class ArchiveItemRoutingService {
                 .toList();
     }
 
-    private String orderBySql(List<ArchiveSqlOrder> orders) {
-        return orders.stream()
-                .map(ArchiveSqlOrder::sql)
-                .reduce((left, right) -> left + ", " + right)
-                .orElse("i.created_at desc, i.id desc");
-    }
-
     private List<ArchiveSqlOrder> invert(List<ArchiveSqlOrder> orders) {
         return orders.stream()
                 .map(
@@ -384,51 +425,59 @@ public class ArchiveItemRoutingService {
                 .toList();
     }
 
-    private @Nullable String cursorPredicateSql(
+    private List<CursorPredicate> cursorPredicates(
             List<ArchiveSqlOrder> orders, @Nullable Cursor cursor) {
         if (cursor == null) {
-            return null;
+            return List.of();
         }
-        List<String> parts = new ArrayList<>();
+        List<?> values = cursor.elements();
+        List<CursorPredicate> predicates = new ArrayList<>();
         for (int i = 0; i < orders.size(); i++) {
-            List<String> equalsParts = new ArrayList<>();
+            List<CursorComparison> equalsComparisons = new ArrayList<>();
             for (int j = 0; j < i; j++) {
-                equalsParts.add(orders.get(j).expression() + " = #{cursorValues[" + j + "]}");
+                equalsComparisons.add(
+                        new CursorComparison(
+                                orders.get(j).expression(),
+                                orders.get(j).direction(),
+                                values.get(j)));
             }
-            String operator = orders.get(i).direction() == Direction.ASC ? ">" : "<";
-            equalsParts.add(
-                    orders.get(i).expression() + " " + operator + " #{cursorValues[" + i + "]}");
-            parts.add("(" + String.join(" and ", equalsParts) + ")");
+            predicates.add(
+                    new CursorPredicate(
+                            equalsComparisons,
+                            new CursorComparison(
+                                    orders.get(i).expression(),
+                                    orders.get(i).direction(),
+                                    values.get(i))));
         }
-        return String.join(" or ", parts);
+        return predicates;
     }
 
-    private List<Object> cursorValues(@Nullable Cursor cursor) {
-        return cursor == null ? List.of() : cursor.values();
+    private @Nullable Cursor cursor(PageRequest pageRequest) {
+        return switch (pageRequest.mode()) {
+            case CURSOR_NEXT, CURSOR_PREVIOUS -> pageRequest.cursor().orElseThrow();
+            case OFFSET -> null;
+        };
     }
 
-    private @Nullable Cursor decodeCursor(@Nullable String token) {
-        CursorPageTokenCodec.DecodedCursor decoded = CursorPageTokenCodec.decode(token);
-        if (decoded == null) {
-            return null;
-        }
-        return new Cursor(decoded.direction(), decoded.values());
+    private boolean isPreviousCursor(PageRequest pageRequest) {
+        return switch (pageRequest.mode()) {
+            case CURSOR_PREVIOUS -> true;
+            case CURSOR_NEXT, OFFSET -> false;
+        };
     }
 
-    private @Nullable String encodeCursor(
-            String direction,
-            CursorPageTokenContext context,
-            int limit,
-            List<ArchiveSqlOrder> orders,
-            @Nullable Map<String, @Nullable Object> row) {
-        if (row == null) {
-            return null;
-        }
+    private PageRequest.Cursor rowCursor(
+            List<ArchiveSqlOrder> orders, Map<String, @Nullable Object> row) {
+        return PageRequest.Cursor.forKey(cursorRowValues(orders, row).toArray(Object[]::new));
+    }
+
+    private List<Object> cursorRowValues(
+            List<ArchiveSqlOrder> orders, Map<String, @Nullable Object> row) {
         List<Object> values = new ArrayList<>();
         for (ArchiveSqlOrder order : orders) {
             values.add(cursorRowValue(row, order.expression()));
         }
-        return CursorPageTokenCodec.encode(direction, values, limit, context);
+        return values;
     }
 
     private @Nullable Object cursorRowValue(Map<String, @Nullable Object> row, String expression) {
@@ -1220,6 +1269,10 @@ public class ArchiveItemRoutingService {
         return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
     }
 
+    private List<String> projectionFields(List<ArchiveFieldDto> fields) {
+        return fields.stream().map(ArchiveFieldDto::columnName).toList();
+    }
+
     private String selectColumns(List<ArchiveFieldDto> fields) {
         if (fields.isEmpty()) {
             return "";
@@ -1613,14 +1666,50 @@ public class ArchiveItemRoutingService {
     public record ArchiveItemListDto(
             @Nullable ArchiveCategoryDto category,
             List<ArchiveFieldDto> fields,
-            boolean tableBuilt,
-            @Nullable String self,
-            @Nullable String prev,
-            @Nullable String next,
-            @Nullable String first,
-            List<Map<String, @Nullable Object>> items) {}
+            @JsonIgnore CursorPageResponse<Map<String, @Nullable Object>> page)
+            implements CursorPageResponse<Map<String, @Nullable Object>> {
 
-    private record Cursor(String direction, List<Object> values) {}
+        @Override
+        @JsonProperty("items")
+        public List<Map<String, @Nullable Object>> items() {
+            return page.items();
+        }
+
+        @Override
+        @JsonProperty("self")
+        public @Nullable String self() {
+            return page.self();
+        }
+
+        @Override
+        @JsonProperty("prev")
+        public @Nullable String prev() {
+            return page.prev();
+        }
+
+        @Override
+        @JsonProperty("next")
+        public @Nullable String next() {
+            return page.next();
+        }
+
+        @Override
+        @JsonProperty("first")
+        public @Nullable String first() {
+            return page.first();
+        }
+
+        @Override
+        @JsonProperty("total")
+        public @Nullable Long total() {
+            return page.total();
+        }
+
+        @Override
+        public ArchiveItemListDto encodeCursorTokens(CursorPageTokenContext context) {
+            return new ArchiveItemListDto(category, fields, page.encodeCursorTokens(context));
+        }
+    }
 
     public record ArchiveItemDetailDto(
             ArchiveItemDto item,

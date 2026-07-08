@@ -371,7 +371,6 @@ export interface ArchivePhysicalObjectDto {
 export interface ArchiveRecordListDto {
     category?: ArchiveCategoryDto;
     fields: ArchiveFieldDto[];
-    tableBuilt: boolean;
     self?: string;
     prev?: string;
     next?: string;

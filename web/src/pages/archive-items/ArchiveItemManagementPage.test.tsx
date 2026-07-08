@@ -50,7 +50,6 @@ beforeEach(() => {
     mocks.searchArchiveRecords.mockResolvedValue({
         fields: [],
         items: [{ id: 1 }],
-        tableBuilt: true,
     });
     mocks.listArchiveItemElectronicFiles.mockResolvedValue({
         items: [

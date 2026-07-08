@@ -1,5 +1,7 @@
 package github.luckygc.am.module.authentication.web;
 
+import jakarta.data.page.PageRequest;
+
 import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -14,7 +16,6 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import github.luckygc.am.common.api.CollectionResponse;
-import github.luckygc.am.common.api.CursorPageRequest;
 import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.common.security.AuthenticatedUsers;
@@ -41,7 +42,7 @@ public class AuthenticationUserManagementController {
     @GetMapping("/api/v1/authentication-users")
     public CursorPageResponse<AuthenticationUserDto> listUsers(
             @RequestParam(required = false) @Nullable String keyword,
-            CursorPageRequest page,
+            PageRequest page,
             @Nullable Authentication authentication) {
         return userService.listUsers(
                 keyword,

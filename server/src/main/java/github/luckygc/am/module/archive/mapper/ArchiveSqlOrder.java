@@ -6,6 +6,10 @@ public record ArchiveSqlOrder(String expression, Direction direction) {
         return expression + " " + direction.name().toLowerCase();
     }
 
+    public String directionName() {
+        return direction.name();
+    }
+
     public enum Direction {
         ASC,
         DESC

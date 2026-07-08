@@ -76,15 +76,92 @@ class CursorPageResponseAdviceTests {
                 .doesNotContain("firstValues");
     }
 
+    @Test
+    @DisplayName("支持自定义 CursorPageResponse 实现")
+    void shouldEncodeCustomCursorPageResponseImplementation() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/items");
+        CursorPageTokenContext context = new CursorPageTokenContext("custom-digest");
+        CursorPageTokenValidationInterceptor.setContext(request, context);
+        CustomCursorPageResponse page =
+                new CustomCursorPageResponse(
+                        CursorPageResponse.withCursorValues(
+                                List.of("A"), 20, List.of(1L), null, List.of(2L), null, null));
+
+        Object body =
+                advice.beforeBodyWrite(
+                        page,
+                        customReturnType(),
+                        MediaType.APPLICATION_JSON,
+                        JacksonJsonHttpMessageConverter.class,
+                        new ServletServerHttpRequest(request),
+                        null);
+
+        assertThat(body).isInstanceOf(CustomCursorPageResponse.class);
+        CustomCursorPageResponse response = (CustomCursorPageResponse) body;
+        assertThat(response.items()).containsExactly("A");
+        assertThat(CursorPageTokenCodec.decode(response.self()).context()).isEqualTo(context);
+        assertThat(CursorPageTokenCodec.decode(response.next()).values()).isEqualTo(List.of(2L));
+    }
+
     private static MethodParameter returnType() throws NoSuchMethodException {
         Method method = TestController.class.getDeclaredMethod("list", HttpServletRequest.class);
         return new MethodParameter(method, -1);
     }
 
+    private static MethodParameter customReturnType() throws NoSuchMethodException {
+        Method method =
+                TestController.class.getDeclaredMethod("customList", HttpServletRequest.class);
+        return new MethodParameter(method, -1);
+    }
+
+    private record CustomCursorPageResponse(CursorPageResponse<String> delegate)
+            implements CursorPageResponse<String> {
+
+        @Override
+        public List<String> items() {
+            return delegate.items();
+        }
+
+        @Override
+        public String self() {
+            return delegate.self();
+        }
+
+        @Override
+        public String prev() {
+            return delegate.prev();
+        }
+
+        @Override
+        public String next() {
+            return delegate.next();
+        }
+
+        @Override
+        public String first() {
+            return delegate.first();
+        }
+
+        @Override
+        public Long total() {
+            return delegate.total();
+        }
+
+        @Override
+        public CustomCursorPageResponse encodeCursorTokens(CursorPageTokenContext context) {
+            return new CustomCursorPageResponse(delegate.encodeCursorTokens(context));
+        }
+    }
+
     static class TestController {
         CursorPageResponse<String> list(HttpServletRequest request) {
-            return CursorPageResponse.withCursorValues(
-                    List.of(), 20, null, null, null, null, null);
+            return CursorPageResponse.withCursorValues(List.of(), 20, null, null, null, null, null);
+        }
+
+        CustomCursorPageResponse customList(HttpServletRequest request) {
+            return new CustomCursorPageResponse(
+                    CursorPageResponse.withCursorValues(
+                            List.of(), 20, null, null, null, null, null));
         }
     }
 }

@@ -3,6 +3,7 @@ package github.luckygc.am.module.authentication.service;
 import java.util.List;
 
 import jakarta.data.page.CursoredPage;
+import jakarta.data.page.PageRequest;
 import jakarta.data.restrict.Restrict;
 import jakarta.data.restrict.Restriction;
 
@@ -12,7 +13,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import github.luckygc.am.common.api.CursorPageRequest;
 import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.authentication.AuthenticationUser;
@@ -54,7 +54,7 @@ public class AuthenticationUserManagementService {
 
     @Transactional(readOnly = true)
     public CursorPageResponse<AuthenticationUserDto> listUsers(
-            @Nullable String keyword, CursorPageRequest pageRequest, Long operatorUserId) {
+            @Nullable String keyword, PageRequest pageRequest, Long operatorUserId) {
         requireUserManage(operatorUserId);
         Restriction<AuthenticationUser> restriction = Restrict.unrestricted();
         if (StringUtils.isNotBlank(keyword)) {
@@ -64,8 +64,7 @@ public class AuthenticationUserManagementService {
                             _AuthenticationUser.username.lower().contains(lowered),
                             _AuthenticationUser.displayName.lower().contains(lowered));
         }
-        CursoredPage<AuthenticationUser> page =
-                userRepository.filterBy(restriction, pageRequest.pageRequest());
+        CursoredPage<AuthenticationUser> page = userRepository.filterBy(restriction, pageRequest);
         return CursorPageResponse.from(page, pageRequest, this::toUserDto);
     }
 

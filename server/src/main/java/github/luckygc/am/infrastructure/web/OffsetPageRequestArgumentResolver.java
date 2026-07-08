@@ -36,7 +36,7 @@ public class OffsetPageRequestArgumentResolver implements HandlerMethodArgumentR
         if (request == null) {
             throw new BadRequestException("请求上下文无效", "request", "缺少 HTTP 请求上下文");
         }
-        PageRequestContentTypeGuard.rejectUnsupportedBodyContentType(request);
+        PaginationContentTypeGuard.rejectUnsupportedBodyContentType(request);
         PageRequestParameters parameters = PageRequestParameters.from(request);
         return new OffsetPageRequest(
                 pageSize(parameters.value("pageSize")), pageNo(parameters.value("pageNo")));

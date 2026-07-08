@@ -6,11 +6,12 @@ import static org.mockito.Mockito.when;
 
 import java.util.List;
 
+import jakarta.data.page.PageRequest;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.core.Authentication;
 
-import github.luckygc.am.common.api.CursorPageRequest;
 import github.luckygc.am.common.api.CursorPageTokenCodec;
 import github.luckygc.am.common.api.CursorPageTokenContext;
 import github.luckygc.am.common.security.AuthenticatedUser;
@@ -33,16 +34,11 @@ class ArchiveItemControllerTests {
         Authentication authentication = authentication(9L);
         CursorPageTokenContext context = new CursorPageTokenContext("fingerprint");
         String cursor = CursorPageTokenCodec.encode("next", List.of(99L), 50, context);
-        CursorPageRequest page = CursorPageRequest.of(50, cursor, false, context);
+        PageRequest page = CursorPageTokenCodec.pageRequest(50, cursor, false, context);
 
         controller.searchItems(body, page, authentication);
 
-        verify(archiveItemRoutingService)
-                        .searchItems(
-                                new SearchArchiveItemsRequest(
-                                        1L, "F001", "合同", null, null, 50, cursor, null),
-                        9L,
-                        context);
+        verify(archiveItemRoutingService).searchItems(body, 9L, page);
     }
 
     private Authentication authentication(Long userId) {

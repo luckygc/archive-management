@@ -34,7 +34,7 @@ describe("archive API", () => {
     });
 
     it("sends archive record cursor controls in URL and keeps orderBy in body", async () => {
-        httpClientMock.post.mockResolvedValue({ fields: [], items: [], tableBuilt: true });
+        httpClientMock.post.mockResolvedValue({ fields: [], items: [] });
 
         await searchArchiveRecords({
             categoryId: 1,

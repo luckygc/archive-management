@@ -35,21 +35,14 @@ public interface ArchiveMapper {
     List<Map<String, Object>> listRelatedFilterCategories(@Param("categoryId") Long categoryId);
 
     List<Map<String, Object>> listDynamicItems(
-            @Param("tableName") String tableName,
-            @Param("selectColumns") String selectColumns,
-            @Param("archiveLevel") String archiveLevel,
-            @Param("deleted") boolean deleted,
-            @Param("fondsCode") String fondsCode,
-            @Param("dataScopeGroups") List<ArchiveDataScopeSqlGroup> dataScopeGroups,
-            @Param("conditions") List<ArchiveSqlCondition> conditions,
-            @Param("relatedGroups") List<ArchiveSqlRelatedGroup> relatedGroups,
-            @Param("fullTextKeyword") String fullTextKeyword,
-            @Param("userId") Long userId,
-            @Param("requireAuthenticatedUser") boolean requireAuthenticatedUser,
-            @Param("orderBySql") String orderBySql,
-            @Param("cursorPredicateSql") String cursorPredicateSql,
-            @Param("cursorValues") List<Object> cursorValues,
-            @Param("limit") int limit);
+            @Param("source") ArchiveDynamicItemSource source,
+            @Param("projection") ArchiveDynamicItemProjection projection,
+            @Param("criteria") ArchiveDynamicItemCriteria criteria,
+            @Param("page") ArchiveDynamicItemPageWindow page);
+
+    int countDynamicItems(
+            @Param("source") ArchiveDynamicItemSource source,
+            @Param("criteria") ArchiveDynamicItemCriteria criteria);
 
     List<Map<String, Object>> listItemsForSearchRebuild(
             @Param("tableName") String tableName,

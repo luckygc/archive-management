@@ -2,6 +2,7 @@ package github.luckygc.am.infrastructure.web;
 
 import java.util.Arrays;
 
+import jakarta.data.page.PageRequest;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -12,7 +13,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
 
-import github.luckygc.am.common.api.CursorPageRequest;
 import github.luckygc.am.common.api.CursorPageTokenCodec;
 import github.luckygc.am.common.api.CursorPageTokenContext;
 import github.luckygc.am.common.exception.BadRequestException;
@@ -22,8 +22,6 @@ public class CursorPageTokenValidationInterceptor implements HandlerInterceptor 
 
     private static final String CONTEXT_ATTRIBUTE =
             CursorPageTokenValidationInterceptor.class.getName() + ".context";
-    private static final int DEFAULT_LIMIT = 100;
-    private static final int MAX_LIMIT = 1000;
 
     private final CursorHttpFingerprint fingerprint;
 
@@ -49,9 +47,9 @@ public class CursorPageTokenValidationInterceptor implements HandlerInterceptor 
             return true;
         }
         boolean cursorPaged = supportsCursorPage(handlerMethod);
-        String cursor = StringUtils.trimToNull(request.getParameter("cursor"));
+        String token = StringUtils.trimToNull(request.getParameter("cursor"));
         if (!cursorPaged) {
-            if (cursor != null) {
+            if (token != null) {
                 throw invalidCursor("当前接口不支持 cursor 分页");
             }
             return true;
@@ -59,35 +57,17 @@ public class CursorPageTokenValidationInterceptor implements HandlerInterceptor 
         CursorPageTokenContext context =
                 new CursorPageTokenContext(fingerprint.fingerprint(request));
         request.setAttribute(CONTEXT_ATTRIBUTE, context);
-        if (cursor != null) {
-            PageRequestContentTypeGuard.rejectUnsupportedBodyContentType(request);
-            CursorPageTokenCodec.validate(cursor, limit(request.getParameter("limit")), context);
+        if (token != null) {
+            PaginationContentTypeGuard.rejectUnsupportedBodyContentType(request);
+            CursorPageTokenCodec.validate(
+                    token, CursorPageLimits.parse(request.getParameter("limit")), context);
         }
         return true;
     }
 
     private boolean supportsCursorPage(HandlerMethod handlerMethod) {
         return Arrays.stream(handlerMethod.getMethodParameters())
-                .anyMatch(
-                        parameter -> CursorPageRequest.class.equals(parameter.getParameterType()));
-    }
-
-    private int limit(@Nullable String value) {
-        if (StringUtils.isBlank(value)) {
-            return DEFAULT_LIMIT;
-        }
-        try {
-            int limit = Integer.parseInt(value);
-            if (limit <= 0) {
-                throw new NumberFormatException("limit must be positive");
-            }
-            if (limit > MAX_LIMIT) {
-                throw new BadRequestException("分页参数不合法", "limit", "limit 不能大于 1000");
-            }
-            return limit;
-        } catch (NumberFormatException exception) {
-            throw new BadRequestException("分页参数不合法", "limit", "limit 必须为正整数");
-        }
+                .anyMatch(parameter -> PageRequest.class.equals(parameter.getParameterType()));
     }
 
     private BadRequestException invalidCursor(String reason) {

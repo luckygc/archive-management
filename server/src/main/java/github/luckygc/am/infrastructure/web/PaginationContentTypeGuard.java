@@ -8,9 +8,9 @@ import org.springframework.http.MediaType;
 
 import github.luckygc.am.common.exception.BadRequestException;
 
-final class PageRequestContentTypeGuard {
+final class PaginationContentTypeGuard {
 
-    private PageRequestContentTypeGuard() {}
+    private PaginationContentTypeGuard() {}
 
     static void rejectUnsupportedBodyContentType(HttpServletRequest request) {
         String contentType = request.getContentType();

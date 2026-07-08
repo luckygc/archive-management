@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.List;
 
+import jakarta.data.page.PageRequest;
 import jakarta.servlet.http.HttpServletRequest;
 
 import org.junit.jupiter.api.DisplayName;
@@ -16,8 +17,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.web.server.ResponseStatusException;
 
-import github.luckygc.am.common.api.CursorPageRequest;
-import github.luckygc.am.common.api.CursorPageTokenContext;
 import github.luckygc.am.module.authentication.ArchiveUserDetails;
 import github.luckygc.am.module.authentication.service.AuthenticationAuditService;
 import github.luckygc.am.module.authentication.service.LoginFailureLimitService;
@@ -143,8 +142,8 @@ class LoginSessionControllerTests {
         assertThat(currentUser.displayName()).isEmpty();
     }
 
-    private static CursorPageRequest pageRequest() {
-        return CursorPageRequest.of(20, null, false, new CursorPageTokenContext("fingerprint"));
+    private static PageRequest pageRequest() {
+        return PageRequest.ofSize(20).withoutTotal();
     }
 
     private static UsernamePasswordAuthenticationToken authentication(Long userId) {

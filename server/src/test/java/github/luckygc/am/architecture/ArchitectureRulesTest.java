@@ -374,21 +374,25 @@ class ArchitectureRulesTest {
                 classes.stream()
                         .filter(javaClass -> javaClass.isAnnotatedWith(RestController.class))
                         .flatMap(javaClass -> javaClass.getMethods().stream())
-                        .filter(ArchitectureRulesTest::hasCursorPageRequestParameter)
-                        .filter(ArchitectureRulesTest::isCommonCursorPageEndpoint)
-                        .filter(method -> !method.getRawReturnType().isAssignableTo(CursorPageResponse.class))
+                        .filter(ArchitectureRulesTest::hasPageRequestParameter)
+                        .filter(
+                                method ->
+                                        !method.getRawReturnType()
+                                                .isAssignableTo(CursorPageResponse.class))
                         .map(
                                 method ->
                                         method.getOwner().getName()
                                                 + "#"
                                                 + method.getName()
-                                                + " 未返回 CursorPageResponse")
+                                                + " 未返回 CursorPageResponse 合同")
                         .sorted()
                         .toList();
 
         assertTrue(
                 violations.isEmpty(),
-                () -> "通用 cursor 分页 Controller 应返回 CursorPageResponse，由 ResponseBodyAdvice 填充 token: " + violations);
+                () ->
+                        "声明 PageRequest 的 cursor 分页 Controller 应返回 CursorPageResponse 合同，由 ResponseBodyAdvice 填充 token: "
+                                + violations);
     }
 
     @Test
@@ -419,19 +423,8 @@ class ArchitectureRulesTest {
                         || javaClass.isMetaAnnotatedWith(Component.class));
     }
 
-    private static boolean hasCursorPageRequestParameter(JavaMethod method) {
+    private static boolean hasPageRequestParameter(JavaMethod method) {
         return method.getRawParameterTypes().stream()
-                .anyMatch(
-                        parameter ->
-                                parameter
-                                        .getName()
-                                        .equals("github.luckygc.am.common.api.CursorPageRequest"));
-    }
-
-    private static boolean isCommonCursorPageEndpoint(JavaMethod method) {
-        return !method.getRawReturnType()
-                .getName()
-                .equals(
-                        "github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService$ArchiveItemListDto");
+                .anyMatch(parameter -> parameter.getName().equals("jakarta.data.page.PageRequest"));
     }
 }

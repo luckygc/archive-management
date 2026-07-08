@@ -8,6 +8,7 @@ import java.util.List;
 
 import jakarta.data.Order;
 import jakarta.data.page.CursoredPage;
+import jakarta.data.page.PageRequest;
 import jakarta.data.restrict.Restrict;
 import jakarta.data.restrict.Restriction;
 import jakarta.servlet.http.HttpServletRequest;
@@ -24,7 +25,6 @@ import org.springframework.session.SessionRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import github.luckygc.am.common.api.CursorPageRequest;
 import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.common.security.AuthenticatedUser;
@@ -178,12 +178,12 @@ public class AuthenticationAuditService {
 
     @Transactional(readOnly = true)
     public CursorPageResponse<LoginSessionResponse> listLoginSessions(
-            CursorPageRequest pageRequest, HttpServletRequest request) {
+            PageRequest pageRequest, HttpServletRequest request) {
         long now = Instant.now().toEpochMilli();
         CursoredPage<SpringSessionRecord> page =
                 springSessionRepository.find(
                         _SpringSessionRecord.expiryTime.greaterThan(now),
-                        pageRequest.pageRequest(),
+                        pageRequest,
                         Order.by(
                                 _SpringSessionRecord.lastAccessTime.desc(),
                                 _SpringSessionRecord.sessionId.desc()));
@@ -200,11 +200,11 @@ public class AuthenticationAuditService {
             @Nullable String keyword,
             @Nullable LocalDateTime occurredAfter,
             @Nullable LocalDateTime occurredBefore,
-            CursorPageRequest pageRequest) {
+            PageRequest pageRequest) {
         Restriction<AuthenticationLoginLog> restriction =
                 loginLogRestriction(eventType, username, keyword, occurredAfter, occurredBefore);
         CursoredPage<AuthenticationLoginLog> page =
-                loginLogRepository.find(restriction, pageRequest.pageRequest());
+                loginLogRepository.find(restriction, pageRequest);
         return CursorPageResponse.from(page, pageRequest, this::toLoginLogResponse);
     }
 

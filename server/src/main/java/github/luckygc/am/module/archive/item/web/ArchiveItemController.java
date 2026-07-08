@@ -1,5 +1,7 @@
 package github.luckygc.am.module.archive.item.web;
 
+import jakarta.data.page.PageRequest;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -13,7 +15,6 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import github.luckygc.am.common.api.CollectionResponse;
-import github.luckygc.am.common.api.CursorPageRequest;
 import github.luckygc.am.common.api.RawRequestStrings;
 import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService;
@@ -52,37 +53,37 @@ public class ArchiveItemController {
     @PostMapping("/api/v1/archive-items:search")
     public ArchiveItemListDto searchItems(
             @RawRequestStrings @RequestBody SearchArchiveItemsRequest request,
-            CursorPageRequest page,
+            PageRequest page,
             Authentication authentication) {
         return archiveItemRoutingService.searchItems(
-                request.withPage(page.limit(), page.cursor()),
+                request,
                 AuthenticatedUsers.requireUserId(
                         authentication == null ? null : authentication.getPrincipal()),
-                page.context());
+                page);
     }
 
     @PostMapping("/api/v1/archive-items:discover")
     public ArchiveItemListDto discoverItems(
             @RawRequestStrings @RequestBody SearchArchiveItemsRequest request,
-            CursorPageRequest page,
+            PageRequest page,
             Authentication authentication) {
         return archiveItemRoutingService.discoverItems(
-                request.withPage(page.limit(), page.cursor()),
+                request,
                 AuthenticatedUsers.requireUserId(
                         authentication == null ? null : authentication.getPrincipal()),
-                page.context());
+                page);
     }
 
     @PostMapping("/api/v1/archive-items:searchDeleted")
     public ArchiveItemListDto searchDeletedItems(
             @RawRequestStrings @RequestBody SearchArchiveItemsRequest request,
-            CursorPageRequest page,
+            PageRequest page,
             Authentication authentication) {
         return archiveItemRoutingService.searchDeletedItems(
-                request.withPage(page.limit(), page.cursor()),
+                request,
                 AuthenticatedUsers.requireUserId(
                         authentication == null ? null : authentication.getPrincipal()),
-                page.context());
+                page);
     }
 
     @GetMapping("/api/v1/archive-categories/{id}/related-filter-categories")

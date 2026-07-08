@@ -19,7 +19,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
-import github.luckygc.am.common.api.CursorPageRequest;
 import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.common.api.CursorPageTokenCodec;
 import github.luckygc.am.common.api.CursorPageTokenContext;
@@ -62,7 +61,7 @@ class ArchiveItemAuditSearchServiceTests {
                         9L);
 
         assertThat(page.total()).isEqualTo(1);
-        assertThat(page.nextValues()).isNull();
+        assertThat(page.encodeCursorTokens(context()).next()).isNull();
         assertThat(page.items())
                 .containsExactly(
                         new ArchiveItemAuditResponse(
@@ -93,6 +92,7 @@ class ArchiveItemAuditSearchServiceTests {
                         new ListArchiveItemAuditsRequest(10L, null, null, null, null, null),
                         firstPage(1, true),
                         9L);
+        String nextToken = firstPage.encodeCursorTokens(context()).next();
 
         CursoredPage<ArchiveItemAudit> nextRepositoryPage =
                 page(List.of(audit(98L, operatedAt.minusMinutes(1))), null, false, false);
@@ -101,7 +101,7 @@ class ArchiveItemAuditSearchServiceTests {
         CursorPageResponse<ArchiveItemAuditResponse> nextPage =
                 auditSearchService.listAudits(
                         new ListArchiveItemAuditsRequest(10L, null, null, null, null, null),
-                        tokenPage(1, CursorPageTokenCodec.encode("next", firstPage.nextValues())),
+                        tokenPage(1, nextToken),
                         9L);
 
         assertThat(nextPage.total()).isNull();
@@ -164,12 +164,12 @@ class ArchiveItemAuditSearchServiceTests {
         return page;
     }
 
-    private static CursorPageRequest firstPage(int limit, boolean requestTotal) {
-        return CursorPageRequest.of(limit, null, requestTotal, context());
+    private static PageRequest firstPage(int limit, boolean requestTotal) {
+        return CursorPageTokenCodec.pageRequest(limit, null, requestTotal, context());
     }
 
-    private static CursorPageRequest tokenPage(int limit, String cursor) {
-        return CursorPageRequest.of(limit, cursor, true, context());
+    private static PageRequest tokenPage(int limit, String cursor) {
+        return CursorPageTokenCodec.pageRequest(limit, cursor, true, context());
     }
 
     private static CursorPageTokenContext context() {

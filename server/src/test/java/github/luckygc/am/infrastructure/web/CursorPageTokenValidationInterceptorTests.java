@@ -6,15 +6,17 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
+import jakarta.data.page.PageRequest;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.web.method.HandlerMethod;
 
-import github.luckygc.am.common.api.CursorPageRequest;
 import github.luckygc.am.common.api.CursorPageTokenCodec;
 import github.luckygc.am.common.api.CursorPageTokenContext;
+import github.luckygc.am.common.api.OffsetPageRequest;
 import github.luckygc.am.common.exception.BadRequestException;
 
 @DisplayName("cursor token 请求处理校验")
@@ -25,7 +27,7 @@ class CursorPageTokenValidationInterceptorTests {
             new CursorPageTokenValidationInterceptor(fingerprint);
 
     @Test
-    @DisplayName("只对声明 CursorPageRequest 的 Controller 方法校验 cursor")
+    @DisplayName("只对声明 PageRequest 的 Controller 方法校验 cursor")
     void interceptorShouldValidateOnlyCursorPageHandlers() throws Exception {
         MockHttpServletRequest first =
                 jsonRequest("{\"categoryId\":1,\"orderBy\":[{\"field\":\"createdAt\"}]}");
@@ -49,15 +51,15 @@ class CursorPageTokenValidationInterceptorTests {
     }
 
     @Test
-    @DisplayName("非 cursor 分页 Controller 方法提交 cursor 时拒绝")
-    void interceptorShouldRejectCursorForNonCursorPageHandlers() throws Exception {
+    @DisplayName("offset 分页 Controller 方法提交 cursor 时拒绝")
+    void interceptorShouldRejectCursorForOffsetPageHandlers() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/items");
         request.addParameter("cursor", "opaque");
 
         assertThatThrownBy(
                         () ->
                                 interceptor.preHandle(
-                                        request, new MockHttpServletResponse(), plainHandler()))
+                                        request, new MockHttpServletResponse(), offsetHandler()))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessage("分页 cursor 无效");
     }
@@ -92,8 +94,7 @@ class CursorPageTokenValidationInterceptorTests {
                                         .satisfies(
                                                 violation ->
                                                         assertThat(violation.message())
-                                                                .isEqualTo(
-                                                                        "查询条件已变化，请从第一页重新查询")));
+                                                                .isEqualTo("查询条件已变化，请从第一页重新查询")));
     }
 
     private static MockHttpServletRequest jsonRequest(String body) {
@@ -106,16 +107,18 @@ class CursorPageTokenValidationInterceptorTests {
 
     private static HandlerMethod cursorHandler() throws NoSuchMethodException {
         return new HandlerMethod(
-                new TestController(), TestController.class.getMethod("cursor", CursorPageRequest.class));
+                new TestController(), TestController.class.getMethod("cursor", PageRequest.class));
     }
 
-    private static HandlerMethod plainHandler() throws NoSuchMethodException {
-        return new HandlerMethod(new TestController(), TestController.class.getMethod("plain", String.class));
+    private static HandlerMethod offsetHandler() throws NoSuchMethodException {
+        return new HandlerMethod(
+                new TestController(),
+                TestController.class.getMethod("offset", OffsetPageRequest.class));
     }
 
     static class TestController {
-        public void cursor(CursorPageRequest page) {}
+        public void cursor(PageRequest page) {}
 
-        public void plain(String keyword) {}
+        public void offset(OffsetPageRequest page) {}
     }
 }

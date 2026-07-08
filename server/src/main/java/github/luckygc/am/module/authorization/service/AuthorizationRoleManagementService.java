@@ -1,6 +1,7 @@
 package github.luckygc.am.module.authorization.service;
 
 import jakarta.data.page.CursoredPage;
+import jakarta.data.page.PageRequest;
 import jakarta.data.restrict.Restrict;
 import jakarta.data.restrict.Restriction;
 
@@ -9,7 +10,6 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import github.luckygc.am.common.api.CursorPageRequest;
 import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.authorization.AuthorizationRole;
@@ -39,14 +39,13 @@ public class AuthorizationRoleManagementService {
 
     @Transactional(readOnly = true)
     public CursorPageResponse<AuthorizationRoleDto> listRoles(
-            @Nullable Boolean enabled, CursorPageRequest pageRequest, Long operatorUserId) {
+            @Nullable Boolean enabled, PageRequest pageRequest, Long operatorUserId) {
         requireRoleManage(operatorUserId);
         Restriction<AuthorizationRole> restriction = Restrict.unrestricted();
         if (enabled != null) {
             restriction = _AuthorizationRole.enabled.equalTo(enabled);
         }
-        CursoredPage<AuthorizationRole> page =
-                roleRepository.filterBy(restriction, pageRequest.pageRequest());
+        CursoredPage<AuthorizationRole> page = roleRepository.filterBy(restriction, pageRequest);
         return CursorPageResponse.from(page, pageRequest, AuthorizationRoleDto::fromEntity);
     }
 

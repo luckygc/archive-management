@@ -15,7 +15,6 @@ import org.springframework.core.MethodParameter;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.web.context.request.ServletWebRequest;
 
-import github.luckygc.am.common.api.CursorPageRequest;
 import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.common.api.CursorPageTokenCodec;
 import github.luckygc.am.common.api.CursorPageTokenContext;
@@ -36,17 +35,16 @@ class PageRequestArgumentResolverTests {
         request.addParameter("limit", "50");
         request.addParameter("cursor", cursor);
         request.addParameter("requestTotal", "true");
-        CursorPageRequestArgumentResolver resolver = new CursorPageRequestArgumentResolver();
+        CursorPageArgumentResolver resolver = new CursorPageArgumentResolver();
 
-        CursorPageRequest page =
-                (CursorPageRequest)
+        PageRequest page =
+                (PageRequest)
                         resolver.resolveArgument(
                                 cursorParameter(), null, new ServletWebRequest(request), null);
 
-        assertThat(page.limit()).isEqualTo(50);
-        assertThat(page.requestTotal()).isTrue();
-        assertThat(page.pageRequest().mode()).isEqualTo(PageRequest.Mode.CURSOR_NEXT);
-        assertThat(page.pageRequest().requestTotal()).isFalse();
+        assertThat(page.size()).isEqualTo(50);
+        assertThat(page.mode()).isEqualTo(PageRequest.Mode.CURSOR_NEXT);
+        assertThat(page.requestTotal()).isFalse();
     }
 
     @Test
@@ -65,10 +63,10 @@ class PageRequestArgumentResolverTests {
         request.addParameter("limit", "50");
         request.addParameter("cursor", cursor);
         request.addParameter("requestTotal", "true");
-        CursorPageRequestArgumentResolver resolver = new CursorPageRequestArgumentResolver();
+        CursorPageArgumentResolver resolver = new CursorPageArgumentResolver();
 
-        CursorPageRequest page =
-                (CursorPageRequest)
+        PageRequest page =
+                (PageRequest)
                         resolver.resolveArgument(
                                 cursorParameter(),
                                 null,
@@ -76,9 +74,9 @@ class PageRequestArgumentResolverTests {
                                         new CachedBodyHttpServletRequestWrapper(request)),
                                 null);
 
-        assertThat(page.limit()).isEqualTo(50);
-        assertThat(page.requestTotal()).isTrue();
-        assertThat(page.pageRequest().mode()).isEqualTo(PageRequest.Mode.CURSOR_NEXT);
+        assertThat(page.size()).isEqualTo(50);
+        assertThat(page.requestTotal()).isFalse();
+        assertThat(page.mode()).isEqualTo(PageRequest.Mode.CURSOR_NEXT);
     }
 
     @Test
@@ -89,10 +87,10 @@ class PageRequestArgumentResolverTests {
                         "POST",
                         "/api/v1/archive-records:search",
                         "{\"keyword\":\"合同\",\"limit\":50,\"requestTotal\":true}");
-        CursorPageRequestArgumentResolver resolver = new CursorPageRequestArgumentResolver();
+        CursorPageArgumentResolver resolver = new CursorPageArgumentResolver();
 
-        CursorPageRequest page =
-                (CursorPageRequest)
+        PageRequest page =
+                (PageRequest)
                         resolver.resolveArgument(
                                 cursorParameter(),
                                 null,
@@ -100,7 +98,7 @@ class PageRequestArgumentResolverTests {
                                         new CachedBodyHttpServletRequestWrapper(request)),
                                 null);
 
-        assertThat(page.limit()).isEqualTo(100);
+        assertThat(page.size()).isEqualTo(100);
         assertThat(page.requestTotal()).isFalse();
     }
 
@@ -111,7 +109,7 @@ class PageRequestArgumentResolverTests {
                 new MockHttpServletRequest("POST", "/api/v1/archive-records:search");
         request.setContentType("multipart/form-data; boundary=----test");
         request.addParameter("cursor", "opaque-token");
-        CursorPageRequestArgumentResolver resolver = new CursorPageRequestArgumentResolver();
+        CursorPageArgumentResolver resolver = new CursorPageArgumentResolver();
 
         assertThatThrownBy(
                         () ->
@@ -143,7 +141,7 @@ class PageRequestArgumentResolverTests {
                 new MockHttpServletRequest("POST", "/api/v1/archive-records:search");
         request.setContentType("application/x-www-form-urlencoded");
         request.addParameter("limit", "50");
-        CursorPageRequestArgumentResolver resolver = new CursorPageRequestArgumentResolver();
+        CursorPageArgumentResolver resolver = new CursorPageArgumentResolver();
 
         assertThatThrownBy(
                         () ->
@@ -293,7 +291,7 @@ class PageRequestArgumentResolverTests {
     }
 
     private static MethodParameter cursorParameter() throws NoSuchMethodException {
-        Method method = TestController.class.getDeclaredMethod("cursor", CursorPageRequest.class);
+        Method method = TestController.class.getDeclaredMethod("cursor", PageRequest.class);
         return new MethodParameter(method, 0);
     }
 
@@ -312,8 +310,8 @@ class PageRequestArgumentResolverTests {
     private static final class TestController {
 
         @SuppressWarnings("unused")
-        CursorPageResponse<String> cursor(CursorPageRequest page) {
-            return new CursorPageResponse<>(List.of(), null, null, null, null, null);
+        CursorPageResponse<String> cursor(PageRequest page) {
+            return CursorPageResponse.withCursorValues(List.of(), 0, null, null, null, null, null);
         }
 
         @SuppressWarnings("unused")
