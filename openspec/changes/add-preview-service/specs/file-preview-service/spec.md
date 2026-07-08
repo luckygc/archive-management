@@ -58,10 +58,10 @@ The repository SHALL expose repeatable preview service commands through the root
 
 #### Scenario: Preview tests can be run from root
 
-- **WHEN** a developer runs `make preview-test`
+- **WHEN** a developer runs `task preview-test`
 - **THEN** the command runs Go tests for the `preview/` module.
 
 #### Scenario: Preview binary can be built from root
 
-- **WHEN** a developer runs `make preview-build`
+- **WHEN** a developer runs `task preview-build`
 - **THEN** the command builds the preview service binary from `preview/cmd/preview-service`.

@@ -126,5 +126,5 @@ Ant Design 生态例外：当问题涉及 Ant Design、Ant Design Pro、Pro Comp
 - 如果 setup、运行时或包管理行为异常，运行 `vp env doctor` 并保留输出。
 - 后端 Maven 项目根目录是 `server/`，仓库根目录没有聚合 POM；运行 `mvn ...` 验证时必须以 `server/` 为工作目录，例如 `cd server && mvn -q -DskipTests test-compile`。
 - 后端改动至少运行对应 Maven 编译或测试；如果测试需要本机数据库，说明依赖和结果。
-- Java 过时 API 批量迁移优先使用 OpenRewrite；仓库根目录 `rewrite.yml` 维护可复用 recipe，后端先运行 `make server-rewrite-dry-run` 审查 `server/target/rewrite/rewrite.patch`，确认后再运行 `make server-rewrite-run`。
+- Java 过时 API 批量迁移优先使用 OpenRewrite；仓库根目录 `rewrite.yml` 维护可复用 recipe，后端先运行 `task server-rewrite-dry-run` 审查 `server/target/rewrite/rewrite.patch`，确认后再运行 `task server-rewrite-run`。
 - OpenRewrite recipe 只沉淀能语义化迁移的安全规则；涉及参数重排、条件改写、补 import 或复杂框架升级时，先 dry run 和编译验证，YAML 不足时新增自定义 recipe，不用正则批改 Java 源码。

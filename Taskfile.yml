@@ -1,0 +1,184 @@
+version: "3"
+
+vars:
+    SERVER_DIR: server
+    PREVIEW_DIR: preview
+    JAVA: mise exec -- java
+    PNPM: mise exec -- pnpm
+    MVN: mise exec -- mvn
+    GO: go
+
+tasks:
+    default:
+        desc: 显示可用任务
+        silent: true
+        cmds:
+            - task --list
+
+    frontend-install:
+        desc: 安装前端依赖
+        cmds:
+            - "{{.PNPM}} exec vp install"
+
+    frontend-check:
+        desc: 检查全部前端包
+        cmds:
+            - "{{.PNPM}} check"
+
+    frontend-check-fix:
+        desc: 自动修复全部前端包 lint 问题
+        cmds:
+            - "{{.PNPM}} check:fix"
+
+    frontend-test:
+        desc: 测试全部前端包
+        cmds:
+            - "{{.PNPM}} test"
+
+    frontend-build:
+        desc: 构建全部前端包
+        cmds:
+            - "{{.PNPM}} build"
+
+    frontend-ready:
+        desc: 前端检查、测试并构建
+        cmds:
+            - "{{.PNPM}} ready"
+
+    web-check:
+        desc: 检查 PC 前端
+        cmds:
+            - "{{.PNPM}} -F @archive-management/web check"
+
+    web-test:
+        desc: 测试 PC 前端
+        cmds:
+            - "{{.PNPM}} -F @archive-management/web test"
+
+    web-build:
+        desc: 构建 PC 前端
+        cmds:
+            - "{{.PNPM}} -F @archive-management/web build"
+
+    web-dev:
+        desc: 启动 PC 前端开发服务
+        cmds:
+            - "{{.PNPM}} run dev:web"
+
+    mobile-check:
+        desc: 检查移动端前端
+        cmds:
+            - "{{.PNPM}} -F @archive-management/mobile check"
+
+    mobile-test:
+        desc: 测试移动端前端
+        cmds:
+            - "{{.PNPM}} -F @archive-management/mobile test"
+
+    mobile-build:
+        desc: 构建移动端前端
+        cmds:
+            - "{{.PNPM}} -F @archive-management/mobile build"
+
+    mobile-dev:
+        desc: 启动移动端前端开发服务
+        cmds:
+            - "{{.PNPM}} run dev:mobile"
+
+    frontend-core-check:
+        desc: 检查前端共享包
+        cmds:
+            - "{{.PNPM}} -F @archive-management/frontend-core check"
+
+    frontend-core-test:
+        desc: 测试前端共享包
+        cmds:
+            - "{{.PNPM}} -F @archive-management/frontend-core test"
+
+    frontend-core-build:
+        desc: 构建前端共享包
+        cmds:
+            - "{{.PNPM}} -F @archive-management/frontend-core build"
+
+    server-java:
+        desc: 打印 Java/Maven 版本
+        dir: "{{.SERVER_DIR}}"
+        cmds:
+            - "{{.JAVA}} -version"
+            - "{{.MVN}} -version"
+
+    server-deps:
+        desc: 下载 Maven 依赖
+        dir: "{{.SERVER_DIR}}"
+        cmds:
+            - "{{.MVN}} -q dependency:resolve"
+
+    server-format-check:
+        desc: 检查 server 格式
+        dir: "{{.SERVER_DIR}}"
+        cmds:
+            - "{{.MVN}} spotless:check"
+
+    server-format:
+        desc: 自动格式化 server
+        dir: "{{.SERVER_DIR}}"
+        cmds:
+            - "{{.MVN}} spotless:apply"
+
+    server-rewrite-dry-run:
+        desc: 预览 server OpenRewrite 迁移
+        dir: "{{.SERVER_DIR}}"
+        cmds:
+            - "{{.MVN}} rewrite:dryRun"
+
+    server-rewrite-run:
+        desc: 执行 server OpenRewrite 迁移
+        dir: "{{.SERVER_DIR}}"
+        cmds:
+            - "{{.MVN}} rewrite:run"
+
+    server-compile:
+        desc: 编译 server
+        dir: "{{.SERVER_DIR}}"
+        cmds:
+            - "{{.MVN}} compile"
+
+    server-test:
+        desc: 测试 server
+        dir: "{{.SERVER_DIR}}"
+        cmds:
+            - "{{.MVN}} test"
+
+    server-package:
+        desc: 打包 server
+        dir: "{{.SERVER_DIR}}"
+        cmds:
+            - "{{.MVN}} package"
+
+    server-run:
+        desc: 启动 server
+        dir: "{{.SERVER_DIR}}"
+        cmds:
+            - "{{.MVN}} spring-boot:run"
+
+    preview-test:
+        desc: 测试文件预览服务
+        dir: "{{.PREVIEW_DIR}}"
+        cmds:
+            - "{{.GO}} test ./..."
+
+    preview-build:
+        desc: 构建文件预览服务
+        dir: "{{.PREVIEW_DIR}}"
+        cmds:
+            - cmd: powershell -NoProfile -Command "New-Item -ItemType Directory -Force build | Out-Null"
+              platforms: [windows]
+            - cmd: mkdir -p build
+              platforms: [linux, darwin]
+            - "{{.GO}} build -o build/preview-service ./cmd/preview-service"
+
+    preview-run:
+        desc: 启动文件预览服务
+        dir: "{{.PREVIEW_DIR}}"
+        cmds:
+            - "{{.GO}} run ./cmd/preview-service"
