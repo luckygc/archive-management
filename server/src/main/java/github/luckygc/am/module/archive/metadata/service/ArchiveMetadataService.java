@@ -21,7 +21,6 @@ import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.metadata.ArchiveCategory;
 import github.luckygc.am.module.archive.metadata.ArchiveClassificationScheme;
-import github.luckygc.am.module.archive.metadata.ArchiveDynamicTableNames;
 import github.luckygc.am.module.archive.metadata.ArchiveField;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldControl;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldLayout;
@@ -48,8 +47,6 @@ import github.luckygc.am.module.archive.metadata.repository.ArchiveSecurityLevel
 public class ArchiveMetadataService {
 
     private static final Pattern FIELD_CODE_PATTERN = Pattern.compile("[a-z][a-z0-9_]*");
-    private static final Pattern IDENTIFIER_PATTERN = Pattern.compile("[a-z][a-z0-9_]*");
-    private static final int POSTGRESQL_IDENTIFIER_LIMIT = 63;
     private static final List<BuiltinDataScopeField> BUILTIN_DATA_SCOPE_FIELDS =
             List.of(
                     new BuiltinDataScopeField(
@@ -86,6 +83,7 @@ public class ArchiveMetadataService {
     private final ArchiveSecurityLevelDataRepository securityLevelRepository;
     private final ArchiveRetentionPeriodDataRepository retentionPeriodRepository;
     private final ArchiveFieldDefinitionService fieldDefinitionService;
+    private final ArchiveDynamicTableService dynamicTableService;
 
     public ArchiveMetadataService(
             ArchiveMapper archiveMapper,
@@ -97,7 +95,8 @@ public class ArchiveMetadataService {
             ArchiveFieldLayoutDataRepository fieldLayoutRepository,
             ArchiveSecurityLevelDataRepository securityLevelRepository,
             ArchiveRetentionPeriodDataRepository retentionPeriodRepository,
-            ArchiveFieldDefinitionService fieldDefinitionService) {
+            ArchiveFieldDefinitionService fieldDefinitionService,
+            ArchiveDynamicTableService dynamicTableService) {
         this.archiveMapper = archiveMapper;
         this.fondsRepository = fondsRepository;
         this.classificationSchemeRepository = classificationSchemeRepository;
@@ -108,6 +107,7 @@ public class ArchiveMetadataService {
         this.securityLevelRepository = securityLevelRepository;
         this.retentionPeriodRepository = retentionPeriodRepository;
         this.fieldDefinitionService = fieldDefinitionService;
+        this.dynamicTableService = dynamicTableService;
     }
 
     public List<ArchiveFondsDto> listFonds(@Nullable Boolean enabled) {
@@ -519,7 +519,7 @@ public class ArchiveMetadataService {
             throw badRequest("已建字段不允许修改字段类型");
         }
         if (current.archiveLevel() != values.archiveLevel()
-                && isDynamicTableBuilt(category, current.archiveLevel())) {
+                && dynamicTableService.isDynamicTableBuilt(category, current.archiveLevel())) {
             throw badRequest("已建字段不允许修改适用层级");
         }
         ArchiveField field =
@@ -527,7 +527,7 @@ public class ArchiveMetadataService {
         fieldDefinitionService.applyValues(field, categoryId, values);
         field.setUpdatedBy(userId);
         ArchiveFieldDto updatedField = mapField(fieldRepository.update(field));
-        syncDynamicColumnAfterFieldUpdate(category, current, updatedField);
+        dynamicTableService.syncDynamicColumnAfterFieldUpdate(category, current, updatedField);
         return updatedField;
     }
 
@@ -580,78 +580,13 @@ public class ArchiveMetadataService {
         ArchiveFieldScope fieldScope = fieldDefinitionService.normalizeFieldScope(requestedScope);
         fieldDefinitionService.ensureArchiveLevelAllowed(category, archiveLevel);
         List<ArchiveFieldDto> fields = listEnabledFields(categoryId, archiveLevel, fieldScope);
-        if (fields.isEmpty()) {
-            throw badRequest("该分类没有可建表字段");
-        }
-        String tableName = dynamicTableName(category, archiveLevel, fieldScope);
-        validateIdentifier(tableName, "动态表名非法");
-
-        if (archiveMapper.tableExists(tableName) == 0) {
-            String ownerTable =
-                    archiveLevel == ArchiveLevel.VOLUME ? "am_archive_volume" : "am_archive_item";
-            String columns =
-                    fields.stream()
-                            .map(
-                                    field ->
-                                            field.columnName()
-                                                    + " "
-                                                    + fieldDefinitionService.sqlType(field))
-                            .reduce("", (left, right) -> left + ",\n    " + right);
-            archiveMapper.executeSql(
-                    """
-                    create table %s
-                    (
-                        id bigint primary key references %s (id),
-                        deleted_flag boolean not null default false,
-                        deleted_at timestamp,
-                        deleted_by bigint,
-                        created_at timestamp not null default localtimestamp,
-                        updated_at timestamp not null default localtimestamp%s
-                    )
-                    """
-                            .formatted(tableName, ownerTable, columns));
-        } else {
-            ensureColumn(tableName, "deleted_flag", "boolean not null default false");
-            ensureColumn(tableName, "deleted_at", "timestamp");
-            ensureColumn(tableName, "deleted_by", "bigint");
-            for (ArchiveFieldDto field : fields) {
-                validateIdentifier(field.columnName(), "字段列名非法");
-                if (archiveMapper.columnExists(tableName, field.columnName()) == 0) {
-                    archiveMapper.executeSql(
-                            "alter table %s add column %s %s"
-                                    .formatted(
-                                            tableName,
-                                            field.columnName(),
-                                            fieldDefinitionService.sqlType(field)));
-                } else {
-                    archiveMapper.executeSql(
-                            "alter table %s alter column %s type %s"
-                                    .formatted(
-                                            tableName,
-                                            field.columnName(),
-                                            fieldDefinitionService.sqlType(field)));
-                }
-            }
-        }
-        for (ArchiveFieldDto field : fields) {
-            if (field.exactSearchable()) {
-                createExactIndex(tableName, field.columnName());
-            }
-        }
-        archiveMapper.updateCategoryTableStatus(
-                categoryId,
-                archiveLevel.value(),
-                fieldScope.value(),
-                tableName,
-                ArchiveTableStatus.BUILT.value(),
+        dynamicTableService.buildTable(
+                category,
+                archiveLevel,
+                fieldScope,
+                fields,
+                listUniqueConstraints(categoryId),
                 userId);
-        for (ArchiveUniqueConstraintDto constraint : listUniqueConstraints(categoryId)) {
-            if (fieldScope == ArchiveFieldScope.METADATA
-                    && constraint.enabled()
-                    && constraint.archiveLevel() == archiveLevel) {
-                createUniqueIndex(categoryId, tableName, constraint);
-            }
-        }
         return getCategory(categoryId);
     }
 
@@ -673,7 +608,7 @@ public class ArchiveMetadataService {
         ArchiveCategoryDto category = getCategory(categoryId);
         UniqueConstraintValues values = validateUniqueConstraintRequest(category, request);
         String indexName =
-                uniqueConstraintIndexName(
+                dynamicTableService.uniqueConstraintIndexName(
                         category.categoryCode(), values.archiveLevel(), values.constraintCode());
         Long id =
                 archiveMapper.insertUniqueConstraint(
@@ -687,9 +622,11 @@ public class ArchiveMetadataService {
         replaceUniqueConstraintFields(id, values.fieldIds());
         markUniqueConstraintFieldsSearchable(category, values.fieldIds(), userId);
         ArchiveUniqueConstraintDto constraint = getUniqueConstraint(id);
-        if (constraint.enabled() && isDynamicTableBuilt(category, constraint.archiveLevel())) {
-            createUniqueIndex(
-                    categoryId, dynamicTableName(category, constraint.archiveLevel()), constraint);
+        if (constraint.enabled()
+                && dynamicTableService.isDynamicTableBuilt(category, constraint.archiveLevel())) {
+            dynamicTableService.createUniqueIndex(
+                    dynamicTableService.dynamicTableName(category, constraint.archiveLevel()),
+                    constraint);
         }
         return constraint;
     }
@@ -707,10 +644,10 @@ public class ArchiveMetadataService {
         if (!current.categoryId().equals(categoryId)) {
             throw notFound("唯一约束不存在");
         }
-        dropIndexIfExists(current.indexName());
+        dynamicTableService.dropIndexIfExists(current.indexName());
         UniqueConstraintValues values = validateUniqueConstraintRequest(category, request);
         String indexName =
-                uniqueConstraintIndexName(
+                dynamicTableService.uniqueConstraintIndexName(
                         category.categoryCode(), values.archiveLevel(), values.constraintCode());
         int updated =
                 archiveMapper.updateUniqueConstraint(
@@ -728,9 +665,11 @@ public class ArchiveMetadataService {
         replaceUniqueConstraintFields(constraintId, values.fieldIds());
         markUniqueConstraintFieldsSearchable(category, values.fieldIds(), userId);
         ArchiveUniqueConstraintDto constraint = getUniqueConstraint(constraintId);
-        if (constraint.enabled() && isDynamicTableBuilt(category, constraint.archiveLevel())) {
-            createUniqueIndex(
-                    categoryId, dynamicTableName(category, constraint.archiveLevel()), constraint);
+        if (constraint.enabled()
+                && dynamicTableService.isDynamicTableBuilt(category, constraint.archiveLevel())) {
+            dynamicTableService.createUniqueIndex(
+                    dynamicTableService.dynamicTableName(category, constraint.archiveLevel()),
+                    constraint);
         }
         return constraint;
     }
@@ -743,7 +682,7 @@ public class ArchiveMetadataService {
         if (!constraint.categoryId().equals(categoryId)) {
             throw notFound("唯一约束不存在");
         }
-        dropIndexIfExists(constraint.indexName());
+        dynamicTableService.dropIndexIfExists(constraint.indexName());
         int updated = archiveMapper.deleteUniqueConstraint(constraintId, categoryId, userId);
         if (updated == 0) {
             throw notFound("唯一约束不存在");
@@ -782,135 +721,14 @@ public class ArchiveMetadataService {
                 .filter(field -> fieldIds.contains(field.id()))
                 .filter(
                         field ->
-                                isDynamicTableBuilt(
+                                dynamicTableService.isDynamicTableBuilt(
                                         category, field.archiveLevel(), field.fieldScope()))
                 .forEach(
                         field ->
-                                createExactIndex(
-                                        dynamicTableName(
+                                dynamicTableService.createExactIndex(
+                                        dynamicTableService.dynamicTableName(
                                                 category, field.archiveLevel(), field.fieldScope()),
                                         field.columnName()));
-    }
-
-    private void ensureColumn(String tableName, String columnName, String type) {
-        validateIdentifier(tableName, "动态表名非法");
-        validateIdentifier(columnName, "字段列名非法");
-        if (archiveMapper.columnExists(tableName, columnName) == 0) {
-            archiveMapper.executeSql(
-                    "alter table %s add column %s %s".formatted(tableName, columnName, type));
-        }
-    }
-
-    private String dynamicTableName(ArchiveCategoryDto category, ArchiveLevel archiveLevel) {
-        return dynamicTableName(category, archiveLevel, ArchiveFieldScope.METADATA);
-    }
-
-    private String dynamicTableName(
-            ArchiveCategoryDto category, ArchiveLevel archiveLevel, ArchiveFieldScope fieldScope) {
-        return ArchiveDynamicTableNames.tableName(category, archiveLevel, fieldScope);
-    }
-
-    private void syncDynamicColumnAfterFieldUpdate(
-            ArchiveCategoryDto category, ArchiveFieldDto before, ArchiveFieldDto after) {
-        if (before.archiveLevel() != after.archiveLevel()) {
-            throw badRequest("已建字段不允许修改适用层级");
-        }
-        if (!isDynamicTableBuilt(category, after.archiveLevel(), after.fieldScope())) {
-            return;
-        }
-        String tableName = dynamicTableName(category, after.archiveLevel(), after.fieldScope());
-        validateIdentifier(tableName, "动态表名非法");
-        validateIdentifier(before.columnName(), "字段列名非法");
-        validateIdentifier(after.columnName(), "字段列名非法");
-        if (archiveMapper.tableExists(tableName) == 0) {
-            return;
-        }
-        if (archiveMapper.columnExists(tableName, before.columnName()) == 0) {
-            ensureColumn(tableName, after.columnName(), fieldDefinitionService.sqlType(after));
-            return;
-        }
-        if (!before.columnName().equals(after.columnName())) {
-            if (archiveMapper.columnExists(tableName, after.columnName()) > 0) {
-                throw badRequest("动态表已存在同名字段列，不能修改字段编码");
-            }
-            archiveMapper.executeSql(
-                    "alter table %s rename column %s to %s"
-                            .formatted(tableName, before.columnName(), after.columnName()));
-        }
-        archiveMapper.executeSql(
-                "alter table %s alter column %s type %s"
-                        .formatted(
-                                tableName,
-                                after.columnName(),
-                                fieldDefinitionService.sqlType(after)));
-        if (after.exactSearchable()) {
-            createExactIndex(tableName, after.columnName());
-        }
-    }
-
-    private void createExactIndex(String tableName, String columnName) {
-        validateIdentifier(tableName, "动态表名非法");
-        validateIdentifier(columnName, "字段列名非法");
-        String indexName = "idx_" + tableName + "_" + columnName + "_active";
-        if (indexName.length() > 63) {
-            indexName = "idx_archive_exact_" + Math.abs((tableName + "_" + columnName).hashCode());
-        }
-        validateIdentifier(indexName, "索引名非法");
-        if (archiveMapper.indexExists(indexName) == 0) {
-            archiveMapper.executeSql(
-                    "create index %s on %s (%s) where deleted_flag = false"
-                            .formatted(indexName, tableName, columnName));
-        }
-    }
-
-    private void createUniqueIndex(
-            Long categoryId, String tableName, ArchiveUniqueConstraintDto constraint) {
-        validateIdentifier(tableName, "动态表名非法");
-        validateIdentifier(constraint.indexName(), "索引名非法");
-        List<String> columns =
-                constraint.fields().stream()
-                        .map(ArchiveUniqueConstraintFieldDto::columnName)
-                        .toList();
-        if (columns.isEmpty()) {
-            throw badRequest("唯一约束字段不能为空");
-        }
-        for (String column : columns) {
-            validateIdentifier(column, "唯一约束字段列名非法");
-        }
-        String indexColumns = String.join(", ", columns);
-        dropIndexIfExists(constraint.indexName());
-        archiveMapper.executeSql(
-                "create unique index %s on %s (%s) where deleted_flag = false"
-                        .formatted(constraint.indexName(), tableName, indexColumns));
-    }
-
-    private void dropIndexIfExists(String indexName) {
-        if (StringUtils.isBlank(indexName)) {
-            return;
-        }
-        validateIdentifier(indexName, "索引名非法");
-        archiveMapper.executeSql("drop index if exists %s".formatted(indexName));
-    }
-
-    private String uniqueConstraintIndexName(
-            String categoryCode, ArchiveLevel archiveLevel, String constraintCode) {
-        String seed =
-                categoryCode.toLowerCase(java.util.Locale.ROOT)
-                        + "_"
-                        + archiveLevel.value()
-                        + "_"
-                        + constraintCode;
-        return ArchiveDynamicTableNames.stableIdentifier("uk_am_archive_constraint_", seed);
-    }
-
-    private boolean isDynamicTableBuilt(ArchiveCategoryDto category, ArchiveLevel archiveLevel) {
-        return isDynamicTableBuilt(category, archiveLevel, ArchiveFieldScope.METADATA);
-    }
-
-    private boolean isDynamicTableBuilt(
-            ArchiveCategoryDto category, ArchiveLevel archiveLevel, ArchiveFieldScope fieldScope) {
-        String tableName = dynamicTableName(category, archiveLevel, fieldScope);
-        return StringUtils.isNotBlank(tableName) && archiveMapper.tableExists(tableName) > 0;
     }
 
     private ArchiveManagementMode normalizeManagementMode(
@@ -1370,14 +1188,6 @@ public class ArchiveMetadataService {
                 throw badRequest("不能将子分类设置为父级");
             }
             currentParentId = archiveMapper.findParentId(currentParentId);
-        }
-    }
-
-    private void validateIdentifier(String value, String message) {
-        if (StringUtils.isBlank(value)
-                || value.length() > POSTGRESQL_IDENTIFIER_LIMIT
-                || !IDENTIFIER_PATTERN.matcher(value).matches()) {
-            throw badRequest(message);
         }
     }
 
