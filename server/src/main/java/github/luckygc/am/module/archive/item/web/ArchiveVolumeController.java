@@ -26,8 +26,14 @@ public class ArchiveVolumeController {
     }
 
     @GetMapping("/api/v1/archive-volumes")
-    public CollectionResponse<ArchiveVolumeDto> listVolumes(String fondsCode, String categoryCode) {
-        return CollectionResponse.of(archiveVolumeService.listVolumes(fondsCode, categoryCode));
+    public CollectionResponse<ArchiveVolumeDto> listVolumes(
+            String fondsCode, String categoryCode, Authentication authentication) {
+        return CollectionResponse.of(
+                archiveVolumeService.listVolumes(
+                        fondsCode,
+                        categoryCode,
+                        AuthenticatedUsers.requireUserId(
+                                authentication == null ? null : authentication.getPrincipal())));
     }
 
     @PostMapping("/api/v1/archive-volumes")
@@ -41,8 +47,11 @@ public class ArchiveVolumeController {
     }
 
     @GetMapping("/api/v1/archive-volumes/{id}")
-    public ArchiveVolumeDto getVolume(@PathVariable Long id) {
-        return archiveVolumeService.getVolume(id);
+    public ArchiveVolumeDto getVolume(@PathVariable Long id, Authentication authentication) {
+        return archiveVolumeService.getVolume(
+                id,
+                AuthenticatedUsers.requireUserId(
+                        authentication == null ? null : authentication.getPrincipal()));
     }
 
     @PostMapping("/api/v1/archive-volumes/{id}:addItem")

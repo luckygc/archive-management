@@ -46,14 +46,7 @@ public class ArchiveItemElectronicFileLinkService implements FileLinkTargetResol
     @Transactional
     public DownloadLinkCreated createDownloadLink(
             Long archiveItemId, Long electronicFileId, Long userId) {
-        requirePermission(userId, PERMISSION_DOWNLOAD);
-        archiveItemRoutingService.assertItemInDataScope(archiveItemId, userId);
-        Long storageObjectId =
-                archiveMapper.getArchiveItemElectronicFileStorageObjectId(
-                        archiveItemId, electronicFileId);
-        if (storageObjectId == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "档案电子文件不存在");
-        }
+        validateLinkCreation(archiveItemId, electronicFileId, userId, PERMISSION_DOWNLOAD);
         FileLinkService.FileLinkCreated created =
                 fileLinkService.createUserLink(
                         FileLinkTargetType.ARCHIVE_ITEM_ELECTRONIC_FILE,
@@ -86,6 +79,18 @@ public class ArchiveItemElectronicFileLinkService implements FileLinkTargetResol
         }
         if (!permissionService.hasPermission(userId, permissionCode)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "权限不足");
+        }
+    }
+
+    private void validateLinkCreation(
+            Long archiveItemId, Long electronicFileId, Long userId, String permissionCode) {
+        requirePermission(userId, permissionCode);
+        archiveItemRoutingService.assertItemInDataScope(archiveItemId, userId);
+        Long storageObjectId =
+                archiveMapper.getArchiveItemElectronicFileStorageObjectId(
+                        archiveItemId, electronicFileId);
+        if (storageObjectId == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "档案电子文件不存在");
         }
     }
 

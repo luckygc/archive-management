@@ -42,7 +42,8 @@ public class AuthorizationPermissionController {
                 AuthenticatedUsers.requireUserId(
                         authentication == null ? null : authentication.getPrincipal());
         return new CurrentUserPermissionsResponse(
-                permissionService.listUserPermissionCodes(userId));
+                permissionService.listUserPermissionCodes(userId),
+                permissionService.isSuperAdmin(userId));
     }
 
     @GetMapping("/api/v1/authorization-roles/{role}/permissions")
@@ -68,7 +69,8 @@ public class AuthorizationPermissionController {
         return new RolePermissionsResponse(role, permissionService.listRolePermissionCodes(role));
     }
 
-    public record CurrentUserPermissionsResponse(List<String> permissionCodes) {}
+    public record CurrentUserPermissionsResponse(
+            List<String> permissionCodes, boolean superAdmin) {}
 
     public record RolePermissionsResponse(Long roleId, List<String> permissionCodes) {}
 

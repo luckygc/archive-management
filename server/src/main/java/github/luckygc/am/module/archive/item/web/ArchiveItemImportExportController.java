@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import github.luckygc.am.common.api.RawRequestStrings;
 import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.archive.item.service.ArchiveItemImportExportService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemImportExportService.ArchiveExcelFile;
@@ -73,7 +74,7 @@ public class ArchiveItemImportExportController {
 
     @PostMapping("/api/v1/archive-items:export")
     public ResponseEntity<ByteArrayResource> exportItems(
-            @RequestBody(required = false) SearchArchiveItemsRequest request,
+            @RawRequestStrings @RequestBody(required = false) SearchArchiveItemsRequest request,
             Authentication authentication) {
         return excelResponse(
                 importExportService.exportItems(

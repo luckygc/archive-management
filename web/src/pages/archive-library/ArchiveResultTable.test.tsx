@@ -23,7 +23,6 @@ describe("ArchiveResultTable", () => {
 
 function archiveResult(): ArchiveRecordListDto {
     return {
-        tableBuilt: true,
         fields: [
             {
                 id: 1,

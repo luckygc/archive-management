@@ -6,13 +6,12 @@ public record ArchiveDataScopeSqlGroup(
         List<String> fondsCodes,
         List<Long> securityLevelIds,
         List<Long> retentionPeriodIds,
-        List<Long> orgUnitIds,
         List<ArchiveSqlCondition> conditions) {
 
     public ArchiveDataScopeSqlGroup(
             List<String> fondsCodes,
             List<Long> securityLevelIds,
             List<ArchiveSqlCondition> conditions) {
-        this(fondsCodes, securityLevelIds, List.of(), List.of(), conditions);
+        this(fondsCodes, securityLevelIds, List.of(), conditions);
     }
 }

@@ -1,7 +1,7 @@
 import type {
     ArchiveItemRelatedGroup,
     ArchiveItemWhere,
-    SearchArchiveRecordsRequest,
+    SearchArchiveRecordsQuery,
 } from "@/shared/types/archive";
 import dayjs from "dayjs";
 
@@ -11,7 +11,7 @@ import type {
     RelatedGroupDraft,
 } from "./ArchiveAdvancedQueryPanel";
 
-export function toSearchQuery(values: ArchiveQueryFormValues): SearchArchiveRecordsRequest {
+export function toSearchQuery(values: ArchiveQueryFormValues): SearchArchiveRecordsQuery {
     return {
         categoryId: values.categoryId,
         fondsCode: trimToUndefined(values.fondsCode),
@@ -52,7 +52,7 @@ function normalizeWhere(
             startValue: trimUnknown(condition.startValue),
             endValue: trimUnknown(condition.endValue),
         }));
-    return normalized.length > 0 ? { logic: "AND", conditions: normalized } : undefined;
+    return normalized.length > 0 ? { conditions: normalized } : undefined;
 }
 
 function trimUnknown(value: unknown) {

@@ -34,7 +34,6 @@ import github.luckygc.am.module.archive.mapper.ArchiveSqlCondition;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFieldDto;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.OrganizationUnitDto;
 import github.luckygc.am.module.authentication.AuthenticationUser;
 import github.luckygc.am.module.authentication.repository.AuthenticationUserDataRepository;
 import github.luckygc.am.module.authorization.AuthorizationRole;
@@ -42,6 +41,8 @@ import github.luckygc.am.module.authorization.AuthorizationUserRoleRelation;
 import github.luckygc.am.module.authorization.repository.AuthorizationRoleDataRepository;
 import github.luckygc.am.module.authorization.repository.AuthorizationUserRoleRelationDataRepository;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
+import github.luckygc.am.module.organization.service.OrganizationDepartmentService;
+import github.luckygc.am.module.organization.service.OrganizationDepartmentService.OrganizationDepartmentResponse;
 
 @Service
 public class ArchiveDataScopeService {
@@ -52,6 +53,7 @@ public class ArchiveDataScopeService {
     private final AuthorizationRoleDataRepository roleRepository;
     private final AuthorizationUserRoleRelationDataRepository userRoleRelationRepository;
     private final AuthenticationUserDataRepository authenticationUserRepository;
+    private final OrganizationDepartmentService departmentService;
     private final ArchiveMetadataService archiveMetadataService;
 
     public ArchiveDataScopeService(
@@ -61,6 +63,7 @@ public class ArchiveDataScopeService {
             AuthorizationRoleDataRepository roleRepository,
             AuthorizationUserRoleRelationDataRepository userRoleRelationRepository,
             AuthenticationUserDataRepository authenticationUserRepository,
+            OrganizationDepartmentService departmentService,
             ArchiveMetadataService archiveMetadataService) {
         this.dataScopeRepository = dataScopeRepository;
         this.dimensionRepository = dimensionRepository;
@@ -68,6 +71,7 @@ public class ArchiveDataScopeService {
         this.roleRepository = roleRepository;
         this.userRoleRelationRepository = userRoleRelationRepository;
         this.authenticationUserRepository = authenticationUserRepository;
+        this.departmentService = departmentService;
         this.archiveMetadataService = archiveMetadataService;
     }
 
@@ -145,14 +149,7 @@ public class ArchiveDataScopeService {
         if (!role.isEnabled()) {
             throw new BadRequestException("角色已停用", "roleId", "角色已停用");
         }
-        List<Long> normalizedScopeIds =
-                scopeIds.stream().filter(Objects::nonNull).distinct().sorted().toList();
-        for (Long scopeId : normalizedScopeIds) {
-            ArchiveDataScope scope = loadScope(scopeId);
-            if (!scope.isEnabled()) {
-                throw new BadRequestException("数据范围已停用", "scopeIds", "数据范围已停用: " + scopeId);
-            }
-        }
+        List<Long> normalizedScopeIds = normalizeEnabledScopeIds(scopeIds);
         saveSubjectDataScopes(ArchiveDataScopeSubjectType.ROLE, roleId, normalizedScopeIds);
         return listRoleDataScopes(roleId);
     }
@@ -179,14 +176,7 @@ public class ArchiveDataScopeService {
         if (!user.isEnabled()) {
             throw new BadRequestException("用户已停用", "userId", "用户已停用");
         }
-        List<Long> normalizedScopeIds =
-                scopeIds.stream().filter(Objects::nonNull).distinct().sorted().toList();
-        for (Long scopeId : normalizedScopeIds) {
-            ArchiveDataScope scope = loadScope(scopeId);
-            if (!scope.isEnabled()) {
-                throw new BadRequestException("数据范围已停用", "scopeIds", "数据范围已停用: " + scopeId);
-            }
-        }
+        List<Long> normalizedScopeIds = normalizeEnabledScopeIds(scopeIds);
         saveSubjectDataScopes(ArchiveDataScopeSubjectType.USER, userId, normalizedScopeIds);
         return listUserDataScopes(userId);
     }
@@ -197,10 +187,37 @@ public class ArchiveDataScopeService {
                 userId, listSubjectScopeIds(ArchiveDataScopeSubjectType.USER, userId));
     }
 
+    @Transactional
+    public DepartmentArchiveDataScopesResponse saveDepartmentDataScopes(
+            Long departmentId, List<Long> scopeIds) {
+        OrganizationDepartmentResponse department =
+                departmentService.requireEnabledDepartment(departmentId);
+        List<Long> normalizedScopeIds = normalizeEnabledScopeIds(scopeIds);
+        saveSubjectDataScopes(
+                ArchiveDataScopeSubjectType.DEPARTMENT, department.id(), normalizedScopeIds);
+        return new DepartmentArchiveDataScopesResponse(
+                department.id(),
+                listSubjectScopeIds(ArchiveDataScopeSubjectType.DEPARTMENT, department.id()));
+    }
+
+    @Transactional(readOnly = true)
+    public DepartmentArchiveDataScopesResponse listDepartmentDataScopes(Long departmentId) {
+        OrganizationDepartmentResponse department = departmentService.getDepartment(departmentId);
+        if (!department.enabled()) {
+            return new DepartmentArchiveDataScopesResponse(department.id(), List.of());
+        }
+        return new DepartmentArchiveDataScopesResponse(
+                department.id(),
+                listSubjectScopeIds(ArchiveDataScopeSubjectType.DEPARTMENT, department.id()));
+    }
+
     @Transactional(readOnly = true)
     public ResolvedArchiveDataScope resolveUserDataScope(Long userId) {
         List<ResolvedScope> scopes = new ArrayList<>();
         if (appendSubjectScopes(ArchiveDataScopeSubjectType.USER, userId, scopes)) {
+            return ResolvedArchiveDataScope.all();
+        }
+        if (appendUserDepartmentScopes(userId, scopes)) {
             return ResolvedArchiveDataScope.all();
         }
         for (AuthorizationUserRoleRelation userRole :
@@ -243,7 +260,6 @@ public class ArchiveDataScopeService {
             List<String> scopeFondsCodes = new ArrayList<>();
             List<Long> scopeSecurityLevelIds = new ArrayList<>();
             List<Long> scopeRetentionPeriodIds = new ArrayList<>();
-            List<Long> scopeOrgUnitIds = new ArrayList<>();
             boolean scopeHasCategoryDimension = false;
             boolean scopeCategoryMatched = false;
             for (ArchiveDataScopeDimension dimension : scope.dimensions()) {
@@ -269,11 +285,6 @@ public class ArchiveDataScopeService {
                             scopeRetentionPeriodIds.add(dimension.getTargetId());
                         }
                     }
-                    case ORG_UNIT -> {
-                        if (dimension.getTargetId() != null) {
-                            scopeOrgUnitIds.add(dimension.getTargetId());
-                        }
-                    }
                 }
             }
             if (scopeHasCategoryDimension && !scopeCategoryMatched) {
@@ -297,8 +308,6 @@ public class ArchiveDataScopeService {
                             .distinct()
                             .sorted()
                             .toList();
-            List<Long> normalizedOrgUnitIds =
-                    scopeOrgUnitIds.stream().filter(Objects::nonNull).distinct().sorted().toList();
             if (fondsCode != null
                     && !normalizedFondsCodes.isEmpty()
                     && !normalizedFondsCodes.contains(fondsCode)) {
@@ -316,7 +325,6 @@ public class ArchiveDataScopeService {
                             normalizedFondsCodes,
                             normalizedSecurityLevelIds,
                             normalizedRetentionPeriodIds,
-                            normalizedOrgUnitIds,
                             dynamicConditions));
         }
         return groups.isEmpty()
@@ -329,7 +337,6 @@ public class ArchiveDataScopeService {
             @Nullable String fondsCode,
             @Nullable Long securityLevelId,
             @Nullable Long retentionPeriodId,
-            @Nullable Long orgUnitId,
             Map<String, @Nullable Object> dynamicRow) {
         if (filter.allData()) {
             return true;
@@ -345,9 +352,6 @@ public class ArchiveDataScopeService {
                 continue;
             }
             if (!matchesRetentionPeriod(group.retentionPeriodIds(), retentionPeriodId)) {
-                continue;
-            }
-            if (!matchesOrgUnit(group.orgUnitIds(), orgUnitId)) {
                 continue;
             }
             if (group.conditions().stream()
@@ -374,11 +378,6 @@ public class ArchiveDataScopeService {
         return allowedRetentionPeriodIds.isEmpty()
                 || (retentionPeriodId != null
                         && allowedRetentionPeriodIds.contains(retentionPeriodId));
-    }
-
-    private boolean matchesOrgUnit(List<Long> allowedOrgUnitIds, @Nullable Long orgUnitId) {
-        return allowedOrgUnitIds.isEmpty()
-                || (orgUnitId != null && allowedOrgUnitIds.contains(orgUnitId));
     }
 
     private boolean matchesCondition(
@@ -554,17 +553,6 @@ public class ArchiveDataScopeService {
                                 "保管期限范围必须指定保管期限 ID", "dimensions", "保管期限范围必须指定保管期限 ID");
                     }
                 }
-                case ORG_UNIT -> {
-                    if (dimension.getTargetId() == null) {
-                        throw new BadRequestException(
-                                "组织单元范围必须指定组织单元 ID", "dimensions", "组织单元范围必须指定组织单元 ID");
-                    }
-                    OrganizationUnitDto unit =
-                            archiveMetadataService.getOrganizationUnit(dimension.getTargetId());
-                    if (!unit.enabled()) {
-                        throw new BadRequestException("组织单元已停用", "dimensions", "组织单元已停用");
-                    }
-                }
             }
         }
     }
@@ -697,6 +685,21 @@ public class ArchiveDataScopeService {
         }
     }
 
+    private List<Long> normalizeEnabledScopeIds(List<Long> scopeIds) {
+        if (scopeIds == null) {
+            return List.of();
+        }
+        List<Long> normalizedScopeIds =
+                scopeIds.stream().filter(Objects::nonNull).distinct().sorted().toList();
+        for (Long scopeId : normalizedScopeIds) {
+            ArchiveDataScope scope = loadScope(scopeId);
+            if (!scope.isEnabled()) {
+                throw new BadRequestException("数据范围已停用", "scopeIds", "数据范围已停用: " + scopeId);
+            }
+        }
+        return normalizedScopeIds;
+    }
+
     private void saveSubjectDataScopes(
             ArchiveDataScopeSubjectType subjectType, Long subjectId, List<Long> scopeIds) {
         subjectRelationRepository.deleteBySubjectTypeAndSubjectId(subjectType, subjectId);
@@ -718,6 +721,19 @@ public class ArchiveDataScopeService {
                 .distinct()
                 .sorted()
                 .toList();
+    }
+
+    private boolean appendUserDepartmentScopes(Long userId, List<ResolvedScope> scopes) {
+        AuthenticationUser user = authenticationUserRepository.findById(userId).orElse(null);
+        if (user == null || !user.isEnabled() || user.getDepartmentId() == null) {
+            return false;
+        }
+        OrganizationDepartmentResponse department =
+                departmentService.getDepartment(user.getDepartmentId());
+        if (!department.enabled()) {
+            return false;
+        }
+        return appendSubjectScopes(ArchiveDataScopeSubjectType.DEPARTMENT, department.id(), scopes);
     }
 
     private boolean appendSubjectScopes(
@@ -835,4 +851,6 @@ public class ArchiveDataScopeService {
     public record RoleArchiveDataScopesResponse(Long roleId, List<Long> scopeIds) {}
 
     public record UserArchiveDataScopesResponse(Long userId, List<Long> scopeIds) {}
+
+    public record DepartmentArchiveDataScopesResponse(Long departmentId, List<Long> scopeIds) {}
 }

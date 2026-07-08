@@ -39,7 +39,7 @@ export function LoginSessionsPage() {
             width: 180,
             render: (_value, row) => (
                 <Space size={6}>
-                    <span>{row.displayName || row.username}</span>
+                    <span>{row.displayName || "-"}</span>
                     {row.current ? <Tag color="blue">当前</Tag> : null}
                 </Space>
             ),

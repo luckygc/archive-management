@@ -65,7 +65,6 @@
                electronic_status,
                security_level_id,
                retention_period_id,
-               org_unit_id,
                archive_year,
                display_order,
                created_at,
@@ -113,41 +112,17 @@
         order by related_category_name, related_category_id
     </select>
 
-    <select id="listDynamicItems" resultType="map">
-        select i.id,
-               i.volume_id,
-               i.fonds_code,
-               i.fonds_name,
-               i.category_code,
-               i.category_name,
-               i.archive_no,
-               i.electronic_status,
-               i.security_level_id,
-               i.retention_period_id,
-               i.org_unit_id,
-               i.archive_year,
-               i.display_order,
-               i.created_at,
-               i.deleted_at,
-               i.deleted_by,
-               i.locked_flag,
-               i.lock_reason,
-               i.locked_by,
-               i.locked_at
-               ${selectColumns}
+    <sql id="dynamicItemFromWhere">
         from am_archive_item i
-        join ${tableName} d on d.id = i.id
-        where i.deleted_flag = #{deleted}
-          and d.deleted_flag = #{deleted}
-        <if test="requireAuthenticatedUser">
-            and #{userId} is not null
+        join ${source.tableName} d on d.id = i.id
+        where i.deleted_flag = #{source.deleted}
+          and d.deleted_flag = #{source.deleted}
+        <if test="criteria.requestedFondsCode != null and criteria.requestedFondsCode != ''">
+            and i.fonds_code = #{criteria.requestedFondsCode}
         </if>
-        <if test="fondsCode != null and fondsCode != ''">
-            and i.fonds_code = #{fondsCode}
-        </if>
-        <if test="dataScopeGroups != null and dataScopeGroups.size > 0">
+        <if test="criteria.dataScopeGroups != null and criteria.dataScopeGroups.size > 0">
             and (
-            <foreach collection="dataScopeGroups" item="group" separator=" or ">
+            <foreach collection="criteria.dataScopeGroups" item="group" separator=" or ">
                 (
                 <if test="group.fondsCodes != null and group.fondsCodes.size > 0">
                     i.fonds_code in
@@ -197,24 +172,15 @@
                         #{dataScopeRetentionPeriodId}
                     </foreach>
                 </if>
-                <if test="group.orgUnitIds != null and group.orgUnitIds.size > 0">
-                    <if test="(group.fondsCodes != null and group.fondsCodes.size > 0) or (group.securityLevelIds != null and group.securityLevelIds.size > 0) or (group.retentionPeriodIds != null and group.retentionPeriodIds.size > 0) or (group.conditions != null and group.conditions.size > 0)">
-                        and
-                    </if>
-                    i.org_unit_id in
-                    <foreach collection="group.orgUnitIds" item="dataScopeOrgUnitId" open="(" separator="," close=")">
-                        #{dataScopeOrgUnitId}
-                    </foreach>
-                </if>
-                <if test="(group.fondsCodes == null or group.fondsCodes.size == 0) and (group.securityLevelIds == null or group.securityLevelIds.size == 0) and (group.retentionPeriodIds == null or group.retentionPeriodIds.size == 0) and (group.orgUnitIds == null or group.orgUnitIds.size == 0) and (group.conditions == null or group.conditions.size == 0)">
+                <if test="(group.fondsCodes == null or group.fondsCodes.size == 0) and (group.securityLevelIds == null or group.securityLevelIds.size == 0) and (group.retentionPeriodIds == null or group.retentionPeriodIds.size == 0) and (group.conditions == null or group.conditions.size == 0)">
                     false
                 </if>
                 )
             </foreach>
             )
         </if>
-        <if test="conditions != null">
-            <foreach collection="conditions" item="condition">
+        <if test="criteria.conditions != null">
+            <foreach collection="criteria.conditions" item="condition">
                 <choose>
                     <when test="condition.operatorName == 'EQ'">
                         and d.${condition.columnName} = #{condition.value}
@@ -256,8 +222,8 @@
                 </choose>
             </foreach>
         </if>
-        <if test="relatedGroups != null">
-            <foreach collection="relatedGroups" item="group">
+        <if test="criteria.relatedGroups != null">
+            <foreach collection="criteria.relatedGroups" item="group">
                 and exists (
                     select 1
                     from am_archive_item_relation rel
@@ -312,22 +278,81 @@
                 )
             </foreach>
         </if>
-        <if test="fullTextKeyword != null and fullTextKeyword != ''">
+        <if test="criteria.fullTextKeyword != null and criteria.fullTextKeyword != ''">
             and exists (
                 select 1
                 from am_archive_item_search s
                 where s.archive_item_id = i.id
                   and (
-                      s.search_text ilike '%' || replace(replace(#{fullTextKeyword}, '%', '\%'), '_', '\_') || '%' escape '\'
-                      or s.search_text % #{fullTextKeyword}
+                      s.search_text ilike '%' || replace(replace(#{criteria.fullTextKeyword}, '%', '\%'), '_', '\_') || '%' escape '\'
+                      or s.search_text % #{criteria.fullTextKeyword}
                   )
             )
         </if>
-        <if test="cursorPredicateSql != null and cursorPredicateSql != ''">
-            and (${cursorPredicateSql})
+    </sql>
+
+    <select id="listDynamicItems" resultType="map">
+        select i.id,
+               i.volume_id,
+               i.fonds_code,
+               i.fonds_name,
+               i.category_code,
+               i.category_name,
+               i.archive_no,
+               i.electronic_status,
+               i.security_level_id,
+               i.retention_period_id,
+               i.archive_year,
+               i.display_order,
+               i.created_at,
+               i.deleted_at,
+               i.deleted_by,
+               i.locked_flag,
+               i.lock_reason,
+               i.locked_by,
+               i.locked_at
+               <foreach collection="projection.fields" item="field">
+                   , d.${field}
+               </foreach>
+        <include refid="dynamicItemFromWhere"/>
+        <if test="page.cursorPredicates != null and page.cursorPredicates.size > 0">
+            and (
+            <foreach collection="page.cursorPredicates" item="predicate" separator=" or ">
+                (
+                <foreach collection="predicate.equalsComparisons" item="comparison" separator=" and ">
+                    ${comparison.expression} = #{comparison.value}
+                </foreach>
+                <if test="predicate.equalsComparisons != null and predicate.equalsComparisons.size > 0">
+                    and
+                </if>
+                ${predicate.rangeComparison.expression}
+                <choose>
+                    <when test="predicate.rangeComparison.operatorName == 'GT'">
+                        &gt;
+                    </when>
+                    <otherwise>
+                        &lt;
+                    </otherwise>
+                </choose>
+                #{predicate.rangeComparison.value}
+                )
+            </foreach>
+            )
         </if>
-        order by ${orderBySql}
-        limit #{limit}
+        order by
+        <foreach collection="page.orders" item="order" separator=", ">
+            ${order.expression}
+            <choose>
+                <when test="order.directionName == 'ASC'">asc</when>
+                <otherwise>desc</otherwise>
+            </choose>
+        </foreach>
+        limit #{page.limit}
+    </select>
+
+    <select id="countDynamicItems" resultType="int">
+        select count(1)
+        <include refid="dynamicItemFromWhere"/>
     </select>
 
     <select id="listItemsForSearchRebuild" resultType="map">
@@ -344,12 +369,12 @@
     <select id="insertArchiveItem" resultType="long">
         insert into am_archive_item
             (volume_id, fonds_code, fonds_name, category_code, category_name,
-             archive_no, electronic_status, security_level_id, retention_period_id, org_unit_id,
-             archive_year, created_by, updated_by)
+             archive_no, electronic_status, security_level_id, retention_period_id,
+             archive_year, governance_scheme_version_id, created_by, updated_by)
         values
             (#{volumeId}, #{fondsCode}, #{fondsName}, #{categoryCode}, #{categoryName},
-             #{archiveNo}, #{electronicStatus}, #{securityLevelId}, #{retentionPeriodId}, #{orgUnitId},
-             #{archiveYear}, #{userId}, #{userId})
+             #{archiveNo}, #{electronicStatus}, #{securityLevelId}, #{retentionPeriodId},
+             #{archiveYear}, #{governanceSchemeVersionId}, #{userId}, #{userId})
         returning id
     </select>
 
@@ -381,7 +406,6 @@
             electronic_status = #{electronicStatus},
             security_level_id = #{securityLevelId},
             retention_period_id = #{retentionPeriodId},
-            org_unit_id = #{orgUnitId},
             archive_year = #{archiveYear},
             updated_by = #{userId},
             version = version + 1,
@@ -425,7 +449,6 @@
                electronic_status,
                security_level_id,
                retention_period_id,
-               org_unit_id,
                archive_year,
                locked_flag,
                lock_reason,
@@ -481,10 +504,10 @@
     <select id="insertArchiveVolume" resultType="long">
         insert into am_archive_volume
             (fonds_code, fonds_name, category_code, category_name,
-             archive_no, electronic_status, archive_year, created_by, updated_by)
+             archive_no, electronic_status, archive_year, governance_scheme_version_id, created_by, updated_by)
         values
             (#{fondsCode}, #{fondsName}, #{categoryCode}, #{categoryName},
-             #{archiveNo}, #{electronicStatus}, #{archiveYear}, #{userId}, #{userId})
+             #{archiveNo}, #{electronicStatus}, #{archiveYear}, #{governanceSchemeVersionId}, #{userId}, #{userId})
         returning id
     </select>
 

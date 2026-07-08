@@ -1,5 +1,7 @@
 package github.luckygc.am.module.authorization.web;
 
+import jakarta.data.page.PageRequest;
+
 import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -13,7 +15,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import github.luckygc.am.common.api.CursorPageRequest;
 import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.authorization.service.AuthorizationRoleManagementService;
@@ -33,7 +34,7 @@ public class AuthorizationRoleManagementController {
     @GetMapping("/api/v1/authorization-roles")
     public CursorPageResponse<AuthorizationRoleDto> listRoles(
             @RequestParam(required = false) @Nullable Boolean enabled,
-            CursorPageRequest page,
+            PageRequest page,
             @Nullable Authentication authentication) {
         return roleService.listRoles(
                 enabled,

@@ -83,7 +83,7 @@ create index idx_am_archive_data_scope_dimension_scope_id
 
 comment on table am_archive_data_scope_dimension is '档案数据范围固定维度条件表';
 comment on column am_archive_data_scope_dimension.scope_id is '数据范围 ID';
-comment on column am_archive_data_scope_dimension.dimension_type is '维度类型：FONDS、CATEGORY、SECURITY_LEVEL、RETENTION_PERIOD、ORG_UNIT';
+comment on column am_archive_data_scope_dimension.dimension_type is '维度类型：FONDS、CATEGORY、SECURITY_LEVEL、RETENTION_PERIOD';
 comment on column am_archive_data_scope_dimension.target_id is '目标 ID，例如分类 ID';
 comment on column am_archive_data_scope_dimension.target_code is '目标编码，例如全宗编码或密级编码';
 comment on column am_archive_data_scope_dimension.include_descendants is '是否包含树形子级';
@@ -105,7 +105,7 @@ create index idx_am_archive_data_scope_subject_rel_scope_id
     on am_archive_data_scope_subject_rel (scope_id);
 
 comment on table am_archive_data_scope_subject_rel is '档案数据范围授权主体关系表';
-comment on column am_archive_data_scope_subject_rel.subject_type is '授权主体类型：ROLE、USER、ORG_UNIT';
+comment on column am_archive_data_scope_subject_rel.subject_type is '授权主体类型：ROLE、USER、DEPARTMENT';
 comment on column am_archive_data_scope_subject_rel.subject_id is '授权主体 ID；组织主体由后续组织模块定义';
 comment on column am_archive_data_scope_subject_rel.scope_id is '档案数据范围 ID';
 
@@ -122,9 +122,7 @@ values
     ('archive:item:update', '修改档案', 'archive', '修改档案条目和案卷'),
     ('archive:item:delete', '删除档案', 'archive', '逻辑删除档案条目和案卷'),
     ('archive:item:lock', '锁定档案', 'archive', '锁定和解锁档案条目'),
-    ('archive:item:preview-electronic-file', '预览档案电子文件', 'archive', '在线预览档案电子文件'),
     ('archive:item:download-electronic-file', '下载档案电子文件', 'archive', '下载档案电子文件或创建下载短链'),
-    ('archive:audit:read', '查询档案审计', 'archive', '查询档案操作审计'),
     ('archive:export', '导出档案', 'archive', '按查询条件导出档案数据'),
     ('archive:metadata:manage', '管理档案元数据', 'archive', '维护全宗、分类、字段、布局、密级和保管期限'),
     ('authorization:permission:manage', '管理功能权限', 'authorization', '查看权限点并维护角色功能权限'),
@@ -132,7 +130,8 @@ values
     ('authentication:audit:read', '查询认证审计', 'authentication', '查询登录、退出和踢下线审计事件'),
     ('archive:data-scope:manage', '管理档案数据范围', 'archive', '维护档案数据范围和主体范围绑定'),
     ('authentication:user:manage', '管理用户', 'authentication', '创建、编辑用户和分配角色'),
-    ('authorization:role:manage', '管理角色', 'authorization', '创建、编辑和删除角色');
+    ('authorization:role:manage', '管理角色', 'authorization', '创建、编辑和删除角色'),
+    ('organization:department:manage', '管理组织架构', 'organization', '维护组织架构部门树');
 
 insert into am_archive_data_scope (scope_code, scope_name, scope_type, description)
 values ('*', '全部档案', 'ALL', '系统内置任意档案数据范围');

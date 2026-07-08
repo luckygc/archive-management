@@ -15,39 +15,71 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.exception.BadRequestException;
+import github.luckygc.am.common.security.AuthenticatedUsers;
+import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
+import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService.ArchiveDataScopeFilter;
+import github.luckygc.am.module.archive.governance.service.ArchiveGovernanceService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveItemDto;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.metadata.ArchiveManagementMode;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFondsDto;
+import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
 
 @Service
 public class ArchiveVolumeService {
 
+    private static final String PERMISSION_ITEM_READ = "archive:item:read";
+    private static final String PERMISSION_ITEM_CREATE = "archive:item:create";
+    private static final String PERMISSION_ITEM_UPDATE = "archive:item:update";
+
     private final ArchiveMapper archiveMapper;
     private final ArchiveMetadataService archiveMetadataService;
+    private final ArchiveGovernanceService governanceService;
     private final ArchiveItemRoutingService archiveItemRoutingService;
+    private final AuthorizationPermissionService permissionService;
+    private final ArchiveDataScopeService dataScopeService;
 
     public ArchiveVolumeService(
             ArchiveMapper archiveMapper,
             ArchiveMetadataService archiveMetadataService,
-            ArchiveItemRoutingService archiveItemRoutingService) {
+            ArchiveGovernanceService governanceService,
+            ArchiveItemRoutingService archiveItemRoutingService,
+            AuthorizationPermissionService permissionService,
+            ArchiveDataScopeService dataScopeService) {
         this.archiveMapper = archiveMapper;
         this.archiveMetadataService = archiveMetadataService;
+        this.governanceService = governanceService;
         this.archiveItemRoutingService = archiveItemRoutingService;
+        this.permissionService = permissionService;
+        this.dataScopeService = dataScopeService;
     }
 
-    public List<ArchiveVolumeDto> listVolumes(String fondsCode, String categoryCode) {
+    public List<ArchiveVolumeDto> listVolumes(String fondsCode, String categoryCode, Long userId) {
+        requirePermission(userId, PERMISSION_ITEM_READ);
         return archiveMapper
                 .listArchiveVolumes(
                         StringUtils.trimToNull(fondsCode), StringUtils.trimToNull(categoryCode))
                 .stream()
                 .map(this::toVolumeDto)
+                .filter(volume -> volumeInDataScope(volume, userId))
                 .toList();
     }
 
-    public ArchiveVolumeDto getVolume(Long id) {
+    public ArchiveVolumeDto getVolume(Long id, Long userId) {
+        requirePermission(userId, PERMISSION_ITEM_READ);
+        ArchiveVolumeDto volume = loadVolume(id);
+        assertVolumeInDataScope(volume, userId);
+        return volume;
+    }
+
+    public void assertVolumeInDataScope(Long id, Long userId) {
+        ArchiveVolumeDto volume = loadVolume(id);
+        assertVolumeInDataScope(volume, userId);
+    }
+
+    private ArchiveVolumeDto loadVolume(Long id) {
         Map<String, Object> row = archiveMapper.getArchiveVolume(id);
         if (row == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "案卷不存在");
@@ -57,6 +89,7 @@ public class ArchiveVolumeService {
 
     @Transactional
     public ArchiveVolumeDto createVolume(CreateArchiveVolumeRequest request, Long userId) {
+        requirePermission(userId, PERMISSION_ITEM_CREATE);
         if (request == null) {
             throw new BadRequestException("请求体不能为空");
         }
@@ -71,10 +104,16 @@ public class ArchiveVolumeService {
             throw new BadRequestException("该分类未启用案卷管理");
         }
         ArchiveFondsDto fonds = archiveMetadataService.getEnabledFondsByCode(request.fondsCode());
+        assertProposedVolumeInDataScope(userId, category, fonds.fondsCode());
         int archiveYear =
                 request.archiveYear() == null ? Year.now().getValue() : request.archiveYear();
         String archiveNo = StringUtils.trimToNull(request.archiveNo());
         ensureVolumeArchiveNoUnique(category.categoryCode(), archiveNo);
+        Long governanceSchemeVersionId =
+                governanceService
+                        .requireDefaultVersionForNewArchive(
+                                fonds.fondsCode(), category.categoryCode())
+                        .getId();
         Long id;
         try {
             id =
@@ -86,11 +125,14 @@ public class ArchiveVolumeService {
                             archiveNo,
                             StringUtils.defaultIfBlank(request.electronicStatus(), "DRAFT"),
                             archiveYear,
+                            governanceSchemeVersionId,
                             userId);
         } catch (DuplicateKeyException exception) {
             throw duplicateArchiveNo();
         }
-        return getVolume(id);
+        ArchiveVolumeDto volume = loadVolume(id);
+        assertVolumeInDataScope(volume, userId);
+        return volume;
     }
 
     private void ensureVolumeArchiveNoUnique(String categoryCode, @Nullable String archiveNo) {
@@ -109,7 +151,10 @@ public class ArchiveVolumeService {
     @Transactional
     public void addItemToVolume(
             Long volumeId, Long archiveItemId, Integer displayOrder, Long userId) {
-        ArchiveVolumeDto volume = getVolume(volumeId);
+        requirePermission(userId, PERMISSION_ITEM_UPDATE);
+        ArchiveVolumeDto volume = loadVolume(volumeId);
+        assertVolumeInDataScope(volume, userId);
+        archiveItemRoutingService.assertItemInDataScope(archiveItemId, userId);
         archiveItemRoutingService.ensureItemEditable(archiveItemId);
         ArchiveItemDto item = archiveItemRoutingService.getItem(archiveItemId);
         if (!volume.fondsCode().equals(item.fondsCode())
@@ -122,6 +167,62 @@ public class ArchiveVolumeService {
         if (updated == 0) {
             throw new BadRequestException("档案条目已锁定或不存在，不能加入案卷");
         }
+    }
+
+    private void requirePermission(Long userId, String permissionCode) {
+        userId = AuthenticatedUsers.requireResolvedUserId(userId);
+        if (!permissionService.hasPermission(userId, permissionCode)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "权限不足");
+        }
+    }
+
+    private boolean volumeInDataScope(ArchiveVolumeDto volume, Long userId) {
+        try {
+            assertVolumeInDataScope(volume, userId);
+            return true;
+        } catch (ResponseStatusException exception) {
+            if (exception.getStatusCode() == HttpStatus.FORBIDDEN) {
+                return false;
+            }
+            throw exception;
+        }
+    }
+
+    private void assertVolumeInDataScope(ArchiveVolumeDto volume, Long userId) {
+        ArchiveCategoryDto category = getCategoryByCode(volume.categoryCode());
+        ArchiveDataScopeFilter filter =
+                dataScopeService.buildItemFilter(userId, category.id(), volume.fondsCode());
+        if (filter.empty()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "数据范围不足");
+        }
+        if (filter.allData()) {
+            return;
+        }
+        if (!dataScopeService.matchesItemFilter(filter, volume.fondsCode(), null, null, Map.of())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "数据范围不足");
+        }
+    }
+
+    private void assertProposedVolumeInDataScope(
+            Long userId, ArchiveCategoryDto category, String fondsCode) {
+        ArchiveDataScopeFilter filter =
+                dataScopeService.buildItemFilter(userId, category.id(), fondsCode);
+        if (filter.empty()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "数据范围不足");
+        }
+        if (filter.allData()) {
+            return;
+        }
+        if (!dataScopeService.matchesItemFilter(filter, fondsCode, null, null, Map.of())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "数据范围不足");
+        }
+    }
+
+    private ArchiveCategoryDto getCategoryByCode(String categoryCode) {
+        return archiveMetadataService.listCategories(null).stream()
+                .filter(category -> category.categoryCode().equals(categoryCode))
+                .findFirst()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "档案分类不存在"));
     }
 
     private ArchiveVolumeDto toVolumeDto(Map<String, Object> row) {

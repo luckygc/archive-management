@@ -22,21 +22,31 @@ import org.springframework.web.server.ResponseStatusException;
 import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveCategoryDataRepository;
+import github.luckygc.am.module.archive.metadata.repository.ArchiveClassificationSchemeDataRepository;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveFieldDataRepository;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveFieldLayoutDataRepository;
+import github.luckygc.am.module.archive.metadata.repository.ArchiveFondsCategoryScopeDataRepository;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveFondsDataRepository;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveRetentionPeriodDataRepository;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveSecurityLevelDataRepository;
-import github.luckygc.am.module.archive.metadata.repository.OrganizationUnitDataRepository;
+import github.luckygc.am.module.archive.metadata.service.ArchiveDynamicTableService;
+import github.luckygc.am.module.archive.metadata.service.ArchiveFieldDefinitionService;
+import github.luckygc.am.module.archive.metadata.service.ArchiveFieldLayoutService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveClassificationSchemeDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveClassificationSchemeRequest;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFondsCategoryScopeRequest;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveUniqueConstraintDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveUniqueConstraintRequest;
+import github.luckygc.am.module.archive.metadata.service.ArchiveUniqueConstraintService;
 
 @DisplayName("档案元数据服务")
 class ArchiveMetadataServiceTests {
 
     private ArchiveMapper archiveMapper;
     private ArchiveFondsDataRepository fondsRepository;
+    private ArchiveClassificationSchemeDataRepository classificationSchemeRepository;
+    private ArchiveFondsCategoryScopeDataRepository fondsCategoryScopeRepository;
     private ArchiveCategoryDataRepository categoryRepository;
     private ArchiveFieldDataRepository fieldRepository;
     private ArchiveMetadataService service;
@@ -45,6 +55,8 @@ class ArchiveMetadataServiceTests {
     void setUp() {
         archiveMapper = mock(ArchiveMapper.class);
         fondsRepository = mock(ArchiveFondsDataRepository.class);
+        classificationSchemeRepository = mock(ArchiveClassificationSchemeDataRepository.class);
+        fondsCategoryScopeRepository = mock(ArchiveFondsCategoryScopeDataRepository.class);
         categoryRepository = mock(ArchiveCategoryDataRepository.class);
         fieldRepository = mock(ArchiveFieldDataRepository.class);
         ArchiveFieldLayoutDataRepository fieldLayoutRepository =
@@ -53,18 +65,149 @@ class ArchiveMetadataServiceTests {
                 mock(ArchiveSecurityLevelDataRepository.class);
         ArchiveRetentionPeriodDataRepository retentionPeriodRepository =
                 mock(ArchiveRetentionPeriodDataRepository.class);
-        OrganizationUnitDataRepository organizationUnitRepository =
-                mock(OrganizationUnitDataRepository.class);
+        ArchiveFieldDefinitionService fieldDefinitionService = new ArchiveFieldDefinitionService();
+        ArchiveDynamicTableService dynamicTableService =
+                new ArchiveDynamicTableService(archiveMapper, fieldDefinitionService);
+        ArchiveFieldLayoutService fieldLayoutService =
+                new ArchiveFieldLayoutService(fieldLayoutRepository, fieldDefinitionService);
+        ArchiveUniqueConstraintService uniqueConstraintService =
+                new ArchiveUniqueConstraintService(
+                        archiveMapper, fieldDefinitionService, dynamicTableService);
         service =
                 new ArchiveMetadataService(
                         archiveMapper,
                         fondsRepository,
+                        classificationSchemeRepository,
+                        fondsCategoryScopeRepository,
                         categoryRepository,
                         fieldRepository,
-                        fieldLayoutRepository,
                         securityLevelRepository,
                         retentionPeriodRepository,
-                        organizationUnitRepository);
+                        fieldDefinitionService,
+                        dynamicTableService,
+                        fieldLayoutService,
+                        uniqueConstraintService);
+    }
+
+    @Test
+    @DisplayName("创建分类方案时保存编码名称和审计人")
+    void createClassificationSchemeShouldPersistScheme() {
+        when(classificationSchemeRepository.findBySchemeCode("enterprise_project"))
+                .thenReturn(null);
+        when(classificationSchemeRepository.insert(
+                        org.mockito.ArgumentMatchers.any(ArchiveClassificationScheme.class)))
+                .thenAnswer(invocation -> withSchemeId(invocation.getArgument(0), 5L));
+
+        ArchiveClassificationSchemeDto response =
+                service.createClassificationScheme(
+                        new ArchiveClassificationSchemeRequest(
+                                " enterprise_project ", " 企业项目档案分类 ", " 项目制度 ", true, 3),
+                        9L);
+
+        assertThat(response.id()).isEqualTo(5L);
+        assertThat(response.schemeCode()).isEqualTo("enterprise_project");
+        assertThat(response.schemeName()).isEqualTo("企业项目档案分类");
+    }
+
+    @Test
+    @DisplayName("创建分类时必须归属启用分类方案")
+    void createCategoryShouldRequireEnabledClassificationScheme() {
+        ArchiveClassificationScheme scheme = scheme(8L, "default_classification", true);
+        when(classificationSchemeRepository.findById(8L)).thenReturn(Optional.of(scheme));
+        when(categoryRepository.insert(org.mockito.ArgumentMatchers.any(ArchiveCategory.class)))
+                .thenAnswer(invocation -> withCategoryId(invocation.getArgument(0), 12L));
+
+        ArchiveMetadataService.ArchiveCategoryDto response =
+                service.createCategory(
+                        new ArchiveMetadataService.ArchiveCategoryRequest(
+                                8L,
+                                "contract",
+                                "合同档案",
+                                null,
+                                ArchiveManagementMode.ITEM_ONLY,
+                                true,
+                                0),
+                        9L);
+
+        assertThat(response.schemeId()).isEqualTo(8L);
+        assertThat(response.categoryCode()).isEqualTo("contract");
+    }
+
+    @Test
+    @DisplayName("拒绝把不同分类方案下的分类设置为父级")
+    void createCategoryShouldRejectParentFromDifferentScheme() {
+        ArchiveClassificationScheme scheme = scheme(8L, "default_classification", true);
+        ArchiveCategory parent = category(20L, ArchiveManagementMode.ITEM_ONLY);
+        parent.setSchemeId(7L);
+        when(classificationSchemeRepository.findById(8L)).thenReturn(Optional.of(scheme));
+        when(categoryRepository.findById(20L)).thenReturn(Optional.of(parent));
+
+        assertThatThrownBy(
+                        () ->
+                                service.createCategory(
+                                        new ArchiveMetadataService.ArchiveCategoryRequest(
+                                                8L,
+                                                "contract",
+                                                "合同档案",
+                                                20L,
+                                                ArchiveManagementMode.ITEM_ONLY,
+                                                true,
+                                                0),
+                                        9L))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("父级分类必须属于同一分类方案");
+    }
+
+    @Test
+    @DisplayName("按全宗可用分类范围返回分类节点")
+    void listCategoriesForFondsShouldUseCategoryScopes() {
+        ArchiveFonds fonds = fonds("F001");
+        ArchiveClassificationScheme scheme = scheme(8L, "enterprise_project", true);
+        ArchiveFondsCategoryScope scope = new ArchiveFondsCategoryScope();
+        scope.setId(30L);
+        scope.setFondsCode("F001");
+        scope.setCategoryId(12L);
+        scope.setDefaultFlag(true);
+        scope.setSortOrder(0);
+        ArchiveCategory category = category(12L, ArchiveManagementMode.ITEM_ONLY);
+        category.setSchemeId(8L);
+        when(fondsRepository.find("F001")).thenReturn(Optional.of(fonds));
+        when(classificationSchemeRepository.findById(8L)).thenReturn(Optional.of(scheme));
+        when(fondsCategoryScopeRepository.findByFondsCode("F001")).thenReturn(List.of(scope));
+        when(categoryRepository.findById(12L)).thenReturn(Optional.of(category));
+
+        List<ArchiveMetadataService.ArchiveCategoryDto> categories =
+                service.listCategoriesForFonds(" F001 ", true);
+
+        assertThat(categories).extracting("id").containsExactly(12L);
+        assertThat(categories).extracting("schemeId").containsExactly(8L);
+    }
+
+    @Test
+    @DisplayName("保存全宗可用分类范围时覆盖旧关系")
+    void saveFondsCategoryScopesShouldReplaceExistingScopes() {
+        ArchiveFonds fonds = fonds("F001");
+        ArchiveClassificationScheme scheme = scheme(8L, "enterprise_project", true);
+        ArchiveFondsCategoryScope existing = new ArchiveFondsCategoryScope();
+        existing.setId(30L);
+        existing.setFondsCode("F001");
+        existing.setCategoryId(11L);
+        ArchiveCategory category = category(12L, ArchiveManagementMode.ITEM_ONLY);
+        category.setSchemeId(8L);
+        when(fondsRepository.find("F001")).thenReturn(Optional.of(fonds));
+        when(classificationSchemeRepository.findById(8L)).thenReturn(Optional.of(scheme));
+        when(categoryRepository.findById(12L)).thenReturn(Optional.of(category));
+        when(fondsCategoryScopeRepository.findByFondsCode("F001")).thenReturn(List.of(existing));
+        when(fondsCategoryScopeRepository.insertAll(org.mockito.ArgumentMatchers.anyList()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        List<ArchiveMetadataService.ArchiveFondsCategoryScopeDto> result =
+                service.saveFondsCategoryScopes(
+                        " F001 ", List.of(new ArchiveFondsCategoryScopeRequest(12L, true, 1)), 9L);
+
+        assertThat(result).extracting("categoryId").containsExactly(12L);
+        assertThat(result).extracting("defaultFlag").containsExactly(true);
+        verify(fondsCategoryScopeRepository).deleteAll(List.of(existing));
     }
 
     @Test
@@ -182,11 +325,40 @@ class ArchiveMetadataServiceTests {
     private ArchiveCategory category(Long id, ArchiveManagementMode managementMode) {
         ArchiveCategory category = new ArchiveCategory();
         category.setId(id);
+        category.setSchemeId(1L);
         category.setCategoryCode("contract");
         category.setCategoryName("合同档案");
         category.setManagementMode(managementMode);
         category.setEnabled(true);
         return category;
+    }
+
+    private ArchiveClassificationScheme scheme(Long id, String schemeCode, boolean enabled) {
+        ArchiveClassificationScheme scheme = new ArchiveClassificationScheme();
+        scheme.setId(id);
+        scheme.setSchemeCode(schemeCode);
+        scheme.setSchemeName("分类方案");
+        scheme.setEnabled(enabled);
+        return scheme;
+    }
+
+    private ArchiveClassificationScheme withSchemeId(ArchiveClassificationScheme scheme, Long id) {
+        scheme.setId(id);
+        return scheme;
+    }
+
+    private ArchiveCategory withCategoryId(ArchiveCategory category, Long id) {
+        category.setId(id);
+        return category;
+    }
+
+    private ArchiveFonds fonds(String fondsCode) {
+        ArchiveFonds fonds = new ArchiveFonds();
+        fonds.setId(1L);
+        fonds.setFondsCode(fondsCode);
+        fonds.setFondsName("默认全宗");
+        fonds.setEnabled(true);
+        return fonds;
     }
 
     private ArchiveField field(Long id, ArchiveLevel archiveLevel, ArchiveFieldScope fieldScope) {

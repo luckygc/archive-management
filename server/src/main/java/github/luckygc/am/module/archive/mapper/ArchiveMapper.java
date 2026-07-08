@@ -35,21 +35,14 @@ public interface ArchiveMapper {
     List<Map<String, Object>> listRelatedFilterCategories(@Param("categoryId") Long categoryId);
 
     List<Map<String, Object>> listDynamicItems(
-            @Param("tableName") String tableName,
-            @Param("selectColumns") String selectColumns,
-            @Param("archiveLevel") String archiveLevel,
-            @Param("deleted") boolean deleted,
-            @Param("fondsCode") String fondsCode,
-            @Param("dataScopeGroups") List<ArchiveDataScopeSqlGroup> dataScopeGroups,
-            @Param("conditions") List<ArchiveSqlCondition> conditions,
-            @Param("relatedGroups") List<ArchiveSqlRelatedGroup> relatedGroups,
-            @Param("fullTextKeyword") String fullTextKeyword,
-            @Param("userId") Long userId,
-            @Param("requireAuthenticatedUser") boolean requireAuthenticatedUser,
-            @Param("orderBySql") String orderBySql,
-            @Param("cursorPredicateSql") String cursorPredicateSql,
-            @Param("cursorValues") List<Object> cursorValues,
-            @Param("limit") int limit);
+            @Param("source") ArchiveDynamicItemSource source,
+            @Param("projection") ArchiveDynamicItemProjection projection,
+            @Param("criteria") ArchiveDynamicItemCriteria criteria,
+            @Param("page") ArchiveDynamicItemPageWindow page);
+
+    int countDynamicItems(
+            @Param("source") ArchiveDynamicItemSource source,
+            @Param("criteria") ArchiveDynamicItemCriteria criteria);
 
     List<Map<String, Object>> listItemsForSearchRebuild(
             @Param("tableName") String tableName,
@@ -67,8 +60,8 @@ public interface ArchiveMapper {
             @Param("electronicStatus") String electronicStatus,
             @Param("securityLevelId") Long securityLevelId,
             @Param("retentionPeriodId") Long retentionPeriodId,
-            @Param("orgUnitId") Long orgUnitId,
             @Param("archiveYear") int archiveYear,
+            @Param("governanceSchemeVersionId") Long governanceSchemeVersionId,
             @Param("userId") Long userId);
 
     int countArchiveItemsByArchiveNo(
@@ -90,7 +83,6 @@ public interface ArchiveMapper {
             @Param("electronicStatus") String electronicStatus,
             @Param("securityLevelId") Long securityLevelId,
             @Param("retentionPeriodId") Long retentionPeriodId,
-            @Param("orgUnitId") Long orgUnitId,
             @Param("archiveYear") int archiveYear,
             @Param("userId") Long userId);
 
@@ -122,6 +114,7 @@ public interface ArchiveMapper {
             @Param("archiveNo") String archiveNo,
             @Param("electronicStatus") String electronicStatus,
             @Param("archiveYear") int archiveYear,
+            @Param("governanceSchemeVersionId") Long governanceSchemeVersionId,
             @Param("userId") Long userId);
 
     int countArchiveVolumesByArchiveNo(

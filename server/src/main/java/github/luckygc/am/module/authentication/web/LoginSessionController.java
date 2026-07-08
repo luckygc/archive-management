@@ -3,6 +3,7 @@ package github.luckygc.am.module.authentication.web;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import jakarta.data.page.PageRequest;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
@@ -22,7 +23,6 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
-import github.luckygc.am.common.api.CursorPageRequest;
 import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.common.security.AuthenticatedUser;
 import github.luckygc.am.common.security.AuthenticatedUsers;
@@ -56,7 +56,7 @@ public class LoginSessionController {
 
     @GetMapping("/api/v1/login-sessions")
     public CursorPageResponse<AuthenticationAuditService.LoginSessionResponse> listLoginSessions(
-            CursorPageRequest page, HttpServletRequest request, Authentication authentication) {
+            PageRequest page, HttpServletRequest request, Authentication authentication) {
         requirePermission(
                 authentication, AuthorizationPermissionCode.AUTHENTICATION_SESSION_MANAGE);
         return authenticationAuditService.listLoginSessions(page, request);
@@ -95,7 +95,7 @@ public class LoginSessionController {
             @RequestParam(required = false) @Nullable String keyword,
             @RequestParam(required = false) @Nullable LocalDateTime occurredAfter,
             @RequestParam(required = false) @Nullable LocalDateTime occurredBefore,
-            CursorPageRequest page,
+            PageRequest page,
             Authentication authentication) {
         requirePermission(authentication, AuthorizationPermissionCode.AUTHENTICATION_AUDIT_READ);
         return authenticationAuditService.listLoginLogs(
@@ -134,7 +134,7 @@ public class LoginSessionController {
             String displayName =
                     authentication.getPrincipal() instanceof AuthenticatedUser userDetails
                             ? userDetails.displayName()
-                            : username;
+                            : "";
             return new CurrentUserDto(sessionId, username, displayName, roles);
         }
     }

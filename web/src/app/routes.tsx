@@ -20,8 +20,12 @@ import { AppShell } from "@/layout/AppShell";
 import { ArchiveCategoriesPage } from "@/pages/archive-categories/ArchiveCategoriesPage";
 import { ArchiveDataScopesPage } from "@/pages/archive-data-scopes/ArchiveDataScopesPage";
 import { ArchiveFondsPage } from "@/pages/archive-fonds/ArchiveFondsPage";
+import { ArchiveGovernancePage } from "@/pages/archive-governance/ArchiveGovernancePage";
 import { ArchiveItemManagementPage } from "@/pages/archive-items/ArchiveItemManagementPage";
 import { ArchiveLibraryPage } from "@/pages/archive-library/ArchiveLibraryPage";
+import { ArchiveOntologyPage } from "@/pages/archive-ontology/ArchiveOntologyPage";
+import { ArchiveRuleTracesPage } from "@/pages/archive-rule-traces/ArchiveRuleTracesPage";
+import { ArchiveRulesPage } from "@/pages/archive-rules/ArchiveRulesPage";
 import { AuthenticationEventsPage } from "@/pages/authentication-events/AuthenticationEventsPage";
 import { AuthenticationUsersPage } from "@/pages/authentication-users/AuthenticationUsersPage";
 import { AuthorizationManagementPage } from "@/pages/authorization-management/AuthorizationManagementPage";
@@ -30,6 +34,7 @@ import { DashboardPage } from "@/pages/dashboard/DashboardPage";
 import { IntakePage } from "@/pages/intake/IntakePage";
 import { LoginPage } from "@/pages/login/LoginPage";
 import { LoginSessionsPage } from "@/pages/login-sessions/LoginSessionsPage";
+import { OrganizationDepartmentsPage } from "@/pages/organization-departments/OrganizationDepartmentsPage";
 import { PlaceholderPage } from "@/pages/placeholder/PlaceholderPage";
 import { AuthenticationGate } from "@/shared/authentication/AuthenticationGate";
 
@@ -109,6 +114,46 @@ export function createAppRouter() {
                             } satisfies AppRouteHandle,
                         },
                         {
+                            path: "archive/governance/schemes",
+                            element: <ArchiveGovernancePage />,
+                            handle: {
+                                title: "治理方案",
+                                icon: <DatabaseOutlined />,
+                                isMenu: true,
+                                keepAlive: true,
+                            } satisfies AppRouteHandle,
+                        },
+                        {
+                            path: "archive/governance/ontology",
+                            element: <ArchiveOntologyPage />,
+                            handle: {
+                                title: "本体管理",
+                                icon: <AppstoreOutlined />,
+                                isMenu: true,
+                                keepAlive: true,
+                            } satisfies AppRouteHandle,
+                        },
+                        {
+                            path: "archive/governance/rules",
+                            element: <ArchiveRulesPage />,
+                            handle: {
+                                title: "本地规则",
+                                icon: <SafetyOutlined />,
+                                isMenu: true,
+                                keepAlive: true,
+                            } satisfies AppRouteHandle,
+                        },
+                        {
+                            path: "archive/governance/rule-traces",
+                            element: <ArchiveRuleTracesPage />,
+                            handle: {
+                                title: "规则追踪",
+                                icon: <FileSearchOutlined />,
+                                isMenu: true,
+                                keepAlive: true,
+                            } satisfies AppRouteHandle,
+                        },
+                        {
                             path: "system/data-scopes",
                             element: <ArchiveDataScopesPage />,
                             handle: {
@@ -124,6 +169,16 @@ export function createAppRouter() {
                             handle: {
                                 title: "归档接收",
                                 icon: <ImportOutlined />,
+                                isMenu: true,
+                                keepAlive: true,
+                            } satisfies AppRouteHandle,
+                        },
+                        {
+                            path: "system/organization-departments",
+                            element: <OrganizationDepartmentsPage />,
+                            handle: {
+                                title: "组织架构",
+                                icon: <ApartmentOutlined />,
                                 isMenu: true,
                                 keepAlive: true,
                             } satisfies AppRouteHandle,

@@ -19,6 +19,8 @@ import github.luckygc.am.module.archive.metadata.ArchiveDynamicTableNames;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldType;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryDto;
+import github.luckygc.am.module.authorization.service.AuthorizationPermissionCode;
+import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
 
 @Service
 public class ArchiveItemLineTableService {
@@ -27,14 +29,19 @@ public class ArchiveItemLineTableService {
 
     private final ArchiveMapper archiveMapper;
     private final ArchiveMetadataService archiveMetadataService;
+    private final AuthorizationPermissionService permissionService;
 
     public ArchiveItemLineTableService(
-            ArchiveMapper archiveMapper, ArchiveMetadataService archiveMetadataService) {
+            ArchiveMapper archiveMapper,
+            ArchiveMetadataService archiveMetadataService,
+            AuthorizationPermissionService permissionService) {
         this.archiveMapper = archiveMapper;
         this.archiveMetadataService = archiveMetadataService;
+        this.permissionService = permissionService;
     }
 
-    public List<ArchiveItemLineTableDto> listLineTables(Long categoryId) {
+    public List<ArchiveItemLineTableDto> listLineTables(Long categoryId, Long userId) {
+        requireMetadataManage(userId);
         archiveMetadataService.getCategory(categoryId);
         return archiveMapper.listItemLineTables(categoryId).stream()
                 .map(this::toLineTableDto)
@@ -44,6 +51,7 @@ public class ArchiveItemLineTableService {
     @Transactional
     public ArchiveItemLineTableDto createLineTable(
             Long categoryId, ArchiveItemLineTableRequest request, Long userId) {
+        requireMetadataManage(userId);
         ArchiveCategoryDto category = archiveMetadataService.getCategory(categoryId);
         String tableCode = requiredCode(request.tableCode(), "明细表编码不能为空");
         String tableName = StringUtils.trimToNull(request.tableName());
@@ -65,10 +73,11 @@ public class ArchiveItemLineTableService {
                         physicalName,
                         request.sortOrder() == null ? 0 : request.sortOrder(),
                         userId);
-        return getLineTable(id);
+        return getLineTable(id, userId);
     }
 
-    public ArchiveItemLineTableDto getLineTable(Long id) {
+    public ArchiveItemLineTableDto getLineTable(Long id, Long userId) {
+        requireMetadataManage(userId);
         Map<String, Object> row = archiveMapper.getItemLineTable(id);
         if (row == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "明细表不存在");
@@ -82,10 +91,11 @@ public class ArchiveItemLineTableService {
                 table.physicalTableName(),
                 table.sortOrder(),
                 table.enabled(),
-                listLineFields(table.id()));
+                listLineFields(table.id(), userId));
     }
 
-    public List<ArchiveItemLineFieldDto> listLineFields(Long lineTableId) {
+    public List<ArchiveItemLineFieldDto> listLineFields(Long lineTableId, Long userId) {
+        requireMetadataManage(userId);
         getLineTableRow(lineTableId);
         return archiveMapper.listItemLineFields(lineTableId).stream()
                 .map(this::toLineFieldDto)
@@ -95,6 +105,7 @@ public class ArchiveItemLineTableService {
     @Transactional
     public ArchiveItemLineFieldDto createLineField(
             Long lineTableId, ArchiveItemLineFieldRequest request, Long userId) {
+        requireMetadataManage(userId);
         getLineTableRow(lineTableId);
         String fieldCode = requiredCode(request.fieldCode(), "字段编码不能为空");
         String fieldName = StringUtils.trimToNull(request.fieldName());
@@ -117,7 +128,7 @@ public class ArchiveItemLineTableService {
                         request.exactSearchable(),
                         request.sortOrder() == null ? 0 : request.sortOrder(),
                         userId);
-        return listLineFields(lineTableId).stream()
+        return listLineFields(lineTableId, userId).stream()
                 .filter(field -> field.id().equals(id))
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("明细字段创建后不可见"));
@@ -125,7 +136,8 @@ public class ArchiveItemLineTableService {
 
     @Transactional
     public ArchiveItemLineTableDto buildLineTable(Long lineTableId, Long userId) {
-        ArchiveItemLineTableDto table = getLineTable(lineTableId);
+        requireMetadataManage(userId);
+        ArchiveItemLineTableDto table = getLineTable(lineTableId, userId);
         if (table.fields().isEmpty()) {
             throw new BadRequestException("明细表没有可建表字段");
         }
@@ -159,7 +171,12 @@ public class ArchiveItemLineTableService {
         }
         archiveMapper.updateItemLineTablePhysicalName(
                 lineTableId, table.physicalTableName(), userId);
-        return getLineTable(lineTableId);
+        return getLineTable(lineTableId, userId);
+    }
+
+    private void requireMetadataManage(Long userId) {
+        permissionService.requirePermission(
+                userId, AuthorizationPermissionCode.ARCHIVE_METADATA_MANAGE);
     }
 
     private String sqlType(ArchiveFieldType fieldType) {

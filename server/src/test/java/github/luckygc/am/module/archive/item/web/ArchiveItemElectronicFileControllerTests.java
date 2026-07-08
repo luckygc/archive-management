@@ -1,6 +1,7 @@
 package github.luckygc.am.module.archive.item.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -9,6 +10,7 @@ import java.time.LocalDateTime;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.core.Authentication;
 
 import github.luckygc.am.common.security.AuthenticatedUser;
@@ -25,6 +27,44 @@ class ArchiveItemElectronicFileControllerTests {
     private final ArchiveItemElectronicFileController controller =
             new ArchiveItemElectronicFileController(
                     electronicFileService, electronicFileLinkService);
+
+    @Test
+    @DisplayName("上传附件时从路径携带档案 ID，不接收用户手填文件记录 ID")
+    void uploadFileShouldPassArchiveItemIdAndMultipartFile() throws Exception {
+        MockMultipartFile file =
+                new MockMultipartFile("file", "合同.pdf", "application/pdf", "demo".getBytes());
+        when(electronicFileService.uploadFile(
+                        org.mockito.ArgumentMatchers.eq(10L),
+                        any(
+                                ArchiveItemElectronicFileService
+                                        .UploadArchiveItemElectronicFileCommand.class),
+                        org.mockito.ArgumentMatchers.eq(9L)))
+                .thenReturn(
+                        new ArchiveItemElectronicFileService.ArchiveItemElectronicFileResponse(
+                                30L,
+                                10L,
+                                20L,
+                                "DEFAULT",
+                                0,
+                                "合同.pdf",
+                                4,
+                                "application/pdf",
+                                null,
+                                LocalDateTime.of(2026, 7, 1, 10, 0)));
+
+        ArchiveItemElectronicFileService.ArchiveItemElectronicFileResponse response =
+                controller.uploadFile(10L, file, null, null, authentication(9L));
+
+        assertThat(response.archiveItemId()).isEqualTo(10L);
+        assertThat(response.originalFilename()).isEqualTo("合同.pdf");
+        verify(electronicFileService)
+                .uploadFile(
+                        org.mockito.ArgumentMatchers.eq(10L),
+                        any(
+                                ArchiveItemElectronicFileService
+                                        .UploadArchiveItemElectronicFileCommand.class),
+                        org.mockito.ArgumentMatchers.eq(9L));
+    }
 
     @Test
     @DisplayName("创建下载短链响应返回内部短链地址和过期时间")

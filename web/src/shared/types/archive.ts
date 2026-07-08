@@ -47,6 +47,42 @@ export interface ArchiveFondsRequest {
     sortOrder: number;
 }
 
+export interface ArchiveClassificationSchemeDto {
+    id: number;
+    schemeCode: string;
+    schemeName: string;
+    description?: string;
+    defaultFlag: boolean;
+    enabled: boolean;
+    sortOrder: number;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface ArchiveClassificationSchemeRequest {
+    schemeCode: string;
+    schemeName: string;
+    description?: string;
+    enabled: boolean;
+    sortOrder: number;
+}
+
+export interface ArchiveFondsCategoryScopeDto {
+    id?: number;
+    fondsCode: string;
+    categoryId: number;
+    defaultFlag: boolean;
+    sortOrder: number;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
+export interface ArchiveFondsCategoryScopeRequest {
+    categoryId: number;
+    defaultFlag: boolean;
+    sortOrder: number;
+}
+
 export interface ArchiveSecurityLevelDto {
     id: number;
     levelName: string;
@@ -75,6 +111,7 @@ export interface ArchiveRetentionPeriodRequest {
 
 export interface ArchiveCategoryDto {
     id: number;
+    schemeId: number;
     parentId?: number;
     categoryCode: string;
     categoryName: string;
@@ -90,6 +127,7 @@ export interface ArchiveCategoryDto {
 }
 
 export interface ArchiveCategoryRequest {
+    schemeId: number;
     categoryCode: string;
     categoryName: string;
     parentId?: number;
@@ -220,9 +258,13 @@ export interface SearchArchiveRecordsRequest {
     keyword?: string;
     where?: ArchiveItemWhere;
     relatedGroups?: ArchiveItemRelatedGroup[];
+    orderBy?: ArchiveRecordOrderBy[];
+}
+
+export interface SearchArchiveRecordsQuery extends SearchArchiveRecordsRequest {
     limit?: number;
     cursor?: string;
-    orderBy?: ArchiveRecordOrderBy[];
+    requestTotal?: boolean;
 }
 
 export interface ArchiveRecordOrderBy {
@@ -241,7 +283,6 @@ export type ArchiveRecordSortField =
     | (string & {});
 
 export interface ArchiveItemWhere {
-    logic?: "AND";
     conditions?: ArchiveItemQueryCondition[];
 }
 
@@ -275,8 +316,7 @@ export interface CreateArchiveRecordRequest {
     electronicStatus?: ArchiveElectronicStatus;
     securityLevelId?: number;
     retentionPeriodId?: number;
-    orgUnitId?: number;
-    physicalObject: ArchivePhysicalObjectRequest;
+    physicalFields?: Record<string, unknown>;
     dynamicFields: Record<string, unknown>;
 }
 
@@ -288,8 +328,7 @@ export interface UpdateArchiveRecordRequest {
     electronicStatus?: ArchiveElectronicStatus;
     securityLevelId?: number;
     retentionPeriodId?: number;
-    orgUnitId?: number;
-    physicalObject: ArchivePhysicalObjectRequest;
+    physicalFields?: Record<string, unknown>;
     dynamicFields: Record<string, unknown>;
 }
 
@@ -312,7 +351,6 @@ export interface ArchiveRecordDto {
     electronicStatus: ArchiveElectronicStatus;
     securityLevelId?: number;
     retentionPeriodId?: number;
-    orgUnitId?: number;
     archiveYear: number;
     lockedFlag: boolean;
     lockReason?: string;
@@ -333,7 +371,6 @@ export interface ArchivePhysicalObjectDto {
 export interface ArchiveRecordListDto {
     category?: ArchiveCategoryDto;
     fields: ArchiveFieldDto[];
-    tableBuilt: boolean;
     self?: string;
     prev?: string;
     next?: string;
@@ -342,11 +379,12 @@ export interface ArchiveRecordListDto {
 }
 
 export interface ArchiveRecordDetailDto {
-    record: ArchiveRecordDto;
+    item: ArchiveRecordDto;
     category: ArchiveCategoryDto;
     fields: ArchiveFieldDto[];
     dynamicFields: Record<string, unknown>;
-    physicalObject?: ArchivePhysicalObjectDto;
+    physicalFields: ArchiveFieldDto[];
+    physicalFieldValues: Record<string, unknown>;
 }
 
 export interface SearchProjectionRebuildResult {
@@ -370,8 +408,7 @@ export type ArchiveDataScopeDimensionType =
     | "FONDS"
     | "CATEGORY"
     | "SECURITY_LEVEL"
-    | "RETENTION_PERIOD"
-    | "ORG_UNIT";
+    | "RETENTION_PERIOD";
 
 export interface ArchiveDataScopeDto {
     id: number;
@@ -433,6 +470,9 @@ export interface AuthenticationUserDto {
     displayName: string;
     email?: string;
     mobilePhone?: string;
+    departmentId?: number;
+    departmentCode?: string;
+    departmentName?: string;
     enabled: boolean;
     createdAt: string;
 }
@@ -449,15 +489,17 @@ export interface RoleSummaryDto {
 export interface CreateAuthenticationUserRequest {
     username: string;
     password: string;
-    displayName?: string;
+    displayName: string;
     email?: string;
     mobilePhone?: string;
+    departmentId?: number | null;
 }
 
 export interface UpdateAuthenticationUserRequest {
     displayName?: string;
-    email?: string;
-    mobilePhone?: string;
+    email?: string | null;
+    mobilePhone?: string | null;
+    departmentId?: number | null;
     enabled?: boolean;
 }
 
@@ -490,6 +532,7 @@ export interface UpdateAuthorizationRoleRequest {
 
 export interface CurrentUserPermissionsDto {
     permissionCodes: string[];
+    superAdmin: boolean;
 }
 
 export interface RolePermissionsDto {
@@ -507,10 +550,15 @@ export interface UserArchiveDataScopesDto {
     scopeIds: number[];
 }
 
-export interface OrganizationUnitDto {
+export interface DepartmentArchiveDataScopesDto {
+    departmentId: number;
+    scopeIds: number[];
+}
+
+export interface OrganizationDepartmentDto {
     id: number;
-    unitCode: string;
-    unitName: string;
+    departmentCode: string;
+    departmentName: string;
     parentId?: number;
     enabled: boolean;
     sortOrder: number;
@@ -518,8 +566,23 @@ export interface OrganizationUnitDto {
     updatedAt: string;
 }
 
-export interface ArchiveItemElectronicFileRequest {
-    storageObjectId: number;
+export interface CreateOrganizationDepartmentRequest {
+    departmentCode?: string;
+    departmentName?: string;
+    parentId?: number | null;
+    enabled?: boolean;
+    sortOrder?: number;
+}
+
+export interface UpdateOrganizationDepartmentRequest {
+    departmentCode?: string;
+    departmentName?: string;
+    parentId?: number | null;
+    enabled?: boolean;
+    sortOrder?: number;
+}
+
+export interface ArchiveItemElectronicFileUploadOptions {
     usageType?: string;
     displayOrder?: number;
 }
@@ -569,4 +632,351 @@ export interface CursorPageResponse<T> {
     next?: string;
     first?: string;
     total?: number;
+}
+
+export type ArchiveGovernanceSchemeVersionStatus = "DRAFT" | "PUBLISHED" | "FROZEN" | "RETIRED";
+export type ArchiveGovernanceScopeType = "GLOBAL" | "FONDS" | "CATEGORY";
+export type ArchiveGovernanceBindingType =
+    | "ONTOLOGY"
+    | "RULE_SET"
+    | "CLASSIFICATION_SCHEME"
+    | "DESCRIPTION_PROFILE"
+    | "REFERENCE_CODE_RULE";
+
+export interface ArchiveGovernanceSchemeDto {
+    id: number;
+    schemeCode: string;
+    schemeName: string;
+    description?: string;
+    enabled: boolean;
+    sortOrder: number;
+}
+
+export interface ArchiveGovernanceSchemeRequest {
+    schemeCode: string;
+    schemeName: string;
+    description?: string;
+    enabled?: boolean;
+    sortOrder?: number;
+}
+
+export interface ArchiveGovernanceSchemeVersionDto {
+    id: number;
+    schemeId: number;
+    versionCode: string;
+    versionDescription?: string;
+    status: ArchiveGovernanceSchemeVersionStatus;
+    publishedBy?: number;
+    publishedAt?: string;
+    frozenBy?: number;
+    frozenAt?: string;
+    retiredBy?: number;
+    retiredAt?: string;
+}
+
+export interface ArchiveGovernanceSchemeVersionRequest {
+    versionCode: string;
+    versionDescription?: string;
+}
+
+export interface ArchiveGovernanceScopeRequest {
+    scopeType?: ArchiveGovernanceScopeType;
+    fondsCode?: string;
+    categoryCode?: string;
+    defaultFlag?: boolean;
+}
+
+export interface ArchiveGovernanceScopeDto {
+    id: number;
+    schemeVersionId: number;
+    scopeType: ArchiveGovernanceScopeType;
+    fondsCode?: string;
+    categoryCode?: string;
+    defaultFlag: boolean;
+}
+
+export interface ArchiveGovernanceBindingRequest {
+    bindingType: ArchiveGovernanceBindingType;
+    targetType?: string;
+    targetId?: number;
+    targetCode?: string;
+    bindingOrder?: number;
+}
+
+export interface ArchiveGovernanceBindingDto {
+    id: number;
+    schemeVersionId: number;
+    bindingType: ArchiveGovernanceBindingType;
+    targetType?: string;
+    targetId?: number;
+    targetCode?: string;
+    bindingOrder: number;
+}
+
+export type ArchiveOntologyAttributeDataType =
+    | "TEXT"
+    | "INTEGER"
+    | "DECIMAL"
+    | "DATE"
+    | "DATETIME"
+    | "BOOLEAN"
+    | "ENUM"
+    | "REFERENCE"
+    | "AMOUNT"
+    | "ORGANIZATION"
+    | "PERSON";
+export type ArchiveOntologyMetadataDomain =
+    | "DESCRIPTION"
+    | "STRUCTURE"
+    | "MANAGEMENT"
+    | "TECHNICAL"
+    | "ACCESS_USE"
+    | "PRESERVATION";
+export type ArchiveOntologyCardinality = "SINGLE" | "MULTI" | "REPEATED_ROW";
+export type ArchiveOntologyAttributeMappingKind =
+    | "FIXED_FIELD"
+    | "DYNAMIC_FIELD"
+    | "LINE_FIELD"
+    | "FILE_COMPONENT_FIELD"
+    | "PROCESS_FIELD";
+export type ArchiveOntologyRelationDirection = "ONE_WAY" | "TWO_WAY" | "HIERARCHICAL";
+export type ArchiveOntologyRelationCardinality =
+    | "ONE_TO_ONE"
+    | "ONE_TO_MANY"
+    | "MANY_TO_ONE"
+    | "MANY_TO_MANY";
+
+export interface ArchiveOntologyObjectTypeDto {
+    id: number;
+    typeCode: string;
+    typeName: string;
+    description?: string;
+    builtin: boolean;
+    enabled: boolean;
+}
+
+export interface ArchiveOntologyObjectTypeRequest {
+    typeCode: string;
+    typeName: string;
+    description?: string;
+    enabled?: boolean;
+}
+
+export interface ArchiveOntologyAttributeTypeDto {
+    id: number;
+    attributeCode: string;
+    attributeName: string;
+    objectTypeId: number;
+    dataType: ArchiveOntologyAttributeDataType;
+    metadataDomain: ArchiveOntologyMetadataDomain;
+    cardinality: ArchiveOntologyCardinality;
+    exactSearchable: boolean;
+    sortable: boolean;
+    descriptionParticipating: boolean;
+    referenceCodeParticipating: boolean;
+    ruleFactVisible: boolean;
+    description?: string;
+    enabled: boolean;
+}
+
+export interface ArchiveOntologyAttributeTypeRequest {
+    attributeCode: string;
+    attributeName: string;
+    objectTypeId: number;
+    dataType: ArchiveOntologyAttributeDataType;
+    metadataDomain: ArchiveOntologyMetadataDomain;
+    cardinality?: ArchiveOntologyCardinality;
+    exactSearchable?: boolean;
+    sortable?: boolean;
+    descriptionParticipating?: boolean;
+    referenceCodeParticipating?: boolean;
+    ruleFactVisible?: boolean;
+    description?: string;
+    enabled?: boolean;
+}
+
+export interface ArchiveOntologyAttributeMappingRequest {
+    attributeTypeId: number;
+    mappingKind: ArchiveOntologyAttributeMappingKind;
+    fixedFieldCode?: string;
+    categoryId?: number;
+    archiveLevel?: ArchiveLevel;
+    fieldScope?: ArchiveFieldScope;
+    dynamicFieldId?: number;
+    lineTableId?: number;
+    lineFieldId?: number;
+    componentFieldCode?: string;
+    processFieldCode?: string;
+}
+
+export type ArchiveFieldScope = "METADATA" | "PHYSICAL";
+
+export interface ArchiveOntologyAttributeMappingDto extends ArchiveOntologyAttributeMappingRequest {
+    id: number;
+}
+
+export interface ArchiveOntologyRelationTypeDto {
+    id: number;
+    relationCode: string;
+    relationName: string;
+    sourceObjectTypeId: number;
+    targetObjectTypeId: number;
+    relationDirection: ArchiveOntologyRelationDirection;
+    cardinality: ArchiveOntologyRelationCardinality;
+    description?: string;
+    enabled: boolean;
+}
+
+export interface ArchiveOntologyRelationTypeRequest {
+    relationCode: string;
+    relationName: string;
+    sourceObjectTypeId: number;
+    targetObjectTypeId: number;
+    relationDirection: ArchiveOntologyRelationDirection;
+    cardinality?: ArchiveOntologyRelationCardinality;
+    description?: string;
+    enabled?: boolean;
+}
+
+export interface ArchiveOntologyEventTypeDto {
+    id: number;
+    eventCode: string;
+    eventName: string;
+    objectTypeId: number;
+    description?: string;
+    enabled: boolean;
+}
+
+export interface ArchiveOntologyEventTypeRequest {
+    eventCode: string;
+    eventName: string;
+    objectTypeId: number;
+    description?: string;
+    enabled?: boolean;
+}
+
+export type ArchiveRuleType =
+    | "VALIDATION"
+    | "DERIVATION"
+    | "REFERENCE_CODE"
+    | "RETENTION"
+    | "ACCESS"
+    | "QUALITY"
+    | "TRANSFER"
+    | "FILING"
+    | "EXPORT";
+export type ArchiveRuleStatus = "DRAFT" | "PUBLISHED";
+export type ArchiveRuleEffectType =
+    | "VALIDATION_ERROR"
+    | "WARNING"
+    | "SUGGEST_VALUE"
+    | "DERIVED_VALUE"
+    | "REQUIRE_REVIEW"
+    | "REQUIRE_QUALITY_CHECK"
+    | "DENY_ACCESS"
+    | "MASK_FIELD"
+    | "INCLUDE_IN_PACKAGE";
+export type ArchiveRuleDecisionSeverity = "INFO" | "WARNING" | "ERROR";
+
+export interface ArchiveRuleEffectRequest {
+    effectType: ArchiveRuleEffectType;
+    effectOrder?: number;
+    effectParams?: Record<string, unknown>;
+}
+
+export interface ArchiveRuleRequest {
+    schemeVersionId: number;
+    ruleCode: string;
+    ruleName: string;
+    ruleType: ArchiveRuleType;
+    triggerCode: string;
+    scopeFondsCode?: string;
+    scopeCategoryCode?: string;
+    scopeObjectTypeId?: number;
+    scopeArchiveLevel?: ArchiveLevel;
+    scopeEventTypeId?: number;
+    priority?: number;
+    conditionJson: Record<string, unknown>;
+    enabled?: boolean;
+    effects: ArchiveRuleEffectRequest[];
+}
+
+export interface ArchiveRuleEffectDto {
+    id: number;
+    effectType: ArchiveRuleEffectType;
+    effectOrder: number;
+    effectParams: Record<string, unknown>;
+}
+
+export interface ArchiveRuleDto {
+    id: number;
+    schemeVersionId: number;
+    ruleCode: string;
+    ruleName: string;
+    ruleType: ArchiveRuleType;
+    triggerCode: string;
+    status: ArchiveRuleStatus;
+    enabled: boolean;
+    priority: number;
+    effects: ArchiveRuleEffectDto[];
+}
+
+export interface ExecuteArchiveRulesRequest {
+    schemeVersionId: number;
+    triggerCode: string;
+    fondsCode?: string;
+    categoryCode?: string;
+    objectTypeCode?: string;
+    archiveLevel?: ArchiveLevel;
+    eventCode?: string;
+    facts: Record<string, unknown>;
+    includeSkipped: boolean;
+    recordTrace: boolean;
+    userId?: number;
+}
+
+export interface ArchiveRuleEffectDecision {
+    effectType: ArchiveRuleEffectType;
+    params: Record<string, unknown>;
+}
+
+export interface ArchiveRuleDecisionDto {
+    ruleId?: number;
+    ruleCode: string;
+    ruleType: ArchiveRuleType;
+    matched: boolean;
+    effects: ArchiveRuleEffectDecision[];
+    message?: string;
+    severity: ArchiveRuleDecisionSeverity;
+    blocking: boolean;
+    skippedReason?: string;
+}
+
+export interface SearchArchiveRuleTracesRequest {
+    schemeVersionId?: number;
+    triggerCode?: string;
+    objectTypeCode?: string;
+    objectId?: number;
+    ruleType?: ArchiveRuleType;
+    limit?: number;
+    userId?: number;
+}
+
+export interface ArchiveRuleTraceDto {
+    id: number;
+    schemeVersionId: number;
+    triggerCode: string;
+    objectTypeCode: string;
+    objectId?: number;
+    ruleId?: number;
+    ruleCode?: string;
+    ruleType?: ArchiveRuleType;
+    matchedFlag: boolean;
+    blockingFlag: boolean;
+    effectJson: unknown;
+    message?: string;
+    severity?: ArchiveRuleDecisionSeverity;
+    skippedReason?: string;
+    createdBy?: number;
+    createdAt: string;
 }

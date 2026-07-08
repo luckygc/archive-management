@@ -1,10 +1,11 @@
 import {
     DeleteOutlined,
     DownloadOutlined,
+    EditOutlined,
+    EyeOutlined,
     ExportOutlined,
     FileOutlined,
     HistoryOutlined,
-    LinkOutlined,
     PlusOutlined,
     ReloadOutlined,
     UploadOutlined,
@@ -14,12 +15,14 @@ import {
     Button,
     Card,
     Collapse,
+    Descriptions,
     Drawer,
     Empty,
     Form,
     Input,
     InputNumber,
     Modal,
+    Select,
     Space,
     Table,
     Tabs,
@@ -31,12 +34,14 @@ import type { UploadProps } from "antd";
 import { useEffect, useRef, useState } from "react";
 
 import {
-    bindArchiveItemElectronicFile,
+    createArchiveRecord,
     downloadArchiveImportTemplate,
     downloadArchiveItemElectronicFile,
     exportArchiveRecords,
+    getArchiveRecord,
     getCurrentUserPermissions,
     importArchiveRecords,
+    listArchiveFonds,
     listArchiveItemAudits,
     listArchiveItemElectronicFiles,
     listArchiveCategories,
@@ -44,37 +49,54 @@ import {
     listArchiveRelatedFilterCategories,
     searchArchiveRecords,
     unbindArchiveItemElectronicFile,
+    updateArchiveRecord,
+    uploadArchiveItemElectronicFile,
 } from "@/shared/api/archive";
 import type {
+    ArchiveCategoryDto,
+    ArchiveElectronicStatus,
     ArchiveFieldDto,
     ArchiveImportResult,
     ArchiveItemAuditDto,
     ArchiveItemElectronicFileDto,
+    ArchiveRecordDetailDto,
     ArchiveRecordOrderBy,
-    SearchArchiveRecordsRequest,
+    CreateArchiveRecordRequest,
+    SearchArchiveRecordsQuery,
+    UpdateArchiveRecordRequest,
 } from "@/shared/types/archive";
 
 import {
     ArchiveAdvancedQueryPanel,
     type ArchiveQueryFormValues,
 } from "@/pages/archive-library/ArchiveAdvancedQueryPanel";
+import {
+    DynamicArchiveFields,
+    normalizeArchiveRecordFormValues,
+} from "@/pages/archive-library/DynamicArchiveFields";
 import { ArchiveResultTable } from "@/pages/archive-library/ArchiveResultTable";
 import { toSearchQuery } from "@/pages/archive-library/archiveQuery";
 
 export function ArchiveItemManagementPage() {
     const queryClient = useQueryClient();
     const [form] = Form.useForm<ArchiveQueryFormValues>();
-    const [fileForm] = Form.useForm<FileBindFormValues>();
-    const [committedQuery, setCommittedQuery] = useState<SearchArchiveRecordsRequest>();
+    const [fileForm] = Form.useForm<FileUploadFormValues>();
+    const [editorForm] = Form.useForm<RecordEditorFormValues>();
+    const [committedQuery, setCommittedQuery] = useState<SearchArchiveRecordsQuery>();
     const [orderBy, setOrderBy] = useState<ArchiveRecordOrderBy[]>([]);
     const [drawerState, setDrawerState] = useState<{
         archiveItemId: number;
         activeKey: "files" | "audits";
     }>();
+    const [editorState, setEditorState] = useState<RecordEditorState>();
     const previousCategoryIdRef = useRef<number | undefined>(undefined);
     const categoriesQuery = useQuery({
         queryKey: ["archive-categories", "enabled"],
         queryFn: () => listArchiveCategories(true),
+    });
+    const fondsQuery = useQuery({
+        queryKey: ["archive-fonds", "enabled"],
+        queryFn: () => listArchiveFonds(true),
     });
     const currentPermissionsQuery = useQuery({
         queryKey: ["me", "permissions"],
@@ -87,7 +109,7 @@ export function ArchiveItemManagementPage() {
     const canCreateElectronicFile = canCreate || canUpdate;
     const canDeleteElectronicFile = permissionCodes.has("archive:item:delete");
     const canDownloadFile = permissionCodes.has("archive:item:download-electronic-file");
-    const canReadAudit = permissionCodes.has("archive:audit:read");
+    const canReadAudit = currentPermissionsQuery.data?.superAdmin === true;
     const canImport = canCreate || canUpdate;
     const canExport = permissionCodes.has("archive:export");
     const categoryId = Form.useWatch("categoryId", form);
@@ -115,7 +137,7 @@ export function ArchiveItemManagementPage() {
     });
 
     const searchMutation = useMutation({
-        mutationFn: (query: SearchArchiveRecordsRequest) => searchArchiveRecords(query),
+        mutationFn: (query: SearchArchiveRecordsQuery) => searchArchiveRecords(query),
         onError: (error) => {
             void message.error(error instanceof Error ? error.message : "查询失败");
         },
@@ -146,7 +168,7 @@ export function ArchiveItemManagementPage() {
         },
     });
     const exportMutation = useMutation({
-        mutationFn: async (query: SearchArchiveRecordsRequest) => exportArchiveRecords(query),
+        mutationFn: async (query: SearchArchiveRecordsQuery) => exportArchiveRecords(query),
         onSuccess: (link) => {
             openDownloadLink(link.href);
         },
@@ -170,22 +192,55 @@ export function ArchiveItemManagementPage() {
                 requestTotal: true,
             }),
     });
-    const bindFileMutation = useMutation({
-        mutationFn: (values: FileBindFormValues) =>
-            bindArchiveItemElectronicFile(selectedArchiveItemId as number, {
-                storageObjectId: values.storageObjectId as number,
+    const editorDetailQuery = useQuery({
+        enabled:
+            typeof editorState?.archiveItemId === "number" &&
+            (editorState.mode === "detail" || editorState.mode === "edit"),
+        queryKey: ["archive-item-detail", editorState?.archiveItemId, editorState?.mode],
+        queryFn: () =>
+            getArchiveRecord(
+                editorState?.archiveItemId as number,
+                editorState?.mode === "detail" ? "DETAIL" : "EDIT",
+            ),
+    });
+    const uploadFileMutation = useMutation({
+        mutationFn: ({ file, values }: { file: File; values: FileUploadFormValues }) =>
+            uploadArchiveItemElectronicFile(selectedArchiveItemId as number, file, {
                 usageType: values.usageType,
                 displayOrder: values.displayOrder,
             }),
         onSuccess: () => {
-            void message.success("文件已绑定");
+            void message.success("附件已上传");
             fileForm.resetFields();
             void queryClient.invalidateQueries({
                 queryKey: ["archive-item-electronic-files", selectedArchiveItemId],
             });
         },
         onError: (error) => {
-            void message.error(error instanceof Error ? error.message : "绑定文件失败");
+            void message.error(error instanceof Error ? error.message : "上传附件失败");
+        },
+    });
+    const createRecordMutation = useMutation({
+        mutationFn: (payload: CreateArchiveRecordRequest) => createArchiveRecord(payload),
+        onSuccess: () => {
+            void message.success("档案已创建");
+            setEditorState(undefined);
+            refresh();
+        },
+        onError: (error) => {
+            void message.error(error instanceof Error ? error.message : "创建档案失败");
+        },
+    });
+    const updateRecordMutation = useMutation({
+        mutationFn: ({ id, payload }: { id: number; payload: UpdateArchiveRecordRequest }) =>
+            updateArchiveRecord(id, payload),
+        onSuccess: () => {
+            void message.success("档案已更新");
+            setEditorState(undefined);
+            refresh();
+        },
+        onError: (error) => {
+            void message.error(error instanceof Error ? error.message : "更新档案失败");
         },
     });
     const unbindFileMutation = useMutation({
@@ -211,7 +266,6 @@ export function ArchiveItemManagementPage() {
             void message.error(error instanceof Error ? error.message : "下载文件失败");
         },
     });
-
     useEffect(() => {
         if (typeof categoryId !== "number") {
             previousCategoryIdRef.current = undefined;
@@ -230,6 +284,13 @@ export function ArchiveItemManagementPage() {
         setOrderBy([]);
         searchMutation.reset();
     }, [categoryId, form, searchMutation]);
+
+    useEffect(() => {
+        if (!editorDetailQuery.data || !editorState) {
+            return;
+        }
+        editorForm.setFieldsValue(recordDetailToFormValues(editorDetailQuery.data));
+    }, [editorDetailQuery.data, editorForm, editorState]);
 
     function submit(values: ArchiveQueryFormValues) {
         const query = toSearchQuery(values);
@@ -297,13 +358,36 @@ export function ArchiveItemManagementPage() {
         );
     }
 
+    function uploadElectronicFile(
+        option: Parameters<NonNullable<UploadProps["customRequest"]>>[0],
+    ) {
+        if (typeof selectedArchiveItemId !== "number") {
+            option.onError?.(new Error("请先选择档案"));
+            void message.warning("请先选择档案");
+            return;
+        }
+        const file = option.file;
+        if (!(file instanceof File)) {
+            option.onError?.(new Error("请选择有效文件"));
+            return;
+        }
+        uploadFileMutation.mutate(
+            { file, values: fileForm.getFieldsValue() },
+            {
+                onSuccess: () => option.onSuccess?.("ok"),
+                onError: (error) =>
+                    option.onError?.(error instanceof Error ? error : new Error("上传附件失败")),
+            },
+        );
+    }
+
     function exportCurrentQuery() {
         const query =
             committedQuery ??
             ({
                 ...toSearchQuery(form.getFieldsValue()),
                 keyword: undefined,
-            } satisfies SearchArchiveRecordsRequest);
+            } satisfies SearchArchiveRecordsQuery);
         exportMutation.mutate({
             ...query,
             orderBy: orderBy.length > 0 ? orderBy : undefined,
@@ -319,9 +403,66 @@ export function ArchiveItemManagementPage() {
         setDrawerState({ archiveItemId, activeKey });
     }
 
+    function openCreateEditor() {
+        if (typeof categoryId !== "number") {
+            void message.warning("请先选择档案分类");
+            return;
+        }
+        editorForm.resetFields();
+        editorForm.setFieldsValue({
+            categoryId,
+            archiveYear: new Date().getFullYear(),
+            electronicStatus: "DRAFT",
+            dynamicFields: {},
+        });
+        setEditorState({ mode: "create" });
+    }
+
+    function openRecordEditor(row: Record<string, unknown>, mode: "detail" | "edit") {
+        const archiveItemId = rowId(row);
+        if (archiveItemId === undefined) {
+            void message.warning("当前行缺少档案 ID");
+            return;
+        }
+        editorForm.resetFields();
+        setEditorState({ mode, archiveItemId });
+    }
+
+    function submitEditor(values: RecordEditorFormValues) {
+        if (!editorState || editorState.mode === "detail") {
+            return;
+        }
+        const normalized = normalizeArchiveRecordFormValues(values);
+        const commonPayload = {
+            volumeId: values.volumeId,
+            fondsCode: values.fondsCode as string,
+            archiveNo: trimToUndefined(values.archiveNo),
+            archiveYear: values.archiveYear,
+            electronicStatus: values.electronicStatus,
+            securityLevelId: values.securityLevelId,
+            retentionPeriodId: values.retentionPeriodId,
+            physicalFields: {},
+            dynamicFields: normalized.dynamicFields,
+        };
+        if (editorState.mode === "create") {
+            createRecordMutation.mutate({
+                ...commonPayload,
+                categoryId: values.categoryId as number,
+            });
+            return;
+        }
+        updateRecordMutation.mutate({
+            id: editorState.archiveItemId,
+            payload: commonPayload,
+        });
+    }
+
     const result = searchMutation.data;
     const fields = fieldsQuery.data?.items ?? result?.fields ?? [];
     const drawerOpen = Boolean(drawerState);
+    const editorOpen = Boolean(editorState);
+    const editorFields =
+        editorState?.mode === "create" ? fields : (editorDetailQuery.data?.fields ?? []);
 
     return (
         <section className="am-page">
@@ -361,7 +502,12 @@ export function ArchiveItemManagementPage() {
                     >
                         导出
                     </Button>
-                    <Button disabled={!canCreate} icon={<PlusOutlined />} type="primary">
+                    <Button
+                        disabled={!canCreate || typeof categoryId !== "number"}
+                        icon={<PlusOutlined />}
+                        type="primary"
+                        onClick={openCreateEditor}
+                    >
                         新建档案
                     </Button>
                 </Space>
@@ -394,10 +540,21 @@ export function ArchiveItemManagementPage() {
                     <ArchiveResultTable
                         actionColumn={(row) => (
                             <Space size={8}>
-                                <Button size="small" type="link">
+                                <Button
+                                    icon={<EyeOutlined />}
+                                    size="small"
+                                    type="link"
+                                    onClick={() => openRecordEditor(row, "detail")}
+                                >
                                     详情
                                 </Button>
-                                <Button disabled={!canUpdate} size="small" type="link">
+                                <Button
+                                    disabled={!canUpdate}
+                                    icon={<EditOutlined />}
+                                    size="small"
+                                    type="link"
+                                    onClick={() => openRecordEditor(row, "edit")}
+                                >
                                     编辑
                                 </Button>
                                 <Button
@@ -445,26 +602,7 @@ export function ArchiveItemManagementPage() {
                             label: "电子文件",
                             children: (
                                 <Space direction="vertical" size={16} style={{ width: "100%" }}>
-                                    <Form<FileBindFormValues>
-                                        form={fileForm}
-                                        layout="inline"
-                                        onFinish={(values) => bindFileMutation.mutate(values)}
-                                    >
-                                        <Form.Item
-                                            name="storageObjectId"
-                                            rules={[
-                                                {
-                                                    required: true,
-                                                    message: "请选择文件记录",
-                                                },
-                                            ]}
-                                        >
-                                            <InputNumber
-                                                disabled={!canCreateElectronicFile}
-                                                min={1}
-                                                placeholder="文件记录 ID"
-                                            />
-                                        </Form.Item>
+                                    <Form<FileUploadFormValues> form={fileForm} layout="inline">
                                         <Form.Item name="usageType">
                                             <Input
                                                 disabled={!canCreateElectronicFile}
@@ -477,15 +615,20 @@ export function ArchiveItemManagementPage() {
                                                 placeholder="顺序"
                                             />
                                         </Form.Item>
-                                        <Button
-                                            disabled={!canCreateElectronicFile}
-                                            htmlType="submit"
-                                            icon={<LinkOutlined />}
-                                            loading={bindFileMutation.isPending}
-                                            type="primary"
+                                        <Upload
+                                            customRequest={uploadElectronicFile}
+                                            maxCount={1}
+                                            showUploadList={false}
                                         >
-                                            绑定
-                                        </Button>
+                                            <Button
+                                                disabled={!canCreateElectronicFile}
+                                                icon={<UploadOutlined />}
+                                                loading={uploadFileMutation.isPending}
+                                                type="primary"
+                                            >
+                                                上传附件
+                                            </Button>
+                                        </Upload>
                                     </Form>
                                     <Table<ArchiveItemElectronicFileDto>
                                         columns={[
@@ -510,7 +653,7 @@ export function ArchiveItemManagementPage() {
                                             {
                                                 title: "操作",
                                                 key: "actions",
-                                                width: 150,
+                                                width: 100,
                                                 render: (_, row) => (
                                                     <Space size={4}>
                                                         <Button
@@ -600,14 +743,127 @@ export function ArchiveItemManagementPage() {
                     }
                 />
             </Drawer>
+            <Drawer
+                destroyOnClose
+                open={editorOpen}
+                size="large"
+                title={editorTitle(editorState)}
+                onClose={() => setEditorState(undefined)}
+            >
+                {editorState?.mode === "detail" ? (
+                    editorDetailQuery.data ? (
+                        <Space direction="vertical" size={16} style={{ width: "100%" }}>
+                            <Descriptions
+                                bordered
+                                column={2}
+                                items={recordDescriptionItems(editorDetailQuery.data)}
+                                size="small"
+                            />
+                            <Typography.Title level={5}>动态字段</Typography.Title>
+                            <Descriptions
+                                bordered
+                                column={2}
+                                items={dynamicDescriptionItems(editorDetailQuery.data)}
+                                size="small"
+                            />
+                        </Space>
+                    ) : (
+                        <Empty description="正在加载档案详情" />
+                    )
+                ) : (
+                    <Form<RecordEditorFormValues>
+                        form={editorForm}
+                        layout="vertical"
+                        onFinish={submitEditor}
+                    >
+                        <Form.Item hidden name="categoryId">
+                            <InputNumber />
+                        </Form.Item>
+                        <Form.Item label="档案分类">
+                            <Input
+                                disabled
+                                value={editorCategoryName(
+                                    editorState,
+                                    editorDetailQuery.data,
+                                    categoriesQuery.data?.items ?? [],
+                                    categoryId,
+                                )}
+                            />
+                        </Form.Item>
+                        <Form.Item
+                            label="全宗"
+                            name="fondsCode"
+                            rules={[{ required: true, message: "请选择全宗" }]}
+                        >
+                            <Select
+                                disabled={editorState?.mode === "detail"}
+                                loading={fondsQuery.isFetching}
+                                options={(fondsQuery.data?.items ?? []).map((fonds) => ({
+                                    value: fonds.fondsCode,
+                                    label: `${fonds.fondsCode} ${fonds.fondsName}`,
+                                }))}
+                                placeholder="选择全宗"
+                                showSearch
+                                optionFilterProp="label"
+                            />
+                        </Form.Item>
+                        <Space size={16} style={{ width: "100%" }} wrap>
+                            <Form.Item label="档号" name="archiveNo">
+                                <Input style={{ width: 240 }} />
+                            </Form.Item>
+                            <Form.Item label="年度" name="archiveYear">
+                                <InputNumber min={1} style={{ width: 160 }} />
+                            </Form.Item>
+                            <Form.Item label="电子状态" name="electronicStatus">
+                                <Select options={electronicStatusOptions} style={{ width: 160 }} />
+                            </Form.Item>
+                        </Space>
+                        <DynamicArchiveFields fields={editorFields} />
+                        <Space>
+                            <Button onClick={() => setEditorState(undefined)}>取消</Button>
+                            <Button
+                                htmlType="submit"
+                                loading={
+                                    createRecordMutation.isPending || updateRecordMutation.isPending
+                                }
+                                type="primary"
+                            >
+                                保存
+                            </Button>
+                        </Space>
+                    </Form>
+                )}
+            </Drawer>
         </section>
     );
 }
 
-interface FileBindFormValues {
-    storageObjectId?: number;
+const electronicStatusOptions: Array<{ value: ArchiveElectronicStatus; label: string }> = [
+    { value: "DRAFT", label: "草稿" },
+    { value: "ARCHIVED", label: "已归档" },
+    { value: "BORROWED", label: "借出" },
+];
+
+type RecordEditorState =
+    | { mode: "create" }
+    | { mode: "detail"; archiveItemId: number }
+    | { mode: "edit"; archiveItemId: number };
+
+interface FileUploadFormValues {
     usageType?: string;
     displayOrder?: number;
+}
+
+interface RecordEditorFormValues {
+    categoryId?: number;
+    volumeId?: number;
+    fondsCode?: string;
+    archiveNo?: string;
+    archiveYear?: number;
+    electronicStatus?: ArchiveElectronicStatus;
+    securityLevelId?: number;
+    retentionPeriodId?: number;
+    dynamicFields?: Record<string, unknown>;
 }
 
 function openDownloadLink(href: string) {
@@ -616,6 +872,89 @@ function openDownloadLink(href: string) {
     document.body.append(anchor);
     anchor.click();
     anchor.remove();
+}
+
+function editorTitle(state?: RecordEditorState) {
+    if (!state) {
+        return undefined;
+    }
+    if (state.mode === "create") {
+        return "新建档案";
+    }
+    return state.mode === "detail"
+        ? `档案 ${state.archiveItemId} 详情`
+        : `编辑档案 ${state.archiveItemId}`;
+}
+
+function recordDetailToFormValues(detail: ArchiveRecordDetailDto): RecordEditorFormValues {
+    return {
+        categoryId: detail.category.id,
+        volumeId: detail.item.volumeId,
+        fondsCode: detail.item.fondsCode,
+        archiveNo: detail.item.archiveNo,
+        archiveYear: detail.item.archiveYear,
+        electronicStatus: detail.item.electronicStatus,
+        securityLevelId: detail.item.securityLevelId,
+        retentionPeriodId: detail.item.retentionPeriodId,
+        dynamicFields: detail.dynamicFields ?? {},
+    };
+}
+
+function recordDescriptionItems(detail: ArchiveRecordDetailDto) {
+    return [
+        { key: "id", label: "档案 ID", children: detail.item.id },
+        { key: "categoryName", label: "档案分类", children: detail.category.categoryName },
+        { key: "fondsName", label: "全宗", children: detail.item.fondsName },
+        { key: "archiveNo", label: "档号", children: detail.item.archiveNo || "-" },
+        { key: "archiveYear", label: "年度", children: detail.item.archiveYear },
+        { key: "electronicStatus", label: "电子状态", children: detail.item.electronicStatus },
+        { key: "lockedFlag", label: "锁定", children: detail.item.lockedFlag ? "是" : "否" },
+        { key: "lockReason", label: "锁定原因", children: detail.item.lockReason || "-" },
+    ];
+}
+
+function dynamicDescriptionItems(detail: ArchiveRecordDetailDto) {
+    const visibleFields = [...detail.fields]
+        .filter((field) => field.enabled && field.detailVisible)
+        .sort(
+            (left, right) =>
+                left.detailSortOrder - right.detailSortOrder || left.sortOrder - right.sortOrder,
+        );
+    if (visibleFields.length === 0) {
+        return [{ key: "empty", label: "字段", children: "无可展示字段" }];
+    }
+    return visibleFields.map((field) => ({
+        key: field.fieldCode,
+        label: field.fieldName,
+        children: formatDisplayValue(detail.dynamicFields?.[field.fieldCode]),
+    }));
+}
+
+function editorCategoryName(
+    state: RecordEditorState | undefined,
+    detail: ArchiveRecordDetailDto | undefined,
+    categories: ArchiveCategoryDto[],
+    currentCategoryId: unknown,
+) {
+    if (state?.mode === "edit" && detail) {
+        return detail.category.categoryName;
+    }
+    if (typeof currentCategoryId !== "number") {
+        return "";
+    }
+    return categories.find((category) => category.id === currentCategoryId)?.categoryName ?? "";
+}
+
+function formatDisplayValue(value: unknown) {
+    if (value === null || value === undefined || value === "") {
+        return "-";
+    }
+    return String(value);
+}
+
+function trimToUndefined(value?: string) {
+    const text = value?.trim();
+    return text ? text : undefined;
 }
 
 function showImportErrors(result: ArchiveImportResult) {

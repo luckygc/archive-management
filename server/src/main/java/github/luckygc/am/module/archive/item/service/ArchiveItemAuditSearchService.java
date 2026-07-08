@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import jakarta.data.page.CursoredPage;
+import jakarta.data.page.PageRequest;
 import jakarta.data.restrict.Restrict;
 import jakarta.data.restrict.Restriction;
 
@@ -15,7 +16,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import github.luckygc.am.common.api.CursorPageRequest;
 import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.archive.item.ArchiveItemAudit;
@@ -38,23 +38,22 @@ public class ArchiveItemAuditSearchService {
 
     @Transactional(readOnly = true)
     public CursorPageResponse<ArchiveItemAuditResponse> listAudits(
-            @Nullable ListArchiveItemAuditsRequest query,
-            CursorPageRequest pageRequest,
-            Long userId) {
-        requireSuperAdmin(userId);
+            @Nullable ListArchiveItemAuditsRequest query, PageRequest pageRequest, Long userId) {
+        userId = requireAuditReadPermission(userId);
         ListArchiveItemAuditsRequest effectiveQuery =
                 query == null ? ListArchiveItemAuditsRequest.empty() : query;
         AuditSearchCriteria criteria = AuditSearchCriteria.from(effectiveQuery);
         CursoredPage<ArchiveItemAudit> page =
-                auditRepository.find(auditRestriction(criteria), pageRequest.pageRequest());
+                auditRepository.find(auditRestriction(criteria), pageRequest);
         return CursorPageResponse.from(page, pageRequest, this::toResponse);
     }
 
-    private void requireSuperAdmin(Long userId) {
+    private Long requireAuditReadPermission(Long userId) {
         userId = AuthenticatedUsers.requireResolvedUserId(userId);
         if (!permissionService.isSuperAdmin(userId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "权限不足");
         }
+        return userId;
     }
 
     private Restriction<ArchiveItemAudit> auditRestriction(AuditSearchCriteria criteria) {

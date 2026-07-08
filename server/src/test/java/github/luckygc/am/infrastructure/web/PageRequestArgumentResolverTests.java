@@ -15,7 +15,6 @@ import org.springframework.core.MethodParameter;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.web.context.request.ServletWebRequest;
 
-import github.luckygc.am.common.api.CursorPageRequest;
 import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.common.api.CursorPageTokenCodec;
 import github.luckygc.am.common.api.CursorPageTokenContext;
@@ -25,17 +24,10 @@ import github.luckygc.am.common.exception.BadRequestException;
 @DisplayName("分页请求参数解析")
 class PageRequestArgumentResolverTests {
 
-    private final CursorHttpFingerprint fingerprint = new CursorHttpFingerprint();
-
     @Test
-    @DisplayName("解析 cursor 分页参数并校验 token 查询指纹")
-    void cursorResolverShouldParseAndValidateFingerprint() throws Exception {
-        MockHttpServletRequest first =
-                new MockHttpServletRequest("GET", "/api/v1/archive-item-audits");
-        first.addParameter("archiveItemId", "10");
-        CursorPageTokenContext context =
-                new CursorPageTokenContext(
-                        "GET /api/v1/archive-item-audits", fingerprint.fingerprint(first), "");
+    @DisplayName("cursor resolver 只解析分页参数，不校验查询摘要")
+    void cursorResolverShouldOnlyParsePageParameters() throws Exception {
+        CursorPageTokenContext context = new CursorPageTokenContext("first-fingerprint");
         String cursor = CursorPageTokenCodec.encode("next", List.of(99L), 50, context);
         MockHttpServletRequest request =
                 new MockHttpServletRequest("GET", "/api/v1/archive-item-audits");
@@ -43,47 +35,38 @@ class PageRequestArgumentResolverTests {
         request.addParameter("limit", "50");
         request.addParameter("cursor", cursor);
         request.addParameter("requestTotal", "true");
-        CursorPageRequestArgumentResolver resolver =
-                new CursorPageRequestArgumentResolver(fingerprint);
+        CursorPageArgumentResolver resolver = new CursorPageArgumentResolver();
 
-        CursorPageRequest page =
-                (CursorPageRequest)
+        PageRequest page =
+                (PageRequest)
                         resolver.resolveArgument(
                                 cursorParameter(), null, new ServletWebRequest(request), null);
 
-        assertThat(page.limit()).isEqualTo(50);
-        assertThat(page.requestTotal()).isTrue();
-        assertThat(page.pageRequest().mode()).isEqualTo(PageRequest.Mode.CURSOR_NEXT);
-        assertThat(page.pageRequest().requestTotal()).isFalse();
-        assertThat(page.context()).isEqualTo(context);
+        assertThat(page.size()).isEqualTo(50);
+        assertThat(page.mode()).isEqualTo(PageRequest.Mode.CURSOR_NEXT);
+        assertThat(page.requestTotal()).isFalse();
     }
 
     @Test
-    @DisplayName("解析 JSON 请求体中的 cursor 分页参数")
-    void cursorResolverShouldParseJsonBodyPageParameters() throws Exception {
+    @DisplayName("cursor 分页只解析 URL 查询参数")
+    void cursorResolverShouldParseOnlyUrlQueryPageParameters() throws Exception {
         MockHttpServletRequest first =
-                jsonRequest(
-                        "POST",
-                        "/api/v1/archive-records:search",
-                        "{\"keyword\":\"合同\",\"limit\":50}");
-        CursorPageTokenContext context =
-                new CursorPageTokenContext(
-                        "POST /api/v1/archive-records:search",
-                        fingerprint.fingerprint(new CachedBodyHttpServletRequestWrapper(first)),
-                        "");
+                jsonRequest("POST", "/api/v1/archive-records:search", "{\"keyword\":\"合同\"}");
+        first.addParameter("limit", "50");
+        CursorPageTokenContext context = new CursorPageTokenContext("fingerprint");
         String cursor = CursorPageTokenCodec.encode("next", List.of(99L), 50, context);
         MockHttpServletRequest request =
                 jsonRequest(
                         "POST",
                         "/api/v1/archive-records:search",
-                        "{\"keyword\":\"合同\",\"limit\":50,\"cursor\":\""
-                                + cursor
-                                + "\",\"requestTotal\":true}");
-        CursorPageRequestArgumentResolver resolver =
-                new CursorPageRequestArgumentResolver(fingerprint);
+                        "{\"keyword\":\"合同\",\"limit\":10,\"cursor\":\"ignored\",\"requestTotal\":false}");
+        request.addParameter("limit", "50");
+        request.addParameter("cursor", cursor);
+        request.addParameter("requestTotal", "true");
+        CursorPageArgumentResolver resolver = new CursorPageArgumentResolver();
 
-        CursorPageRequest page =
-                (CursorPageRequest)
+        PageRequest page =
+                (PageRequest)
                         resolver.resolveArgument(
                                 cursorParameter(),
                                 null,
@@ -91,10 +74,32 @@ class PageRequestArgumentResolverTests {
                                         new CachedBodyHttpServletRequestWrapper(request)),
                                 null);
 
-        assertThat(page.limit()).isEqualTo(50);
-        assertThat(page.requestTotal()).isTrue();
-        assertThat(page.pageRequest().mode()).isEqualTo(PageRequest.Mode.CURSOR_NEXT);
-        assertThat(page.context()).isEqualTo(context);
+        assertThat(page.size()).isEqualTo(50);
+        assertThat(page.requestTotal()).isFalse();
+        assertThat(page.mode()).isEqualTo(PageRequest.Mode.CURSOR_NEXT);
+    }
+
+    @Test
+    @DisplayName("cursor 分页不读取 JSON 请求体中的分页参数")
+    void cursorResolverShouldIgnoreJsonBodyPageParameters() throws Exception {
+        MockHttpServletRequest request =
+                jsonRequest(
+                        "POST",
+                        "/api/v1/archive-records:search",
+                        "{\"keyword\":\"合同\",\"limit\":50,\"requestTotal\":true}");
+        CursorPageArgumentResolver resolver = new CursorPageArgumentResolver();
+
+        PageRequest page =
+                (PageRequest)
+                        resolver.resolveArgument(
+                                cursorParameter(),
+                                null,
+                                new ServletWebRequest(
+                                        new CachedBodyHttpServletRequestWrapper(request)),
+                                null);
+
+        assertThat(page.size()).isEqualTo(100);
+        assertThat(page.requestTotal()).isFalse();
     }
 
     @Test
@@ -104,8 +109,7 @@ class PageRequestArgumentResolverTests {
                 new MockHttpServletRequest("POST", "/api/v1/archive-records:search");
         request.setContentType("multipart/form-data; boundary=----test");
         request.addParameter("cursor", "opaque-token");
-        CursorPageRequestArgumentResolver resolver =
-                new CursorPageRequestArgumentResolver(fingerprint);
+        CursorPageArgumentResolver resolver = new CursorPageArgumentResolver();
 
         assertThatThrownBy(
                         () ->
@@ -126,16 +130,47 @@ class PageRequestArgumentResolverTests {
                                                             .isEqualTo("pagination");
                                                     assertThat(violation.message())
                                                             .isEqualTo(
-                                                                    "multipart 请求不能携带分页参数，请使用 JSON 请求体或 URL 参数");
+                                                                    "multipart 请求不能携带分页参数，请使用 URL 参数");
                                                 }));
     }
 
     @Test
-    @DisplayName("解析 offset 分页参数")
-    void offsetResolverShouldParseLimitAndOffset() throws Exception {
+    @DisplayName("非 JSON 请求体不能携带 cursor 分页参数")
+    void cursorResolverShouldRejectFormPageParameters() throws Exception {
+        MockHttpServletRequest request =
+                new MockHttpServletRequest("POST", "/api/v1/archive-records:search");
+        request.setContentType("application/x-www-form-urlencoded");
+        request.addParameter("limit", "50");
+        CursorPageArgumentResolver resolver = new CursorPageArgumentResolver();
+
+        assertThatThrownBy(
+                        () ->
+                                resolver.resolveArgument(
+                                        cursorParameter(),
+                                        null,
+                                        new ServletWebRequest(request),
+                                        null))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("分页参数不合法")
+                .satisfies(
+                        exception ->
+                                assertThat(((BadRequestException) exception).fieldViolations())
+                                        .singleElement()
+                                        .satisfies(
+                                                violation -> {
+                                                    assertThat(violation.field())
+                                                            .isEqualTo("pagination");
+                                                    assertThat(violation.message())
+                                                            .isEqualTo("分页请求体只支持 JSON");
+                                                }));
+    }
+
+    @Test
+    @DisplayName("解析 offset 分页 URL 参数")
+    void offsetResolverShouldParsePageSizeAndPageNo() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/items");
-        request.addParameter("limit", "200");
-        request.addParameter("offset", "400");
+        request.addParameter("pageSize", "200");
+        request.addParameter("pageNo", "3");
         OffsetPageRequestArgumentResolver resolver = new OffsetPageRequestArgumentResolver();
 
         OffsetPageRequest page =
@@ -143,15 +178,18 @@ class PageRequestArgumentResolverTests {
                         resolver.resolveArgument(
                                 offsetParameter(), null, new ServletWebRequest(request), null);
 
-        assertThat(page.limit()).isEqualTo(200);
+        assertThat(page.pageSize()).isEqualTo(200);
+        assertThat(page.pageNo()).isEqualTo(3);
         assertThat(page.offset()).isEqualTo(400);
     }
 
     @Test
-    @DisplayName("解析 JSON 请求体中的 offset 分页参数")
-    void offsetResolverShouldParseJsonBodyPageParameters() throws Exception {
+    @DisplayName("offset 分页只解析 URL 查询参数")
+    void offsetResolverShouldParseOnlyUrlQueryPageParameters() throws Exception {
         MockHttpServletRequest request =
-                jsonRequest("POST", "/api/v1/items:search", "{\"limit\":200,\"offset\":400}");
+                jsonRequest("POST", "/api/v1/items:search", "{\"pageSize\":10,\"pageNo\":2}");
+        request.addParameter("pageSize", "200");
+        request.addParameter("pageNo", "3");
         OffsetPageRequestArgumentResolver resolver = new OffsetPageRequestArgumentResolver();
 
         OffsetPageRequest page =
@@ -163,8 +201,30 @@ class PageRequestArgumentResolverTests {
                                         new CachedBodyHttpServletRequestWrapper(request)),
                                 null);
 
-        assertThat(page.limit()).isEqualTo(200);
+        assertThat(page.pageSize()).isEqualTo(200);
+        assertThat(page.pageNo()).isEqualTo(3);
         assertThat(page.offset()).isEqualTo(400);
+    }
+
+    @Test
+    @DisplayName("offset 分页不读取 JSON 请求体中的分页参数")
+    void offsetResolverShouldIgnoreJsonBodyPageParameters() throws Exception {
+        MockHttpServletRequest request =
+                jsonRequest("POST", "/api/v1/items:search", "{\"pageSize\":200,\"pageNo\":3}");
+        OffsetPageRequestArgumentResolver resolver = new OffsetPageRequestArgumentResolver();
+
+        OffsetPageRequest page =
+                (OffsetPageRequest)
+                        resolver.resolveArgument(
+                                offsetParameter(),
+                                null,
+                                new ServletWebRequest(
+                                        new CachedBodyHttpServletRequestWrapper(request)),
+                                null);
+
+        assertThat(page.pageSize()).isEqualTo(100);
+        assertThat(page.pageNo()).isEqualTo(1);
+        assertThat(page.offset()).isZero();
     }
 
     @Test
@@ -172,8 +232,8 @@ class PageRequestArgumentResolverTests {
     void offsetResolverShouldRejectMultipartPageParameters() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/items");
         request.setContentType("multipart/form-data; boundary=----test");
-        request.addParameter("limit", "200");
-        request.addParameter("offset", "400");
+        request.addParameter("pageSize", "200");
+        request.addParameter("pageNo", "3");
         OffsetPageRequestArgumentResolver resolver = new OffsetPageRequestArgumentResolver();
 
         assertThatThrownBy(
@@ -195,12 +255,43 @@ class PageRequestArgumentResolverTests {
                                                             .isEqualTo("pagination");
                                                     assertThat(violation.message())
                                                             .isEqualTo(
-                                                                    "multipart 请求不能携带分页参数，请使用 JSON 请求体或 URL 参数");
+                                                                    "multipart 请求不能携带分页参数，请使用 URL 参数");
+                                                }));
+    }
+
+    @Test
+    @DisplayName("非 JSON 请求体不能携带 offset 分页参数")
+    void offsetResolverShouldRejectFormPageParameters() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/items");
+        request.setContentType("application/x-www-form-urlencoded");
+        request.addParameter("pageSize", "200");
+        request.addParameter("pageNo", "3");
+        OffsetPageRequestArgumentResolver resolver = new OffsetPageRequestArgumentResolver();
+
+        assertThatThrownBy(
+                        () ->
+                                resolver.resolveArgument(
+                                        offsetParameter(),
+                                        null,
+                                        new ServletWebRequest(request),
+                                        null))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("分页参数不合法")
+                .satisfies(
+                        exception ->
+                                assertThat(((BadRequestException) exception).fieldViolations())
+                                        .singleElement()
+                                        .satisfies(
+                                                violation -> {
+                                                    assertThat(violation.field())
+                                                            .isEqualTo("pagination");
+                                                    assertThat(violation.message())
+                                                            .isEqualTo("分页请求体只支持 JSON");
                                                 }));
     }
 
     private static MethodParameter cursorParameter() throws NoSuchMethodException {
-        Method method = TestController.class.getDeclaredMethod("cursor", CursorPageRequest.class);
+        Method method = TestController.class.getDeclaredMethod("cursor", PageRequest.class);
         return new MethodParameter(method, 0);
     }
 
@@ -219,8 +310,8 @@ class PageRequestArgumentResolverTests {
     private static final class TestController {
 
         @SuppressWarnings("unused")
-        CursorPageResponse<String> cursor(CursorPageRequest page) {
-            return new CursorPageResponse<>(List.of(), null, null, null, null, null);
+        CursorPageResponse<String> cursor(PageRequest page) {
+            return CursorPageResponse.withCursorValues(List.of(), 0, null, null, null, null, null);
         }
 
         @SuppressWarnings("unused")

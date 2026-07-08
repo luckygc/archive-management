@@ -26,6 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import github.luckygc.am.common.api.CursorPageTokenContext;
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.archive.ArchiveLevel;
@@ -140,9 +141,11 @@ public class ArchiveItemImportExportService {
                             base.orderBy());
             ArchiveItemRoutingService.ArchiveItemListDto page =
                     archiveItemRoutingService.searchItems(pageRequest, userId);
+            ArchiveItemRoutingService.ArchiveItemListDto encodedPage =
+                    page.encodeCursorTokens(new CursorPageTokenContext(""));
             fields = page.fields();
             exportedRows.addAll(page.items());
-            cursor = page.next();
+            cursor = encodedPage.next();
         } while (cursor != null && exportedRows.size() < EXPORT_MAX_ROWS);
         byte[] bytes = writeExcel(exportHead(fields), exportBody(fields, exportedRows), "导出结果");
         writeExportAudit(base, userId, exportedRows.size());
@@ -257,7 +260,6 @@ public class ArchiveItemImportExportService {
                             cell(rawRow, indexes.get(HEADER_ARCHIVE_NO)),
                             archiveYear,
                             cell(rawRow, indexes.get(HEADER_ELECTRONIC_STATUS)),
-                            null,
                             null,
                             null,
                             null,
@@ -406,7 +408,6 @@ public class ArchiveItemImportExportService {
                 check.request().fondsCode(),
                 check.request().securityLevelId(),
                 check.request().retentionPeriodId(),
-                check.request().orgUnitId(),
                 dynamicRow)) {
             check.errors().add(new ArchiveImportRowError(check.rowNumber(), "*", "数据范围不足"));
         }
@@ -506,7 +507,6 @@ public class ArchiveItemImportExportService {
                     createRequest.electronicStatus(),
                     createRequest.securityLevelId(),
                     createRequest.retentionPeriodId(),
-                    createRequest.orgUnitId(),
                     createRequest.physicalFields(),
                     createRequest.dynamicFields());
         }

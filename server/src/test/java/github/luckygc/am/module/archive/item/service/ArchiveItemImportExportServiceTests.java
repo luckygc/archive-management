@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
+import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService.ArchiveDataScopeFilter;
@@ -163,21 +164,23 @@ class ArchiveItemImportExportServiceTests {
                         new ArchiveItemListDto(
                                 category(),
                                 List.of(textField()),
-                                true,
-                                null,
-                                null,
-                                null,
-                                null,
-                                List.of(
-                                        Map.of(
-                                                "id", 10L,
-                                                "fondsCode", "F001",
-                                                "fondsName", "全宗",
-                                                "categoryCode", "contract",
-                                                "categoryName", "合同",
-                                                "archiveNo", "A-001",
-                                                "archiveYear", 2026,
-                                                "title", "题名"))));
+                                CursorPageResponse.withCursorValues(
+                                        List.of(
+                                                Map.of(
+                                                        "id", 10L,
+                                                        "fondsCode", "F001",
+                                                        "fondsName", "全宗",
+                                                        "categoryCode", "contract",
+                                                        "categoryName", "合同",
+                                                        "archiveNo", "A-001",
+                                                        "archiveYear", 2026,
+                                                        "title", "题名")),
+                                        0,
+                                        null,
+                                        null,
+                                        null,
+                                        null,
+                                        null)));
         when(archiveMetadataService.getCategory(1L)).thenReturn(category());
 
         ArchiveExcelFile file = importExportService.exportItems(request, 9L);
@@ -196,12 +199,8 @@ class ArchiveItemImportExportServiceTests {
                         new ArchiveItemListDto(
                                 category(),
                                 List.of(textField()),
-                                true,
-                                null,
-                                null,
-                                null,
-                                null,
-                                List.of()));
+                                CursorPageResponse.withCursorValues(
+                                        List.of(), 0, null, null, null, null, null)));
         when(archiveMetadataService.getCategory(1L)).thenReturn(category());
 
         ArchiveExcelFile file =
@@ -247,6 +246,7 @@ class ArchiveItemImportExportServiceTests {
     private static ArchiveCategoryDto category() {
         LocalDateTime now = LocalDateTime.of(2026, 6, 30, 10, 0);
         return new ArchiveCategoryDto(
+                1L,
                 1L,
                 null,
                 "contract",

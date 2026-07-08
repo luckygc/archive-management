@@ -221,15 +221,27 @@ language plpgsql
 as
 $$
 declare
+    output_scheme_id bigint;
     output_category_id bigint;
     output_parent_id bigint;
     output_table_name text;
 begin
+    select id
+    into output_scheme_id
+    from am_archive_classification_scheme
+    where default_flag = true
+      and deleted_flag = false;
+
+    if output_scheme_id is null then
+        raise exception '示例默认分类方案不存在';
+    end if;
+
     if input_parent_code is not null then
         select id
         into output_parent_id
         from am_archive_category
-        where category_code = input_parent_code
+        where scheme_id = output_scheme_id
+          and category_code = input_parent_code
           and deleted_flag = false;
 
         if output_parent_id is null then
@@ -237,19 +249,28 @@ begin
         end if;
     end if;
 
-    insert into am_archive_category (parent_id, category_code, category_name, management_mode, enabled, sort_order)
-    select output_parent_id, input_category_code, input_category_name, input_management_mode, true, input_sort_order
+    insert into am_archive_category
+        (scheme_id, parent_id, category_code, category_name, management_mode, enabled, sort_order)
+    select output_scheme_id,
+           output_parent_id,
+           input_category_code,
+           input_category_name,
+           input_management_mode,
+           true,
+           input_sort_order
     where not exists (
         select 1
         from am_archive_category
-        where category_code = input_category_code
+        where scheme_id = output_scheme_id
+          and category_code = input_category_code
           and deleted_flag = false
     );
 
     select id
     into output_category_id
     from am_archive_category
-    where category_code = input_category_code
+    where scheme_id = output_scheme_id
+      and category_code = input_category_code
       and deleted_flag = false;
 
     output_table_name := seed_archive_stable_identifier('am_archive_item_data_', input_category_code);

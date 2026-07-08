@@ -1,5 +1,6 @@
 package github.luckygc.am.module.archive.item.service;
 
+import java.io.InputStream;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -61,23 +62,29 @@ public class ArchiveItemElectronicFileService {
     }
 
     @Transactional
-    public ArchiveItemElectronicFileResponse createFile(
+    public ArchiveItemElectronicFileResponse uploadFile(
             Long archiveItemId,
-            @Nullable CreateArchiveItemElectronicFileRequest request,
+            @Nullable UploadArchiveItemElectronicFileCommand command,
             Long userId) {
         requireAnyPermission(userId, PERMISSION_ITEM_CREATE, PERMISSION_ITEM_UPDATE);
-        if (request == null) {
-            throw new BadRequestException("请求体不能为空");
+        if (command == null) {
+            throw new BadRequestException("文件不能为空");
         }
-        if (request.storageObjectId() == null || request.storageObjectId() <= 0) {
-            throw new BadRequestException("文件记录不能为空", "storageObjectId", "文件记录不能为空");
+        if (command.contentLength() <= 0) {
+            throw new BadRequestException("文件不能为空", "file", "文件不能为空");
         }
         archiveItemRoutingService.assertItemInDataScope(archiveItemId, userId);
         ensureArchiveItemExists(archiveItemId);
         StorageObjectDto storageObject =
-                storageObjectService.getActiveObjectForOwner(request.storageObjectId(), userId);
-        String usageType = usageType(request.usageType());
-        int displayOrder = request.displayOrder() == null ? 0 : request.displayOrder();
+                storageObjectService.storeObject(
+                        new StorageObjectService.StoreStorageObjectCommand(
+                                command.originalFilename(),
+                                command.contentType(),
+                                command.contentLength(),
+                                command.inputStream()),
+                        userId);
+        String usageType = usageType(command.usageType());
+        int displayOrder = command.displayOrder() == null ? 0 : command.displayOrder();
         Long electronicFileId;
         try {
             electronicFileId =
@@ -127,16 +134,23 @@ public class ArchiveItemElectronicFileService {
             Long archiveItemId, Long electronicFileId, Long userId) {
         requirePermission(userId, PERMISSION_DOWNLOAD);
         archiveItemRoutingService.assertItemInDataScope(archiveItemId, userId);
+        OpenedArchiveItemFile openedFile = openElectronicFile(archiveItemId, electronicFileId);
+        ArchiveItem archiveItem = loadArchiveItem(archiveItemId);
+        insertDownloadAudit(archiveItem, electronicFileId, openedFile.storageObjectId(), userId);
+        return openedFile.download();
+    }
+
+    private OpenedArchiveItemFile openElectronicFile(Long archiveItemId, Long electronicFileId) {
         Long storageObjectId =
                 archiveMapper.getArchiveItemElectronicFileStorageObjectId(
                         archiveItemId, electronicFileId);
         if (storageObjectId == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "档案电子文件不存在");
         }
-        ArchiveItem archiveItem = loadArchiveItem(archiveItemId);
         StorageObjectDownload download = storageObjectService.openObject(storageObjectId);
-        insertDownloadAudit(archiveItem, electronicFileId, storageObjectId, userId);
-        return new ArchiveItemFileDownload(download.originalFilename(), download.resource());
+        return new OpenedArchiveItemFile(
+                storageObjectId,
+                new ArchiveItemFileDownload(download.originalFilename(), download.resource()));
     }
 
     private void insertDownloadAudit(
@@ -247,8 +261,11 @@ public class ArchiveItemElectronicFileService {
         return row.get(JdbcUtils.convertPropertyNameToUnderscoreName(key));
     }
 
-    public record CreateArchiveItemElectronicFileRequest(
-            @Nullable Long storageObjectId,
+    public record UploadArchiveItemElectronicFileCommand(
+            String originalFilename,
+            @Nullable String contentType,
+            long contentLength,
+            InputStream inputStream,
             @Nullable String usageType,
             @Nullable Integer displayOrder) {}
 
@@ -265,4 +282,6 @@ public class ArchiveItemElectronicFileService {
             LocalDateTime createdAt) {}
 
     public record ArchiveItemFileDownload(String originalFilename, FileStorageResource resource) {}
+
+    private record OpenedArchiveItemFile(Long storageObjectId, ArchiveItemFileDownload download) {}
 }

@@ -1,5 +1,6 @@
 package github.luckygc.am.module.authentication.web;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -7,6 +8,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.List;
 
+import jakarta.data.page.PageRequest;
 import jakarta.servlet.http.HttpServletRequest;
 
 import org.junit.jupiter.api.DisplayName;
@@ -15,8 +17,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.web.server.ResponseStatusException;
 
-import github.luckygc.am.common.api.CursorPageRequest;
-import github.luckygc.am.common.api.CursorPageTokenContext;
 import github.luckygc.am.module.authentication.ArchiveUserDetails;
 import github.luckygc.am.module.authentication.service.AuthenticationAuditService;
 import github.luckygc.am.module.authentication.service.LoginFailureLimitService;
@@ -129,9 +129,21 @@ class LoginSessionControllerTests {
         verify(failureLimitService).clear("admin");
     }
 
-    private static CursorPageRequest pageRequest() {
-        return CursorPageRequest.of(
-                20, null, false, new CursorPageTokenContext("test", "fingerprint", "user:7"));
+    @Test
+    @DisplayName("当前用户 displayName 不回退到 username")
+    void currentUserShouldNotFallbackDisplayNameToUsername() {
+        UsernamePasswordAuthenticationToken authentication =
+                UsernamePasswordAuthenticationToken.authenticated("zhangsan", "N/A", List.of());
+
+        LoginSessionController.CurrentUserDto currentUser =
+                LoginSessionController.CurrentUserDto.from(authentication, "session-1");
+
+        assertThat(currentUser.username()).isEqualTo("zhangsan");
+        assertThat(currentUser.displayName()).isEmpty();
+    }
+
+    private static PageRequest pageRequest() {
+        return PageRequest.ofSize(20).withoutTotal();
     }
 
     private static UsernamePasswordAuthenticationToken authentication(Long userId) {

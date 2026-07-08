@@ -60,7 +60,7 @@
 
 ### Requirement: 档案电子文件和下载路由
 
-系统 SHALL 在 MVP 中支持档案条目上传、列表可见、预览、下载和删除电子文件，并按电子文件记录下载。
+系统 SHALL 在 MVP 中支持档案条目上传、列表可见、下载和删除电子文件，并按电子文件记录下载；在线预览暂不纳入本阶段。
 
 #### Scenario: 使用既有关联表保存档案电子文件
 
@@ -74,9 +74,10 @@
 
 - **WHEN** 客户端为档案条目新增电子文件
 - **THEN** 客户端 SHALL 调用 `POST /api/v1/archive-items/{archiveItem}/electronic-files`
-- **AND** 请求 SHALL 至少包含 `storageObjectId`
+- **AND** 请求 SHALL 使用 `multipart/form-data` 提交 `file`
 - **AND** 请求 MAY 包含 `usageType` 和 `displayOrder`
-- **AND** 系统 SHALL 保存档案条目与存储对象记录的关系
+- **AND** 系统 SHALL 先写入对象存储和 `am_storage_object` 文件记录，再保存档案条目与存储对象记录的关系
+- **AND** 客户端 SHALL NOT 要求用户手工填写 `storageObjectId` 或其他存储对象内部 ID
 - **AND** 系统 SHALL NOT 仅保存对象存储裸路径作为业务真相
 
 #### Scenario: 查询档案条目电子文件
@@ -85,7 +86,7 @@
 - **THEN** 客户端 SHALL 调用 `GET /api/v1/archive-items/{archiveItem}/electronic-files`
 - **AND** 响应 SHALL 使用 `CollectionResponse`，并在 `items` 中返回档案电子文件 ID、档案条目 ID、存储对象记录 ID、用途、排序、原始文件名、文件大小、内容类型、SHA-256 和创建时间
 - **AND** 响应 SHALL NOT 暴露 `bucket_name` 或 `object_key`
-- **AND** 查询列表 SHALL 只要求档案读取权限，不等同于允许预览或下载文件内容
+- **AND** 查询列表 SHALL 只要求档案读取权限，不等同于允许下载文件内容
 
 #### Scenario: 删除档案条目电子文件
 
@@ -94,12 +95,12 @@
 - **AND** 系统 SHALL 删除档案电子文件记录
 - **AND** 系统 SHALL NOT 删除 `am_storage_object` 文件记录或底层对象
 
-#### Scenario: 下载档案电子文件
+#### Scenario: 创建档案电子文件下载短链
 
 - **WHEN** 客户端下载档案条目电子文件
-- **THEN** 客户端 SHALL 调用 `GET /api/v1/archive-items/{archiveItem}/electronic-files/{electronicFile}/content`
+- **THEN** 客户端 SHALL 调用 `POST /api/v1/archive-items/{archiveItem}/electronic-files/{electronicFile}:createDownloadLink`
 - **AND** 系统 SHALL 根据文件记录中的 `storage_type`、`bucket_name` 和 `object_key` 路由读取文件
-- **AND** 系统 SHALL 使用独立功能权限区分档案电子文件列表、预览和下载
+- **AND** 系统 SHALL 使用独立功能权限区分档案电子文件列表可见和下载
 - **AND** 系统 SHALL NOT 根据客户端提交的对象存储路径读取文件
 - **AND** 系统 SHALL 写入下载审计
 
@@ -149,15 +150,21 @@
 
 #### Scenario: 查询操作审计
 
-- **WHEN** 已认证用户查询档案条目操作审计
+- **WHEN** 超级管理员查询档案条目操作审计
 - **THEN** 系统 SHALL 支持按档案 ID、分类、全宗、操作类型和操作时间范围筛选
-- **AND** 响应 SHALL 使用项目统一 `OffsetPageResponse` 分页合同
+- **AND** 响应 SHALL 使用项目统一 `CursorPageResponse` 分页合同
 - **AND** 审计记录 SHALL 按操作时间倒序、审计 ID 倒序稳定排序
-- **AND** 基于全宗和分类的数据范围授权 SHALL 按“基础权限和数据范围”要求统一实现
+- **AND** 系统 SHALL NOT 对审计查询再套用普通档案数据范围
 
 #### Scenario: 拒绝未认证审计查询
 
 - **WHEN** 未认证用户查询档案条目操作审计
+- **THEN** 系统 SHALL 拒绝查询
+- **AND** 系统 SHALL NOT 返回任何审计记录
+
+#### Scenario: 拒绝非超级管理员审计查询
+
+- **WHEN** 非超级管理员用户查询档案条目操作审计
 - **THEN** 系统 SHALL 拒绝查询
 - **AND** 系统 SHALL NOT 返回任何审计记录
 

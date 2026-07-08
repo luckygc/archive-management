@@ -35,6 +35,7 @@ import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 
 import github.luckygc.am.app.ArchiveManagementApplication;
+import github.luckygc.am.common.api.CursorPageResponse;
 
 @AnalyzeClasses(packages = "github.luckygc.am", importOptions = DoNotIncludeTests.class)
 @DisplayName("架构边界规则")
@@ -180,6 +181,17 @@ class ArchitectureRulesTest {
                     .should()
                     .dependOnClassesThat()
                     .resideInAnyPackage("org.springframework.data..");
+
+    @ArchTest
+    static final ArchRule project_should_not_depend_on_jackson2_runtime_apis =
+            noClasses()
+                    .should()
+                    .dependOnClassesThat()
+                    .resideInAnyPackage(
+                            "com.fasterxml.jackson.core..",
+                            "com.fasterxml.jackson.databind..",
+                            "com.fasterxml.jackson.dataformat..",
+                            "com.fasterxml.jackson.module..");
 
     @ArchTest
     static final ArchRule module_should_not_use_jdbc_client =
@@ -355,6 +367,34 @@ class ArchitectureRulesTest {
         assertTrue(violations.isEmpty(), () -> "Spring Bean 组件类必须且只能有一个构造函数: " + violations);
     }
 
+    @ArchTest
+    static void cursor_page_controllers_should_return_cursor_page_response_for_common_page_contract(
+            JavaClasses classes) {
+        List<String> violations =
+                classes.stream()
+                        .filter(javaClass -> javaClass.isAnnotatedWith(RestController.class))
+                        .flatMap(javaClass -> javaClass.getMethods().stream())
+                        .filter(ArchitectureRulesTest::hasPageRequestParameter)
+                        .filter(
+                                method ->
+                                        !method.getRawReturnType()
+                                                .isAssignableTo(CursorPageResponse.class))
+                        .map(
+                                method ->
+                                        method.getOwner().getName()
+                                                + "#"
+                                                + method.getName()
+                                                + " 未返回 CursorPageResponse 合同")
+                        .sorted()
+                        .toList();
+
+        assertTrue(
+                violations.isEmpty(),
+                () ->
+                        "声明 PageRequest 的 cursor 分页 Controller 应返回 CursorPageResponse 合同，由 ResponseBodyAdvice 填充 token: "
+                                + violations);
+    }
+
     @Test
     @DisplayName("Spring Modulith 模块结构校验通过")
     void springModulithModuleStructureShouldBeValid() {
@@ -381,5 +421,10 @@ class ArchitectureRulesTest {
                 && !javaClass.isAnnotation()
                 && (javaClass.isAnnotatedWith(Component.class)
                         || javaClass.isMetaAnnotatedWith(Component.class));
+    }
+
+    private static boolean hasPageRequestParameter(JavaMethod method) {
+        return method.getRawParameterTypes().stream()
+                .anyMatch(parameter -> parameter.getName().equals("jakarta.data.page.PageRequest"));
     }
 }

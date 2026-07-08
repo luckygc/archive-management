@@ -12,6 +12,7 @@ lerna-debug.log*
 /**/node_modules/
 /web/dist/
 /mobile/dist/
+/preview/build/
 /dist/
 /dist-ssr/
 /.vite-hooks/

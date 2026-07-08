@@ -11,7 +11,7 @@
 - 支持独立档案数据范围资源，包含 `*` 任意范围、全宗、分类、密级和分类内动态字段条件。
 - 动态字段条件只在数据范围定义的 jsonb 部分保存；不保存 SQL，不为权限表做动态 DDL。
 - 支持权限点枚举、角色权限绑定和当前用户权限判断接口。
-- 档案管理查询、全文发现、详情、写入、档案电子文件上传、列表、预览、下载、删除、审计查询、导入导出统一应用数据范围；档案电子文件列表可见、预览和下载使用不同功能权限。
+- 档案管理查询、全文发现、详情、写入、档案电子文件上传、列表、下载、删除、导入导出统一应用数据范围；档案电子文件列表可见和下载使用不同功能权限；审计查询当前限定超级管理员。
 - 补齐标准 Excel 导入导出，使 MVP 能支撑真实批量维护。
 
 **Non-Goals:**
@@ -61,7 +61,7 @@ AND 用户查询条件
 
 ### 功能权限使用稳定权限点
 
-新增稳定权限点，例如 `archive:item:read`、`archive:item:create`、`archive:item:update`、`archive:item:delete`、`archive:item:lock`、`archive:item:preview-electronic-file`、`archive:item:download-electronic-file`、`archive:export`、`archive:metadata:manage`、`archive:data-scope:manage`、`authorization:permission:manage`。权限点可枚举，角色可绑定，当前用户可查询自身权限并由后端判断接口使用。导入不设置独立功能权限，按每行实际写入语义分别使用创建或编辑权限。
+新增稳定权限点，例如 `archive:item:read`、`archive:item:create`、`archive:item:update`、`archive:item:delete`、`archive:item:lock`、`archive:item:download-electronic-file`、`archive:export`、`archive:metadata:manage`、`archive:data-scope:manage`、`authorization:permission:manage`。权限点可枚举，角色可绑定，当前用户可查询自身权限和是否为超级管理员，并由后端判断接口使用。导入不设置独立功能权限，按每行实际写入语义分别使用创建或编辑权限。
 
 Spring Security 继续负责认证和少量基础入口保护；业务权限判断在业务 Service 层集中执行，以便结合档案数据范围。
 

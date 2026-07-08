@@ -3,22 +3,22 @@ package github.luckygc.am.module.archive.item.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+
+import jakarta.data.page.PageRequest;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -30,6 +30,7 @@ import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService.ArchiveDataScopeFilter;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService.ResolvedArchiveDataScope;
+import github.luckygc.am.module.archive.governance.service.ArchiveGovernanceService;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemAuditDataRepository;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveItemRelationRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.CreateArchiveItemRequest;
@@ -47,6 +48,7 @@ class ArchiveItemDataScopeQueryTests {
 
     private ArchiveMapper archiveMapper;
     private ArchiveMetadataService archiveMetadataService;
+    private ArchiveGovernanceService governanceService;
     private ArchiveDataScopeService dataScopeService;
     private AuthorizationPermissionService permissionService;
     private ArchiveItemRoutingService archiveItemRoutingService;
@@ -55,6 +57,7 @@ class ArchiveItemDataScopeQueryTests {
     void setUp() {
         archiveMapper = mock(ArchiveMapper.class);
         archiveMetadataService = mock(ArchiveMetadataService.class);
+        governanceService = mock(ArchiveGovernanceService.class);
         ArchiveItemSearchProjectionService searchProjectionService =
                 mock(ArchiveItemSearchProjectionService.class);
         dataScopeService = mock(ArchiveDataScopeService.class);
@@ -64,6 +67,7 @@ class ArchiveItemDataScopeQueryTests {
         archiveItemRoutingService =
                 new ArchiveItemRoutingService(
                         archiveMetadataService,
+                        governanceService,
                         archiveMapper,
                         searchProjectionService,
                         dataScopeService,
@@ -110,47 +114,110 @@ class ArchiveItemDataScopeQueryTests {
         when(archiveMetadataService.listUniqueConstraints(1L)).thenReturn(List.of());
         when(dataScopeService.buildItemFilter(9L, 1L, null))
                 .thenReturn(ArchiveDataScopeFilter.fondsCodes(List.of("F001")));
-        when(archiveMapper.listDynamicItems(
-                        anyString(),
-                        anyString(),
-                        anyString(),
-                        anyBoolean(),
-                        isNull(),
-                        anyList(),
-                        anyList(),
-                        anyList(),
-                        isNull(),
-                        eq(9L),
-                        eq(false),
-                        anyString(),
-                        nullable(String.class),
-                        anyList(),
-                        anyInt()))
-                .thenReturn(List.of());
+        when(archiveMapper.listDynamicItems(any(), any(), any(), any())).thenReturn(List.of());
 
         archiveItemRoutingService.searchItems(
                 new SearchArchiveItemsRequest(1L, null, null, null, null, null, null, null), 9L);
 
         verify(archiveMapper)
                 .listDynamicItems(
-                        eq("am_archive_item_contract"),
-                        eq(""),
-                        eq("ITEM"),
-                        eq(false),
-                        isNull(),
-                        eq(
-                                List.of(
-                                        new ArchiveDataScopeSqlGroup(
-                                                List.of("F001"), List.of(), List.of()))),
-                        anyList(),
-                        anyList(),
-                        isNull(),
-                        eq(9L),
-                        eq(false),
-                        anyString(),
-                        nullable(String.class),
-                        anyList(),
-                        anyInt());
+                        argThat(
+                                source ->
+                                        source != null
+                                                && source.tableName()
+                                                        .equals("am_archive_item_contract")
+                                                && !source.deleted()),
+                        any(),
+                        argThat(
+                                criteria ->
+                                        criteria != null
+                                                && criteria.requestedFondsCode() == null
+                                                && criteria.dataScopeGroups()
+                                                        .equals(
+                                                                List.of(
+                                                                        new ArchiveDataScopeSqlGroup(
+                                                                                List.of("F001"),
+                                                                                List.of(),
+                                                                                List.of())))),
+                        any());
+    }
+
+    @Test
+    @DisplayName("动态分页复用 Jakarta Data 游标值对象")
+    void dynamicPaginationShouldReuseJakartaDataCursorValueObject() {
+        assertThat(
+                        Arrays.stream(ArchiveItemRoutingService.class.getDeclaredClasses())
+                                .map(Class::getSimpleName))
+                .doesNotContain("Cursor");
+    }
+
+    @Test
+    @DisplayName("动态表第一页请求 total 时执行独立 count 查询")
+    void searchItemsShouldCountDynamicItemsWhenFirstPageRequestsTotal() {
+        when(archiveMetadataService.getCategory(1L)).thenReturn(category());
+        when(archiveMapper.tableExists("am_archive_item_contract")).thenReturn(1);
+        when(archiveMetadataService.listEffectiveFields(
+                        eq(1L), eq(ArchiveLevel.ITEM), any(), eq(9L)))
+                .thenReturn(List.of());
+        when(archiveMetadataService.listUniqueConstraints(1L)).thenReturn(List.of());
+        when(dataScopeService.buildItemFilter(9L, 1L, null))
+                .thenReturn(ArchiveDataScopeFilter.all());
+        when(archiveMapper.listDynamicItems(any(), any(), any(), any()))
+                .thenReturn(
+                        List.of(
+                                Map.of(
+                                        "id",
+                                        10L,
+                                        "createdAt",
+                                        LocalDateTime.of(2026, 7, 1, 10, 0))));
+        when(archiveMapper.countDynamicItems(any(), any())).thenReturn(3);
+
+        ArchiveItemRoutingService.ArchiveItemListDto page =
+                archiveItemRoutingService.searchItems(
+                        new SearchArchiveItemsRequest(1L, null, null, null, null, null, null, null),
+                        9L,
+                        PageRequest.ofSize(100).withTotal());
+
+        assertThat(page.total()).isEqualTo(3L);
+        verify(archiveMapper)
+                .countDynamicItems(
+                        argThat(
+                                source ->
+                                        source != null
+                                                && source.tableName()
+                                                        .equals("am_archive_item_contract")
+                                                && !source.deleted()),
+                        argThat(
+                                criteria ->
+                                        criteria != null
+                                                && criteria.requestedFondsCode() == null
+                                                && criteria.dataScopeGroups().isEmpty()));
+    }
+
+    @Test
+    @DisplayName("动态表未创建时拒绝查询档案列表")
+    void searchItemsShouldRejectWhenDynamicTableIsNotBuilt() {
+        when(archiveMetadataService.getCategory(1L)).thenReturn(category());
+        when(archiveMapper.tableExists("am_archive_item_contract")).thenReturn(0);
+        when(archiveMetadataService.listEffectiveFields(
+                        eq(1L), eq(ArchiveLevel.ITEM), any(), eq(9L)))
+                .thenReturn(List.of());
+
+        assertThatThrownBy(
+                        () ->
+                                archiveItemRoutingService.searchItems(
+                                        new SearchArchiveItemsRequest(
+                                                1L, null, null, null, null, null, null, null),
+                                        9L))
+                .isInstanceOfSatisfying(
+                        ResponseStatusException.class,
+                        exception -> {
+                            assertThat(exception.getStatusCode())
+                                    .isEqualTo(HttpStatus.PRECONDITION_FAILED);
+                            assertThat(exception.getReason()).isEqualTo("档案分类动态表未创建");
+                        });
+
+        verify(archiveMapper, never()).listDynamicItems(any(), any(), any(), any());
     }
 
     @Test
@@ -169,22 +236,7 @@ class ArchiveItemDataScopeQueryTests {
                 new SearchArchiveItemsRequest(1L, null, null, null, null, null, null, null), 9L);
 
         verify(archiveMapper, org.mockito.Mockito.never())
-                .listDynamicItems(
-                        anyString(),
-                        anyString(),
-                        anyString(),
-                        anyBoolean(),
-                        any(),
-                        anyList(),
-                        anyList(),
-                        anyList(),
-                        any(),
-                        any(),
-                        anyBoolean(),
-                        anyString(),
-                        anyString(),
-                        anyList(),
-                        anyInt());
+                .listDynamicItems(any(), any(), any(), any());
     }
 
     @Test
@@ -270,7 +322,7 @@ class ArchiveItemDataScopeQueryTests {
                                 archiveItemRoutingService.createItem(
                                         new CreateArchiveItemRequest(
                                                 1L, null, "F001", "A-001", 2026, "DRAFT", null,
-                                                null, null, null, Map.of()),
+                                                null, null, Map.of()),
                                         9L))
                 .isInstanceOfSatisfying(
                         ResponseStatusException.class,
@@ -290,13 +342,14 @@ class ArchiveItemDataScopeQueryTests {
                         anyString(),
                         any(),
                         any(),
-                        any(),
                         anyInt(),
+                        any(),
                         anyLong());
     }
 
     private ArchiveCategoryDto category() {
         return new ArchiveCategoryDto(
+                1L,
                 1L,
                 null,
                 "contract",

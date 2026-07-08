@@ -26,7 +26,7 @@ import github.luckygc.am.common.exception.BadRequestException;
 public final class CursorPageTokenCodec {
 
     private static final String VERSION = "v1";
-    private static final String CONTEXT_VERSION = "v2";
+    private static final String CONTEXT_VERSION = "v4";
     private static volatile byte[] secretKey = randomSecretKey();
     private static final Base64.Encoder BASE64_URL_ENCODER =
             Base64.getUrlEncoder().withoutPadding();
@@ -65,27 +65,26 @@ public final class CursorPageTokenCodec {
             @Nullable String token,
             boolean requestTotal,
             CursorPageTokenContext context) {
-        PageRequest pageRequest =
-                requestTotal && StringUtils.isBlank(token)
-                        ? PageRequest.ofSize(limit).withTotal()
-                        : PageRequest.ofSize(limit).withoutTotal();
+        validate(token, limit, context);
+        return pageRequest(limit, token, requestTotal);
+    }
+
+    public static @Nullable DecodedCursor validate(
+            @Nullable String token, int limit, CursorPageTokenContext context) {
         DecodedCursor cursor = decode(token);
         if (cursor == null) {
-            return pageRequest;
+            return null;
         }
-        if (cursor.limit() == null
-                || cursor.context() == null
-                || cursor.limit() != limit
-                || !cursor.context().equals(context)) {
+        if (cursor.limit() == null || cursor.context() == null) {
             throw invalidCursor("cursor 查询条件不匹配");
         }
-        PageRequest.Cursor pageCursor =
-                PageRequest.Cursor.forKey(cursor.values().toArray(Object[]::new));
-        return switch (cursor.direction()) {
-            case "next" -> pageRequest.afterCursor(pageCursor);
-            case "prev" -> pageRequest.beforeCursor(pageCursor);
-            default -> throw invalidCursor("cursor 格式无效");
-        };
+        if (cursor.limit() != limit) {
+            throw invalidCursor("分页大小已变化，请从第一页重新查询");
+        }
+        if (!cursor.context().equals(context)) {
+            throw invalidCursor("查询条件已变化，请从第一页重新查询");
+        }
+        return cursor;
     }
 
     public static @Nullable String encode(PageRequest pageRequest) {
@@ -139,13 +138,11 @@ public final class CursorPageTokenCodec {
         if (values == null || values.isEmpty()) {
             return null;
         }
-        List<String> fields = new ArrayList<>(values.size() + 6);
+        List<String> fields = new ArrayList<>(values.size() + 4);
         fields.add(CONTEXT_VERSION);
         fields.add(direction);
         fields.add(Integer.toString(limit));
-        fields.add(encodeString(context.endpointId()));
-        fields.add(context.queryFingerprint());
-        fields.add(encodeString(context.userKey()));
+        fields.add(context.queryDigest());
         values.forEach(value -> fields.add(encodeValue(value)));
         String payload = String.join("|", fields);
         return BASE64_URL_ENCODER.encodeToString(payload.getBytes(StandardCharsets.UTF_8))
@@ -168,22 +165,21 @@ public final class CursorPageTokenCodec {
                 throw invalidCursor("cursor 签名无效");
             }
             String[] fields = payload.split("\\|", -1);
-            if (fields.length >= 7 && CONTEXT_VERSION.equals(fields[0])) {
+            if (fields.length >= 5 && CONTEXT_VERSION.equals(fields[0])) {
                 if (!"next".equals(fields[1])
                         && !"prev".equals(fields[1])
                         && !"self".equals(fields[1])) {
                     throw invalidCursor("cursor 格式无效");
                 }
-                List<Object> values = new ArrayList<>(fields.length - 6);
-                for (int index = 6; index < fields.length; index++) {
+                List<Object> values = new ArrayList<>(fields.length - 4);
+                for (int index = 4; index < fields.length; index++) {
                     values.add(decodeValue(fields[index]));
                 }
                 return new DecodedCursor(
                         fields[1],
                         values,
                         Integer.valueOf(fields[2]),
-                        new CursorPageTokenContext(
-                                decodeString(fields[3]), fields[4], decodeString(fields[5])));
+                        new CursorPageTokenContext(fields[3]));
             }
             if (fields.length < 3 || !VERSION.equals(fields[0])) {
                 throw invalidCursor("cursor 格式无效");
@@ -222,14 +218,6 @@ public final class CursorPageTokenCodec {
                             + BASE64_URL_ENCODER.encodeToString(
                                     value.toString().getBytes(StandardCharsets.UTF_8));
         };
-    }
-
-    private static String encodeString(String value) {
-        return BASE64_URL_ENCODER.encodeToString(value.getBytes(StandardCharsets.UTF_8));
-    }
-
-    private static String decodeString(String value) {
-        return new String(BASE64_URL_DECODER.decode(value), StandardCharsets.UTF_8);
     }
 
     private static @Nullable Object decodeValue(String value) {

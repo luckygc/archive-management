@@ -89,17 +89,20 @@ Controller SHALL 显式声明完整 URL。
 #### Scenario: 分页请求参数载体
 
 - **WHEN** 客户端提交项目自有分页请求
-- **THEN** 分页参数 SHALL 通过 URL query 参数或 JSON 请求体提交
-- **AND** 普通资源列表接口 SHOULD 使用 URL query 参数提交 `limit`、`cursor`、`offset` 和 `requestTotal`
-- **AND** 使用 JSON 请求体表达复杂查询条件的接口 MAY 在同一个 JSON 对象中提交分页参数
-- **AND** 服务端 SHALL 将 JSON 请求体根对象中的 `limit`、`cursor`、`offset`、`requestTotal` 和 `_csrf` 视为分页或请求技术字段，不纳入 cursor 查询指纹
-- **AND** 服务端 SHALL 拒绝通过 `multipart/*` 请求提交分页参数
+- **THEN** 分页控制参数 SHALL 通过 URL query 参数提交
+- **AND** cursor 分页接口 SHALL 使用 URL query 参数提交 `limit`、`cursor` 和 `requestTotal`
+- **AND** offset 分页接口 SHALL 使用 URL query 参数提交 `pageSize` 和 `pageNo`
+- **AND** 使用 JSON 请求体表达复杂查询条件的 cursor 搜索接口 SHALL 将 `orderBy` 放在同一个 JSON 请求体中
+- **AND** offset 分页接口的 `orderBy` SHALL 通过 URL query 参数提交
+- **AND** 服务端 SHALL NOT 从 JSON 请求体解析分页控制参数
+- **AND** 服务端 SHALL 将 URL query 中的 `limit`、`cursor`、`pageSize`、`pageNo`、`offset` 和 `requestTotal` 视为分页控制字段，不纳入 cursor 查询摘要
+- **AND** 服务端 SHALL 拒绝通过非 JSON 请求体提交分页请求
 
 #### Scenario: 请求 offset 分页集合
 
 - **WHEN** 对应业务规格明确声明该集合规模可控、排序稳定且客户端需要页码跳转或默认总数
-- **THEN** 请求 SHALL 支持 `limit` 和 `offset`
-- **AND** 服务端 SHALL 校验 `limit` 上限
+- **THEN** 请求 SHALL 支持 `pageSize` 和 `pageNo`
+- **AND** 服务端 SHALL 校验 `pageSize` 上限
 - **AND** 服务端 SHALL 为分页查询定义稳定排序
 - **AND** 排序字段 SHALL 使用 API 字段名，并在进入 SQL 前通过白名单映射为数据库列
 - **AND** 服务端 SHALL 追加唯一且稳定的兜底排序字段，例如 `id`
@@ -110,8 +113,8 @@ Controller SHALL 显式声明完整 URL。
 - **WHEN** 业务规格明确声明 API 返回 offset 分页结果
 - **THEN** 响应 SHALL 使用统一 page object
 - **AND** 响应 SHALL 包含 `items`
-- **AND** 响应 SHALL 包含 `limit`
-- **AND** 响应 SHALL 包含 `offset`
+- **AND** 响应 SHALL 包含 `pageSize`
+- **AND** 响应 SHALL 包含 `pageNo`
 - **AND** 响应 SHALL 包含 `total`
 - **AND** 服务端 SHALL 将 `total` 作为单独 count 查询执行
 - **AND** 服务端 SHALL NOT 将 count 查询隐藏在持久化框架分页对象序列化过程中
@@ -141,7 +144,7 @@ Controller SHALL 显式声明完整 URL。
 - **AND** `createdAt DESC` SHALL 作为默认时间序兜底
 - **AND** `id DESC` SHALL 保证排序键唯一
 - **AND** 如果用户自定义排序已包含某个兜底字段，服务端 SHALL NOT 重复追加同一字段
-- **AND** cursor 查询指纹 SHALL 包含完整排序列表
+- **AND** cursor 查询摘要 SHALL 包含完整排序列表
 - **AND** 当用户修改排序时，客户端 SHALL 清空旧 `cursor` 并重新搜索
 - **AND** 服务端 SHALL 拒绝未进入白名单的排序字段，并返回 ProblemDetail 错误
 
@@ -184,12 +187,15 @@ Controller SHALL 显式声明完整 URL。
 #### Scenario: 校验键集分页 cursor
 
 - **WHEN** 客户端提交带 `cursor` 的键集分页请求
-- **THEN** 服务端 SHALL 校验 cursor 的版本、方向、边界值和查询指纹
+- **THEN** 服务端 SHALL 校验 cursor 的版本、方向、边界值、分页大小和查询摘要
 - **AND** 需要防篡改的外部接口 SHALL 额外校验 cursor 签名
 - **AND** cursor 签名密钥 SHALL 来自运行时配置或安全随机生成，不得使用源码内固定默认密钥
 - **AND** 显式配置的 cursor 签名密钥 SHALL 满足最小长度要求
-- **AND** 查询指纹 SHALL 覆盖首次请求的筛选、搜索、排序、分页大小和业务范围参数
-- **AND** 如果当前请求参数与 cursor 绑定的查询指纹不一致，服务端 SHALL 拒绝请求
+- **AND** 查询摘要 SHALL 覆盖首次请求的筛选、搜索、排序和业务范围参数
+- **AND** `limit` SHALL 从查询摘要中排除，并作为 cursor 独立绑定字段校验
+- **AND** cursor 查询摘要校验 SHALL 由通用请求处理组件执行，参数解析组件 SHALL 只解析分页参数，业务 Service SHALL NOT 重复实现 HTTP 请求一致性校验
+- **AND** 如果当前请求参数与 cursor 绑定的查询摘要不一致，服务端 SHALL 拒绝请求
+- **AND** 如果当前 `limit` 与 cursor 绑定的分页大小不一致，服务端 SHALL 拒绝请求并提示重新从第一页查询
 - **AND** 服务端 SHALL 返回 `INVALID_ARGUMENT` 或 `FAILED_PRECONDITION` 类 ProblemDetail 错误
 - **AND** 服务端 SHALL NOT 使用 cursor 中的客户端可见字段绕过服务端权限、数据权限或字段白名单校验
 

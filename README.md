@@ -2,6 +2,12 @@
 
 档案管理系统，PC 前端使用 React + Ant Design，移动端使用 React + Ant Design Mobile，后端使用单 Spring Boot 应用。
 
+## 功能边界
+
+- 档案治理 foundation 已进入 OpenSpec 合同：治理方案、档案本体核心和本地规则引擎分别对应 `archive-governance-scheme`、`archive-ontology-core` 和 `archive-local-rule-engine`。
+- PC 端已提供治理方案、本体管理、本地规则和规则追踪入口，用于维护多行业档案制度差异的控制面配置。
+- 档案实例数据仍保存到固定主表、分类动态表、明细表和文件组件相关表；本体和规则只解释语义与行为，不替代档案主数据存储。
+
 ## 项目约定
 
 - 项目自有数据库表统一使用 `am_模块_表名` 命名。

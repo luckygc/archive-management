@@ -2,6 +2,8 @@ package github.luckygc.am.module.archive.item.web;
 
 import java.time.LocalDateTime;
 
+import jakarta.data.page.PageRequest;
+
 import org.jspecify.annotations.Nullable;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.Authentication;
@@ -9,7 +11,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import github.luckygc.am.common.api.CursorPageRequest;
 import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.archive.item.service.ArchiveItemAuditSearchService;
@@ -35,7 +36,7 @@ public class ArchiveItemAuditController {
                     @Nullable LocalDateTime operatedAfter,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
                     @Nullable LocalDateTime operatedBefore,
-            CursorPageRequest page,
+            PageRequest page,
             @Nullable Authentication authentication) {
         Long userId =
                 AuthenticatedUsers.requireUserId(

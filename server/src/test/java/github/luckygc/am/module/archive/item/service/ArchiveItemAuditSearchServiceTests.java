@@ -19,8 +19,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
-import github.luckygc.am.common.api.CursorPageRequest;
 import github.luckygc.am.common.api.CursorPageResponse;
+import github.luckygc.am.common.api.CursorPageTokenCodec;
 import github.luckygc.am.common.api.CursorPageTokenContext;
 import github.luckygc.am.common.security.UnauthenticatedException;
 import github.luckygc.am.module.archive.item.ArchiveItemAudit;
@@ -61,7 +61,7 @@ class ArchiveItemAuditSearchServiceTests {
                         9L);
 
         assertThat(page.total()).isEqualTo(1);
-        assertThat(page.next()).isNull();
+        assertThat(page.encodeCursorTokens(context()).next()).isNull();
         assertThat(page.items())
                 .containsExactly(
                         new ArchiveItemAuditResponse(
@@ -76,6 +76,7 @@ class ArchiveItemAuditSearchServiceTests {
                                 9L,
                                 operatedAt));
         verify(auditRepository).find(any(), any());
+        verify(permissionService).isSuperAdmin(9L);
     }
 
     @Test
@@ -88,9 +89,10 @@ class ArchiveItemAuditSearchServiceTests {
         when(auditRepository.find(any(), any())).thenReturn(firstRepositoryPage);
         CursorPageResponse<ArchiveItemAuditResponse> firstPage =
                 auditSearchService.listAudits(
-                        new ListArchiveItemAuditsRequest(null, null, null, null, null, null),
+                        new ListArchiveItemAuditsRequest(10L, null, null, null, null, null),
                         firstPage(1, true),
                         9L);
+        String nextToken = firstPage.encodeCursorTokens(context()).next();
 
         CursoredPage<ArchiveItemAudit> nextRepositoryPage =
                 page(List.of(audit(98L, operatedAt.minusMinutes(1))), null, false, false);
@@ -98,8 +100,8 @@ class ArchiveItemAuditSearchServiceTests {
 
         CursorPageResponse<ArchiveItemAuditResponse> nextPage =
                 auditSearchService.listAudits(
-                        new ListArchiveItemAuditsRequest(null, null, null, null, null, null),
-                        tokenPage(1, firstPage.next()),
+                        new ListArchiveItemAuditsRequest(10L, null, null, null, null, null),
+                        tokenPage(1, nextToken),
                         9L);
 
         assertThat(nextPage.total()).isNull();
@@ -162,16 +164,16 @@ class ArchiveItemAuditSearchServiceTests {
         return page;
     }
 
-    private static CursorPageRequest firstPage(int limit, boolean requestTotal) {
-        return CursorPageRequest.of(limit, null, requestTotal, context());
+    private static PageRequest firstPage(int limit, boolean requestTotal) {
+        return CursorPageTokenCodec.pageRequest(limit, null, requestTotal, context());
     }
 
-    private static CursorPageRequest tokenPage(int limit, String cursor) {
-        return CursorPageRequest.of(limit, cursor, true, context());
+    private static PageRequest tokenPage(int limit, String cursor) {
+        return CursorPageTokenCodec.pageRequest(limit, cursor, true, context());
     }
 
     private static CursorPageTokenContext context() {
-        return new CursorPageTokenContext("GET /api/v1/archive-item-audits", "fingerprint", "9");
+        return new CursorPageTokenContext("fingerprint");
     }
 
     private static ArchiveItemAudit audit(Long id, LocalDateTime operatedAt) {

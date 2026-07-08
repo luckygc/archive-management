@@ -38,22 +38,18 @@ public class AuthorizationPermissionService {
                             "archive:item:delete", "删除档案", "archive", "逻辑删除档案条目和案卷"),
                     new PermissionDefinition("archive:item:lock", "锁定档案", "archive", "锁定和解锁档案条目"),
                     new PermissionDefinition(
-                            "archive:item:preview-electronic-file",
-                            "预览档案电子文件",
-                            "archive",
-                            "在线预览档案电子文件"),
-                    new PermissionDefinition(
                             "archive:item:download-electronic-file",
                             "下载档案电子文件",
                             "archive",
                             "下载档案电子文件或创建下载短链"),
-                    new PermissionDefinition("archive:audit:read", "查询档案审计", "archive", "查询档案操作审计"),
                     new PermissionDefinition("archive:export", "导出档案", "archive", "按查询条件导出档案数据"),
                     new PermissionDefinition(
                             "archive:metadata:manage",
                             "管理档案元数据",
                             "archive",
                             "维护全宗、分类、字段、布局、密级和保管期限"),
+                    new PermissionDefinition(
+                            "archive:governance:manage", "管理档案治理", "archive", "维护治理方案、本体定义和本地规则"),
                     new PermissionDefinition(
                             "authorization:permission:manage",
                             "管理功能权限",
@@ -74,7 +70,12 @@ public class AuthorizationPermissionService {
                     new PermissionDefinition(
                             "authentication:user:manage", "管理用户", "authentication", "创建、编辑用户和分配角色"),
                     new PermissionDefinition(
-                            "authorization:role:manage", "管理角色", "authorization", "创建、编辑和删除角色"));
+                            "authorization:role:manage", "管理角色", "authorization", "创建、编辑和删除角色"),
+                    new PermissionDefinition(
+                            "organization:department:manage",
+                            "管理组织架构",
+                            "organization",
+                            "维护组织架构部门树"));
 
     private final AuthorizationPermissionDataRepository permissionRepository;
     private final AuthorizationRoleDataRepository roleRepository;

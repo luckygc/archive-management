@@ -19,6 +19,7 @@ import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService.ArchiveDataScopeResponse;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService.CreateArchiveDataScopeRequest;
+import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService.DepartmentArchiveDataScopesResponse;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService.RoleArchiveDataScopesResponse;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService.UpdateArchiveDataScopeRequest;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService.UserArchiveDataScopesResponse;
@@ -107,6 +108,23 @@ public class ArchiveDataScopeController {
         return dataScopeService.saveUserDataScopes(user, request.scopeIds());
     }
 
+    @GetMapping("/api/v1/organization-departments/{organizationDepartment}/archive-data-scopes")
+    public DepartmentArchiveDataScopesResponse listDepartmentDataScopes(
+            @PathVariable Long organizationDepartment, @Nullable Authentication authentication) {
+        requirePermission(authentication);
+        return dataScopeService.listDepartmentDataScopes(organizationDepartment);
+    }
+
+    @PutMapping("/api/v1/organization-departments/{organizationDepartment}/archive-data-scopes")
+    public DepartmentArchiveDataScopesResponse saveDepartmentDataScopes(
+            @PathVariable Long organizationDepartment,
+            @RequestBody UpdateDepartmentArchiveDataScopesRequest request,
+            @Nullable Authentication authentication) {
+        requirePermission(authentication);
+        return dataScopeService.saveDepartmentDataScopes(
+                organizationDepartment, request.scopeIds());
+    }
+
     @GetMapping("/api/v1/archive-categories/{archiveCategory}/data-scope-fields")
     public CollectionResponse<ArchiveFieldDto> listDataScopeFields(
             @PathVariable Long archiveCategory,
@@ -122,17 +140,11 @@ public class ArchiveDataScopeController {
         return CollectionResponse.of(fields);
     }
 
-    @GetMapping("/api/v1/organization-units")
-    public CollectionResponse<ArchiveMetadataService.OrganizationUnitDto> listOrganizationUnits(
-            @RequestParam(defaultValue = "true") boolean enabled,
-            @Nullable Authentication authentication) {
-        requirePermission(authentication);
-        return CollectionResponse.of(archiveMetadataService.listOrganizationUnits(enabled));
-    }
-
     public record UpdateRoleArchiveDataScopesRequest(List<Long> scopeIds) {}
 
     public record UpdateUserArchiveDataScopesRequest(List<Long> scopeIds) {}
+
+    public record UpdateDepartmentArchiveDataScopesRequest(List<Long> scopeIds) {}
 
     private void requirePermission(@Nullable Authentication authentication) {
         permissionService.requirePermission(

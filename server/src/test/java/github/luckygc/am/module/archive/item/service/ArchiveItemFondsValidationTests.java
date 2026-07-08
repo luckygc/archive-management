@@ -24,6 +24,7 @@ import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService.ArchiveDataScopeFilter;
+import github.luckygc.am.module.archive.governance.service.ArchiveGovernanceService;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemAuditDataRepository;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.CreateArchiveItemRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.UpdateArchiveItemRequest;
@@ -40,6 +41,7 @@ class ArchiveItemFondsValidationTests {
 
     private ArchiveMapper archiveMapper;
     private ArchiveMetadataService archiveMetadataService;
+    private ArchiveGovernanceService governanceService;
     private ArchiveItemRoutingService archiveItemRoutingService;
     private ArchiveVolumeService archiveVolumeService;
 
@@ -47,6 +49,7 @@ class ArchiveItemFondsValidationTests {
     void setUp() {
         archiveMapper = mock(ArchiveMapper.class);
         archiveMetadataService = mock(ArchiveMetadataService.class);
+        governanceService = mock(ArchiveGovernanceService.class);
         ArchiveItemSearchProjectionService searchProjectionService =
                 mock(ArchiveItemSearchProjectionService.class);
         ArchiveDataScopeService dataScopeService = mock(ArchiveDataScopeService.class);
@@ -59,6 +62,7 @@ class ArchiveItemFondsValidationTests {
         archiveItemRoutingService =
                 new ArchiveItemRoutingService(
                         archiveMetadataService,
+                        governanceService,
                         archiveMapper,
                         searchProjectionService,
                         dataScopeService,
@@ -66,7 +70,12 @@ class ArchiveItemFondsValidationTests {
                         auditRepository);
         archiveVolumeService =
                 new ArchiveVolumeService(
-                        archiveMapper, archiveMetadataService, archiveItemRoutingService);
+                        archiveMapper,
+                        archiveMetadataService,
+                        governanceService,
+                        archiveItemRoutingService,
+                        permissionService,
+                        dataScopeService);
     }
 
     @Test
@@ -83,7 +92,7 @@ class ArchiveItemFondsValidationTests {
                                 archiveItemRoutingService.createItem(
                                         new CreateArchiveItemRequest(
                                                 1L, null, "F001", "A-001", 2026, "DRAFT", null,
-                                                null, null, null, Map.of()),
+                                                null, null, Map.of()),
                                         9L))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("全宗不可用");
@@ -100,8 +109,8 @@ class ArchiveItemFondsValidationTests {
                         anyString(),
                         any(),
                         any(),
-                        any(),
                         anyInt(),
+                        any(),
                         any());
         verify(archiveMetadataService).getEnabledFondsByCode("F001");
         verify(archiveMetadataService, never()).getFondsByCode("F001");
@@ -127,7 +136,7 @@ class ArchiveItemFondsValidationTests {
                                         10L,
                                         new UpdateArchiveItemRequest(
                                                 null, "F001", "A-002", 2026, "DRAFT", null, null,
-                                                null, null, Map.of()),
+                                                null, Map.of()),
                                         9L))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("全宗不可用");
@@ -140,7 +149,6 @@ class ArchiveItemFondsValidationTests {
                         anyString(),
                         any(),
                         anyString(),
-                        any(),
                         any(),
                         any(),
                         anyInt(),
@@ -174,6 +182,7 @@ class ArchiveItemFondsValidationTests {
                         any(),
                         anyString(),
                         anyInt(),
+                        any(),
                         any());
         verify(archiveMetadataService).getEnabledFondsByCode("F001");
         verify(archiveMetadataService, never()).getFondsByCode("F001");
@@ -194,6 +203,7 @@ class ArchiveItemFondsValidationTests {
             ArchiveManagementMode managementMode, String volumeTableName, String itemTableName) {
         LocalDateTime now = LocalDateTime.of(2026, 6, 30, 10, 0);
         return new ArchiveCategoryDto(
+                1L,
                 1L,
                 null,
                 "contract",

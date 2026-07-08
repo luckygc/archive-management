@@ -5,11 +5,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 
+import jakarta.data.page.PageRequest;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import github.luckygc.am.common.api.CursorPageRequest;
-import github.luckygc.am.common.api.CursorPageTokenContext;
 import github.luckygc.am.common.security.UnauthenticatedException;
 import github.luckygc.am.module.archive.item.service.ArchiveItemAuditSearchService;
 
@@ -35,11 +35,7 @@ class ArchiveItemAuditControllerTests {
         verifyNoInteractions(auditSearchService);
     }
 
-    private CursorPageRequest firstPage() {
-        return CursorPageRequest.of(
-                100,
-                null,
-                false,
-                new CursorPageTokenContext("GET /api/v1/archive-item-audits", "fingerprint", ""));
+    private PageRequest firstPage() {
+        return PageRequest.ofSize(100).withoutTotal();
     }
 }

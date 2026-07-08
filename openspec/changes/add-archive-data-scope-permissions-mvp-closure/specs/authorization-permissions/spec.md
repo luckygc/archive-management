@@ -8,20 +8,20 @@
 
 - **WHEN** 已认证管理员请求功能权限点列表
 - **THEN** 系统 SHALL 返回权限编码、权限名称、所属模块和说明
-- **AND** 权限编码 SHALL 使用稳定字符串，例如 `archive:item:read`、`archive:item:create`、`archive:item:update`、`archive:item:preview-electronic-file`、`archive:item:download-electronic-file`、`archive:export`、`archive:metadata:manage`、`authorization:role:manage`、`authentication:user:manage`
+- **AND** 权限编码 SHALL 使用稳定字符串，例如 `archive:item:read`、`archive:item:create`、`archive:item:update`、`archive:item:download-electronic-file`、`archive:export`、`archive:metadata:manage`、`authorization:role:manage`、`authentication:user:manage`
 - **AND** 响应 SHALL NOT 包含数据范围条件
 
 #### Scenario: 当前用户查询自身权限
 
 - **WHEN** 已认证用户请求当前主体权限
-- **THEN** 系统 SHALL 返回该用户通过启用角色获得的功能权限编码集合
+- **THEN** 系统 SHALL 返回该用户通过启用角色获得的功能权限编码集合和是否为超级管理员
 - **AND** 系统 SHALL NOT 因用户绑定了数据范围而额外授予功能权限
 
 #### Scenario: 超级管理员拥有任意权限
 
 - **WHEN** 用户拥有启用的内置 `超级管理员` 角色
 - **THEN** 系统 SHALL 在服务端权限判断中提前放行任意功能权限
-- **AND** 当前用户权限接口 SHALL 返回项目稳定权限点集合
+- **AND** 当前用户权限接口 SHALL 返回项目稳定权限点集合和 `superAdmin=true`
 
 ### Requirement: 角色功能权限绑定
 

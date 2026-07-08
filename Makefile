@@ -1,6 +1,8 @@
 SERVER_DIR := server
+PREVIEW_DIR := preview
 MVN := mvn
 PNPM := pnpm
+GO := go
 
 .PHONY: help \
 	frontend-install frontend-check frontend-check-fix frontend-test frontend-build frontend-ready \
@@ -8,7 +10,8 @@ PNPM := pnpm
 	mobile-check mobile-test mobile-build mobile-dev \
 	frontend-core-check frontend-core-test frontend-core-build \
 	server-java server-deps server-format-check server-format server-rewrite-dry-run server-rewrite-run \
-	server-compile server-test server-package server-run
+	server-compile server-test server-package server-run \
+	preview-test preview-build preview-run
 
 help:
 	@echo "可用命令:"
@@ -39,6 +42,9 @@ help:
 	@echo "  make server-test            测试 server"
 	@echo "  make server-package         打包 server"
 	@echo "  make server-run             启动 server"
+	@echo "  make preview-test           测试文件预览服务"
+	@echo "  make preview-build          构建文件预览服务"
+	@echo "  make preview-run            启动文件预览服务"
 
 frontend-install:
 	$(PNPM) exec vp install
@@ -121,3 +127,12 @@ server-package:
 
 server-run:
 	cd $(SERVER_DIR) && $(MVN) spring-boot:run
+
+preview-test:
+	cd $(PREVIEW_DIR) && $(GO) test ./...
+
+preview-build:
+	cd $(PREVIEW_DIR) && mkdir -p build && $(GO) build -o build/preview-service ./cmd/preview-service
+
+preview-run:
+	cd $(PREVIEW_DIR) && $(GO) run ./cmd/preview-service

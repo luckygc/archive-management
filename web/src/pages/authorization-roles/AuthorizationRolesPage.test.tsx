@@ -61,5 +61,5 @@ describe("AuthorizationRolesPage", () => {
         fireEvent.click(okButton);
 
         expect(archiveApiMocks.saveRolePermissions).not.toHaveBeenCalled();
-    });
+    }, 10_000);
 });

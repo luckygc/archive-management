@@ -60,9 +60,6 @@ public class ArchiveItem implements CreationAuditable, UpdateAuditable {
     @Column(name = "retention_period_id")
     private Long retentionPeriodId;
 
-    @Column(name = "org_unit_id")
-    private Long orgUnitId;
-
     @Column(name = "sort_order", nullable = false)
     private int sortOrder;
 
@@ -74,6 +71,9 @@ public class ArchiveItem implements CreationAuditable, UpdateAuditable {
 
     @Column(name = "archive_year", nullable = false)
     private int archiveYear;
+
+    @Column(name = "governance_scheme_version_id")
+    private Long governanceSchemeVersionId;
 
     @Column(name = "random_bucket", nullable = false, insertable = false, updatable = false)
     private int randomBucket;

@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="github.luckygc.am.module.archive.mapper.ArchiveRuleMapper">
+
+    <select id="listExecutableRules" resultType="ArchiveRuleDefinition">
+        select r.id,
+               r.scheme_version_id,
+               r.rule_code,
+               r.rule_name,
+               r.rule_type,
+               r.trigger_code,
+               r.scope_fonds_code,
+               r.scope_category_code,
+               r.scope_object_type_id,
+               r.scope_archive_level,
+               r.scope_event_type_id,
+               r.priority,
+               r.condition_json,
+               r.status,
+               r.enabled,
+               r.published_by,
+               r.published_at,
+               r.version,
+               r.created_by,
+               r.created_at,
+               r.updated_by,
+               r.updated_at
+        from am_archive_rule_definition r
+        left join am_archive_ontology_object_type ot on ot.id = r.scope_object_type_id
+          and ot.deleted_flag = false
+        left join am_archive_ontology_event_type et on et.id = r.scope_event_type_id
+          and et.deleted_flag = false
+        where r.deleted_flag = false
+          and r.scheme_version_id = #{criteria.schemeVersionId}
+          and r.trigger_code = #{criteria.triggerCode}
+          and r.status = 'PUBLISHED'
+          and r.enabled = true
+          and (r.scope_fonds_code is null or r.scope_fonds_code = #{criteria.fondsCode})
+          and (r.scope_category_code is null or r.scope_category_code = #{criteria.categoryCode})
+          and (r.scope_archive_level is null or r.scope_archive_level = #{criteria.archiveLevel})
+          and (r.scope_object_type_id is null or ot.type_code = #{criteria.objectTypeCode})
+          and (r.scope_event_type_id is null or et.event_code = #{criteria.eventCode})
+        order by r.priority, r.rule_code, r.id
+    </select>
+
+    <select id="listRuleTraces" resultType="map">
+        select id,
+               scheme_version_id,
+               trigger_code,
+               object_type_code,
+               object_id,
+               rule_id,
+               rule_code,
+               rule_type,
+               matched_flag,
+               blocking_flag,
+               effect_json,
+               message,
+               severity,
+               skipped_reason,
+               created_by,
+               created_at
+        from am_archive_rule_trace
+        where 1 = 1
+        <if test="criteria.schemeVersionId != null">
+            and scheme_version_id = #{criteria.schemeVersionId}
+        </if>
+        <if test="criteria.triggerCode != null and criteria.triggerCode != ''">
+            and trigger_code = #{criteria.triggerCode}
+        </if>
+        <if test="criteria.objectTypeCode != null and criteria.objectTypeCode != ''">
+            and object_type_code = #{criteria.objectTypeCode}
+        </if>
+        <if test="criteria.objectId != null">
+            and object_id = #{criteria.objectId}
+        </if>
+        <if test="criteria.ruleType != null and criteria.ruleType != ''">
+            and rule_type = #{criteria.ruleType}
+        </if>
+        order by created_at desc, id desc
+        limit #{criteria.limit}
+    </select>
+</mapper>

@@ -32,7 +32,7 @@ export function HomePage() {
             </NavBar>
             <section className="am-mobile-content">
                 <Space block direction="vertical">
-                    <List header={currentUser?.displayName ?? currentUser?.username}>
+                    <List header={currentUser?.displayName || "-"}>
                         {entries.map((entry) => (
                             <List.Item
                                 clickable
