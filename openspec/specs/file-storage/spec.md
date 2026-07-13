@@ -2,7 +2,7 @@
 
 ## Purpose
 
-定义文件记录、对象存储路由、对象键生成和内容指纹的业务合同，确保文件位置、历史读取、默认上传位置和校验信息都以本地文件记录为真相源。
+定义文件记录、S3 兼容存储、对象键生成和内容指纹的业务合同，确保文件位置和校验信息都以本地文件记录为真相源。
 
 ## Requirements
 
@@ -14,14 +14,14 @@
 
 - **WHEN** 系统保存上传文件
 - **THEN** 系统 SHALL 在本地数据库创建文件记录
-- **AND** 每条记录 SHALL 固化自身的 `storage_type`、`bucket_name` 和 `object_key`
-- **AND** 系统 SHALL NOT 使用当前全局存储配置推断历史文件位置
+- **AND** 每条记录 SHALL 固化自身的 `bucket_name` 和 `object_key`
+- **AND** 系统 SHALL NOT 使用对象存储列举或元信息反查作为业务真相源
 
-#### Scenario: 读取历史文件
+#### Scenario: 读取文件
 
 - **WHEN** 系统下载、删除或判断文件是否存在
-- **THEN** 系统 SHALL 按文件记录中的 `storage_type`、`bucket_name` 和 `object_key` 路由到对应存储
-- **AND** 系统 SHALL NOT 依赖对象存储列举或元信息反查作为业务真相源
+- **THEN** 系统 SHALL 使用文件记录中的 `bucket_name` 和 `object_key` 定位文件
+- **AND** 文件记录中的 bucket 与当前配置不一致时系统 SHALL 明确拒绝访问
 
 #### Scenario: 识别过期文件
 
@@ -30,37 +30,30 @@
 - **AND** `expires_at` 为空的文件记录 SHALL 表示长期有效
 - **AND** 系统 SHALL NOT 依赖操作系统临时目录或对象存储生命周期规则作为业务过期真相源
 
-### Requirement: 文件存储路由
+### Requirement: 统一 S3 兼容存储
 
-系统 SHALL 通过显式配置选择默认上传位置。
+系统 SHALL 只通过 S3 兼容协议保存和读取文件内容。
 
-#### Scenario: 选择默认上传位置
+#### Scenario: 配置文件存储
 
-- **WHEN** 系统处理新文件上传
-- **THEN** 默认上传位置 SHALL 通过 `archive.storage.adapter` 显式选择 `local`、`s3`、`minio`、`cos`、`oss` 或 `obs`
-- **AND** 系统 SHALL NOT 因对象存储配置完整就自动优先切换默认上传位置
+- **WHEN** 系统创建文件存储服务
+- **THEN** 系统 SHALL 使用 `archive.storage` 下的 endpoint、region、bucket、access-key、secret-key 和 path-style-access 配置 S3 客户端
+- **AND** 系统 SHALL NOT 提供本地目录 adapter 或供应商类型 adapter
 
-#### Scenario: 本地存储 bucket
+#### Scenario: 接入不同对象存储
 
-- **WHEN** 默认上传位置为 `local`
-- **THEN** 系统 SHALL 使用 `active-local-bucket` 指定的本地 bucket
-- **AND** 本地存储 SHALL 允许配置多个 bucket/root
+- **WHEN** 系统接入 AWS S3、RustFS、MinIO、腾讯 COS、阿里云 OSS、华为云 OBS 或 Ceph RGW
+- **THEN** 供应商差异 SHALL 只通过 S3 兼容配置表达
+- **AND** 系统 SHALL NOT 将供应商名称保存为文件业务类型
 
-#### Scenario: 对象存储 bucket
+#### Scenario: 开发环境启动对象存储
 
-- **WHEN** 默认上传位置为对象存储
-- **THEN** 系统 SHALL 只配置一个对象存储 bucket
-- **AND** 系统 SHALL NOT 为对象存储配置 active bucket
-
-### Requirement: 对象存储协议
-
-对象存储 SHALL 使用 S3 兼容协议表达。
-
-#### Scenario: 接入对象存储
-
-- **WHEN** 系统接入 AWS S3、MinIO、腾讯 COS、阿里云 OSS 或华为云 OBS
-- **THEN** 系统 SHALL 使用 S3 兼容协议和同一套对象存储配置
-- **AND** 系统 SHALL NOT 为每个云厂商暴露不同的业务合同
+- **WHEN** 开发者启动仓库 Compose 服务
+- **THEN** Compose SHALL 启动单节点 S3 兼容开发服务
+- **AND** Compose SHALL 只包含 PostgreSQL 和单节点 S3 兼容服务
+- **AND** 原型阶段的开发数据库和对象内容 SHALL 使用无持久化临时存储
+- **AND** 开发基础设施启动任务 SHALL 在服务健康后幂等创建后端默认使用的开发 bucket
+- **AND** 文档 SHALL 明确该单节点服务不属于生产高可用方案
 
 ### Requirement: 对象键生成
 

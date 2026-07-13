@@ -88,14 +88,13 @@ POST /api/v1/login-failure-limits/{username}:reset
 
 - `spring.servlet.multipart.max-file-size` 和 `max-request-size`。
 - 当前用户是否有档案条目访问权限。
-- `archive.storage.adapter` 是否可用。
-- 本地 bucket 根目录是否存在且有写入权限。
-- 对象存储 bucket、密钥和网络是否可用。
+- `archive.storage` 的 endpoint、region、bucket 和凭证是否正确。
+- S3 兼容对象存储的 bucket、网络和 path-style 配置是否可用。
 
 下载失败优先检查：
 
 - 文件记录是否存在且未删除。
-- `storage_type`、`bucket_name`、object key 是否能定位文件。
+- `bucket_name`、object key 是否与当前对象存储配置一致并能定位文件。
 - 短链是否过期。
 - 私有短链 `/api/v1/file-links/{code}:download` 是否已登录。
 - 公开短链 `/api/v1/public-file-links/{code}:download` 是否使用公开下载路径。
@@ -115,7 +114,7 @@ POST /api/v1/login-failure-limits/{username}:reset
 最小备份集合：
 
 - PostgreSQL 数据库。
-- 本地文件存储根目录或对象存储 bucket 内容。
+- 对象存储 bucket 内容。
 - 部署配置和密钥管理系统中的配置版本。
 - 前端和后端发布包版本。
 

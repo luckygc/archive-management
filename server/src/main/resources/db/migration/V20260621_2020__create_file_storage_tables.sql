@@ -1,7 +1,6 @@
 create table am_storage_object
 (
     id                bigserial primary key,
-    storage_type      varchar(20)   not null,
     bucket_name       varchar(255)  not null,
     object_key        varchar(1024) not null,
     original_filename varchar(255)  not null,
@@ -23,13 +22,12 @@ create index idx_am_storage_object_expires_at_active
     on am_storage_object (expires_at)
     where deleted_at is null and expires_at is not null;
 create unique index uk_am_storage_object_location_active
-    on am_storage_object (storage_type, bucket_name, object_key)
+    on am_storage_object (bucket_name, object_key)
     where deleted_at is null;
 
 comment on table am_storage_object is '文件存储对象信息表';
 comment on column am_storage_object.id is '主键';
-comment on column am_storage_object.storage_type is '存储类型：LOCAL 本地文件，S3 标准 S3，对象存储兼容服务默认类型，MINIO MinIO，COS 腾讯云 COS，OSS 阿里云 OSS，OBS 华为云 OBS';
-comment on column am_storage_object.bucket_name is '存储桶名称；本地存储使用固定逻辑桶名';
+comment on column am_storage_object.bucket_name is 'S3 兼容对象存储桶名称';
 comment on column am_storage_object.object_key is '对象存储键，由 ObjectKeys 生成';
 comment on column am_storage_object.original_filename is '上传时原始文件名';
 comment on column am_storage_object.file_size is '文件大小，单位字节';

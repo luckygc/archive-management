@@ -4,8 +4,6 @@ import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -14,7 +12,6 @@ import jakarta.persistence.Table;
 import org.hibernate.annotations.CreationTimestamp;
 
 import github.luckygc.am.common.audit.CreationAuditable;
-import github.luckygc.am.common.storage.StorageType;
 
 import lombok.Data;
 
@@ -26,10 +23,6 @@ public class StorageObject implements CreationAuditable {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @Column(name = "storage_type", nullable = false, length = 20)
-    @Enumerated(EnumType.STRING)
-    private StorageType storageType;
 
     @Column(name = "bucket_name", nullable = false)
     private String bucketName;

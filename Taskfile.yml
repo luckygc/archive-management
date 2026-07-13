@@ -15,6 +15,35 @@ tasks:
         cmds:
             - task --list
 
+    infra-up:
+        desc: 启动本地 PostgreSQL 和 RustFS 并初始化开发 bucket
+        silent: true
+        cmds:
+            - docker compose up -d --wait
+            - |
+                bucket_url="http://localhost:${ARCHIVE_STORAGE_PORT:-9000}/${ARCHIVE_STORAGE_BUCKET:-archive}"
+                sigv4="aws:amz:${ARCHIVE_STORAGE_REGION:-us-east-1}:s3"
+                credentials="${ARCHIVE_STORAGE_ACCESS_KEY:-rustfsadmin}:${ARCHIVE_STORAGE_SECRET_KEY:-rustfsadmin}"
+                if curl --fail --silent --head \
+                    --aws-sigv4 "$sigv4" \
+                    --user "$credentials" \
+                    "$bucket_url" >/dev/null; then
+                    echo "开发 bucket 已存在：${ARCHIVE_STORAGE_BUCKET:-archive}"
+                else
+                    curl --fail --silent --show-error \
+                        --request PUT \
+                        --aws-sigv4 "$sigv4" \
+                        --user "$credentials" \
+                        "$bucket_url"
+                    echo "开发 bucket 已创建：${ARCHIVE_STORAGE_BUCKET:-archive}"
+                fi
+
+    infra-down:
+        desc: 停止本地 PostgreSQL 和 RustFS
+        silent: true
+        cmds:
+            - docker compose down
+
     frontend-install:
         desc: 安装前端依赖
         cmds:

@@ -28,7 +28,6 @@ import org.springframework.web.server.ResponseStatusException;
 import github.luckygc.am.common.storage.FileStorageResource;
 import github.luckygc.am.common.storage.FileStorageService;
 import github.luckygc.am.common.storage.StorageObjectInfo;
-import github.luckygc.am.common.storage.StorageType;
 import github.luckygc.am.module.storage.StorageObject;
 import github.luckygc.am.module.storage.repository.StorageObjectDataRepository;
 
@@ -62,13 +61,7 @@ class StorageObjectServiceTests {
                             InputStream inputStream = invocation.getArgument(1);
                             inputStream.transferTo(OutputStream.nullOutputStream());
                             return new StorageObjectInfo(
-                                    StorageType.LOCAL,
-                                    "archive",
-                                    objectKey,
-                                    4,
-                                    "application/pdf",
-                                    Instant.parse("2026-07-01T02:00:00Z"),
-                                    "etag-1");
+                                    "archive", objectKey, 4, "application/pdf", "etag-1");
                         });
         when(storageObjectRepository.insert(any(StorageObject.class)))
                 .thenAnswer(
@@ -153,7 +146,6 @@ class StorageObjectServiceTests {
     void openObjectShouldRouteByStorageObjectRecord() throws Exception {
         FileStorageResource resource =
                 new FileStorageResource(
-                        StorageType.LOCAL,
                         "archive",
                         "2026/06/demo.pdf",
                         new ByteArrayInputStream(
@@ -161,20 +153,18 @@ class StorageObjectServiceTests {
                         4,
                         "application/pdf");
         when(storageObjectRepository.findById(20L)).thenReturn(Optional.of(storageObject()));
-        when(fileStorageService.getObject(StorageType.LOCAL, "archive", "2026/06/demo.pdf"))
-                .thenReturn(resource);
+        when(fileStorageService.getObject("archive", "2026/06/demo.pdf")).thenReturn(resource);
 
         StorageObjectService.StorageObjectDownload download = storageObjectService.openObject(20L);
 
         assertThat(download.originalFilename()).isEqualTo("demo.pdf");
         assertThat(download.resource()).isSameAs(resource);
-        verify(fileStorageService).getObject(StorageType.LOCAL, "archive", "2026/06/demo.pdf");
+        verify(fileStorageService).getObject("archive", "2026/06/demo.pdf");
     }
 
     private StorageObject storageObject() {
         StorageObject object = new StorageObject();
         object.setId(20L);
-        object.setStorageType(StorageType.LOCAL);
         object.setBucketName("archive");
         object.setObjectKey("2026/06/demo.pdf");
         object.setOriginalFilename("demo.pdf");

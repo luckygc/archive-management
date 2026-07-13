@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 
 import org.junit.jupiter.api.Test;
 
-import github.luckygc.am.common.storage.StorageType;
 import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.mapper.ArchiveSqlOrder;
 import github.luckygc.am.module.archive.mapper.ArchiveSqlOrder.Direction;
@@ -21,7 +20,6 @@ class ArchiveEnumContractTests {
         assertThat(ArchiveManagementMode.VOLUME_ITEM.value()).isEqualTo("VOLUME_ITEM");
         assertThat(ArchiveLayoutSurface.DETAIL.value()).isEqualTo("DETAIL");
         assertThat(ArchiveTableStatus.NOT_BUILT.value()).isEqualTo("NOT_BUILT");
-        assertThat(StorageType.MINIO.value()).isEqualTo("MINIO");
     }
 
     @Test
@@ -29,7 +27,6 @@ class ArchiveEnumContractTests {
         assertThatIllegalArgumentException().isThrownBy(() -> ArchiveLevel.fromValue("item"));
         assertThatIllegalArgumentException()
                 .isThrownBy(() -> ArchiveManagementMode.fromValue("volume_item"));
-        assertThatIllegalArgumentException().isThrownBy(() -> StorageType.fromValue("local"));
     }
 
     @Test

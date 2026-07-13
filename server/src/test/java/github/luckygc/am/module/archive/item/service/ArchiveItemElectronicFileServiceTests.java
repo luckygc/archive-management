@@ -25,7 +25,6 @@ import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.api.CollectionResponse;
 import github.luckygc.am.common.storage.FileStorageResource;
-import github.luckygc.am.common.storage.StorageType;
 import github.luckygc.am.module.archive.item.ArchiveItem;
 import github.luckygc.am.module.archive.item.ArchiveItemAudit;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemAuditDataRepository;
@@ -200,7 +199,6 @@ class ArchiveItemElectronicFileServiceTests {
     void downloadFileShouldOpenElectronicFileWithDownloadPermission() {
         FileStorageResource resource =
                 new FileStorageResource(
-                        StorageType.LOCAL,
                         "archive",
                         "2026/06/demo.pdf",
                         new ByteArrayInputStream(
@@ -258,7 +256,6 @@ class ArchiveItemElectronicFileServiceTests {
     void downloadFileShouldInsertDownloadAudit() {
         FileStorageResource resource =
                 new FileStorageResource(
-                        StorageType.LOCAL,
                         "archive",
                         "2026/06/demo.pdf",
                         new ByteArrayInputStream(
@@ -289,7 +286,6 @@ class ArchiveItemElectronicFileServiceTests {
     private StorageObjectDto storageObject() {
         return new StorageObjectDto(
                 20L,
-                StorageType.LOCAL,
                 "archive",
                 "2026/06/demo.pdf",
                 "demo.pdf",

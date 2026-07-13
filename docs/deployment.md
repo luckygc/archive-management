@@ -11,7 +11,7 @@
 | 前端共享包 | `frontend-core/` | 构建产物被 `web` 消费 | 不独立部署 |
 | 文件预览服务 | `preview/` | 独立 Go HTTP 服务 | 提供同步预览转换能力，默认端口 `8088` |
 | PostgreSQL | 外部服务 | 数据库 | 唯一优先数据库目标 |
-| 对象存储 | 本地或 S3 兼容服务 | 文件内容存储 | 默认本地存储，生产建议使用共享存储或对象存储 |
+| 对象存储 | 外部 S3 兼容服务 | 文件内容存储 | 生产使用成熟对象存储，开发 Compose 提供单节点端点 |
 
 ## 构建
 
@@ -32,28 +32,6 @@ task frontend-build
 ```bash
 task preview-build
 ```
-
-## Docker Compose 模拟部署
-
-仓库根目录的 `compose.deploy.yaml` 会构建并启动 Nginx、Spring Boot 和 PostgreSQL，不包含文件预览服务：
-
-```bash
-docker compose -f compose.deploy.yaml up -d --build
-docker compose -f compose.deploy.yaml ps
-```
-
-启动完成后访问 `http://localhost:8080`。Nginx 托管 `web/dist`，并将 `/api/**` 和 `/actuator/**` 转发到仅在 Compose 网络内开放的 Spring Boot 服务。默认初始化账号为 `admin`，默认密码为 `change-me-local-only`，只用于本机模拟部署。
-
-可通过环境变量覆盖端口、数据库和初始化账号，例如：
-
-```bash
-HTTP_PORT=8081 \
-POSTGRES_PASSWORD=change-database-password \
-BOOTSTRAP_ADMIN_PASSWORD=change-admin-password \
-docker compose -f compose.deploy.yaml up -d --build
-```
-
-应用上传文件和 PostgreSQL 数据分别保存在 `server-data`、`postgres-data` 命名卷中。停止环境但保留数据使用 `docker compose -f compose.deploy.yaml down`；仅在确认模拟数据无需保留时使用 `docker compose -f compose.deploy.yaml down -v`。
 
 发布前建议至少运行：
 
@@ -117,24 +95,26 @@ spring:
 
 ## 存储配置
 
-默认本地存储：
+文件内容统一使用 S3 兼容对象存储：
 
 ```yaml
 archive:
     storage:
-        adapter: LOCAL
-        active-local-bucket: local
-        local:
-            - bucket: local
-              root: data/files
+        endpoint: https://s3-compatible.example.com
+        region: us-east-1
+        bucket: archive
+        access-key: ${ARCHIVE_STORAGE_ACCESS_KEY}
+        secret-key: ${ARCHIVE_STORAGE_SECRET_KEY}
+        path-style-access: false
 ```
 
 生产建议：
 
-- 单节点部署可以使用本地磁盘或挂载 NAS，但要纳入备份。
-- 多节点部署必须使用共享存储或 S3 兼容对象存储。
-- 对象存储使用 `archive.storage.object.*` 配置 endpoint、region、bucket、access-key、secret-key 和 path-style。
-- 文件记录中的 `storage_type`、`bucket_name` 和 object key 是下载、删除、审计的依据，迁移存储时要同步迁移文件内容。
+- 使用 AWS S3、OSS、COS、OBS、Ceph RGW 等成熟外部 S3 兼容服务，不把开发 Compose 的单节点服务用于生产。
+- endpoint 仅在 AWS S3 SDK 默认地址不适用时配置；接入前验证 path-style、签名、Put/Get/Head/Delete 和 multipart 行为。
+- 文件记录中的 `bucket_name` 和 object key 是下载、删除、审计的依据。
+- 更换 endpoint 或 bucket 前必须先迁移并校验文件内容，再切换应用配置；应用不同时挂载新旧存储。
+- 对象存储自身的高可用、版本控制、备份和异地灾备由部署环境负责。
 
 ## 安全配置
 

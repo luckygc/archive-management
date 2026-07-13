@@ -25,7 +25,6 @@ import github.luckygc.am.common.storage.FileStorageResource;
 import github.luckygc.am.common.storage.FileStorageService;
 import github.luckygc.am.common.storage.ObjectKeys;
 import github.luckygc.am.common.storage.StorageObjectInfo;
-import github.luckygc.am.common.storage.StorageType;
 import github.luckygc.am.module.storage.StorageObject;
 import github.luckygc.am.module.storage.repository.StorageObjectDataRepository;
 
@@ -72,7 +71,6 @@ public class StorageObjectService {
                             objectKey, inputStream, command.contentLength(), contentType);
             String checksumSha256 = Hex.encodeHexString(digest.digest());
             StorageObject storageObject = new StorageObject();
-            storageObject.setStorageType(objectInfo.storageType());
             storageObject.setBucketName(objectInfo.bucketName());
             storageObject.setObjectKey(objectInfo.objectKey());
             storageObject.setOriginalFilename(originalFilename);
@@ -125,9 +123,7 @@ public class StorageObjectService {
         try {
             FileStorageResource resource =
                     fileStorageService.getObject(
-                            storageObject.storageType(),
-                            storageObject.bucketName(),
-                            storageObject.objectKey());
+                            storageObject.bucketName(), storageObject.objectKey());
             return new StorageObjectDownload(storageObject.originalFilename(), resource);
         } catch (java.io.IOException exception) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "文件内容不存在", exception);
@@ -137,7 +133,6 @@ public class StorageObjectService {
     private StorageObjectDto toDto(StorageObject storageObject) {
         return new StorageObjectDto(
                 storageObject.getId(),
-                storageObject.getStorageType(),
                 storageObject.getBucketName(),
                 storageObject.getObjectKey(),
                 storageObject.getOriginalFilename(),
@@ -180,7 +175,6 @@ public class StorageObjectService {
 
     public record StorageObjectDto(
             Long id,
-            StorageType storageType,
             String bucketName,
             String objectKey,
             String originalFilename,

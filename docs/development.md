@@ -35,16 +35,21 @@ task frontend-install
 
 该任务实际通过 mise 管理的项目级 pnpm 执行 `pnpm install`。拉取远程变更后、开始开发前也应重新运行一次。
 
-3. 使用开发 Compose 启动 PostgreSQL：
+3. 启动 PostgreSQL 和对象存储，并初始化开发 bucket：
 
 ```bash
-docker compose up -d
-docker compose ps
+task infra-up
 ```
 
-等待 `postgres` 状态变为 `healthy` 后再启动后端。Compose 默认创建 `archive_management` 数据库，宿主机端口为 `5433`，用户名和密码均为 `postgres`，数据库文件保存在命名卷中。已有 PostgreSQL 环境也可以继续使用，只需手工创建同名数据库。
+该任务等待 `postgres` 和 `object-storage` 状态变为 `healthy`，然后使用 curl 的 AWS SigV4 支持幂等创建 `archive` bucket，因此本机需要 curl 7.75 或更高版本。Compose 默认创建 `archive_management` 数据库：
 
-端口和初始化账号可以在启动命令前通过 `POSTGRES_PORT`、`POSTGRES_DB`、`POSTGRES_USER`、`POSTGRES_PASSWORD` 环境变量覆盖。覆盖后必须同步调整后端数据源配置。
+- PostgreSQL 宿主机端口为 `5433`，用户名和密码均为 `postgres`。
+- S3 API 宿主机端口为 `9000`，控制台端口为 `9001`，开发账号和密码均为 `rustfsadmin`。
+- PostgreSQL 和 RustFS 数据目录均使用 `tmpfs`，容器停止后数据不会保留。
+
+Compose 中的 PostgreSQL 和单节点 RustFS 只用于原型阶段的本地开发，不提供数据持久化、生产高可用或灾备能力。重新启动环境后，后端通过 Flyway 重建数据库结构，`task infra-up` 重新创建 `archive` bucket。已有 PostgreSQL 和 S3 兼容服务也可以继续使用，通过本地配置覆盖连接信息即可。
+
+端口和初始化账号可以在启动命令前通过 `POSTGRES_*`、`ARCHIVE_STORAGE_*` 环境变量覆盖。覆盖后必须同步调整后端配置。
 
 ## 本地配置
 
@@ -62,6 +67,14 @@ spring:
             - classpath:db/sample
 
 archive:
+    storage:
+        endpoint: http://localhost:9000
+        region: us-east-1
+        bucket: archive
+        access-key: rustfsadmin
+        secret-key: rustfsadmin
+        path-style-access: true
+
     authentication:
         bootstrap-admin:
             enabled: true
@@ -76,11 +89,13 @@ archive:
 
 - `application-local.yaml` 被构建排除，不能作为交付配置来源。
 - 使用 Compose 默认配置时，`spring.datasource.password` 应设置为 `postgres`。
+- 使用 Compose 默认配置时，文件存储配置可直接使用 `application.yaml` 的开发默认值。
+- 生产环境必须覆盖文件存储 endpoint、bucket 和凭证，不得使用开发账号。
 - 管理员初始化只用于本地初始化或受控部署初始化；启用时必须通过外部配置提供密码。
 - `db/sample` 会导入样例数据，只适合本地演示或测试环境。
 - Flyway `clean` 默认禁用；本地重建库时优先重建数据库，不在共享环境开启 clean。
 
-## 管理本地 PostgreSQL
+## 管理本地基础设施
 
 查看容器状态：
 
@@ -88,19 +103,13 @@ archive:
 docker compose ps
 ```
 
-停止并删除容器，保留数据库文件：
+停止并删除容器：
 
 ```bash
-docker compose down
+task infra-down
 ```
 
-需要彻底重建本地数据库时，可以同时删除命名卷：
-
-```bash
-docker compose down -v
-```
-
-`down -v` 会永久删除 Compose 管理的本地数据库文件，只能在确认数据无需保留时执行。
+PostgreSQL 和 RustFS 使用临时文件系统，执行 `docker compose down` 后本地数据库和文件对象均会丢失；下次启动会重新初始化，无需使用 `down -v` 清理数据卷。
 
 ## 运行后端
 

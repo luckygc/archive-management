@@ -6,7 +6,6 @@ import java.io.InputStream;
 import org.jspecify.annotations.Nullable;
 
 public record FileStorageResource(
-        StorageType storageType,
         String bucketName,
         String objectKey,
         InputStream inputStream,

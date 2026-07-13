@@ -9,8 +9,8 @@ services:
             POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
         ports:
             - "${POSTGRES_PORT:-5433}:5432"
-        volumes:
-            - postgres-data:/var/lib/postgresql
+        tmpfs:
+            - /var/lib/postgresql
         healthcheck:
             test: ["CMD-SHELL", 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
             interval: 5s
@@ -18,5 +18,22 @@ services:
             retries: 10
             start_period: 10s
 
-volumes:
-    postgres-data:
+    object-storage:
+        image: rustfs/rustfs:1.0.0-beta.4
+        environment:
+            RUSTFS_ACCESS_KEY: ${ARCHIVE_STORAGE_ACCESS_KEY:-rustfsadmin}
+            RUSTFS_SECRET_KEY: ${ARCHIVE_STORAGE_SECRET_KEY:-rustfsadmin}
+            RUSTFS_ALLOW_INSECURE_DEFAULT_CREDENTIALS: "true"
+            RUSTFS_CONSOLE_ENABLE: "true"
+        ports:
+            - "${ARCHIVE_STORAGE_PORT:-9000}:9000"
+            - "${ARCHIVE_STORAGE_CONSOLE_PORT:-9001}:9001"
+        tmpfs:
+            - /data:uid=10001,gid=10001,mode=0750
+        command: ["/data"]
+        healthcheck:
+            test: ["CMD-SHELL", "curl -fsS http://localhost:9000/health >/dev/null"]
+            interval: 5s
+            timeout: 5s
+            retries: 20
+            start_period: 15s

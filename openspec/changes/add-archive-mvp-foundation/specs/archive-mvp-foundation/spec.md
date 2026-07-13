@@ -68,7 +68,7 @@
 - **THEN** 系统 SHALL 使用 `am_archive_item_electronic_file` 作为档案电子文件真相表
 - **AND** 档案电子文件记录 SHALL 保存 `archive_item_id`、`storage_object_id`、`usage_type` 和 `display_order`
 - **AND** 档案电子文件记录 SHALL 通过 `(archive_item_id, storage_object_id, usage_type)` 保持唯一
-- **AND** 系统 SHALL NOT 在档案电子文件表中复制 `storage_type`、`bucket_name`、`object_key`、文件名、大小或校验值
+- **AND** 系统 SHALL NOT 在档案电子文件表中复制 `bucket_name`、`object_key`、文件名、大小或校验值
 
 #### Scenario: 新增档案电子文件
 
@@ -99,7 +99,7 @@
 
 - **WHEN** 客户端下载档案条目电子文件
 - **THEN** 客户端 SHALL 调用 `POST /api/v1/archive-items/{archiveItem}/electronic-files/{electronicFile}:createDownloadLink`
-- **AND** 系统 SHALL 根据文件记录中的 `storage_type`、`bucket_name` 和 `object_key` 路由读取文件
+- **AND** 系统 SHALL 根据文件记录中的 `bucket_name` 和 `object_key` 读取文件
 - **AND** 系统 SHALL 使用独立功能权限区分档案电子文件列表可见和下载
 - **AND** 系统 SHALL NOT 根据客户端提交的对象存储路径读取文件
 - **AND** 系统 SHALL 写入下载审计

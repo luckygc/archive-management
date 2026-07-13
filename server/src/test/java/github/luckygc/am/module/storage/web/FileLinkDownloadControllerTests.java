@@ -14,7 +14,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 
 import github.luckygc.am.common.storage.FileStorageResource;
-import github.luckygc.am.common.storage.StorageType;
 import github.luckygc.am.module.storage.FileLinkTargetType;
 import github.luckygc.am.module.storage.service.FileLinkService;
 import github.luckygc.am.module.storage.service.FileLinkService.FileLinkTarget;
@@ -37,7 +36,6 @@ class FileLinkDownloadControllerTests {
                         new StorageObjectDownload(
                                 "demo.pdf",
                                 new FileStorageResource(
-                                        StorageType.LOCAL,
                                         "archive",
                                         "2026/06/demo.pdf",
                                         new ByteArrayInputStream(

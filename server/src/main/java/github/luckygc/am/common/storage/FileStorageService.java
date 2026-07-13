@@ -12,30 +12,9 @@ public interface FileStorageService {
             String objectKey, InputStream inputStream, long contentLength, String contentType)
             throws IOException;
 
-    StorageObjectInfo putObject(
-            StorageType storageType,
-            String objectKey,
-            InputStream inputStream,
-            long contentLength,
-            String contentType)
-            throws IOException;
+    FileStorageResource getObject(String bucketName, String objectKey) throws IOException;
 
-    FileStorageResource getObject(String objectKey) throws IOException;
+    boolean objectExists(String bucketName, String objectKey) throws IOException;
 
-    FileStorageResource getObject(StorageType storageType, String bucketName, String objectKey)
-            throws IOException;
-
-    boolean objectExists(String objectKey) throws IOException;
-
-    boolean objectExists(StorageType storageType, String bucketName, String objectKey)
-            throws IOException;
-
-    void deleteObject(String objectKey) throws IOException;
-
-    void deleteObject(StorageType storageType, String bucketName, String objectKey)
-            throws IOException;
-
-    StorageType defaultStorageType();
-
-    String bucketName(StorageType storageType);
+    void deleteObject(String bucketName, String objectKey) throws IOException;
 }

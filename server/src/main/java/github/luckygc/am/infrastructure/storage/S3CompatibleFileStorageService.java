@@ -6,9 +6,9 @@ import java.net.URI;
 import org.apache.commons.lang3.StringUtils;
 
 import github.luckygc.am.common.storage.FileStorageResource;
+import github.luckygc.am.common.storage.FileStorageService;
 import github.luckygc.am.common.storage.ObjectKeys;
 import github.luckygc.am.common.storage.StorageObjectInfo;
-import github.luckygc.am.common.storage.StorageType;
 
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
@@ -25,35 +25,30 @@ import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
-class S3CompatibleFileStorageService implements FileStorageBackend, AutoCloseable {
-
-    private final StorageType storageType;
+class S3CompatibleFileStorageService implements FileStorageService, AutoCloseable {
 
     private final S3Client client;
 
     private final String bucket;
 
-    S3CompatibleFileStorageService(
-            StorageType storageType, FileStorageProperties.ObjectStorage properties) {
-        this.storageType = storageType;
-        this.bucket = requireText(properties.getBucket(), "archive.storage.object.bucket");
+    S3CompatibleFileStorageService(FileStorageProperties properties) {
+        this.bucket = requireText(properties.getBucket(), "archive.storage.bucket");
 
         S3ClientBuilder builder =
                 S3Client.builder()
                         .region(
                                 Region.of(
                                         requireText(
-                                                properties.getRegion(),
-                                                "archive.storage.object.region")))
+                                                properties.getRegion(), "archive.storage.region")))
                         .credentialsProvider(
                                 StaticCredentialsProvider.create(
                                         AwsBasicCredentials.create(
                                                 requireText(
                                                         properties.getAccessKey(),
-                                                        "archive.storage.object.access-key"),
+                                                        "archive.storage.access-key"),
                                                 requireText(
                                                         properties.getSecretKey(),
-                                                        "archive.storage.object.secret-key"))))
+                                                        "archive.storage.secret-key"))))
                         .serviceConfiguration(
                                 S3Configuration.builder()
                                         .pathStyleAccessEnabled(properties.isPathStyleAccess())
@@ -62,16 +57,6 @@ class S3CompatibleFileStorageService implements FileStorageBackend, AutoCloseabl
             builder.endpointOverride(URI.create(properties.getEndpoint().trim()));
         }
         this.client = builder.build();
-    }
-
-    @Override
-    public StorageType storageType() {
-        return storageType;
-    }
-
-    @Override
-    public String bucketName() {
-        return bucket;
     }
 
     @Override
@@ -91,26 +76,19 @@ class S3CompatibleFileStorageService implements FileStorageBackend, AutoCloseabl
                                 request.build(),
                                 RequestBody.fromInputStream(inputStream, contentLength))
                         .eTag();
-        return new StorageObjectInfo(
-                storageType(),
-                bucketName(),
-                normalizedObjectKey,
-                contentLength,
-                contentType,
-                null,
-                eTag);
+        return new StorageObjectInfo(bucket, normalizedObjectKey, contentLength, contentType, eTag);
     }
 
     @Override
-    public FileStorageResource getObject(String objectKey) {
+    public FileStorageResource getObject(String bucketName, String objectKey) {
+        requireConfiguredBucket(bucketName);
         String normalizedObjectKey = ObjectKeys.normalize(objectKey);
         ResponseInputStream<GetObjectResponse> response =
                 client.getObject(
                         GetObjectRequest.builder().bucket(bucket).key(normalizedObjectKey).build());
         GetObjectResponse metadata = response.response();
         return new FileStorageResource(
-                storageType(),
-                bucketName(),
+                bucket,
                 normalizedObjectKey,
                 response,
                 metadata.contentLength(),
@@ -118,7 +96,8 @@ class S3CompatibleFileStorageService implements FileStorageBackend, AutoCloseabl
     }
 
     @Override
-    public boolean objectExists(String objectKey) {
+    public boolean objectExists(String bucketName, String objectKey) {
+        requireConfiguredBucket(bucketName);
         String normalizedObjectKey = ObjectKeys.normalize(objectKey);
         try {
             client.headObject(
@@ -133,7 +112,8 @@ class S3CompatibleFileStorageService implements FileStorageBackend, AutoCloseabl
     }
 
     @Override
-    public void deleteObject(String objectKey) {
+    public void deleteObject(String bucketName, String objectKey) {
+        requireConfiguredBucket(bucketName);
         client.deleteObject(
                 DeleteObjectRequest.builder()
                         .bucket(bucket)
@@ -144,6 +124,12 @@ class S3CompatibleFileStorageService implements FileStorageBackend, AutoCloseabl
     @Override
     public void close() {
         client.close();
+    }
+
+    private void requireConfiguredBucket(String bucketName) {
+        if (!bucket.equals(bucketName)) {
+            throw new StorageException("文件记录 bucket 与当前配置不一致: " + bucketName);
+        }
     }
 
     private static String requireText(String value, String propertyName) {
