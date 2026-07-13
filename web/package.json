@@ -4,12 +4,12 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "check": "vp lint src vite.config.ts",
-        "check:fix": "vp lint --fix src vite.config.ts",
-        "lint": "vp lint src vite.config.ts",
-        "lint:fix": "vp lint --fix src vite.config.ts",
-        "test": "vp test run --passWithNoTests",
-        "build": "tsc --noEmit && vp build"
+        "check": "pnpm exec vp lint src vite.config.ts",
+        "check:fix": "pnpm exec vp lint --fix src vite.config.ts",
+        "lint": "pnpm exec vp lint src vite.config.ts",
+        "lint:fix": "pnpm exec vp lint --fix src vite.config.ts",
+        "test": "pnpm exec vp test run --passWithNoTests",
+        "build": "tsc --noEmit && pnpm exec vp build"
     },
     "dependencies": {
         "@ant-design/icons": "catalog:",

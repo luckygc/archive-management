@@ -12,7 +12,6 @@ Use this skill to decide the persistence entry before editing archive-management
 ## First Checks
 
 - Read the nearest `AGENTS.md` before changing code.
-- If the request asks about Jakarta Data, Hibernate, MyBatis, Spring, or framework behavior, fetch current docs with `npx ctx7@latest` before relying on memory.
 - Read `references/jakarta-data.md` before adding or refactoring a Repository.
 - Read `references/jakarta-data-repository-features.md` before choosing a repository base interface, lifecycle method, pagination style, cursor paging, count/exists strategy, or stateful/stateless behavior.
 - Read `references/hibernate-generated-metamodel.md` before using generated entity helper classes, static metamodel attributes, `Restriction<T>`, `Order<T>`, Criteria, or generated repository implementations.

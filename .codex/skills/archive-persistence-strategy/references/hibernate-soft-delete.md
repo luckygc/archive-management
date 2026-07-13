@@ -1,7 +1,5 @@
 # Hibernate 逻辑删除参考
 
-来源：Context7 `/hibernate/hibernate-orm`，查询时间按本次工作流执行。
-
 ## Hibernate @SoftDelete
 
 Hibernate 提供一等逻辑删除支持：`@SoftDelete`。

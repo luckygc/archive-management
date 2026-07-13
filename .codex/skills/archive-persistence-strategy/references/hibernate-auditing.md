@@ -1,7 +1,5 @@
 # Hibernate 审计参考
 
-来源：Context7 `/hibernate/hibernate-orm`，查询时间按本次工作流执行。
-
 ## 轻量审计字段
 
 Hibernate 提供实体字段级时间戳生成：

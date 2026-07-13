@@ -31,7 +31,6 @@ import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.S
 @SpringBootTest(
         classes = ArchiveManagementApplication.class,
         properties = {
-            "spring.autoconfigure.exclude=org.springframework.ai.model.deepseek.autoconfigure.DeepSeekChatAutoConfiguration",
             "spring.flyway.locations=classpath:db/migration,classpath:db/sample",
             "archive.search.full-text.provider=postgresql",
             "spring.quartz.auto-startup=false",

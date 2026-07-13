@@ -11,11 +11,11 @@
         "./types": "./src/types/index.ts"
     },
     "scripts": {
-        "check": "vp lint src && tsc --noEmit",
-        "check:fix": "vp lint --fix src",
-        "lint": "vp lint src",
-        "lint:fix": "vp lint --fix src",
-        "test": "vp test run --passWithNoTests",
+        "check": "pnpm exec vp lint src && tsc --noEmit",
+        "check:fix": "pnpm exec vp lint --fix src",
+        "lint": "pnpm exec vp lint src",
+        "lint:fix": "pnpm exec vp lint --fix src",
+        "test": "pnpm exec vp test run --passWithNoTests",
         "build": "tsc --noEmit"
     },
     "dependencies": {

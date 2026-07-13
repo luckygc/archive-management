@@ -81,17 +81,6 @@ spring:
             org.quartz.threadPool.threadCount: 16
             # Quartz 工作线程优先级。
             org.quartz.threadPool.threadPriority: 5
-    ai:
-        deepseek:
-            # DeepSeek API Key。产品默认不提交密钥，实际部署文件不要提交。
-            api-key:
-            # DeepSeek API 基础地址。
-            base-url: https://api.deepseek.com
-            chat:
-                # DeepSeek 聊天模型名称。
-                model: deepseek-chat
-                # 模型输出随机性，值越高越发散。
-                temperature: 0.7
     servlet:
         multipart:
             # 是否启用 multipart 文件上传。

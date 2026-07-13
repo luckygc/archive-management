@@ -26,7 +26,7 @@ export default defineConfig({
         ],
     },
     staged: {
-        "*": "vp check --fix",
+        "*": "pnpm exec vp check --fix",
     },
     run: {
         cache: true,

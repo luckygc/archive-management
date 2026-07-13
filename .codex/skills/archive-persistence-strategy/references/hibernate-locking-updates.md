@@ -1,7 +1,5 @@
 # Hibernate 乐观锁与局部更新参考
 
-来源：Context7 `/hibernate/hibernate-orm`、`/jakartaee/data`，查询时间按本次工作流执行。
-
 ## 乐观锁
 
 Hibernate 标准乐观锁入口是 `@Version`：

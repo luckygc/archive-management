@@ -1,6 +1,6 @@
 # Hibernate 生成实体辅助类参考
 
-来源：Context7 `/hibernate/hibernate-orm` 官方文档，以及本仓库 `server/target/generated-sources/annotations` 当前编译产物。
+参考依据包括本仓库 `server/target/generated-sources/annotations` 当前编译产物。
 
 ## 生成物类型
 

@@ -33,15 +33,18 @@ mise exec -- pnpm --version
 task frontend-install
 ```
 
-该任务实际执行 `pnpm exec vp install`，由 Vite+ 管理前端依赖安装。拉取远程变更后、开始开发前也应重新运行一次。
+该任务实际通过 mise 管理的项目级 pnpm 执行 `pnpm install`。拉取远程变更后、开始开发前也应重新运行一次。
 
-3. 准备 PostgreSQL 数据库：
+3. 使用开发 Compose 启动 PostgreSQL：
 
-```sql
-create database archive_management;
+```bash
+docker compose up -d
+docker compose ps
 ```
 
-默认连接为 `jdbc:postgresql://localhost:5433/archive_management`，用户名为 `postgres`。本机端口、用户名或密码不同的，使用 `server/src/main/resources/application-local.yaml` 覆盖，不提交该文件。
+等待 `postgres` 状态变为 `healthy` 后再启动后端。Compose 默认创建 `archive_management` 数据库，宿主机端口为 `5433`，用户名和密码均为 `postgres`，数据库文件保存在命名卷中。已有 PostgreSQL 环境也可以继续使用，只需手工创建同名数据库。
+
+端口和初始化账号可以在启动命令前通过 `POSTGRES_PORT`、`POSTGRES_DB`、`POSTGRES_USER`、`POSTGRES_PASSWORD` 环境变量覆盖。覆盖后必须同步调整后端数据源配置。
 
 ## 本地配置
 
@@ -72,9 +75,32 @@ archive:
 说明：
 
 - `application-local.yaml` 被构建排除，不能作为交付配置来源。
+- 使用 Compose 默认配置时，`spring.datasource.password` 应设置为 `postgres`。
 - 管理员初始化只用于本地初始化或受控部署初始化；启用时必须通过外部配置提供密码。
 - `db/sample` 会导入样例数据，只适合本地演示或测试环境。
 - Flyway `clean` 默认禁用；本地重建库时优先重建数据库，不在共享环境开启 clean。
+
+## 管理本地 PostgreSQL
+
+查看容器状态：
+
+```bash
+docker compose ps
+```
+
+停止并删除容器，保留数据库文件：
+
+```bash
+docker compose down
+```
+
+需要彻底重建本地数据库时，可以同时删除命名卷：
+
+```bash
+docker compose down -v
+```
+
+`down -v` 会永久删除 Compose 管理的本地数据库文件，只能在确认数据无需保留时执行。
 
 ## 运行后端
 
@@ -178,9 +204,8 @@ mise exec -- pnpm ready
 | 现象 | 处理 |
 | --- | --- |
 | Maven 提示 Java 版本不符合 | 使用 `mise exec -- mvn ...`，确认 JDK 为 25 |
-| 前端命令找不到 `vp` | 先运行 `task frontend-install`，直接调用时使用 `pnpm exec vp ...` |
+| 前端命令找不到 `vp` | 先运行 `task frontend-install`，直接调用时使用项目依赖提供的 `pnpm exec vp ...` |
 | 后端启动时找不到 Spring Session 或 Quartz 表 | 确认 Flyway 已启用且迁移脚本位置包含 `classpath:db/migration` |
 | PostgreSQL 连接失败 | 检查端口、数据库名、用户名和 `application-local.yaml` |
 | 测试依赖数据库失败 | 确认本机 Docker/Testcontainers 或 PostgreSQL 环境满足测试要求 |
 | 前端 401 跳登录 | 确认后端已启动、浏览器是否收到并回传 `am_session` session cookie，且 CORS 允许当前前端 Origin |
-

@@ -1,7 +1,5 @@
 # Jakarta Data Repository 功能面参考
 
-来源：Context7 `/jakartaee/data` 与 `/hibernate/hibernate-orm` 官方文档，查询主题为 Jakarta Data Repository、Hibernate Data Repositories、分页、生命周期方法和 stateful/stateless repository。
-
 ## 接口选择
 
 - 新增固定实体仓库默认从 `CrudRepository<Entity, Id>` 起步。

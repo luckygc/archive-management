@@ -87,26 +87,7 @@
 
 ## 文档查询
 
-当用户询问库、框架、SDK、API、CLI 工具或云服务的用法、配置、版本迁移、调试和 setup 时，必须使用 Context7 查询当前文档；不要凭记忆回答。
-
-Ant Design 生态例外：当问题涉及 Ant Design、Ant Design Pro、Pro Components、`@ant-design/cli` 或相关主题、组件、布局、表单、表格用法时，优先使用项目内的 Ant Design CLI、本地 `llms.txt` 和已安装文档查询；只有 CLI 或本地文档缺失、查不到或输出不足以回答时，才回退到 Context7。不要跳过用户明确要求的 Ant Design CLI 查询路径。
-
-1. 先解析库：
-
-    ```bash
-    npx ctx7@latest library <name> "<用户完整问题>"
-    ```
-
-2. 选择最匹配的 `/org/project` ID，优先考虑名称精确匹配、描述相关性、代码片段数量、来源信誉和 benchmark 分数。
-3. 再拉取文档：
-
-    ```bash
-    npx ctx7@latest docs <libraryId> "<用户完整问题>"
-    ```
-
-4. 基于获取到的文档回答或实现。
-
-不要把 API key、密码等敏感信息放入 Context7 查询。遇到配额错误时，告知用户可执行 `npx ctx7@latest login` 或设置 `CONTEXT7_API_KEY`。
+当问题涉及 Ant Design、Ant Design Pro、Pro Components、`@ant-design/cli` 或相关主题、组件、布局、表单、表格用法时，优先使用项目内的 Ant Design CLI、本地 `llms.txt` 和已安装文档查询；只有 CLI 或本地文档缺失、查不到或输出不足以回答时，才回退到官方文档。不要跳过用户明确要求的 Ant Design CLI 查询路径。
 
 ## Vite+ 工具链
 
@@ -123,7 +104,7 @@ Ant Design 生态例外：当问题涉及 Ant Design、Ant Design Pro、Pro Comp
 - 拉取远程变更后、开始开发前运行 `pnpm install`。
 - 前端变更运行 `pnpm check` 和 `pnpm test`，用于格式化、lint、类型检查和测试。
 - 检查 `vite.config.ts` tasks 或 `package.json` scripts 中是否有必要验证命令，并通过 `pnpm run <script>` 或 `pnpm exec vp run <script>` 执行。
-- 如果 setup、运行时或包管理行为异常，运行 `pnpm exec vp env doctor` 并保留输出。
+- 如果 setup、运行时或包管理行为异常，运行 `mise doctor`、`pnpm --version` 和 `pnpm exec vp --version` 并保留输出。
 - 后端 Maven 项目根目录是 `server/`，仓库根目录没有聚合 POM；运行 Maven 验证时必须以 `server/` 为工作目录，例如 `cd server && mise exec -- mvn -q -DskipTests test-compile`。如果本机已全局安装 Maven，也可以使用等价的 `mvn ...` 命令。
 - 后端改动至少运行对应 Maven 编译或测试；如果测试需要本机数据库，说明依赖和结果。
 - Java 过时 API 批量迁移优先使用 OpenRewrite；仓库根目录 `rewrite.yml` 维护可复用 recipe，后端先运行 `task server-rewrite-dry-run` 审查 `server/target/rewrite/rewrite.patch`，确认后再运行 `task server-rewrite-run`。

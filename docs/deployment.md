@@ -33,6 +33,28 @@ task frontend-build
 task preview-build
 ```
 
+## Docker Compose 模拟部署
+
+仓库根目录的 `compose.deploy.yaml` 会构建并启动 Nginx、Spring Boot 和 PostgreSQL，不包含文件预览服务：
+
+```bash
+docker compose -f compose.deploy.yaml up -d --build
+docker compose -f compose.deploy.yaml ps
+```
+
+启动完成后访问 `http://localhost:8080`。Nginx 托管 `web/dist`，并将 `/api/**` 和 `/actuator/**` 转发到仅在 Compose 网络内开放的 Spring Boot 服务。默认初始化账号为 `admin`，默认密码为 `change-me-local-only`，只用于本机模拟部署。
+
+可通过环境变量覆盖端口、数据库和初始化账号，例如：
+
+```bash
+HTTP_PORT=8081 \
+POSTGRES_PASSWORD=change-database-password \
+BOOTSTRAP_ADMIN_PASSWORD=change-admin-password \
+docker compose -f compose.deploy.yaml up -d --build
+```
+
+应用上传文件和 PostgreSQL 数据分别保存在 `server-data`、`postgres-data` 命名卷中。停止环境但保留数据使用 `docker compose -f compose.deploy.yaml down`；仅在确认模拟数据无需保留时使用 `docker compose -f compose.deploy.yaml down -v`。
+
 发布前建议至少运行：
 
 ```bash
@@ -50,7 +72,7 @@ task preview-test
 - 容器编排平台的 Secret 和 ConfigMap。
 - JVM 参数或 Spring Boot 标准配置优先级。
 
-不得把密钥、数据库密码、对象存储密钥、DeepSeek API Key 写入 Git。
+不得把密钥、数据库密码和对象存储密钥写入 Git。
 
 ## 必需外部依赖
 

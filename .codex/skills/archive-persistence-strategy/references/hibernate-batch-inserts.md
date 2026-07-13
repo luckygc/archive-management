@@ -1,7 +1,5 @@
 # Hibernate 批量插入参考
 
-来源：Context7 `/hibernate/hibernate-orm` 官方文档，查询主题为 JDBC batching、`hibernate.jdbc.batch_size`、`hibernate.order_inserts`、Hibernate Data Repositories `@Insert` 和 `StatelessSession.insert()`。
-
 ## JDBC batching
 
 - `hibernate.jdbc.batch_size` 控制 Hibernate 在要求 JDBC driver 执行 batch 前最多合并多少条 statement；`0` 或负数表示禁用。

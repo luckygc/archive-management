@@ -44,7 +44,6 @@ import tools.jackson.databind.json.JsonMapper;
 @SpringBootTest(
         classes = ArchiveManagementApplication.class,
         properties = {
-            "spring.autoconfigure.exclude=org.springframework.ai.model.deepseek.autoconfigure.DeepSeekChatAutoConfiguration",
             "spring.quartz.auto-startup=false",
             "spring.session.jdbc.cleanup-cron=-",
             "flowable.async-executor-activate=false",

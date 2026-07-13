@@ -1,7 +1,5 @@
 # Jakarta Data Repository 参考
 
-来源：Context7 `/websites/jakarta_ee_specifications_data_1_0`，查询时间按本次工作流执行。
-
 ## 仓库接口
 
 - Jakarta Data 仓库接口使用 `@Repository` 标注。

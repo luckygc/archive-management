@@ -12,7 +12,7 @@
         "lint:fix": "pnpm check:fix",
         "test": "pnpm -F @archive-management/frontend-core test && pnpm -F @archive-management/web test",
         "build": "pnpm -F @archive-management/frontend-core build && pnpm -F @archive-management/web build",
-        "prepare": "vp config"
+        "prepare": "pnpm exec vp config"
     },
     "dependencies": {},
     "devDependencies": {
@@ -20,6 +20,5 @@
     },
     "engines": {
         "node": ">=22.12.0"
-    },
-    "packageManager": "pnpm@11.10.0"
+    }
 }

@@ -167,7 +167,7 @@ archive:
 ## 密码和密钥
 
 - 用户密码使用 Spring Security `DelegatingPasswordEncoder`。
-- 管理员初始化密码、对象存储密钥、DeepSeek API Key、请求签名密钥不提交到 Git。
+- 管理员初始化密码、对象存储密钥和请求签名密钥不提交到 Git。
 - `application-local.yaml` 仅用于本机差异配置，不进入构建产物。
 
 ## 审计
@@ -180,4 +180,3 @@ archive:
 - 规则执行追踪。
 
 排障时保留 `traceId`、用户、请求路径和业务对象 ID。
-

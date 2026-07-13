@@ -1,7 +1,5 @@
 # Hibernate HQL 参考
 
-来源：Context7 `/hibernate/hibernate-orm`，查询时间按本次工作流执行。
-
 ## 实体映射
 
 - 固定项目表使用 Jakarta Persistence 注解建模：`@Entity`、`@Table`、`@Id`、`@Column`。
