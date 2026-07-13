@@ -9,7 +9,7 @@ import type {
     ArchiveQueryFormValues,
     QueryConditionDraft,
     RelatedGroupDraft,
-} from "./ArchiveAdvancedQueryPanel";
+} from "./archiveQueryTypes";
 
 export function toSearchQuery(values: ArchiveQueryFormValues): SearchArchiveRecordsQuery {
     return {

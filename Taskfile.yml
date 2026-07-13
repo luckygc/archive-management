@@ -52,48 +52,48 @@ tasks:
     frontend-check:
         desc: 检查全部前端包
         cmds:
-            - "{{.PNPM}} check"
+            - "{{.PNPM}} run check"
 
     frontend-check-fix:
         desc: 自动修复全部前端包 lint 问题
         cmds:
-            - "{{.PNPM}} check:fix"
+            - "{{.PNPM}} run check:fix"
 
     frontend-deprecated-check:
         desc: 检查前端过时 API 使用
         cmds:
-            - "{{.PNPM}} -F @archive-management/frontend-core exec vp lint --type-aware -D typescript/no-deprecated --quiet src"
-            - "{{.PNPM}} -F @archive-management/web exec vp lint --type-aware -D typescript/no-deprecated --quiet src vite.config.ts"
+            - "{{.PNPM}} --filter @archive-management/frontend-core run check:deprecated"
+            - "{{.PNPM}} --filter @archive-management/web run check:deprecated"
 
     frontend-test:
         desc: 测试全部前端包
         cmds:
-            - "{{.PNPM}} test"
+            - "{{.PNPM}} run test"
 
     frontend-build:
         desc: 构建全部前端包
         cmds:
-            - "{{.PNPM}} build"
+            - "{{.PNPM}} run build"
 
     frontend-ready:
         desc: 前端检查、测试并构建
         cmds:
-            - "{{.PNPM}} ready"
+            - "{{.PNPM}} run ready"
 
     web-check:
         desc: 检查 PC 前端
         cmds:
-            - "{{.PNPM}} -F @archive-management/web check"
+            - "{{.PNPM}} --filter @archive-management/web run check"
 
     web-test:
         desc: 测试 PC 前端
         cmds:
-            - "{{.PNPM}} -F @archive-management/web test"
+            - "{{.PNPM}} --filter @archive-management/web run test"
 
     web-build:
         desc: 构建 PC 前端
         cmds:
-            - "{{.PNPM}} -F @archive-management/web build"
+            - "{{.PNPM}} --filter @archive-management/web run build"
 
     web-dev:
         desc: 启动 PC 前端开发服务
@@ -103,17 +103,17 @@ tasks:
     frontend-core-check:
         desc: 检查前端共享包
         cmds:
-            - "{{.PNPM}} -F @archive-management/frontend-core check"
+            - "{{.PNPM}} --filter @archive-management/frontend-core run check"
 
     frontend-core-test:
         desc: 测试前端共享包
         cmds:
-            - "{{.PNPM}} -F @archive-management/frontend-core test"
+            - "{{.PNPM}} --filter @archive-management/frontend-core run test"
 
     frontend-core-build:
         desc: 构建前端共享包
         cmds:
-            - "{{.PNPM}} -F @archive-management/frontend-core build"
+            - "{{.PNPM}} --filter @archive-management/frontend-core run build"
 
     server-java:
         desc: 打印 Java/Maven 版本

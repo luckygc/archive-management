@@ -35,11 +35,6 @@ export default defineConfig({
         environment: "jsdom",
         setupFiles: ["./test/setup.ts"],
         testTimeout: 15_000,
-        server: {
-            deps: {
-                inline: ["@ant-design/pro-components"],
-            },
-        },
     },
 });
 

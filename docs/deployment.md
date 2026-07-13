@@ -7,7 +7,7 @@
 | 组件 | 目录 | 运行方式 | 说明 |
 | --- | --- | --- | --- |
 | 主应用 | `server/` | Spring Boot JAR | 提供 `/api/v1/**`、静态资源、安全、会话、迁移和业务能力 |
-| PC 前端 | `web/` | 构建为静态资源 | React + Ant Design PC 管理界面 |
+| PC 前端 | `web/` | 构建为静态资源 | Vue 3 + Element Plus PC 管理界面 |
 | 前端共享包 | `frontend-core/` | 构建产物被 `web` 消费 | 不独立部署 |
 | 文件预览服务 | `preview/` | 独立 Go HTTP 服务 | 提供同步预览转换能力，默认端口 `8088` |
 | PostgreSQL | 外部服务 | 数据库 | 唯一优先数据库目标 |

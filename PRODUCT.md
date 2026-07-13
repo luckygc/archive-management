@@ -19,8 +19,8 @@ archive-management 是面向机构内部使用的档案管理系统。它提供 
 
 ## Product Surfaces
 
-- `web/`：PC 主应用，使用 React、Ant Design 和 Ant Design Pro 组件体系。它承载高密度管理界面，包括侧边菜单、多页签、表格、筛选、表单、详情和系统配置。
-- `frontend-core/`：前端共享基础能力，包括 API client、登录态、CAP 安全验证和认证类型。它不承载业务页面和 UI 壳层。
+- `web/`：PC 主应用，使用 Vue 3、TypeScript 和 Element Plus。它承载高密度管理界面，包括侧边菜单、多页签、表格、筛选、表单、详情和系统配置。
+- `frontend-core/`：框架无关的前端共享基础能力，包括 Axios API client、CAP 安全验证和认证类型。它不承载业务页面、UI 壳层或框架 Store。
 - `server/`：Spring Boot 后端单体，按业务模块组织能力。
 
 ## Product Purpose
@@ -40,10 +40,10 @@ archive-management 是面向机构内部使用的档案管理系统。它提供 
 
 ## Design Alignment
 
-产品视觉和交互应贴近 Ant Design 企业级产品语言：
+产品视觉和交互应贴近 Element Plus 企业级产品语言：
 
-- 组件库优先：按钮、表单、表格、菜单、Tabs、Drawer、Modal、Notification、Empty、Skeleton 等优先使用 Ant Design 原生能力。
-- Token 优先：颜色、圆角、字体、布局背景优先通过 `ConfigProvider`、组件 token 和少量 CSS 布局变量控制。
+- 组件库优先：按钮、表单、表格、菜单、Tabs、Drawer、Dialog、Notification、Empty、Skeleton 等优先使用 Element Plus 原生能力。
+- Token 优先：颜色、圆角、字体、布局背景优先通过 Element Plus CSS 变量、组件属性和少量 CSS 布局变量控制。
 - 信息密度优先：PC 端允许高密度表格、紧凑筛选和多页签。
 - 熟悉优先：不要为了“有设计感”改造标准控件，不发明非标准表单、弹窗、滚动条或按钮形态。
 
@@ -53,13 +53,13 @@ archive-management 是面向机构内部使用的档案管理系统。它提供 
 
 - 营销落地页、宣传站、深色炫技后台。
 - 大面积渐变、玻璃拟态、装饰卡片、插画堆叠或品牌 hero。
-- 重度自定义组件库外观，尤其是覆盖 Ant Design 基础组件内部类名。
+- 重度自定义组件库外观，尤其是覆盖 Element Plus 基础组件内部类名。
 - 每个页面都放标题说明块、欢迎语、功能介绍或空洞引导文案。
 - 为未来假设提前做复杂抽象、兼容分支或多套主题。
 
 ## Design Principles
 
-- 前端样式默认使用组件库内置能力和默认视觉风格，优先通过组件 props、布局组件、结构调整和设计 token 完成界面实现,默认只写布局css，除非明确提出样式要求。
+- 前端样式默认使用组件库内置能力和默认视觉风格，优先通过组件 props、布局组件、结构调整和设计 token 完成界面实现，默认只写布局 CSS，除非明确提出样式要求。
 - 工作区优先：首屏直接呈现表格、筛选、表单、详情、待办或配置内容。
 - 菜单即结构：PC 端通过侧边菜单、页签、面包屑或当前选中态表达位置，不额外堆页面身份说明。
 - 状态明确：加载、空状态、错误、禁用、提交中、成功反馈都必须可见且文案可执行。

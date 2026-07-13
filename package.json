@@ -4,15 +4,15 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "ready": "pnpm check && pnpm test && pnpm build",
-        "dev:web": "pnpm -F @archive-management/web exec vp dev",
-        "check": "pnpm -F @archive-management/frontend-core check && pnpm -F @archive-management/web check",
-        "check:fix": "pnpm -F @archive-management/frontend-core check:fix && pnpm -F @archive-management/web check:fix",
-        "lint": "pnpm check",
-        "lint:fix": "pnpm check:fix",
-        "test": "pnpm -F @archive-management/frontend-core test && pnpm -F @archive-management/web test",
-        "build": "pnpm -F @archive-management/frontend-core build && pnpm -F @archive-management/web build",
-        "prepare": "pnpm exec vp config"
+        "ready": "pnpm run check && pnpm run test && pnpm run build",
+        "dev:web": "pnpm --filter @archive-management/web run dev",
+        "check": "pnpm --filter @archive-management/frontend-core run check && pnpm --filter @archive-management/web run check",
+        "check:fix": "pnpm --filter @archive-management/frontend-core run check:fix && pnpm --filter @archive-management/web run check:fix",
+        "lint": "pnpm run check",
+        "lint:fix": "pnpm run check:fix",
+        "test": "pnpm --filter @archive-management/frontend-core run test && pnpm --filter @archive-management/web run test",
+        "build": "pnpm --filter @archive-management/frontend-core run build && pnpm --filter @archive-management/web run build",
+        "prepare": "vp config"
     },
     "dependencies": {},
     "devDependencies": {

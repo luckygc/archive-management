@@ -1,5 +1,3 @@
-import { useCallback, useState } from "react";
-import type { RefObject } from "react";
 import type { CapErrorEvent, CapSolveEvent, CapWidget } from "cap-widget";
 
 const CSRF_COOKIE_NAME = "XSRF-TOKEN";
@@ -18,46 +16,81 @@ interface ProblemDetailBody {
     fieldViolations?: Array<{ message?: string }>;
 }
 
-export function useCapVerification(capWidgetRef: RefObject<CapWidget | null>) {
+export interface CapVerificationState {
+    powToken: string;
+    securityMessage: string;
+}
+
+export type CapVerificationAction =
+    | { type: "solve"; token: string }
+    | { type: "reset"; message?: string }
+    | { type: "error"; message?: string };
+
+export interface CapVerificationController {
+    getState(): CapVerificationState;
+    subscribe(listener: (state: CapVerificationState) => void): () => void;
+    reset(message?: string): void;
+    handleSolve(event: Event): void;
+    handleReset(): void;
+    handleError(event: Event): void;
+}
+
+export function initialCapVerificationState(message = "请完成安全验证"): CapVerificationState {
+    return { powToken: "", securityMessage: message };
+}
+
+export function reduceCapVerification(
+    _state: CapVerificationState,
+    action: CapVerificationAction,
+): CapVerificationState {
+    switch (action.type) {
+        case "solve":
+            return { powToken: action.token, securityMessage: "安全验证已完成" };
+        case "reset":
+            return initialCapVerificationState(action.message);
+        case "error":
+            return {
+                powToken: "",
+                securityMessage: action.message
+                    ? `安全验证失败：${action.message}`
+                    : "安全验证失败，请重试",
+            };
+    }
+}
+
+export function createCapVerificationController(
+    getWidget: () => CapWidget | null,
+): CapVerificationController {
     installCapFetch();
+    let state = initialCapVerificationState();
+    const listeners = new Set<(state: CapVerificationState) => void>();
 
-    const [powToken, setPowToken] = useState("");
-    const [securityMessage, setSecurityMessage] = useState("请完成安全验证");
-
-    const resetCapWidget = useCallback(
-        (message = "请完成安全验证") => {
-            setPowToken("");
-            capWidgetRef.current?.reset();
-            setSecurityMessage(message);
-        },
-        [capWidgetRef],
-    );
-
-    const handleCapSolve = useCallback((event: Event) => {
-        setPowToken((event as CapSolveEvent).detail.token);
-        setSecurityMessage("安全验证已完成");
-    }, []);
-
-    const handleCapReset = useCallback(() => {
-        setPowToken("");
-        setSecurityMessage("请完成安全验证");
-    }, []);
-
-    const handleCapError = useCallback((event: Event) => {
-        setPowToken("");
-        const detail = (event as CapErrorEvent).detail;
-        setSecurityMessage(
-            detail?.message ? `安全验证失败：${detail.message}` : "安全验证失败，请重试",
-        );
-    }, []);
+    const update = (action: CapVerificationAction) => {
+        state = reduceCapVerification(state, action);
+        for (const listener of listeners) {
+            listener(state);
+        }
+    };
 
     return {
-        powToken,
-        securityMessage,
-        resetCapWidget,
-        handleCapSolve,
-        handleCapReset,
-        handleCapError,
+        getState: () => state,
+        subscribe(listener) {
+            listeners.add(listener);
+            return () => listeners.delete(listener);
+        },
+        reset(message) {
+            getWidget()?.reset();
+            update({ type: "reset", message });
+        },
+        handleSolve(event) {
+            update({ type: "solve", token: (event as CapSolveEvent).detail.token });
+        },
+        handleReset() {
+            update({ type: "reset" });
+        },
+        handleError(event) {
+            update({ type: "error", message: (event as CapErrorEvent).detail?.message });
+        },
     };
 }
 

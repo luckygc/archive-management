@@ -1,6 +1,6 @@
 # Archive Management
 
-档案管理系统，PC 前端使用 React + Ant Design，后端使用单 Spring Boot 应用。
+档案管理系统，PC 前端使用 Vue 3 + TypeScript + Element Plus，后端使用单 Spring Boot 应用。
 
 ## 文档入口
 

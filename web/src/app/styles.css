@@ -1,4 +1,10 @@
 :root {
+    --el-color-primary: #1f5eff;
+    --el-border-radius-base: 6px;
+    --el-border-color: #e6eaf2;
+    --el-fill-color-light: #f5f7fb;
+    --el-text-color-primary: #172033;
+    --el-text-color-regular: #596579;
     color: #172033;
     background: #f5f7fb;
     font-family:
@@ -19,7 +25,7 @@
 
 html,
 body,
-#root {
+#app {
     width: 100%;
     height: 100%;
     overflow: hidden;
@@ -43,7 +49,7 @@ a {
     overflow: hidden;
 }
 
-.am-shell > .ant-layout {
+.am-shell__workspace {
     min-width: 0;
     min-height: 0;
     overflow: hidden;
@@ -66,20 +72,20 @@ a {
     color: #172033;
 }
 
-.am-shell__brand .anticon {
-    color: #1677ff;
+.am-shell__brand .el-icon {
+    color: #1f5eff;
     font-size: 18px;
 }
 
-.am-shell__sider .ant-menu {
-    border-inline-end: 0;
+.am-shell__sider .el-menu {
+    border-right: 0;
 }
 
 .am-shell__header {
     display: flex;
     flex: 0 0 56px;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: space-between;
     height: 56px;
     padding: 0 16px;
     border-bottom: 1px solid #e6eaf2;
@@ -87,6 +93,9 @@ a {
 }
 
 .am-shell__tabs {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
     z-index: 2;
     flex: 0 0 auto;
     min-width: 0;
@@ -95,8 +104,20 @@ a {
     background: #ffffff;
 }
 
-.am-shell__tabs .ant-tabs-nav {
+.am-shell__tabs > .el-tabs {
+    flex: 1;
+    min-width: 0;
+}
+
+.am-shell__tabs .el-tabs__header {
     margin: 0;
+}
+
+.am-shell__tab-actions {
+    display: flex;
+    flex: 0 0 auto;
+    gap: 4px;
+    padding-bottom: 8px;
 }
 
 .am-shell__content {
@@ -106,36 +127,6 @@ a {
     padding: 16px;
     overflow: auto;
     background: #f5f7fb;
-}
-
-.am-shell__cache,
-.am-shell__cache-node {
-    min-width: 0;
-    width: 100%;
-}
-
-.am-shell__cache-node.active {
-    min-height: 100%;
-}
-
-.am-shell__tab-close {
-    width: 18px;
-    height: 18px;
-    padding: 0;
-    border: 0;
-    border-radius: 50%;
-    background: transparent;
-    color: #6b7280;
-    cursor: pointer;
-    font: inherit;
-    line-height: 18px;
-}
-
-.am-shell__tab-close:hover,
-.am-shell__tab-close:focus-visible {
-    background: #edf1f7;
-    color: #243044;
-    outline: none;
 }
 
 .am-page {
@@ -154,7 +145,7 @@ a {
     min-height: 32px;
 }
 
-.am-page__header h1.ant-typography {
+.am-page__header h1 {
     margin: 0;
     font-size: 22px;
     line-height: 32px;
@@ -169,17 +160,11 @@ a {
     background: #ffffff;
 }
 
-.am-query-collapse > .ant-collapse-item > .ant-collapse-header {
-    align-items: center;
-    min-height: 48px;
-    font-weight: 500;
-}
-
 .am-page__result {
     min-width: 0;
 }
 
-.am-page__result > .ant-card-body {
+.am-page__result > .el-card__body {
     min-width: 0;
 }
 
@@ -295,8 +280,9 @@ a {
     width: min(420px, calc(100vw - 32px));
 }
 
-.am-login__panel h1.ant-typography {
+.am-login__panel h1 {
     margin-top: 0;
+    margin-bottom: 8px;
     font-size: 24px;
 }
 
@@ -304,6 +290,24 @@ a {
     display: grid;
     gap: 8px;
     margin-bottom: 16px;
+}
+
+.am-login__submit {
+    width: 100%;
+}
+
+.am-text-secondary {
+    color: #596579;
+}
+
+.am-text-success {
+    color: var(--el-color-success);
+}
+
+.am-form-error {
+    margin: 0 0 12px;
+    color: var(--el-color-danger);
+    font-size: 14px;
 }
 
 .am-authentication-loading {
