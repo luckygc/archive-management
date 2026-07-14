@@ -7,8 +7,10 @@ import jakarta.data.restrict.Restriction;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jspecify.annotations.Nullable;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.common.exception.BadRequestException;
@@ -40,7 +42,7 @@ public class AuthorizationRoleManagementService {
     @Transactional(readOnly = true)
     public CursorPageResponse<AuthorizationRoleDto> listRoles(
             @Nullable Boolean enabled, PageRequest pageRequest, Long operatorUserId) {
-        requireRoleManage(operatorUserId);
+        requireRoleDirectoryRead(operatorUserId);
         Restriction<AuthorizationRole> restriction = Restrict.unrestricted();
         if (enabled != null) {
             restriction = _AuthorizationRole.enabled.equalTo(enabled);
@@ -143,6 +145,24 @@ public class AuthorizationRoleManagementService {
     private void requireRoleManage(Long operatorUserId) {
         permissionService.requirePermission(
                 operatorUserId, AuthorizationPermissionCode.AUTHORIZATION_ROLE_MANAGE);
+    }
+
+    private void requireRoleDirectoryRead(Long operatorUserId) {
+        if (permissionService.hasPermission(
+                        operatorUserId,
+                        AuthorizationPermissionCode.AUTHORIZATION_ROLE_MANAGE.code())
+                || permissionService.hasPermission(
+                        operatorUserId,
+                        AuthorizationPermissionCode.AUTHENTICATION_USER_MANAGE.code())
+                || permissionService.hasPermission(
+                        operatorUserId,
+                        AuthorizationPermissionCode.AUTHORIZATION_PERMISSION_MANAGE.code())
+                || permissionService.hasPermission(
+                        operatorUserId,
+                        AuthorizationPermissionCode.ARCHIVE_DATA_SCOPE_MANAGE.code())) {
+            return;
+        }
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "权限不足");
     }
 
     public record CreateAuthorizationRoleRequest(String roleName, @Nullable String description) {}

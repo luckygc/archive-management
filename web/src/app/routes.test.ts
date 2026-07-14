@@ -53,6 +53,10 @@ describe("workspaceRoutes", () => {
             "archive:governance:manage",
         );
         expect(router.resolve("/system/users").meta.permission).toBe("authentication:user:manage");
+        expect(router.resolve("/system/authorization").meta.permissionsAnyOf).toEqual([
+            "authorization:permission:manage",
+            "archive:data-scope:manage",
+        ]);
         expect(router.resolve("/system/roles").meta.permission).toBe("authorization:role:manage");
         expect(router.resolve("/system/data-scopes").meta.permission).toBe(
             "archive:data-scope:manage",
@@ -122,6 +126,32 @@ describe("workspaceRoutes", () => {
         expect(canAccessRoute(emptyMenuGroup, checker)).toBe(false);
     });
 
+    it("显式空 children 的菜单分组不会退化为可点击叶子", () => {
+        const checker = { has: () => true };
+
+        expect(canAccessRoute({ path: "empty", meta: { menu: true }, children: [] }, checker)).toBe(
+            false,
+        );
+    });
+
+    it("any-of 路由权限满足任意一项即可访问", () => {
+        const route: RouteRecordRaw = {
+            path: "authorization",
+            component: {},
+            meta: {
+                menu: true,
+                permissionsAnyOf: ["authorization:permission:manage", "archive:data-scope:manage"],
+            },
+        };
+
+        expect(
+            canAccessRoute(route, {
+                has: (code) => code === "archive:data-scope:manage",
+            }),
+        ).toBe(true);
+        expect(canAccessRoute(route, { has: () => false })).toBe(false);
+    });
+
     it("权限初始化完成后将无权直达请求定向到 403", async () => {
         authenticate({ initializedPermissions: true });
 
@@ -158,6 +188,13 @@ describe("workspaceRoutes", () => {
         authenticate({ initializedPermissions: true });
 
         await expect(navigationGuard(router.resolve("/forbidden"))).resolves.toBe(true);
+    });
+
+    it("仅数据范围权限可直接进入授权管理", async () => {
+        const { permissionStore } = authenticate({ initializedPermissions: true });
+        permissionStore.permissionCodes = ["archive:data-scope:manage"];
+
+        await expect(navigationGuard(router.resolve("/system/authorization"))).resolves.toBe(true);
     });
 
     it("在路由边界清洗登录后跳转地址", () => {

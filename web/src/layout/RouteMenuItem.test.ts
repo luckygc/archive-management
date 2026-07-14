@@ -91,6 +91,16 @@ describe("RouteMenuItem", () => {
         expect(screen.queryByText("系统配置")).not.toBeInTheDocument();
         expect(screen.queryByText("用户管理")).not.toBeInTheDocument();
     });
+
+    it("不把显式空 children 的菜单分组渲染成可点击叶子", () => {
+        renderMenu({
+            path: "empty",
+            meta: { title: "空分组", menu: true },
+            children: [],
+        });
+
+        expect(screen.queryByText("空分组")).not.toBeInTheDocument();
+    });
 });
 
 function renderMenu(routeRecord: RouteRecordRaw) {

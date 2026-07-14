@@ -13,9 +13,13 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+import jakarta.data.page.CursoredPage;
+import jakarta.data.page.PageRequest;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.authorization.AuthorizationRole;
@@ -312,6 +316,43 @@ class AuthorizationRoleManagementServiceTests {
     }
 
     // ── 权限校验 ──
+
+    @Test
+    @DisplayName("角色、用户、功能权限和数据范围管理员可读取角色目录")
+    void listRolesShouldAllowRequiredDirectoryPermissions() {
+        @SuppressWarnings("unchecked")
+        CursoredPage<AuthorizationRole> page = mock(CursoredPage.class);
+        when(page.content()).thenReturn(List.of());
+        when(page.numberOfElements()).thenReturn(0);
+        when(page.hasTotals()).thenReturn(false);
+        when(roleRepository.filterBy(any(), any())).thenReturn(page);
+        doThrowPermissionDenied();
+
+        for (AuthorizationPermissionCode permissionCode :
+                List.of(
+                        AuthorizationPermissionCode.AUTHORIZATION_ROLE_MANAGE,
+                        AuthorizationPermissionCode.AUTHENTICATION_USER_MANAGE,
+                        AuthorizationPermissionCode.AUTHORIZATION_PERMISSION_MANAGE,
+                        AuthorizationPermissionCode.ARCHIVE_DATA_SCOPE_MANAGE)) {
+            when(permissionService.hasPermission(OPERATOR_ID, permissionCode.code()))
+                    .thenReturn(true);
+
+            roleService.listRoles(true, PageRequest.ofSize(100), OPERATOR_ID);
+
+            when(permissionService.hasPermission(OPERATOR_ID, permissionCode.code()))
+                    .thenReturn(false);
+        }
+    }
+
+    @Test
+    @DisplayName("没有相关管理权限时拒绝读取角色目录")
+    void listRolesShouldRejectWithoutRequiredDirectoryPermission() {
+        assertThatThrownBy(() -> roleService.listRoles(true, PageRequest.ofSize(100), OPERATOR_ID))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("权限不足");
+
+        verify(roleRepository, never()).filterBy(any(), any());
+    }
 
     @Test
     @DisplayName("createRole 需要 authorization:role:manage 权限")

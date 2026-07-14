@@ -1,7 +1,9 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/vue";
 import ElementPlus from "element-plus";
+import { createPinia, setActivePinia } from "pinia";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { usePermissionStore } from "@/stores/permissionStore";
 import AuthorizationManagementPage from "./AuthorizationManagementPage.vue";
 
 const archiveApiMocks = vi.hoisted(() => ({
@@ -76,7 +78,7 @@ afterEach(() => {
 
 describe("AuthorizationManagementPage", () => {
     it("选择角色后加载并展示权限和数据范围", async () => {
-        renderPage();
+        renderPage(["authorization:permission:manage", "archive:data-scope:manage"]);
         await selectCurrentSubject("档案管理员");
 
         await waitFor(() => {
@@ -87,18 +89,21 @@ describe("AuthorizationManagementPage", () => {
         expect((await screen.findAllByText("全部档案")).length).toBeGreaterThan(0);
     });
 
-    it("选择部门后仅加载部门数据范围", async () => {
-        renderPage();
-        await fireEvent.click(await screen.findByText("部门"));
-        await selectCurrentSubject("D003 综合部");
+    it("仅功能权限管理员只加载和呈现角色功能权限", async () => {
+        renderPage(["authorization:permission:manage"]);
+        await selectCurrentSubject("档案管理员");
 
-        await waitFor(() =>
-            expect(archiveApiMocks.getDepartmentArchiveDataScopes).toHaveBeenCalledWith(3),
-        );
-        expect((await screen.findAllByText("全部档案")).length).toBeGreaterThan(0);
+        await waitFor(() => expect(archiveApiMocks.getRolePermissions).toHaveBeenCalledWith(2));
+        expect(archiveApiMocks.listAuthorizationPermissions).toHaveBeenCalledTimes(1);
+        expect(archiveApiMocks.listAuthenticationUsers).not.toHaveBeenCalled();
+        expect(archiveApiMocks.listOrganizationDepartments).not.toHaveBeenCalled();
+        expect(archiveApiMocks.listArchiveDataScopes).not.toHaveBeenCalled();
+        expect(archiveApiMocks.getRoleArchiveDataScopes).not.toHaveBeenCalled();
+        expect(screen.getByText("功能权限")).toBeInTheDocument();
+        expect(screen.queryByText("数据范围")).not.toBeInTheDocument();
     });
 
-    it("用户某个角色权限加载失败时仍保留其他角色的权限", async () => {
+    it("仅数据范围管理员只加载和呈现主体范围功能", async () => {
         archiveApiMocks.listAuthenticationUsers.mockResolvedValue({
             items: [
                 {
@@ -110,36 +115,33 @@ describe("AuthorizationManagementPage", () => {
                 },
             ],
         });
-        archiveApiMocks.getAuthenticationUser.mockResolvedValue({
-            id: 5,
-            username: "zhangsan",
-            displayName: "张三",
-            enabled: true,
-            createdAt: "2026-07-03",
-            roles: [
-                { id: 10, roleName: "角色 A" },
-                { id: 11, roleName: "角色 B" },
-            ],
-        });
         archiveApiMocks.getUserArchiveDataScopes.mockResolvedValue({ userId: 5, scopeIds: [] });
-        archiveApiMocks.getRolePermissions.mockImplementation((roleId: number) =>
-            roleId === 10
-                ? Promise.reject(new Error("角色权限不可用"))
-                : Promise.resolve({ roleId, permissionCodes: ["archive:item:read"] }),
+
+        renderPage(["archive:data-scope:manage"]);
+        await fireEvent.click(await screen.findByText("部门"));
+        await selectCurrentSubject("D003 综合部");
+
+        await waitFor(() =>
+            expect(archiveApiMocks.getDepartmentArchiveDataScopes).toHaveBeenCalledWith(3),
         );
-
-        renderPage();
-        await fireEvent.click(await screen.findByText("用户"));
-        await selectCurrentSubject("张三（zhangsan）");
-
-        expect((await screen.findAllByText("读取档案")).length).toBeGreaterThan(0);
-        expect(await screen.findByText("角色 A")).toBeInTheDocument();
-        expect(await screen.findByText("角色 B")).toBeInTheDocument();
+        expect(archiveApiMocks.listAuthorizationRoles).toHaveBeenCalledTimes(1);
+        expect(archiveApiMocks.listAuthenticationUsers).toHaveBeenCalledTimes(1);
+        expect(archiveApiMocks.listOrganizationDepartments).toHaveBeenCalledTimes(1);
+        expect(archiveApiMocks.listArchiveDataScopes).toHaveBeenCalledTimes(1);
+        expect(archiveApiMocks.listAuthorizationPermissions).not.toHaveBeenCalled();
+        expect(archiveApiMocks.getRolePermissions).not.toHaveBeenCalled();
+        expect(screen.queryByText("功能权限")).not.toBeInTheDocument();
+        expect(screen.getByText("数据范围")).toBeInTheDocument();
     });
 });
 
-function renderPage() {
-    return render(AuthorizationManagementPage, { global: { plugins: [ElementPlus] } });
+function renderPage(permissionCodes: string[]) {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    usePermissionStore().permissionCodes = permissionCodes;
+    return render(AuthorizationManagementPage, {
+        global: { plugins: [ElementPlus, pinia] },
+    });
 }
 
 async function selectCurrentSubject(option: string) {

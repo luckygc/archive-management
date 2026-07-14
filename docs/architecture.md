@@ -103,7 +103,7 @@ Spring Bean 的 public 方法表示可由 Controller、事件监听器或其他 
 - Vitest + Vue Testing Library。
 - Vite+ 工具链。
 
-页面路由由 `web/src/app/routes.ts` 定义，业务页面放在 `web/src/pages`。菜单递归渲染路由树，面包屑使用匹配路由链，页签标题和缓存策略也来自同一路由树。页面服务端数据和表单状态默认保留在页面组件内；当查询、编辑、电子文件、审计、适用范围或绑定已经形成稳定业务闭环时，使用页面同目录的组件或 composable 集中该区域的状态和副作用，不引入通用 CRUD 层或第二套状态源。页签按 `fullPath` 区分同组件多实例，通过只承载 VNode slot 的实例包装组件获得独立缓存名称，由打开页签计算 `KeepAlive include`，并以 `version` key 执行单页签刷新。
+页面路由由 `web/src/app/routes.ts` 定义，业务页面放在 `web/src/pages`。菜单递归渲染路由树，面包屑使用匹配路由链，页签标题和缓存策略也来自同一路由树。路由元数据使用 `permission` 表达单一必需权限，使用 `permissionsAnyOf` 表达聚合页的任一能力；菜单、守卫和页签清理共享同一判断。权限摘要刷新后，无权页签从 Store 移除，使对应 `KeepAlive` 实例同时卸载；当前路由无权时进入统一 403 页面。页面服务端数据和表单状态默认保留在页面组件内；当查询、编辑、电子文件、审计、适用范围或绑定已经形成稳定业务闭环时，使用页面同目录的组件或 composable 集中该区域的状态和副作用，不引入通用 CRUD 层或第二套状态源。页签按 `fullPath` 区分同组件多实例，通过只承载 VNode slot 的实例包装组件获得独立缓存名称，由打开页签计算 `KeepAlive include`，并以 `version` key 执行单页签刷新。
 
 当前档案管理页复用高级查询、结果表格和动态字段组件，并由 `useArchiveItemResources` 集中电子文件与审计抽屉的加载、上传、下载和解绑状态；治理页由 `useArchiveGovernanceWorkbench` 集中版本适用范围、装配绑定和默认解析状态。其余大页面已按职责检查，分类、本体、授权、数据范围和用户页面当前仍是单一强关联工作台，暂不为减少文件行数机械拆分。
 

@@ -1,7 +1,7 @@
 import { ElMessage } from "element-plus";
 import { computed, onMounted, ref, watch } from "vue";
 
-import { getAuthenticationUser, listAuthenticationUsers } from "@/shared/api/authentication";
+import { listAuthenticationUsers } from "@/shared/api/authentication";
 import {
     getDepartmentArchiveDataScopes,
     getRoleArchiveDataScopes,
@@ -16,20 +16,23 @@ import {
     saveUserArchiveDataScopes,
 } from "@/shared/api/authorization";
 import { listOrganizationDepartments } from "@/shared/api/organization";
-import type {
-    AuthenticationUserDetailDto,
-    AuthenticationUserDto,
-} from "@/shared/types/authentication";
+import type { AuthenticationUserDto } from "@/shared/types/authentication";
 import type {
     ArchiveDataScopeDto,
     AuthorizationPermissionDto,
     AuthorizationRoleDto,
 } from "@/shared/types/authorization";
 import type { OrganizationDepartmentDto } from "@/shared/types/organization";
+import { usePermissionStore } from "@/stores/permissionStore";
 
 type SubjectType = "role" | "user" | "department";
 
 export function useAuthorizationManagement() {
+    const permissionStore = usePermissionStore();
+    const canManagePermissions = computed(() =>
+        permissionStore.has("authorization:permission:manage"),
+    );
+    const canManageDataScopes = computed(() => permissionStore.has("archive:data-scope:manage"));
     const subjectType = ref<SubjectType>("role");
     const selectedRoleId = ref<number>();
     const selectedUserId = ref<number>();
@@ -39,7 +42,6 @@ export function useAuthorizationManagement() {
     const departments = ref<OrganizationDepartmentDto[]>([]);
     const allPermissions = ref<AuthorizationPermissionDto[]>([]);
     const allScopes = ref<ArchiveDataScopeDto[]>([]);
-    const userDetail = ref<AuthenticationUserDetailDto>();
     const displayPermissionCodes = ref<string[]>([]);
     const displayScopeIds = ref<number[]>([]);
     const catalogLoading = ref(false);
@@ -75,24 +77,41 @@ export function useAuthorizationManagement() {
     const displayedScopes = computed(() =>
         allScopes.value.filter((item) => displayScopeIds.value.includes(item.id)),
     );
+    const subjectOptions = computed(() => [
+        { label: "角色", value: "role" },
+        ...(canManageDataScopes.value
+            ? [
+                  { label: "用户", value: "user" },
+                  { label: "部门", value: "department" },
+              ]
+            : []),
+    ]);
 
     async function loadCatalogs() {
         catalogLoading.value = true;
         const results = await Promise.allSettled([
             listAuthorizationRoles(true, 1000),
-            listAuthenticationUsers(undefined, 1000),
-            listOrganizationDepartments(true),
-            listAuthorizationPermissions(),
-            listArchiveDataScopes(false),
+            canManageDataScopes.value
+                ? listAuthenticationUsers(undefined, 1000)
+                : Promise.resolve(undefined),
+            canManageDataScopes.value
+                ? listOrganizationDepartments(true)
+                : Promise.resolve(undefined),
+            canManagePermissions.value
+                ? listAuthorizationPermissions()
+                : Promise.resolve(undefined),
+            canManageDataScopes.value ? listArchiveDataScopes(false) : Promise.resolve(undefined),
         ]);
         const [roleResult, userResult, departmentResult, permissionResult, scopeResult] = results;
         if (roleResult?.status === "fulfilled") roles.value = roleResult.value.items;
-        if (userResult?.status === "fulfilled") users.value = userResult.value.items;
-        if (departmentResult?.status === "fulfilled")
+        if (userResult?.status === "fulfilled" && userResult.value)
+            users.value = userResult.value.items;
+        if (departmentResult?.status === "fulfilled" && departmentResult.value)
             departments.value = departmentResult.value.items;
-        if (permissionResult?.status === "fulfilled")
+        if (permissionResult?.status === "fulfilled" && permissionResult.value)
             allPermissions.value = permissionResult.value.items;
-        if (scopeResult?.status === "fulfilled") allScopes.value = scopeResult.value.items;
+        if (scopeResult?.status === "fulfilled" && scopeResult.value)
+            allScopes.value = scopeResult.value.items;
         if (results.some((result) => result.status === "rejected"))
             ElMessage.error("部分授权目录加载失败，请稍后重试");
         catalogLoading.value = false;
@@ -106,7 +125,6 @@ export function useAuthorizationManagement() {
     }
     function clearDetail() {
         detailRequestVersion += 1;
-        userDetail.value = undefined;
         displayPermissionCodes.value = [];
         displayScopeIds.value = [];
         detailLoading.value = false;
@@ -122,31 +140,23 @@ export function useAuthorizationManagement() {
         try {
             if (subjectType.value === "role") {
                 const [permissions, scopes] = await Promise.all([
-                    getRolePermissions(id),
-                    getRoleArchiveDataScopes(id),
+                    canManagePermissions.value
+                        ? getRolePermissions(id)
+                        : Promise.resolve(undefined),
+                    canManageDataScopes.value
+                        ? getRoleArchiveDataScopes(id)
+                        : Promise.resolve(undefined),
                 ]);
                 if (version !== detailRequestVersion) return;
-                displayPermissionCodes.value = permissions.permissionCodes;
-                displayScopeIds.value = scopes.scopeIds;
+                displayPermissionCodes.value = permissions?.permissionCodes ?? [];
+                displayScopeIds.value = scopes?.scopeIds ?? [];
             } else if (subjectType.value === "user") {
-                const [detail, scopes] = await Promise.all([
-                    getAuthenticationUser(id),
-                    getUserArchiveDataScopes(id),
-                ]);
-                const roleResults = await Promise.allSettled(
-                    detail.roles.map((role) => getRolePermissions(role.id)),
-                );
+                if (!canManageDataScopes.value) return;
+                const scopes = await getUserArchiveDataScopes(id);
                 if (version !== detailRequestVersion) return;
-                userDetail.value = detail;
                 displayScopeIds.value = scopes.scopeIds;
-                displayPermissionCodes.value = [
-                    ...new Set(
-                        roleResults.flatMap((result) =>
-                            result.status === "fulfilled" ? result.value.permissionCodes : [],
-                        ),
-                    ),
-                ].sort();
             } else {
+                if (!canManageDataScopes.value) return;
                 const scopes = await getDepartmentArchiveDataScopes(id);
                 if (version !== detailRequestVersion) return;
                 displayScopeIds.value = scopes.scopeIds;
@@ -169,7 +179,12 @@ export function useAuthorizationManagement() {
         scopeModalOpen.value = true;
     }
     async function savePermissions() {
-        if (subjectType.value !== "role" || selectedRoleId.value == null) return;
+        if (
+            !canManagePermissions.value ||
+            subjectType.value !== "role" ||
+            selectedRoleId.value == null
+        )
+            return;
         saving.value = true;
         try {
             await saveRolePermissions(selectedRoleId.value, editingPermissionCodes.value);
@@ -183,6 +198,7 @@ export function useAuthorizationManagement() {
         }
     }
     async function saveScopes() {
+        if (!canManageDataScopes.value) return;
         const id = selectedSubjectId.value;
         if (id == null) return;
         saving.value = true;
@@ -206,6 +222,8 @@ export function useAuthorizationManagement() {
     return {
         allPermissions,
         allScopes,
+        canManageDataScopes,
+        canManagePermissions,
         catalogLoading,
         changeSubjectType,
         departments,
@@ -232,7 +250,7 @@ export function useAuthorizationManagement() {
         selectedUser,
         selectedUserId,
         subjectType,
-        userDetail,
+        subjectOptions,
         users,
     };
 }

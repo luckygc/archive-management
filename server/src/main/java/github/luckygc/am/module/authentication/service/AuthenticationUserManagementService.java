@@ -9,9 +9,11 @@ import jakarta.data.restrict.Restriction;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jspecify.annotations.Nullable;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.common.exception.BadRequestException;
@@ -55,7 +57,7 @@ public class AuthenticationUserManagementService {
     @Transactional(readOnly = true)
     public CursorPageResponse<AuthenticationUserDto> listUsers(
             @Nullable String keyword, PageRequest pageRequest, Long operatorUserId) {
-        requireUserManage(operatorUserId);
+        requireUserDirectoryRead(operatorUserId);
         Restriction<AuthenticationUser> restriction = Restrict.unrestricted();
         if (StringUtils.isNotBlank(keyword)) {
             String lowered = keyword.toLowerCase().trim();
@@ -222,6 +224,18 @@ public class AuthenticationUserManagementService {
     private void requireUserManage(Long operatorUserId) {
         permissionService.requirePermission(
                 operatorUserId, AuthorizationPermissionCode.AUTHENTICATION_USER_MANAGE);
+    }
+
+    private void requireUserDirectoryRead(Long operatorUserId) {
+        if (permissionService.hasPermission(
+                        operatorUserId,
+                        AuthorizationPermissionCode.AUTHENTICATION_USER_MANAGE.code())
+                || permissionService.hasPermission(
+                        operatorUserId,
+                        AuthorizationPermissionCode.ARCHIVE_DATA_SCOPE_MANAGE.code())) {
+            return;
+        }
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "权限不足");
     }
 
     private @Nullable Long validateDepartmentForWrite(@Nullable Long departmentId) {

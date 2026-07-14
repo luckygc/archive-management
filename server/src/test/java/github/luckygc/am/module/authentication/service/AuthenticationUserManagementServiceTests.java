@@ -13,10 +13,14 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+import jakarta.data.page.CursoredPage;
+import jakarta.data.page.PageRequest;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.authentication.AuthenticationUser;
@@ -478,6 +482,40 @@ class AuthenticationUserManagementServiceTests {
     }
 
     // ── 权限校验 ──
+
+    @Test
+    @DisplayName("用户和数据范围管理员可读取用户目录")
+    void listUsersShouldAllowRequiredDirectoryPermissions() {
+        @SuppressWarnings("unchecked")
+        CursoredPage<AuthenticationUser> page = mock(CursoredPage.class);
+        when(page.content()).thenReturn(List.of());
+        when(page.numberOfElements()).thenReturn(0);
+        when(page.hasTotals()).thenReturn(false);
+        when(userRepository.filterBy(any(), any())).thenReturn(page);
+        doThrowPermissionDenied();
+        for (AuthorizationPermissionCode permissionCode :
+                List.of(
+                        AuthorizationPermissionCode.AUTHENTICATION_USER_MANAGE,
+                        AuthorizationPermissionCode.ARCHIVE_DATA_SCOPE_MANAGE)) {
+            when(permissionService.hasPermission(OPERATOR_ID, permissionCode.code()))
+                    .thenReturn(true);
+
+            userService.listUsers(null, PageRequest.ofSize(100), OPERATOR_ID);
+
+            when(permissionService.hasPermission(OPERATOR_ID, permissionCode.code()))
+                    .thenReturn(false);
+        }
+    }
+
+    @Test
+    @DisplayName("没有相关管理权限时拒绝读取用户目录")
+    void listUsersShouldRejectWithoutRequiredDirectoryPermission() {
+        assertThatThrownBy(() -> userService.listUsers(null, PageRequest.ofSize(100), OPERATOR_ID))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("权限不足");
+
+        verify(userRepository, never()).filterBy(any(), any());
+    }
 
     @Test
     @DisplayName("createUser 需要 authentication:user:manage 权限")

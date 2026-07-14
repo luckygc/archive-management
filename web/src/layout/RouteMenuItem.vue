@@ -17,6 +17,7 @@ const props = withDefaults(
 
 const path = computed(() => joinPath(props.parentPath, String(props.routeRecord.path)));
 const permissionStore = usePermissionStore();
+const accessible = computed(() => canAccessRoute(props.routeRecord, permissionStore));
 const children = computed(() =>
     (props.routeRecord.children ?? []).filter(
         (item) => item.meta?.menu === true && canAccessRoute(item, permissionStore),
@@ -31,24 +32,26 @@ function joinPath(parentPath: string, path: string) {
 </script>
 
 <template>
-    <ElSubMenu v-if="children.length" :index="path">
-        <template #title>
+    <template v-if="accessible">
+        <ElSubMenu v-if="children.length" :index="path">
+            <template #title>
+                <ElIcon v-if="routeRecord.meta?.icon">
+                    <component :is="routeRecord.meta.icon" />
+                </ElIcon>
+                <span>{{ routeRecord.meta?.title }}</span>
+            </template>
+            <RouteMenuItem
+                v-for="child in children"
+                :key="String(child.name ?? child.path)"
+                :route-record="child"
+                :parent-path="path"
+            />
+        </ElSubMenu>
+        <ElMenuItem v-else :index="path">
             <ElIcon v-if="routeRecord.meta?.icon">
                 <component :is="routeRecord.meta.icon" />
             </ElIcon>
             <span>{{ routeRecord.meta?.title }}</span>
-        </template>
-        <RouteMenuItem
-            v-for="child in children"
-            :key="String(child.name ?? child.path)"
-            :route-record="child"
-            :parent-path="path"
-        />
-    </ElSubMenu>
-    <ElMenuItem v-else :index="path">
-        <ElIcon v-if="routeRecord.meta?.icon">
-            <component :is="routeRecord.meta.icon" />
-        </ElIcon>
-        <span>{{ routeRecord.meta?.title }}</span>
-    </ElMenuItem>
+        </ElMenuItem>
+    </template>
 </template>

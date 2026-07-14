@@ -11,6 +11,8 @@ import { useAuthorizationManagement } from "./useAuthorizationManagement";
 const {
     allPermissions,
     allScopes,
+    canManageDataScopes,
+    canManagePermissions,
     catalogLoading,
     changeSubjectType,
     departments,
@@ -37,7 +39,7 @@ const {
     selectedUser,
     selectedUserId,
     subjectType,
-    userDetail,
+    subjectOptions,
     users,
 } = useAuthorizationManagement();
 </script>
@@ -50,11 +52,7 @@ const {
                 <el-card header="授权主体" shadow="never">
                     <el-segmented
                         :model-value="subjectType"
-                        :options="[
-                            { label: '角色', value: 'role' },
-                            { label: '用户', value: 'user' },
-                            { label: '部门', value: 'department' },
-                        ]"
+                        :options="subjectOptions"
                         block
                         @change="changeSubjectType"
                     />
@@ -136,22 +134,15 @@ const {
                     <el-empty description="请在左侧选择授权主体" />
                 </el-card>
                 <div v-else class="authorization-details">
-                    <el-card v-if="subjectType !== 'department'" shadow="never">
+                    <el-card v-if="canManagePermissions && subjectType === 'role'" shadow="never">
                         <template #header>
                             <div class="card-header">
                                 <span>功能权限</span>
-                                <el-button
-                                    v-if="subjectType === 'role'"
-                                    size="small"
-                                    type="primary"
-                                    @click="openPermissionEdit"
+                                <el-button size="small" type="primary" @click="openPermissionEdit"
                                     >编辑</el-button
                                 >
                             </div>
                         </template>
-                        <p v-if="subjectType === 'user'" class="secondary-text">
-                            用户权限由其角色决定
-                        </p>
                         <el-empty
                             v-if="displayPermissionCodes.length === 0"
                             description="暂无功能权限"
@@ -182,7 +173,7 @@ const {
                         </el-table>
                     </el-card>
 
-                    <el-card shadow="never">
+                    <el-card v-if="canManageDataScopes" shadow="never">
                         <template #header>
                             <div class="card-header">
                                 <span>数据范围</span>
@@ -214,27 +205,12 @@ const {
                             </el-table-column>
                         </el-table>
                     </el-card>
-
-                    <el-card
-                        v-if="subjectType === 'user' && userDetail"
-                        header="所属角色"
-                        shadow="never"
-                    >
-                        <el-empty v-if="userDetail.roles.length === 0" description="未分配角色" />
-                        <el-space v-else wrap>
-                            <el-tag
-                                v-for="role in userDetail.roles"
-                                :key="role.id"
-                                type="primary"
-                                >{{ role.roleName }}</el-tag
-                            >
-                        </el-space>
-                    </el-card>
                 </div>
             </el-col>
         </el-row>
 
         <el-dialog
+            v-if="canManagePermissions"
             v-model="permissionModalOpen"
             title="编辑功能权限"
             width="640px"
@@ -256,7 +232,13 @@ const {
             </template>
         </el-dialog>
 
-        <el-dialog v-model="scopeModalOpen" title="编辑数据范围" width="640px" destroy-on-close>
+        <el-dialog
+            v-if="canManageDataScopes"
+            v-model="scopeModalOpen"
+            title="编辑数据范围"
+            width="640px"
+            destroy-on-close
+        >
             <el-select v-model="editingScopeIds" multiple placeholder="选择数据范围">
                 <el-option
                     v-for="item in allScopes"
@@ -296,9 +278,5 @@ const {
     display: flex;
     align-items: center;
     justify-content: space-between;
-}
-.secondary-text {
-    margin-top: 0;
-    color: var(--el-text-color-secondary);
 }
 </style>

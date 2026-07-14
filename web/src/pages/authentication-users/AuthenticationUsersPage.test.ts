@@ -57,6 +57,15 @@ afterEach(() => {
 });
 
 describe("AuthenticationUsersPage", () => {
+    it("用户管理加载角色和部门目录以支持完整编辑与角色分配", async () => {
+        render(AuthenticationUsersPage, { global: { plugins: [ElementPlus] } });
+
+        await waitFor(() => {
+            expect(archiveApiMocks.listAuthorizationRoles).toHaveBeenCalledWith(true, 1000);
+            expect(archiveApiMocks.listOrganizationDepartments).toHaveBeenCalledWith(true);
+        });
+    });
+
     it("更新用户时保留清空的可选文本字段", async () => {
         archiveApiMocks.getAuthenticationUser.mockResolvedValue({
             id: 7,

@@ -70,10 +70,14 @@ GET /api/v1/authentication-events
 | --- | --- |
 | `GET /api/v1/authorization-permissions` | 查询系统权限点 |
 | `GET /api/v1/me/permissions` | 查询当前用户权限点 |
+| `GET /api/v1/authorization-roles` | 查询角色目录；角色、用户、功能权限或数据范围管理员可读 |
+| `GET /api/v1/authentication-users` | 查询用户目录；用户或数据范围管理员可读 |
 | `GET /api/v1/authorization-roles/{role}/permissions` | 查询角色权限 |
 | `PUT /api/v1/authorization-roles/{role}/permissions` | 覆盖角色权限 |
 
-前端可以根据权限隐藏或禁用操作，但所有写入、删除、导出、下载和管理操作必须由后端重新校验权限。
+授权管理是能力聚合页：具备 `authorization:permission:manage` 时只显示并请求角色功能权限，具备 `archive:data-scope:manage` 时只显示并请求角色、用户、部门数据范围。角色和用户列表为完成这些用例提供最小目录读取权限；角色/用户详情以及创建、修改、删除、分配角色、覆盖功能权限和覆盖数据范围仍要求对应精确管理权限。
+
+前端可以根据权限隐藏或禁用操作，并在权限摘要刷新后清理无权页签与页面缓存，但所有写入、删除、导出、下载和管理操作必须由后端重新校验权限。
 
 ## 数据范围
 

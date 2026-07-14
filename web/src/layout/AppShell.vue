@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, watch } from "vue";
 import { useRouter } from "vue-router";
 import type { TabsPaneContext, TabPaneName } from "element-plus";
 import { Collection, Refresh, User } from "@element-plus/icons-vue";
 
-import { canAccessRoute, workspaceRoutes } from "@/app/routes";
+import { canAccessRoute, hasRoutePermission, workspaceRoutes } from "@/app/routes";
 import RouteMenuItem from "@/layout/RouteMenuItem.vue";
 import PageTabRouterView from "@/shared/tabs/PageTabRouterView.vue";
 import { usePageTabsStore } from "@/stores/pageTabsStore";
@@ -22,16 +22,28 @@ const menuRoutes = computed(() =>
         (item) => item.meta?.menu === true && canAccessRoute(item, permissionStore),
     ),
 );
-const visibleTabs = computed(() =>
-    tabsStore.tabs.filter((tab) => {
-        const permission = router.resolve(tab.fullPath).meta.permission;
-        return !permission || permissionStore.has(permission);
-    }),
-);
 const breadcrumbs = computed(() =>
     currentRoute.value.matched
         .filter((item) => item.meta.title && !item.meta.public)
         .map((item) => ({ title: item.meta.title!, path: item.path })),
+);
+
+watch(
+    () => [
+        permissionStore.initialized,
+        permissionStore.superAdmin,
+        ...permissionStore.permissionCodes,
+    ],
+    ([initialized]) => {
+        if (!initialized) return;
+        const currentAllowed = hasRoutePermission(currentRoute.value.meta, permissionStore);
+        tabsStore.removeInaccessible((fullPath) =>
+            hasRoutePermission(router.resolve(fullPath).meta, permissionStore),
+        );
+        if (!currentAllowed && currentRoute.value.name !== "forbidden")
+            void router.replace({ name: "forbidden" });
+    },
+    { flush: "sync", immediate: true },
 );
 
 async function selectTab(tab: TabsPaneContext) {
@@ -104,7 +116,7 @@ async function logout() {
                     @tab-remove="closeTab"
                 >
                     <ElTabPane
-                        v-for="tab in visibleTabs"
+                        v-for="tab in tabsStore.tabs"
                         :key="tab.fullPath"
                         :name="tab.fullPath"
                         :label="tab.title"

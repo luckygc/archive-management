@@ -1,5 +1,5 @@
 import type { Component } from "vue";
-import type { RouteLocationNormalized, RouteRecordRaw } from "vue-router";
+import type { RouteLocationNormalized, RouteMeta, RouteRecordRaw } from "vue-router";
 import { createRouter, createWebHashHistory } from "vue-router";
 
 import {
@@ -36,6 +36,7 @@ declare module "vue-router" {
         cache?: boolean;
         public?: boolean;
         permission?: string;
+        permissionsAnyOf?: string[];
     }
 }
 
@@ -149,7 +150,9 @@ export const workspaceRoutes: RouteRecordRaw[] = [
             "授权管理",
             Lock,
             () => import("@/pages/authorization-management/AuthorizationManagementPage.vue"),
-            { permission: "authorization:permission:manage" },
+            {
+                permissionsAnyOf: ["authorization:permission:manage", "archive:data-scope:manage"],
+            },
         ),
         route(
             "roles",
@@ -276,7 +279,7 @@ export async function navigationGuard(to: Pick<RouteLocationNormalized, "fullPat
             };
         }
     }
-    if (to.meta.permission && !permissionStore.has(to.meta.permission)) {
+    if (!hasRoutePermission(to.meta, permissionStore)) {
         return { name: "forbidden", replace: true };
     }
     return true;
@@ -286,13 +289,26 @@ export interface PermissionChecker {
     has(code: string): boolean;
 }
 
+export function hasRoutePermission(
+    meta: Pick<RouteMeta, "permission" | "permissionsAnyOf">,
+    permission: PermissionChecker,
+) {
+    if (meta.permission && !permission.has(meta.permission)) return false;
+    return !(
+        meta.permissionsAnyOf?.length && !meta.permissionsAnyOf.some((code) => permission.has(code))
+    );
+}
+
 export function canAccessRoute(record: RouteRecordRaw, permission: PermissionChecker): boolean {
-    const requiredPermission = record.meta?.permission;
-    if (requiredPermission && !permission.has(requiredPermission)) return false;
+    if (!hasRoutePermission(record.meta ?? {}, permission)) return false;
     const menuChildren = (record.children ?? []).filter((child) => child.meta?.menu === true);
     if (menuChildren.length > 0)
         return menuChildren.some((child) => canAccessRoute(child, permission));
-    return !(record.meta?.menu === true && record.children?.length && record.component == null);
+    return !(
+        record.meta?.menu === true &&
+        record.children !== undefined &&
+        record.component == null
+    );
 }
 
 function route(
@@ -307,15 +323,23 @@ function route(
         menu?: boolean;
         pageTitle?: string;
         permission?: string;
+        permissionsAnyOf?: string[];
     } = {},
 ): RouteRecordRaw {
-    const { affixTab = false, cache = true, menu = true, permission, ...props } = extra;
+    const {
+        affixTab = false,
+        cache = true,
+        menu = true,
+        permission,
+        permissionsAnyOf,
+        ...props
+    } = extra;
     return {
         path,
         name,
         component,
         props,
-        meta: { title, icon, menu, affixTab, cache, permission },
+        meta: { title, icon, menu, affixTab, cache, permission, permissionsAnyOf },
     } as RouteRecordRaw;
 }
 

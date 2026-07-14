@@ -922,7 +922,7 @@ git commit -m "feat: 支持档案明细行维护"
 - Create: `web/src/pages/forbidden/ForbiddenPage.vue`
 
 **Interfaces:**
-- Produces: `RouteMeta.permission?: string`、`permissionStore.has(code)`、`canAccessRoute(route, permissionStore)`。
+- Produces: `RouteMeta.permission?: string`、`RouteMeta.permissionsAnyOf?: string[]`、`permissionStore.has(code)`、`hasRoutePermission(meta, permissionStore)`、`canAccessRoute(route, permissionStore)`。
 
 - [x] **Step 1: 写权限失败测试**
 
@@ -977,6 +977,15 @@ if (to.meta.permission && !permissionStore.has(to.meta.permission)) {
 pnpm --filter @archive-management/web test -- permissionStore.test.ts routes.test.ts RouteMenuItem.test.ts
 git add web/src/stores web/src/app web/src/layout web/src/pages/forbidden
 git commit -m "feat: 统一前端功能权限体验"
+```
+
+- [x] **Step 6: 修复独立审查发现的动态权限与授权页能力边界**
+
+权限摘要刷新后清理无权页签与 `KeepAlive` 缓存，当前路由无权时跳转 403；显式 `children: []` 且无组件的路由保持分组语义。授权管理路由使用功能权限管理或数据范围管理任一能力，页面只请求当前能力所需接口。后端仅放宽角色、用户目录读取的明确 OR 权限，详情和写入权限不变。
+
+```bash
+pnpm --filter @archive-management/web exec vp test run src/layout/AppShell.test.ts src/app/routes.test.ts src/layout/RouteMenuItem.test.ts src/pages/authorization-management/AuthorizationManagementPage.test.ts src/pages/authentication-users/AuthenticationUsersPage.test.ts
+cd server && mise exec -- mvn -q -Dtest=AuthorizationRoleManagementServiceTests,AuthenticationUserManagementServiceTests test
 ```
 
 ### Task 10: 用数据范围内真实统计替换工作台假数据

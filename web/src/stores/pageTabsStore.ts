@@ -77,6 +77,15 @@ export const usePageTabsStore = defineStore("page-tabs", () => {
         return activeFullPath.value;
     }
 
+    function removeInaccessible(canAccess: (fullPath: string) => boolean) {
+        const activeWasRemoved = !canAccess(activeFullPath.value);
+        tabs.value = tabs.value.filter((tab) => canAccess(tab.fullPath));
+        if (tabs.value.length === 0) tabs.value = [{ ...dashboardTab }];
+        if (!tabs.value.some((tab) => tab.fullPath === activeFullPath.value))
+            activeFullPath.value = tabs.value[0].fullPath;
+        return activeWasRemoved;
+    }
+
     function reset() {
         tabs.value = [{ ...dashboardTab }];
         activeFullPath.value = "/";
@@ -91,6 +100,7 @@ export const usePageTabsStore = defineStore("page-tabs", () => {
         closeOthers,
         closeSide,
         closeAll,
+        removeInaccessible,
         reset,
     };
 });
