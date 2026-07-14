@@ -23,18 +23,25 @@ const candidateLimit = ref(100);
 const candidateCursor = ref<string>();
 const candidateLoading = ref(false);
 const candidateError = ref<string>();
+const candidateKeywordDraft = ref("");
+const candidateKeyword = ref<string>();
 const selectedItemId = ref<number>();
 const adding = ref(false);
 let itemRequestVersion = 0;
 let candidateRequestVersion = 0;
+let addRequestVersion = 0;
 
 watch(
     () => [props.volume?.id, props.categoryId] as const,
     ([volumeId, categoryId]) => {
         itemRequestVersion += 1;
         candidateRequestVersion += 1;
+        addRequestVersion += 1;
+        adding.value = false;
         items.value = undefined;
         candidates.value = undefined;
+        candidateKeywordDraft.value = "";
+        candidateKeyword.value = undefined;
         selectedItemId.value = undefined;
         itemCursor.value = undefined;
         candidateCursor.value = undefined;
@@ -72,6 +79,7 @@ async function loadItems(nextCursor = itemCursor.value) {
 async function loadCandidates(nextCursor = candidateCursor.value) {
     if (!props.volume || !props.categoryId) return;
     const version = ++candidateRequestVersion;
+    const volumeId = props.volume.id;
     candidateLoading.value = true;
     candidateError.value = undefined;
     candidateCursor.value = nextCursor;
@@ -79,10 +87,16 @@ async function loadCandidates(nextCursor = candidateCursor.value) {
         const response = await searchArchiveRecords({
             categoryId: props.categoryId,
             fondsCode: props.volume.fondsCode,
+            keyword: candidateKeyword.value,
             limit: candidateLimit.value,
             cursor: nextCursor,
         });
-        if (version === candidateRequestVersion) candidates.value = response;
+        if (version === candidateRequestVersion) {
+            candidates.value = {
+                ...response,
+                items: response.items.filter((row) => !belongsToVolume(row, volumeId)),
+            };
+        }
     } catch (error) {
         if (version === candidateRequestVersion)
             candidateError.value = errorMessage(error, "加载可加入档案失败");
@@ -93,18 +107,28 @@ async function loadCandidates(nextCursor = candidateCursor.value) {
 
 async function addItem() {
     if (!props.volume || !selectedItemId.value || adding.value) return;
+    const volumeId = props.volume.id;
+    const itemId = selectedItemId.value;
+    const version = ++addRequestVersion;
     adding.value = true;
     try {
-        await addArchiveItemToVolume(props.volume.id, selectedItemId.value, undefined);
+        await addArchiveItemToVolume(volumeId, itemId, undefined);
+        if (version !== addRequestVersion) return;
         ElMessage.success("档案已加入案卷");
         selectedItemId.value = undefined;
         itemCursor.value = undefined;
         await loadItems(undefined);
     } catch (error) {
-        ElMessage.error(errorMessage(error, "加入案卷失败"));
+        if (version === addRequestVersion) ElMessage.error(errorMessage(error, "加入案卷失败"));
     } finally {
-        adding.value = false;
+        if (version === addRequestVersion) adding.value = false;
     }
+}
+
+function searchCandidates() {
+    candidateKeyword.value = candidateKeywordDraft.value.trim() || undefined;
+    candidateCursor.value = undefined;
+    void loadCandidates(undefined);
 }
 
 function changeItemLimit(limit: number) {
@@ -122,7 +146,14 @@ function changeCandidateLimit(limit: number) {
 function close() {
     itemRequestVersion += 1;
     candidateRequestVersion += 1;
+    addRequestVersion += 1;
+    adding.value = false;
     emit("close");
+}
+
+function belongsToVolume(row: Record<string, unknown>, volumeId: number) {
+    const candidateVolumeId = row.volumeId ?? row.volume_id;
+    return candidateVolumeId != null && Number(candidateVolumeId) === volumeId;
 }
 
 function archiveNo(row: Record<string, unknown>) {
@@ -159,13 +190,23 @@ function archiveNo(row: Record<string, unknown>) {
         <section class="volume-items-section" aria-label="可加入档案">
             <div class="volume-items-toolbar">
                 <h3>选择档案加入案卷</h3>
-                <el-button
-                    type="primary"
-                    :disabled="!selectedItemId"
-                    :loading="adding"
-                    @click="addItem"
-                    >加入案卷</el-button
-                >
+                <div class="candidate-actions">
+                    <el-input
+                        v-model="candidateKeywordDraft"
+                        aria-label="候选档案关键词"
+                        clearable
+                        placeholder="档号或关键词"
+                        @keyup.enter="searchCandidates"
+                    />
+                    <el-button @click="searchCandidates">搜索候选档案</el-button>
+                    <el-button
+                        type="primary"
+                        :disabled="!selectedItemId"
+                        :loading="adding"
+                        @click="addItem"
+                        >加入案卷</el-button
+                    >
+                </div>
             </div>
             <el-alert
                 v-if="candidateError"
@@ -221,6 +262,14 @@ function archiveNo(row: Record<string, unknown>) {
 }
 .volume-items-toolbar h3 {
     margin: 0;
+}
+.candidate-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.candidate-actions .el-input {
+    width: 220px;
 }
 .candidate-list {
     display: flex;

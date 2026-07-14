@@ -133,6 +133,9 @@ public class ArchiveItemQueryService {
             boolean allowKeyword,
             boolean deleted,
             PageRequest pageRequest) {
+        if (request != null && request.volumeId() != null && request.volumeId() <= 0) {
+            throw badRequest("案卷 ID 必须为正数", "volumeId", "案卷 ID 必须为正数");
+        }
         requirePermission(userId, "archive:item:read");
         String keyword = StringUtils.trimToNull(request == null ? null : request.keyword());
         if (StringUtils.isNotBlank(keyword) && !allowKeyword) {

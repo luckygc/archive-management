@@ -26,6 +26,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
+import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeResolutionTypes.ArchiveDataScopeFilter;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeResolutionTypes.ResolvedArchiveDataScope;
@@ -203,6 +204,39 @@ class ArchiveItemDataScopeQueryTests {
                                         criteria != null
                                                 && Long.valueOf(12L).equals(criteria.volumeId())),
                         any());
+    }
+
+    @Test
+    @DisplayName("卷内档案搜索拒绝非正数 volumeId 并返回字段级错误")
+    void searchItemsShouldRejectNonPositiveVolumeId() {
+        assertInvalidVolumeId(0L);
+        assertInvalidVolumeId(-1L);
+
+        verify(archiveCategoryService, never()).getCategory(anyLong());
+        verify(archiveMapper, never()).listDynamicItems(any(), any(), any(), any());
+    }
+
+    private void assertInvalidVolumeId(Long volumeId) {
+        assertThatThrownBy(
+                        () ->
+                                archiveItemQueryService.searchItems(
+                                        new SearchArchiveItemsRequest(
+                                                1L, null, null, null, null, null, null, null,
+                                                volumeId),
+                                        9L,
+                                        PageRequest.ofSize(100)))
+                .isInstanceOfSatisfying(
+                        BadRequestException.class,
+                        exception ->
+                                assertThat(exception.fieldViolations())
+                                        .singleElement()
+                                        .satisfies(
+                                                violation -> {
+                                                    assertThat(violation.field())
+                                                            .isEqualTo("volumeId");
+                                                    assertThat(violation.message())
+                                                            .isEqualTo("案卷 ID 必须为正数");
+                                                }));
     }
 
     @Test

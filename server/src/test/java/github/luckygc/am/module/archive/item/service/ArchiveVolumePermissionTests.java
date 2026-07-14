@@ -3,6 +3,7 @@ package github.luckygc.am.module.archive.item.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -27,15 +28,20 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
+import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeResolutionTypes.ArchiveDataScopeFilter;
+import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeResolutionTypes.ResolvedArchiveDataScope;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
 import github.luckygc.am.module.archive.governance.ArchiveGovernanceSchemeVersion;
 import github.luckygc.am.module.archive.governance.service.ArchiveGovernanceService;
+import github.luckygc.am.module.archive.item.ArchiveItemQueryOperator;
 import github.luckygc.am.module.archive.item.ArchiveVolume;
 import github.luckygc.am.module.archive.item._ArchiveVolume;
 import github.luckygc.am.module.archive.item.repository.ArchiveVolumeDataRepository;
 import github.luckygc.am.module.archive.item.service.ArchiveVolumeService.CreateArchiveVolumeRequest;
+import github.luckygc.am.module.archive.mapper.ArchiveDataScopeSqlGroup;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
+import github.luckygc.am.module.archive.mapper.ArchiveSqlCondition;
 import github.luckygc.am.module.archive.metadata.ArchiveManagementMode;
 import github.luckygc.am.module.archive.metadata.ArchiveTableStatus;
 import github.luckygc.am.module.archive.metadata.service.ArchiveCategoryService;
@@ -149,6 +155,112 @@ class ArchiveVolumePermissionTests {
     }
 
     @Test
+    @DisplayName("仅含动态 IS_NULL 条件的数据范围不能授权案卷列表")
+    void listVolumesShouldFailClosedForDynamicScopeCondition() {
+        when(permissionService.hasPermission(8L, "archive:item:read")).thenReturn(true);
+        when(dataScopeService.resolveUserDataScope(8L))
+                .thenReturn(ResolvedArchiveDataScope.conditional(List.of()));
+        when(archiveCategoryService.listCategories(null)).thenReturn(List.of(volumeCategory()));
+        ArchiveDataScopeFilter filter = dynamicConditionFilter();
+        when(dataScopeService.buildItemFilter(8L, 1L, null)).thenReturn(filter);
+        when(dataScopeService.matchesItemFilter(filter, null, null, null, Map.of()))
+                .thenReturn(true);
+
+        var response = archiveVolumeService.listVolumes(null, null, PageRequest.ofSize(100), 8L);
+
+        assertThat(response.items()).isEmpty();
+        verify(archiveVolumeRepository, never()).find(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("仅含动态 IS_NULL 条件的数据范围不能读取单个案卷")
+    void getVolumeShouldFailClosedForDynamicScopeCondition() {
+        when(permissionService.hasPermission(8L, "archive:item:read")).thenReturn(true);
+        when(archiveMapper.getArchiveVolume(31L)).thenReturn(volumeRow());
+        when(archiveCategoryService.listCategories(null)).thenReturn(List.of(volumeCategory()));
+        ArchiveDataScopeFilter filter = dynamicConditionFilter();
+        when(dataScopeService.buildItemFilter(8L, 1L, "F001")).thenReturn(filter);
+        when(dataScopeService.matchesItemFilter(filter, "F001", null, null, Map.of()))
+                .thenReturn(true);
+
+        assertThatThrownBy(() -> archiveVolumeService.getVolume(31L, 8L))
+                .isInstanceOfSatisfying(
+                        ResponseStatusException.class,
+                        exception ->
+                                assertThat(exception.getStatusCode())
+                                        .isEqualTo(HttpStatus.FORBIDDEN));
+    }
+
+    @Test
+    @DisplayName("仅含动态 IS_NULL 条件的数据范围不能创建案卷")
+    void createVolumeShouldFailClosedForDynamicScopeCondition() {
+        when(permissionService.hasPermission(9L, "archive:item:create")).thenReturn(true);
+        when(archiveCategoryService.getCategory(1L)).thenReturn(volumeCategory());
+        when(archiveMetadataReferenceService.getEnabledFondsByCode("F001"))
+                .thenReturn(activeFonds());
+        ArchiveDataScopeFilter filter = dynamicConditionFilter();
+        when(dataScopeService.buildItemFilter(9L, 1L, "F001")).thenReturn(filter);
+        when(dataScopeService.matchesItemFilter(filter, "F001", null, null, Map.of()))
+                .thenReturn(true);
+
+        assertThatThrownBy(
+                        () ->
+                                archiveVolumeService.createVolume(
+                                        new CreateArchiveVolumeRequest(
+                                                1L, "F001", "V-001", 2026, "DRAFT"),
+                                        9L))
+                .isInstanceOfSatisfying(
+                        ResponseStatusException.class,
+                        exception ->
+                                assertThat(exception.getStatusCode())
+                                        .isEqualTo(HttpStatus.FORBIDDEN));
+
+        verify(archiveMapper, never())
+                .insertArchiveVolume(
+                        anyString(),
+                        anyString(),
+                        anyString(),
+                        anyString(),
+                        any(),
+                        anyString(),
+                        anyInt(),
+                        any(),
+                        any());
+    }
+
+    @Test
+    @DisplayName("混合数据范围仍由完整匹配的固定字段组授权案卷")
+    void getVolumeShouldAllowMatchingFixedGroupAlongsideDynamicGroup() {
+        when(permissionService.hasPermission(8L, "archive:item:read")).thenReturn(true);
+        when(archiveMapper.getArchiveVolume(31L)).thenReturn(volumeRow());
+        when(archiveCategoryService.listCategories(null)).thenReturn(List.of(volumeCategory()));
+        ArchiveDataScopeFilter filter =
+                ArchiveDataScopeFilter.groups(
+                        List.of(
+                                dynamicConditionGroup(),
+                                new ArchiveDataScopeSqlGroup(
+                                        List.of("F001"), List.of(4L), List.of(5L), List.of())));
+        when(dataScopeService.buildItemFilter(8L, 1L, "F001")).thenReturn(filter);
+        when(dataScopeService.matchesItemFilter(filter, "F001", null, null, Map.of()))
+                .thenReturn(false);
+
+        assertThat(archiveVolumeService.getVolume(31L, 8L).id()).isEqualTo(31L);
+        verify(dataScopeService, never()).matchesItemFilter(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("加入案卷的 itemId 为空或非正数时返回字段级错误且不进入权限和持久化")
+    void addItemShouldRejectInvalidItemIdBeforePermissionAndPersistence() {
+        assertInvalidItemId(null);
+        assertInvalidItemId(0L);
+        assertInvalidItemId(-1L);
+
+        verify(permissionService, never()).hasPermission(anyLong(), anyString());
+        verify(archiveMapper, never()).getArchiveVolume(anyLong());
+        verify(archiveMapper, never()).moveItemToVolume(anyLong(), anyLong(), anyInt(), anyLong());
+    }
+
+    @Test
     @DisplayName("创建案卷必须有档案创建权限且满足数据范围")
     void createVolumeShouldRequireCreatePermissionAndDataScope() {
         when(permissionService.hasPermission(9L, "archive:item:create")).thenReturn(true);
@@ -230,6 +342,36 @@ class ArchiveVolumePermissionTests {
         return version;
     }
 
+    private void assertInvalidItemId(Long itemId) {
+        assertThatThrownBy(() -> archiveVolumeService.addItemToVolume(31L, itemId, null, 9L))
+                .isInstanceOfSatisfying(
+                        BadRequestException.class,
+                        exception ->
+                                assertThat(exception.fieldViolations())
+                                        .singleElement()
+                                        .satisfies(
+                                                violation -> {
+                                                    assertThat(violation.field())
+                                                            .isEqualTo("itemId");
+                                                    assertThat(violation.message())
+                                                            .isEqualTo("档案 ID 必须为正数");
+                                                }));
+    }
+
+    private ArchiveDataScopeFilter dynamicConditionFilter() {
+        return ArchiveDataScopeFilter.groups(List.of(dynamicConditionGroup()));
+    }
+
+    private ArchiveDataScopeSqlGroup dynamicConditionGroup() {
+        return new ArchiveDataScopeSqlGroup(
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(
+                        new ArchiveSqlCondition(
+                                "f_owner", ArchiveItemQueryOperator.IS_NULL, null)));
+    }
+
     private Map<String, Object> volumeRow() {
         Map<String, Object> row = new HashMap<>();
         row.put("id", 31L);
@@ -239,6 +381,8 @@ class ArchiveVolumePermissionTests {
         row.put("categoryName", "合同档案");
         row.put("archiveNo", "V-001");
         row.put("electronicStatus", "DRAFT");
+        row.put("securityLevelId", 4L);
+        row.put("retentionPeriodId", 5L);
         row.put("archiveYear", 2026);
         row.put("lockedFlag", false);
         return row;

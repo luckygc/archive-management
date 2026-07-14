@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/vue";
-import ElementPlus from "element-plus";
+import ElementPlus, { ElMessage } from "element-plus";
 import { createPinia, setActivePinia } from "pinia";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -56,6 +56,7 @@ beforeEach(() => {
 
 afterEach(() => {
     cleanup();
+    vi.restoreAllMocks();
     vi.clearAllMocks();
 });
 
@@ -166,6 +167,136 @@ describe("ArchiveVolumeItemsDrawer", () => {
         });
         expect(within(candidates).queryByLabelText("档案 ID")).not.toBeInTheDocument();
     });
+
+    it("按提交关键词搜索候选档案、翻页保持条件并排除当前案卷条目", async () => {
+        mocks.searchArchiveRecords
+            .mockResolvedValueOnce({ fields: [], items: [] })
+            .mockResolvedValueOnce({
+                fields: [],
+                items: [
+                    { id: 90, archiveNo: "ALREADY-CAMEL", volumeId: 12 },
+                    { id: 91, archiveNo: "ALREADY-SNAKE", volume_id: 12 },
+                    { id: 92, archiveNo: "AVAILABLE", volumeId: null },
+                ],
+            })
+            .mockResolvedValueOnce({
+                fields: [],
+                items: [{ id: 93, archiveNo: "MATCHED" }],
+                next: "candidate-next",
+            })
+            .mockResolvedValueOnce({ fields: [], items: [{ id: 94, archiveNo: "NEXT" }] });
+        render(ArchiveVolumeItemsDrawer, {
+            props: { volume: volume(), categoryId: 7 },
+            global: { plugins: [ElementPlus] },
+        });
+
+        const candidates = await screen.findByRole("region", { name: "可加入档案" });
+        expect(
+            within(candidates).queryByRole("radio", { name: "选择档案 ALREADY-CAMEL" }),
+        ).not.toBeInTheDocument();
+        expect(
+            within(candidates).queryByRole("radio", { name: "选择档案 ALREADY-SNAKE" }),
+        ).not.toBeInTheDocument();
+        expect(
+            within(candidates).getByRole("radio", { name: "选择档案 AVAILABLE" }),
+        ).toBeInTheDocument();
+
+        await fireEvent.update(
+            within(candidates).getByRole("textbox", { name: "候选档案关键词" }),
+            " 合同 ",
+        );
+        await fireEvent.click(within(candidates).getByRole("button", { name: "搜索候选档案" }));
+        await waitFor(() =>
+            expect(mocks.searchArchiveRecords).toHaveBeenLastCalledWith({
+                categoryId: 7,
+                fondsCode: "F001",
+                keyword: "合同",
+                limit: 100,
+            }),
+        );
+
+        await fireEvent.click(within(candidates).getByRole("button", { name: "下一页" }));
+        await waitFor(() =>
+            expect(mocks.searchArchiveRecords).toHaveBeenLastCalledWith({
+                categoryId: 7,
+                fondsCode: "F001",
+                keyword: "合同",
+                limit: 100,
+                cursor: "candidate-next",
+            }),
+        );
+    });
+
+    it("切换案卷后忽略旧加入成功且不结束新案卷的加入状态", async () => {
+        const oldAddRequest = deferred<void>();
+        const currentAddRequest = deferred<void>();
+        const success = vi.spyOn(ElMessage, "success");
+        mocks.addArchiveItemToVolume
+            .mockImplementationOnce(() => oldAddRequest.promise)
+            .mockImplementationOnce(() => currentAddRequest.promise);
+        mockDrawerSearchSessions();
+        const view = render(ArchiveVolumeItemsDrawer, {
+            props: { volume: volume(), categoryId: 7 },
+            global: { plugins: [ElementPlus] },
+        });
+        let candidates = await screen.findByRole("region", { name: "可加入档案" });
+        await fireEvent.click(
+            within(candidates).getByRole("radio", { name: "选择档案 OLD-CANDIDATE" }),
+        );
+        await fireEvent.click(within(candidates).getByRole("button", { name: "加入案卷" }));
+
+        await view.rerender({
+            volume: { ...volume(), id: 13, archiveNo: "V-2026-002" },
+            categoryId: 7,
+        });
+        candidates = await screen.findByRole("region", { name: "可加入档案" });
+        const currentRadio = await within(candidates).findByRole("radio", {
+            name: "选择档案 CURRENT-CANDIDATE",
+        });
+        await fireEvent.click(currentRadio);
+        const currentAddButton = within(candidates).getByRole("button", { name: "加入案卷" });
+        expect(currentAddButton).not.toBeDisabled();
+        await fireEvent.click(currentAddButton);
+        await waitFor(() => expect(mocks.addArchiveItemToVolume).toHaveBeenCalledTimes(2));
+        expect(currentAddButton).toBeDisabled();
+
+        oldAddRequest.resolve();
+        await oldAddRequest.promise;
+        await waitFor(() => expect(success).not.toHaveBeenCalled());
+        expect(currentAddButton).toBeDisabled();
+        expect(mocks.searchArchiveRecords).toHaveBeenCalledTimes(4);
+
+        currentAddRequest.resolve();
+        await currentAddRequest.promise;
+    });
+
+    it("关闭后忽略旧加入失败且不提示错误", async () => {
+        const addRequest = deferred<void>();
+        const error = vi.spyOn(ElMessage, "error");
+        mocks.addArchiveItemToVolume.mockImplementationOnce(() => addRequest.promise);
+        mocks.searchArchiveRecords
+            .mockResolvedValueOnce({ fields: [], items: [] })
+            .mockResolvedValueOnce({
+                fields: [],
+                items: [{ id: 91, archiveNo: "A-2026-091" }],
+            });
+        const view = render(ArchiveVolumeItemsDrawer, {
+            props: { volume: volume(), categoryId: 7 },
+            global: { plugins: [ElementPlus] },
+        });
+        const candidates = await screen.findByRole("region", { name: "可加入档案" });
+        await fireEvent.click(
+            within(candidates).getByRole("radio", { name: "选择档案 A-2026-091" }),
+        );
+        await fireEvent.click(within(candidates).getByRole("button", { name: "加入案卷" }));
+
+        await view.rerender({ volume: undefined, categoryId: undefined });
+        addRequest.reject(new Error("旧案卷加入失败"));
+        await addRequest.promise.catch(() => undefined);
+
+        await waitFor(() => expect(error).not.toHaveBeenCalled());
+        expect(mocks.searchArchiveRecords).toHaveBeenCalledTimes(2);
+    });
 });
 
 describe("ArchiveVolumeEditorDrawer", () => {
@@ -243,4 +374,19 @@ function deferred<T>() {
         reject = rejectPromise;
     });
     return { promise, reject, resolve };
+}
+
+function mockDrawerSearchSessions() {
+    mocks.searchArchiveRecords
+        .mockResolvedValueOnce({ fields: [], items: [] })
+        .mockResolvedValueOnce({
+            fields: [],
+            items: [{ id: 91, archiveNo: "OLD-CANDIDATE" }],
+        })
+        .mockResolvedValueOnce({ fields: [], items: [] })
+        .mockResolvedValueOnce({
+            fields: [],
+            items: [{ id: 92, archiveNo: "CURRENT-CANDIDATE" }],
+        })
+        .mockResolvedValueOnce({ fields: [], items: [] });
 }

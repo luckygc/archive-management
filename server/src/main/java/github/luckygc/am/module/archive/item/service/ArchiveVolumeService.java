@@ -152,17 +152,7 @@ public class ArchiveVolumeService {
 
     private @Nullable Restriction<ArchiveVolume> volumeScopeGroupRestriction(
             String categoryCode, ArchiveDataScopeSqlGroup group) {
-        String fondsCode = group.fondsCodes().isEmpty() ? null : group.fondsCodes().getFirst();
-        Long securityLevelId =
-                group.securityLevelIds().isEmpty() ? null : group.securityLevelIds().getFirst();
-        Long retentionPeriodId =
-                group.retentionPeriodIds().isEmpty() ? null : group.retentionPeriodIds().getFirst();
-        if (!dataScopeService.matchesItemFilter(
-                ArchiveDataScopeFilter.groups(List.of(group)),
-                fondsCode,
-                securityLevelId,
-                retentionPeriodId,
-                Map.of())) {
+        if (!group.conditions().isEmpty()) {
             return null;
         }
         List<Restriction<ArchiveVolume>> restrictions = new ArrayList<>();
@@ -228,22 +218,24 @@ public class ArchiveVolumeService {
 
     public ArchiveVolumeDto getVolume(Long id, Long userId) {
         requirePermission(userId, PERMISSION_ITEM_READ);
-        ArchiveVolumeDto volume = loadVolume(id);
+        LoadedArchiveVolume volume = loadVolume(id);
         assertVolumeInDataScope(volume, userId);
-        return volume;
+        return volume.response();
     }
 
     public void assertVolumeInDataScope(Long id, Long userId) {
-        ArchiveVolumeDto volume = loadVolume(id);
-        assertVolumeInDataScope(volume, userId);
+        assertVolumeInDataScope(loadVolume(id), userId);
     }
 
-    private ArchiveVolumeDto loadVolume(Long id) {
+    private LoadedArchiveVolume loadVolume(Long id) {
         Map<String, Object> row = archiveMapper.getArchiveVolume(id);
         if (row == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "案卷不存在");
         }
-        return toVolumeDto(row);
+        return new LoadedArchiveVolume(
+                toVolumeDto(row),
+                longOrNull(row, "securityLevelId"),
+                longOrNull(row, "retentionPeriodId"));
     }
 
     @Transactional
@@ -290,9 +282,9 @@ public class ArchiveVolumeService {
         } catch (DuplicateKeyException exception) {
             throw duplicateArchiveNo();
         }
-        ArchiveVolumeDto volume = loadVolume(id);
+        LoadedArchiveVolume volume = loadVolume(id);
         assertVolumeInDataScope(volume, userId);
-        return volume;
+        return volume.response();
     }
 
     private void ensureVolumeArchiveNoUnique(String categoryCode, @Nullable String archiveNo) {
@@ -311,9 +303,13 @@ public class ArchiveVolumeService {
     @Transactional
     public void addItemToVolume(
             Long volumeId, Long archiveItemId, Integer displayOrder, Long userId) {
+        if (archiveItemId == null || archiveItemId <= 0) {
+            throw new BadRequestException("档案 ID 必须为正数", "itemId", "档案 ID 必须为正数");
+        }
         requirePermission(userId, PERMISSION_ITEM_UPDATE);
-        ArchiveVolumeDto volume = loadVolume(volumeId);
-        assertVolumeInDataScope(volume, userId);
+        LoadedArchiveVolume loadedVolume = loadVolume(volumeId);
+        ArchiveVolumeDto volume = loadedVolume.response();
+        assertVolumeInDataScope(loadedVolume, userId);
         archiveItemRoutingService.assertItemInDataScope(archiveItemId, userId);
         archiveItemRoutingService.ensureItemEditable(archiveItemId);
         ArchiveItemDto item = archiveItemRoutingService.getItem(archiveItemId);
@@ -336,7 +332,8 @@ public class ArchiveVolumeService {
         }
     }
 
-    private void assertVolumeInDataScope(ArchiveVolumeDto volume, Long userId) {
+    private void assertVolumeInDataScope(LoadedArchiveVolume loadedVolume, Long userId) {
+        ArchiveVolumeDto volume = loadedVolume.response();
         ArchiveCategoryDto category = getCategoryByCode(volume.categoryCode());
         ArchiveDataScopeFilter filter =
                 dataScopeService.buildItemFilter(userId, category.id(), volume.fondsCode());
@@ -346,7 +343,11 @@ public class ArchiveVolumeService {
         if (filter.allData()) {
             return;
         }
-        if (!dataScopeService.matchesItemFilter(filter, volume.fondsCode(), null, null, Map.of())) {
+        if (!matchesFixedVolumeGroup(
+                filter,
+                volume.fondsCode(),
+                loadedVolume.securityLevelId(),
+                loadedVolume.retentionPeriodId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "数据范围不足");
         }
     }
@@ -361,9 +362,30 @@ public class ArchiveVolumeService {
         if (filter.allData()) {
             return;
         }
-        if (!dataScopeService.matchesItemFilter(filter, fondsCode, null, null, Map.of())) {
+        if (!matchesFixedVolumeGroup(filter, fondsCode, null, null)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "数据范围不足");
         }
+    }
+
+    private boolean matchesFixedVolumeGroup(
+            ArchiveDataScopeFilter filter,
+            String fondsCode,
+            @Nullable Long securityLevelId,
+            @Nullable Long retentionPeriodId) {
+        return filter.groups().stream()
+                .filter(group -> group.conditions().isEmpty())
+                .anyMatch(
+                        group ->
+                                matchesAllowedValue(group.fondsCodes(), fondsCode)
+                                        && matchesAllowedValue(
+                                                group.securityLevelIds(), securityLevelId)
+                                        && matchesAllowedValue(
+                                                group.retentionPeriodIds(), retentionPeriodId));
+    }
+
+    private boolean matchesAllowedValue(List<?> allowedValues, @Nullable Object actualValue) {
+        return allowedValues.isEmpty()
+                || (actualValue != null && allowedValues.contains(actualValue));
     }
 
     private ArchiveCategoryDto getCategoryByCode(String categoryCode) {
@@ -461,4 +483,9 @@ public class ArchiveVolumeService {
             @Nullable Long lockedBy,
             @Nullable LocalDateTime lockedAt,
             LocalDateTime createdAt) {}
+
+    private record LoadedArchiveVolume(
+            ArchiveVolumeDto response,
+            @Nullable Long securityLevelId,
+            @Nullable Long retentionPeriodId) {}
 }
