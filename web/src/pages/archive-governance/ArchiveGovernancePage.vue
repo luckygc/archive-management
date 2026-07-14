@@ -7,28 +7,20 @@ import {
     createArchiveGovernanceSchemeVersion,
     deleteArchiveGovernanceScheme,
     freezeArchiveGovernanceSchemeVersion,
-    listArchiveGovernanceBindings,
     listArchiveGovernanceSchemeVersions,
     listArchiveGovernanceSchemes,
-    listArchiveGovernanceScopes,
     publishArchiveGovernanceSchemeVersion,
-    replaceArchiveGovernanceBindings,
-    replaceArchiveGovernanceScopes,
-    resolveDefaultArchiveGovernanceVersion,
     retireArchiveGovernanceSchemeVersion,
     updateArchiveGovernanceScheme,
 } from "@/shared/api/archive-governance";
 import type {
-    ArchiveGovernanceBindingDto,
-    ArchiveGovernanceBindingRequest,
     ArchiveGovernanceBindingType,
     ArchiveGovernanceSchemeDto,
     ArchiveGovernanceSchemeVersionDto,
     ArchiveGovernanceSchemeVersionStatus,
-    ArchiveGovernanceScopeDto,
-    ArchiveGovernanceScopeRequest,
     ArchiveGovernanceScopeType,
 } from "@/shared/types/archive-governance";
+import { useArchiveGovernanceWorkbench } from "./useArchiveGovernanceWorkbench";
 
 const statusLabels: Record<ArchiveGovernanceSchemeVersionStatus, string> = {
     DRAFT: "草稿",
@@ -48,40 +40,15 @@ const bindingTypeLabels: Record<ArchiveGovernanceBindingType, string> = {
     DESCRIPTION_PROFILE: "著录方案",
     REFERENCE_CODE_RULE: "档号规则",
 };
-let draftCounter = 0;
-interface ScopeDraft {
-    draftKey: string;
-    id?: number;
-    scopeType: ArchiveGovernanceScopeType;
-    fondsCode?: string;
-    categoryCode?: string;
-    defaultFlag: boolean;
-}
-interface BindingDraft {
-    draftKey: string;
-    id?: number;
-    bindingType: ArchiveGovernanceBindingType;
-    targetType?: string;
-    targetId?: number;
-    targetCode?: string;
-    bindingOrder: number;
-}
-
 const schemes = ref<ArchiveGovernanceSchemeDto[]>([]);
 const versions = ref<ArchiveGovernanceSchemeVersionDto[]>([]);
 const selectedSchemeId = ref<number>();
 const selectedVersionId = ref<number>();
-const scopeDrafts = ref<ScopeDraft[]>([]);
-const bindingDrafts = ref<BindingDraft[]>([]);
 const schemesLoading = ref(false);
 const versionsLoading = ref(false);
-const workbenchLoading = ref(false);
 const schemeModalOpen = ref(false);
 const versionModalOpen = ref(false);
 const submitting = ref(false);
-const savingScopes = ref(false);
-const savingBindings = ref(false);
-const resolving = ref(false);
 const editingScheme = ref<ArchiveGovernanceSchemeDto>();
 const schemeFormRef = ref<FormInstance>();
 const versionFormRef = ref<FormInstance>();
@@ -93,8 +60,21 @@ const schemeForm = ref({
     sortOrder: 0,
 });
 const versionForm = ref({ versionCode: "v1", versionDescription: "" });
-const resolveForm = ref({ fondsCode: "", categoryCode: "" });
-const resolvedVersion = ref<ArchiveGovernanceSchemeVersionDto>();
+const {
+    bindingDrafts,
+    changeScopeType,
+    nextDraftKey,
+    resolvedVersion,
+    resolveDefault,
+    resolveForm,
+    resolving,
+    saveBindings,
+    saveScopes,
+    savingBindings,
+    savingScopes,
+    scopeDrafts,
+    workbenchLoading,
+} = useArchiveGovernanceWorkbench(selectedVersionId);
 const selectedVersion = computed(() =>
     versions.value.find((item) => item.id === selectedVersionId.value),
 );
@@ -131,34 +111,10 @@ async function loadVersions(preferredId?: number) {
         versionsLoading.value = false;
     }
 }
-async function loadWorkbench() {
-    if (!selectedVersionId.value) {
-        scopeDrafts.value = [];
-        bindingDrafts.value = [];
-        return;
-    }
-    workbenchLoading.value = true;
-    try {
-        const [scopes, bindings] = await Promise.all([
-            listArchiveGovernanceScopes(selectedVersionId.value),
-            listArchiveGovernanceBindings(selectedVersionId.value),
-        ]);
-        scopeDrafts.value = scopes.items.map(toScopeDraft);
-        bindingDrafts.value = bindings.items.map(toBindingDraft);
-    } catch (error) {
-        ElMessage.error((error as Error).message);
-    } finally {
-        workbenchLoading.value = false;
-    }
-}
 watch(selectedSchemeId, () => {
     selectedVersionId.value = undefined;
     resolvedVersion.value = undefined;
     void loadVersions();
-});
-watch(selectedVersionId, () => {
-    resolvedVersion.value = undefined;
-    void loadWorkbench();
 });
 onMounted(() => void loadSchemes());
 
@@ -245,93 +201,6 @@ async function changeStatus(value: unknown, action: "publish" | "freeze" | "reti
     } catch (error) {
         ElMessage.error((error as Error).message);
     }
-}
-async function saveScopes() {
-    if (!selectedVersionId.value) return;
-    savingScopes.value = true;
-    try {
-        await replaceArchiveGovernanceScopes(
-            selectedVersionId.value,
-            scopeDrafts.value.map(toScopeRequest),
-        );
-        ElMessage.success("适用范围已保存");
-        await loadWorkbench();
-    } catch (error) {
-        ElMessage.error((error as Error).message);
-    } finally {
-        savingScopes.value = false;
-    }
-}
-async function saveBindings() {
-    if (!selectedVersionId.value) return;
-    savingBindings.value = true;
-    try {
-        await replaceArchiveGovernanceBindings(
-            selectedVersionId.value,
-            bindingDrafts.value.map(toBindingRequest),
-        );
-        ElMessage.success("装配绑定已保存");
-        await loadWorkbench();
-    } catch (error) {
-        ElMessage.error((error as Error).message);
-    } finally {
-        savingBindings.value = false;
-    }
-}
-async function resolveDefault() {
-    resolving.value = true;
-    try {
-        resolvedVersion.value = await resolveDefaultArchiveGovernanceVersion({
-            fondsCode: trimToUndefined(resolveForm.value.fondsCode),
-            categoryCode: trimToUndefined(resolveForm.value.categoryCode),
-        });
-    } catch (error) {
-        resolvedVersion.value = undefined;
-        ElMessage.error((error as Error).message);
-    } finally {
-        resolving.value = false;
-    }
-}
-function changeScopeType(value: unknown) {
-    const row = value as ScopeDraft;
-    if (row.scopeType === "GLOBAL") {
-        row.fondsCode = undefined;
-        row.categoryCode = undefined;
-    } else if (row.scopeType === "FONDS") row.categoryCode = undefined;
-    else row.fondsCode = undefined;
-}
-function nextDraftKey() {
-    return `draft-${++draftCounter}`;
-}
-function toScopeDraft(scope: ArchiveGovernanceScopeDto): ScopeDraft {
-    return { draftKey: nextDraftKey(), ...scope };
-}
-function toBindingDraft(binding: ArchiveGovernanceBindingDto): BindingDraft {
-    return { draftKey: nextDraftKey(), ...binding };
-}
-function toScopeRequest(scope: ScopeDraft): ArchiveGovernanceScopeRequest {
-    return scope.scopeType === "GLOBAL"
-        ? { scopeType: "GLOBAL", defaultFlag: scope.defaultFlag }
-        : scope.scopeType === "FONDS"
-          ? {
-                scopeType: "FONDS",
-                fondsCode: trimToUndefined(scope.fondsCode),
-                defaultFlag: scope.defaultFlag,
-            }
-          : {
-                scopeType: "CATEGORY",
-                categoryCode: trimToUndefined(scope.categoryCode),
-                defaultFlag: scope.defaultFlag,
-            };
-}
-function toBindingRequest(binding: BindingDraft): ArchiveGovernanceBindingRequest {
-    return {
-        bindingType: binding.bindingType,
-        targetType: trimToUndefined(binding.targetType),
-        targetId: binding.targetId,
-        targetCode: trimToUndefined(binding.targetCode),
-        bindingOrder: binding.bindingOrder,
-    };
 }
 function trimToUndefined(value?: string) {
     return value?.trim() || undefined;
