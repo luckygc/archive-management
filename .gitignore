@@ -34,4 +34,5 @@ lerna-debug.log*
 
 # AI agent worktrees
 .claude/worktrees/
+.worktrees/
 !.vscode/
