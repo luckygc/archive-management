@@ -162,6 +162,11 @@ public class ArchiveItemSearchProjectionService {
                 validateIdentifier(columnName, "字段列名非法");
                 selectColumns.add(columnName);
             }
+            if (selectColumns.stream()
+                    .anyMatch(
+                            columnName -> archiveMapper.columnExists(tableName, columnName) == 0)) {
+                continue;
+            }
             List<Map<String, @Nullable Object>> rows =
                     archiveMapper.listItemLineRowsForProjection(
                             new ArchiveItemLineRowProjectionQuery(

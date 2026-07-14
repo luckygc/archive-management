@@ -61,6 +61,22 @@ class ArchiveItemSearchProjectionLineIdentifierTests {
                 .listItemLineRowsForProjection(org.mockito.ArgumentMatchers.any());
     }
 
+    @Test
+    @DisplayName("搜索投影跳过启用字段列尚未物化的明细表")
+    void shouldSkipLineTableWithUnmaterializedColumn() {
+        when(archiveMapper.listItemLineTables(7L))
+                .thenReturn(List.of(lineTable("am_archive_item_line_contract")));
+        when(archiveMapper.tableExists("am_archive_item_line_contract")).thenReturn(1);
+        when(archiveMapper.listItemLineFields(4L)).thenReturn(List.of(lineField("f_party_name")));
+        when(archiveMapper.columnExists("am_archive_item_line_contract", "f_party_name"))
+                .thenReturn(0);
+
+        service.upsert(3L, category(), List.of(), Map.of());
+
+        verify(archiveMapper, never())
+                .listItemLineRowsForProjection(org.mockito.ArgumentMatchers.any());
+    }
+
     private static Map<String, Object> lineTable(String physicalTableName) {
         return Map.of("id", 4L, "physicalTableName", physicalTableName);
     }

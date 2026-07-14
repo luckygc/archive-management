@@ -2,6 +2,7 @@ package github.luckygc.am.module.archive.item.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -35,6 +36,7 @@ import github.luckygc.am.module.archive.mapper.ArchiveItemLineRowCommands.Archiv
 import github.luckygc.am.module.archive.mapper.ArchiveItemLineRowCommands.ArchiveItemLineRowPageQuery;
 import github.luckygc.am.module.archive.mapper.ArchiveItemLineRowCommands.ArchiveItemLineRowUpdateCommand;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
+import github.luckygc.am.module.archive.mapper.ArchiveSqlAssignment;
 import github.luckygc.am.module.archive.metadata.ArchiveManagementMode;
 import github.luckygc.am.module.archive.metadata.ArchiveTableStatus;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveCategoryDto;
@@ -139,6 +141,8 @@ class ArchiveItemLineRowServiceTests {
         when(archiveMapper.listItemLineFields(4L))
                 .thenReturn(List.of(field("party_name", "单位名称", "TEXT", "f_party_name")));
         when(archiveMapper.tableExists("am_archive_item_line_contract_party")).thenReturn(1);
+        when(archiveMapper.columnExists("am_archive_item_line_contract_party", "f_party_name"))
+                .thenReturn(1);
         when(archiveMapper.tableExists("unbuilt_table")).thenReturn(0);
 
         List<ArchiveItemLineTableDefinitionResponse> definitions = service.listLineTables(3L, 8L);
@@ -152,6 +156,26 @@ class ArchiveItemLineRowServiceTests {
         assertThat(definitions.getFirst().fields())
                 .extracting("fieldCode")
                 .containsExactly("party_name");
+    }
+
+    @Test
+    @DisplayName("条目范围定义不暴露存在未物化启用列的明细表")
+    void listLineTablesShouldExcludePartiallyBuiltTable() {
+        when(readService.getItem(3L)).thenReturn(item());
+        when(readService.getCategoryByCode("contract")).thenReturn(category());
+        when(archiveMapper.listItemLineTables(7L)).thenReturn(List.of(lineTable(false)));
+        when(archiveMapper.listItemLineFields(4L))
+                .thenReturn(
+                        List.of(
+                                field("party_name", "单位名称", "TEXT", "f_party_name"),
+                                field("amount", "金额", "DECIMAL", "f_amount")));
+        when(archiveMapper.tableExists("am_archive_item_line_contract_party")).thenReturn(1);
+        when(archiveMapper.columnExists("am_archive_item_line_contract_party", "f_party_name"))
+                .thenReturn(1);
+        when(archiveMapper.columnExists("am_archive_item_line_contract_party", "f_amount"))
+                .thenReturn(0);
+
+        assertThat(service.listLineTables(3L, 8L)).isEmpty();
     }
 
     @Test
@@ -246,18 +270,9 @@ class ArchiveItemLineRowServiceTests {
         verify(archiveMapper).updateItemLineRow(captor.capture());
         assertThat(captor.getValue().lineOrderPresent()).isFalse();
         assertThat(captor.getValue().assignments())
-                .anySatisfy(
-                        assignment -> {
-                            if (assignment.columnName().equals("f_amount")) {
-                                assertThat(assignment.value()).isEqualTo(new BigDecimal("12.50"));
-                            }
-                        })
-                .anySatisfy(
-                        assignment -> {
-                            if (assignment.columnName().equals("f_party_name")) {
-                                assertThat(assignment.value()).isNull();
-                            }
-                        });
+                .extracting(ArchiveSqlAssignment::columnName, ArchiveSqlAssignment::value)
+                .containsExactlyInAnyOrder(
+                        tuple("f_amount", new BigDecimal("12.50")), tuple("f_party_name", null));
     }
 
     @Test
@@ -328,6 +343,20 @@ class ArchiveItemLineRowServiceTests {
     }
 
     @Test
+    @DisplayName("明细表存在但启用字段列尚未物化时在动态查询前拒绝访问")
+    void listRowsShouldRejectPartiallyBuiltTable() {
+        stubBuiltTable(false);
+        when(archiveMapper.columnExists("am_archive_item_line_contract_party", "f_amount"))
+                .thenReturn(0);
+
+        assertThatThrownBy(() -> service.listRows(3L, 4L, PageRequest.ofSize(10), 8L))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("未构建");
+
+        verify(archiveMapper, never()).listItemLineRows(any(ArchiveItemLineRowPageQuery.class));
+    }
+
+    @Test
     @DisplayName("删除使用路径限定并写入删除人")
     void deleteRowShouldUsePathScopedLogicalDelete() {
         stubBuiltTable(false);
@@ -353,6 +382,10 @@ class ArchiveItemLineRowServiceTests {
                                 field("party_name", "单位名称", "TEXT", "f_party_name"),
                                 field("amount", "金额", "DECIMAL", "f_amount")));
         when(archiveMapper.tableExists("am_archive_item_line_contract_party")).thenReturn(1);
+        when(archiveMapper.columnExists("am_archive_item_line_contract_party", "f_party_name"))
+                .thenReturn(1);
+        when(archiveMapper.columnExists("am_archive_item_line_contract_party", "f_amount"))
+                .thenReturn(1);
     }
 
     private static ArchiveItemDto item() {

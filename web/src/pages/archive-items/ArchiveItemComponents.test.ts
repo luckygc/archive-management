@@ -95,6 +95,36 @@ describe("档案管理拆分组件", () => {
         expect(screen.queryByRole("button", { name: "保存" })).not.toBeInTheDocument();
     });
 
+    it("独立明细表单位于档案基础表单之外", async () => {
+        render(ArchiveItemEditorDrawer, {
+            props: {
+                state: { mode: "detail", archiveItemId: 9 },
+                detail: detail(),
+                form: editorForm(),
+                fields: [],
+                physicalFields: [],
+                categories: [category],
+                fonds: [{ fondsCode: "F001", fondsName: "默认全宗" }],
+                securityLevels: [],
+                retentionPeriods: [],
+                fieldErrors: {},
+                loading: false,
+                saving: false,
+            },
+            global: {
+                plugins: [ElementPlus],
+                stubs: {
+                    ArchiveItemLineRows: {
+                        template: '<form aria-label="明细表单"></form>',
+                    },
+                },
+            },
+        });
+
+        expect(await screen.findByLabelText("明细表单")).toBeInTheDocument();
+        expect(document.querySelector("form form")).toBeNull();
+    });
+
     it("动态字段按详情布局展示并将结构化错误放到对应控件", async () => {
         const detailOnlyField = createField({
             id: 4,

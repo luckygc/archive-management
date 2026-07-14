@@ -97,6 +97,9 @@ public class ArchiveItemLineRowService {
             for (ArchiveItemLineFieldDto field : fields) {
                 validateIdentifier(field.columnName(), "字段列名非法");
             }
+            if (!columnsMaterialized(tableName, fields)) {
+                continue;
+            }
             definitions.add(
                     new ArchiveItemLineTableDefinitionResponse(
                             lineTableId,
@@ -219,7 +222,15 @@ public class ArchiveItemLineRowService {
         if (archiveMapper.tableExists(tableName) == 0) {
             throw badRequest("明细表尚未构建");
         }
+        if (!columnsMaterialized(tableName, fields)) {
+            throw badRequest("明细表字段尚未构建");
+        }
         return new LineTableDefinition(lineTableId, tableName, fields);
+    }
+
+    private boolean columnsMaterialized(String tableName, List<ArchiveItemLineFieldDto> fields) {
+        return fields.stream()
+                .allMatch(field -> archiveMapper.columnExists(tableName, field.columnName()) > 0);
     }
 
     private ArchiveItemLineRowPageQuery pageQuery(

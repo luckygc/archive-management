@@ -263,11 +263,6 @@ function fieldErrorGroup(prefix: "physicalFields" | "dynamicFields") {
                     :field-errors="dynamicFieldErrors"
                     :surface="state.mode === 'detail' ? 'detail' : 'edit'"
                 />
-                <ArchiveItemLineRows
-                    v-if="state.archiveItemId && detail"
-                    :archive-item-id="state.archiveItemId"
-                    :readonly="formDisabled"
-                />
                 <template v-if="state.mode !== 'detail'">
                     <el-button :disabled="saving" @click="emit('close')">取消</el-button>
                     <el-button
@@ -279,6 +274,11 @@ function fieldErrorGroup(prefix: "physicalFields" | "dynamicFields") {
                     >
                 </template>
             </el-form>
+            <ArchiveItemLineRows
+                v-if="state?.archiveItemId && detail"
+                :archive-item-id="state.archiveItemId"
+                :readonly="formDisabled"
+            />
         </div>
     </el-drawer>
 </template>
