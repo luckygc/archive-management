@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { Download, Edit, Files, Plus, Refresh, Upload } from "@element-plus/icons-vue";
+import { Download, Plus, Refresh, Upload } from "@element-plus/icons-vue";
 import { ElMessage, ElMessageBox } from "element-plus";
-import type { FormInstance } from "element-plus";
-import { computed, onMounted, reactive, ref, watch } from "vue";
+import { computed, reactive, ref } from "vue";
 
 import { errorMessage } from "@archive-management/frontend-core/api";
 
@@ -12,34 +11,22 @@ import {
     exportArchiveRecords,
     getArchiveRecord,
     importArchiveRecords,
-    searchArchiveRecords,
     updateArchiveRecord,
 } from "@/shared/api/archive-records";
-import {
-    listArchiveCategories,
-    listArchiveFields,
-    listArchiveFonds,
-    listArchiveRelatedFilterCategories,
-} from "@/shared/api/archive-metadata";
-import type { ArchiveCategoryDto, ArchiveFieldDto } from "@/shared/types/archive-metadata";
 import type {
     ArchiveElectronicStatus,
     ArchiveRecordDetailDto,
-    ArchiveRecordListDto,
-    ArchiveRecordOrderBy,
-    ArchiveRelatedFilterCategoryDto,
-    SearchArchiveRecordsQuery,
 } from "@/shared/types/archive-records";
 import { usePermissionStore } from "@/stores/permissionStore";
 
 import ArchiveAdvancedQueryPanel from "@/pages/archive-library/ArchiveAdvancedQueryPanel.vue";
-import type { ArchiveQueryFormValues } from "@/pages/archive-library/archiveQueryTypes";
-import ArchiveResultTable from "@/pages/archive-library/ArchiveResultTable.vue";
-import DynamicArchiveFields, {
-    normalizeArchiveRecordFormValues,
-} from "@/pages/archive-library/DynamicArchiveFields.vue";
 import { toSearchQuery } from "@/pages/archive-library/archiveQuery";
+import ArchiveResultTable from "@/pages/archive-library/ArchiveResultTable.vue";
+import { normalizeArchiveRecordFormValues } from "@/pages/archive-library/DynamicArchiveFields.vue";
 import { useArchiveItemResources } from "./useArchiveItemResources";
+import ArchiveItemResourcesDrawer from "./ArchiveItemResourcesDrawer.vue";
+import ArchiveItemEditorDrawer from "./ArchiveItemEditorDrawer.vue";
+import { useArchiveItemSearch } from "./useArchiveItemSearch";
 
 const permissionStore = usePermissionStore();
 const canRead = computed(() => permissionStore.has("archive:item:read"));
@@ -47,16 +34,22 @@ const canCreate = computed(() => permissionStore.has("archive:item:create"));
 const canUpdate = computed(() => permissionStore.has("archive:item:update"));
 const canImport = computed(() => canCreate.value || canUpdate.value);
 const canExport = computed(() => permissionStore.has("archive:export"));
-const queryForm = reactive<ArchiveQueryFormValues>({ conditions: [], relatedGroups: [] });
-const categories = ref<ArchiveCategoryDto[]>([]);
-const fonds = ref<Array<{ fondsCode: string; fondsName: string }>>([]);
-const fields = ref<ArchiveFieldDto[]>([]);
-const relatedCategories = ref<ArchiveRelatedFilterCategoryDto[]>([]);
-const relatedFieldsByCategory = ref(new Map<number, ArchiveFieldDto[]>());
-const result = ref<ArchiveRecordListDto>();
-const committedQuery = ref<SearchArchiveRecordsQuery>();
-const orderBy = ref<ArchiveRecordOrderBy[]>([]);
-const loading = ref(false);
+const {
+    categories,
+    committedQuery,
+    fields,
+    fonds,
+    loading,
+    orderBy,
+    orderResults,
+    queryForm,
+    refresh,
+    relatedCategories,
+    relatedFieldsByCategory,
+    reset,
+    result,
+    submit,
+} = useArchiveItemSearch();
 const editorState = ref<{ mode: "create" | "detail" | "edit"; archiveItemId?: number }>();
 const editorDetail = ref<ArchiveRecordDetailDto>();
 const editorForm = reactive({
@@ -68,8 +61,6 @@ const editorForm = reactive({
     dynamicFields: {} as Record<string, unknown>,
 });
 const importInput = ref<HTMLInputElement>();
-const uploadInput = ref<HTMLInputElement>();
-const editorFormRef = ref<FormInstance>();
 const downloadingTemplate = ref(false);
 const importing = ref(false);
 const exporting = ref(false);
@@ -94,103 +85,10 @@ const {
     uploading,
     uploadElectronicFile,
 } = useArchiveItemResources(openLink);
-let categoryLoadVersion = 0;
 
 const editorFields = computed(() =>
     editorState.value?.mode === "create" ? fields.value : (editorDetail.value?.fields ?? []),
 );
-onMounted(async () => {
-    try {
-        const [categoryResponse, fondsResponse] = await Promise.all([
-            listArchiveCategories(true),
-            listArchiveFonds(true),
-        ]);
-        categories.value = categoryResponse.items;
-        fonds.value = fondsResponse.items;
-    } catch (error) {
-        ElMessage.error(error instanceof Error ? error.message : "加载档案管理基础数据失败");
-    }
-});
-watch(
-    () => queryForm.categoryId,
-    async (categoryId, previous) => {
-        const loadVersion = ++categoryLoadVersion;
-        if (typeof categoryId !== "number") {
-            fields.value = [];
-            relatedCategories.value = [];
-            relatedFieldsByCategory.value = new Map();
-            return;
-        }
-        if (previous !== undefined && previous !== categoryId) {
-            queryForm.conditions = [];
-            queryForm.relatedGroups = [];
-            result.value = undefined;
-            committedQuery.value = undefined;
-            orderBy.value = [];
-        }
-        try {
-            const [fieldResponse, relatedResponse] = await Promise.all([
-                listArchiveFields(categoryId, "ITEM"),
-                listArchiveRelatedFilterCategories(categoryId),
-            ]);
-            const ids = [...new Set(relatedResponse.items.map((item) => item.categoryId))];
-            const responses = await Promise.all(ids.map((id) => listArchiveFields(id, "ITEM")));
-            if (loadVersion !== categoryLoadVersion || queryForm.categoryId !== categoryId) return;
-            fields.value = fieldResponse.items;
-            relatedCategories.value = relatedResponse.items;
-            relatedFieldsByCategory.value = new Map(
-                ids.map((id, index) => [id, responses[index]!.items]),
-            );
-        } catch (error) {
-            if (loadVersion !== categoryLoadVersion) return;
-            fields.value = [];
-            relatedCategories.value = [];
-            relatedFieldsByCategory.value = new Map();
-            ElMessage.error(error instanceof Error ? error.message : "加载查询字段失败");
-        }
-    },
-);
-
-async function execute(query: SearchArchiveRecordsQuery) {
-    loading.value = true;
-    try {
-        result.value = await searchArchiveRecords(query);
-    } catch (error) {
-        ElMessage.error(error instanceof Error ? error.message : "查询失败");
-    } finally {
-        loading.value = false;
-    }
-}
-function submit(values: ArchiveQueryFormValues) {
-    const query = { ...toSearchQuery(values), keyword: undefined };
-    committedQuery.value = query;
-    orderBy.value = [];
-    void execute(query);
-}
-function refresh() {
-    if (committedQuery.value)
-        void execute({
-            ...committedQuery.value,
-            orderBy: orderBy.value.length ? orderBy.value : undefined,
-        });
-}
-function reset() {
-    Object.assign(queryForm, {
-        categoryId: undefined,
-        fondsCode: undefined,
-        keyword: undefined,
-        conditions: [],
-        relatedGroups: [],
-    });
-    result.value = undefined;
-    committedQuery.value = undefined;
-    orderBy.value = [];
-}
-function orderResults(next: ArchiveRecordOrderBy[]) {
-    if (!committedQuery.value) return;
-    orderBy.value = next;
-    void execute({ ...committedQuery.value, orderBy: next.length ? next : undefined });
-}
 function openLink(href: string) {
     const anchor = document.createElement("a");
     anchor.href = href;
@@ -295,7 +193,7 @@ async function openRecordEditor(value: unknown, mode: "detail" | "edit") {
     }
 }
 async function saveRecord() {
-    if (!editorState.value || !(await editorFormRef.value?.validate().catch(() => false))) return;
+    if (!editorState.value) return;
     const common = {
         fondsCode: editorForm.fondsCode,
         archiveNo: editorForm.archiveNo.trim() || undefined,
@@ -321,24 +219,6 @@ async function saveRecord() {
         saving.value = false;
     }
 }
-function formatSize(size: number) {
-    return size < 1024
-        ? `${size} B`
-        : size < 1024 * 1024
-          ? `${(size / 1024).toFixed(1)} KB`
-          : `${(size / 1024 / 1024).toFixed(1)} MB`;
-}
-function formatValue(value: unknown) {
-    return value == null || value === "" ? "-" : String(value);
-}
-const detailFields = computed(() =>
-    [...(editorDetail.value?.fields ?? [])]
-        .filter((field) => field.enabled && field.detailVisible)
-        .sort(
-            (left, right) =>
-                left.detailSortOrder - right.detailSortOrder || left.sortOrder - right.sortOrder,
-        ),
-);
 </script>
 
 <template>
@@ -419,197 +299,35 @@ const detailFields = computed(() =>
                 ></ArchiveResultTable
             ><el-empty v-else description="选择分类并提交高级查询后显示管理列表"
         /></el-card>
-        <el-drawer
-            :model-value="Boolean(drawerState)"
-            v-loading="drawerLoading"
+        <ArchiveItemResourcesDrawer
+            :state="drawerState"
+            :loading="drawerLoading"
+            :file-form="fileForm"
+            :files="files"
+            :audits="audits"
+            :can-create-file="canCreateElectronicFile"
+            :can-delete-file="canDeleteElectronicFile"
+            :can-download-file="canDownloadFile"
+            :uploading="uploading"
+            :downloading-file-id="downloadingFileId"
+            :unbinding-file-id="unbindingFileId"
             @close="drawerState = undefined"
-            :title="drawerState ? `档案 ${drawerState.archiveItemId}` : ''"
-            size="70%"
-            ><el-tabs :model-value="drawerState?.activeKey" @tab-change="changeDrawerTab"
-                ><el-tab-pane label="电子文件" name="files"
-                    ><div class="file-toolbar">
-                        <el-input
-                            v-model="fileForm.usageType"
-                            :disabled="!canCreateElectronicFile"
-                            placeholder="用途"
-                        /><el-input-number
-                            v-model="fileForm.displayOrder"
-                            :disabled="!canCreateElectronicFile"
-                            placeholder="顺序"
-                        /><el-button
-                            type="primary"
-                            :disabled="!canCreateElectronicFile || uploading"
-                            :loading="uploading"
-                            :icon="Upload"
-                            @click="uploadInput?.click()"
-                            >上传附件</el-button
-                        ><input
-                            ref="uploadInput"
-                            hidden
-                            type="file"
-                            @change="uploadElectronicFile"
-                        />
-                    </div>
-                    <el-table :data="files" row-key="id"
-                        ><el-table-column label="文件名" prop="originalFilename" /><el-table-column
-                            label="大小"
-                            width="100"
-                            ><template #default="{ row }">{{
-                                formatSize(row.fileSize)
-                            }}</template></el-table-column
-                        ><el-table-column
-                            label="用途"
-                            prop="usageType"
-                            width="100"
-                        /><el-table-column label="操作" width="140"
-                            ><template #default="{ row }"
-                                ><el-button
-                                    link
-                                    :disabled="!canDownloadFile || downloadingFileId === row.id"
-                                    :loading="downloadingFileId === row.id"
-                                    @click="downloadFile(row.id)"
-                                    >下载</el-button
-                                ><el-button
-                                    link
-                                    type="danger"
-                                    :disabled="
-                                        !canDeleteElectronicFile || unbindingFileId === row.id
-                                    "
-                                    :loading="unbindingFileId === row.id"
-                                    @click="unbindFile(row.id)"
-                                    >解绑</el-button
-                                ></template
-                            ></el-table-column
-                        ></el-table
-                    ></el-tab-pane
-                ><el-tab-pane label="审计记录" name="audits"
-                    ><el-table :data="audits" row-key="id"
-                        ><el-table-column
-                            label="操作"
-                            prop="operationType"
-                            width="120" /><el-table-column
-                            label="原因"
-                            prop="operationReason" /><el-table-column
-                            label="操作人"
-                            prop="operatedBy"
-                            width="120" /><el-table-column
-                            label="时间"
-                            prop="operatedAt"
-                            width="180" /></el-table></el-tab-pane></el-tabs
-        ></el-drawer>
-        <el-drawer
-            :model-value="Boolean(editorState)"
-            v-loading="editorLoading"
+            @tab-change="changeDrawerTab"
+            @upload="uploadElectronicFile"
+            @download="downloadFile"
+            @unbind="unbindFile"
+        />
+        <ArchiveItemEditorDrawer
+            :state="editorState"
+            :detail="editorDetail"
+            :form="editorForm"
+            :fields="editorFields"
+            :categories="categories"
+            :fonds="fonds"
+            :loading="editorLoading"
+            :saving="saving"
             @close="editorState = undefined"
-            :title="
-                editorState?.mode === 'create'
-                    ? '新建档案'
-                    : editorState?.mode === 'detail'
-                      ? `档案 ${editorState.archiveItemId} 详情`
-                      : `编辑档案 ${editorState?.archiveItemId}`
-            "
-            size="70%"
-            ><template v-if="editorState?.mode === 'detail' && editorDetail"
-                ><el-descriptions border :column="2"
-                    ><el-descriptions-item label="档案 ID">{{
-                        editorDetail.item.id
-                    }}</el-descriptions-item
-                    ><el-descriptions-item label="档案分类">{{
-                        editorDetail.category.categoryName
-                    }}</el-descriptions-item
-                    ><el-descriptions-item label="全宗">{{
-                        editorDetail.item.fondsName
-                    }}</el-descriptions-item
-                    ><el-descriptions-item label="档号">{{
-                        editorDetail.item.archiveNo || "-"
-                    }}</el-descriptions-item
-                    ><el-descriptions-item label="年度">{{
-                        editorDetail.item.archiveYear
-                    }}</el-descriptions-item
-                    ><el-descriptions-item label="电子状态">{{
-                        editorDetail.item.electronicStatus
-                    }}</el-descriptions-item
-                    ><el-descriptions-item label="锁定">{{
-                        editorDetail.item.lockedFlag ? "是" : "否"
-                    }}</el-descriptions-item
-                    ><el-descriptions-item label="锁定原因">{{
-                        editorDetail.item.lockReason || "-"
-                    }}</el-descriptions-item></el-descriptions
-                >
-                <h3>动态字段</h3>
-                <el-empty
-                    v-if="detailFields.length === 0"
-                    description="无可展示字段"
-                    :image-size="48"
-                />
-                <el-descriptions v-else border :column="2"
-                    ><el-descriptions-item
-                        v-for="field in detailFields"
-                        :key="field.id"
-                        :label="field.fieldName"
-                        >{{
-                            formatValue(editorDetail.dynamicFields[field.fieldCode])
-                        }}</el-descriptions-item
-                    ></el-descriptions
-                ></template
-            ><el-form
-                v-else-if="editorState && editorState.mode !== 'detail'"
-                ref="editorFormRef"
-                :model="editorForm"
-                label-position="top"
-                ><el-form-item label="档案分类"
-                    ><el-input
-                        disabled
-                        :model-value="
-                            categories.find((item) => item.id === editorForm.categoryId)
-                                ?.categoryName
-                        " /></el-form-item
-                ><el-form-item
-                    label="全宗"
-                    prop="fondsCode"
-                    :rules="[{ required: true, message: '请选择全宗', trigger: 'change' }]"
-                    ><el-select v-model="editorForm.fondsCode" filterable
-                        ><el-option
-                            v-for="item in fonds"
-                            :key="item.fondsCode"
-                            :label="`${item.fondsCode} ${item.fondsName}`"
-                            :value="item.fondsCode" /></el-select></el-form-item
-                ><el-row :gutter="16"
-                    ><el-col :span="8"
-                        ><el-form-item label="档号"
-                            ><el-input v-model="editorForm.archiveNo" /></el-form-item></el-col
-                    ><el-col :span="8"
-                        ><el-form-item label="年度"
-                            ><el-input-number
-                                v-model="editorForm.archiveYear"
-                                :min="1" /></el-form-item></el-col
-                    ><el-col :span="8"
-                        ><el-form-item label="电子状态"
-                            ><el-select v-model="editorForm.electronicStatus"
-                                ><el-option label="草稿" value="DRAFT" /><el-option
-                                    label="已归档"
-                                    value="ARCHIVED" /><el-option
-                                    label="借出"
-                                    value="BORROWED" /></el-select></el-form-item></el-col></el-row
-                ><DynamicArchiveFields
-                    v-model="editorForm.dynamicFields"
-                    :fields="editorFields"
-                /><el-button :disabled="saving" @click="editorState = undefined">取消</el-button
-                ><el-button :loading="saving" type="primary" @click="saveRecord"
-                    >保存</el-button
-                ></el-form
-            ></el-drawer
-        >
+            @save="saveRecord"
+        />
     </section>
 </template>
-
-<style scoped>
-.file-toolbar {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 12px;
-}
-.file-toolbar .el-input {
-    width: 180px;
-}
-</style>

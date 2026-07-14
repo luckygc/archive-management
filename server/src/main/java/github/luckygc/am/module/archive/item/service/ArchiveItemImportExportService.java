@@ -477,58 +477,6 @@ public class ArchiveItemImportExportService {
         auditRepository.insert(audit);
     }
 
-    private static final class ArchiveImportRow {
-
-        private final int rowNumber;
-        private final ArchiveItemCommandService.CreateArchiveItemRequest createRequest;
-        private final List<ArchiveImportRowError> parseErrors;
-        private @Nullable ArchiveItem existingItem;
-
-        private ArchiveImportRow(
-                int rowNumber,
-                ArchiveItemCommandService.CreateArchiveItemRequest createRequest,
-                @Nullable ArchiveItem existingItem,
-                List<ArchiveImportRowError> parseErrors) {
-            this.rowNumber = rowNumber;
-            this.createRequest = createRequest;
-            this.existingItem = existingItem;
-            this.parseErrors = parseErrors;
-        }
-
-        private int rowNumber() {
-            return rowNumber;
-        }
-
-        private ArchiveItemCommandService.CreateArchiveItemRequest createRequest() {
-            return createRequest;
-        }
-
-        private ArchiveItemCommandService.UpdateArchiveItemRequest updateRequest() {
-            return new ArchiveItemCommandService.UpdateArchiveItemRequest(
-                    createRequest.volumeId(),
-                    createRequest.fondsCode(),
-                    createRequest.archiveNo(),
-                    createRequest.archiveYear(),
-                    createRequest.electronicStatus(),
-                    createRequest.securityLevelId(),
-                    createRequest.retentionPeriodId(),
-                    createRequest.physicalFields(),
-                    createRequest.dynamicFields());
-        }
-
-        private @Nullable ArchiveItem existingItem() {
-            return existingItem;
-        }
-
-        private List<ArchiveImportRowError> parseErrors() {
-            return parseErrors;
-        }
-
-        private void bindExistingItem(@Nullable ArchiveItem existingItem) {
-            this.existingItem = existingItem;
-        }
-    }
-
     private record ImportRowDataScopeCheck(
             ArchiveCategoryDto category,
             List<ArchiveFieldDto> fields,
