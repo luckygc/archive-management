@@ -24,6 +24,7 @@ function archiveResult(): ArchiveRecordListDto {
                 id: 1,
                 categoryId: 1,
                 archiveLevel: "ITEM",
+                fieldScope: "METADATA",
                 fieldCode: "formed_date",
                 fieldName: "成文日期",
                 fieldType: "DATE",

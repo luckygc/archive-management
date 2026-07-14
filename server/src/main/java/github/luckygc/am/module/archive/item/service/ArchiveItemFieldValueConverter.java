@@ -20,28 +20,33 @@ import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.Ar
 @Service
 class ArchiveItemFieldValueConverter {
 
-    Map<String, @Nullable Object> convertDynamicFields(
-            List<ArchiveFieldDto> fields, Map<String, @Nullable Object> dynamicFields) {
+    Map<String, @Nullable Object> convertFields(
+            List<ArchiveFieldDto> fields,
+            Map<String, @Nullable Object> fieldValues,
+            String fieldPathPrefix) {
         Map<String, ArchiveFieldDto> fieldsByCode =
                 fields.stream()
                         .collect(
                                 java.util.stream.Collectors.toMap(
                                         ArchiveFieldDto::fieldCode, field -> field));
-        for (String fieldCode : dynamicFields.keySet()) {
+        for (String fieldCode : fieldValues.keySet()) {
             if (!fieldsByCode.containsKey(fieldCode)) {
-                throw badRequest("动态字段不存在：" + fieldCode, "dynamicFields." + fieldCode, "动态字段不存在");
+                throw badRequest(
+                        "字段不存在：" + fieldCode, fieldPath(fieldPathPrefix, fieldCode), "字段不存在");
             }
         }
 
         Map<String, @Nullable Object> converted = new LinkedHashMap<>();
         for (ArchiveFieldDto field : fields) {
             converted.put(
-                    field.fieldCode(), convertValue(field, dynamicFields.get(field.fieldCode())));
+                    field.fieldCode(),
+                    convertValue(field, fieldValues.get(field.fieldCode()), fieldPathPrefix));
         }
         return converted;
     }
 
-    private @Nullable Object convertValue(ArchiveFieldDto field, @Nullable Object value) {
+    private @Nullable Object convertValue(
+            ArchiveFieldDto field, @Nullable Object value, String fieldPathPrefix) {
         if (value instanceof String text) {
             value = StringUtils.trimToNull(text);
         }
@@ -50,7 +55,7 @@ class ArchiveItemFieldValueConverter {
         }
         try {
             return switch (field.fieldType()) {
-                case TEXT -> convertTextValue(field, value);
+                case TEXT -> convertTextValue(field, value, fieldPathPrefix);
                 case INTEGER ->
                         value instanceof Number number
                                 ? number.intValue()
@@ -71,21 +76,25 @@ class ArchiveItemFieldValueConverter {
         } catch (DateTimeParseException | IllegalArgumentException exception) {
             throw badRequest(
                     field.fieldName() + "格式不合法",
-                    "dynamicFields." + field.fieldCode(),
+                    fieldPath(fieldPathPrefix, field.fieldCode()),
                     field.fieldName() + "格式不合法");
         }
     }
 
-    private String convertTextValue(ArchiveFieldDto field, Object value) {
+    private String convertTextValue(ArchiveFieldDto field, Object value, String fieldPathPrefix) {
         String text = StringUtils.trimToNull(value.toString());
         if (text == null) {
             return "";
         }
         if (field.textLength() != null && text.length() > field.textLength()) {
             String message = field.fieldName() + "长度不能超过 " + field.textLength();
-            throw badRequest(message, "dynamicFields." + field.fieldCode(), message);
+            throw badRequest(message, fieldPath(fieldPathPrefix, field.fieldCode()), message);
         }
         return text;
+    }
+
+    private String fieldPath(String fieldPathPrefix, String fieldCode) {
+        return fieldPathPrefix + "." + fieldCode;
     }
 
     private BadRequestException badRequest(String message) {

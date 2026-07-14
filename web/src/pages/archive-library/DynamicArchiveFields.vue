@@ -49,7 +49,8 @@ function update(fieldCode: string, value: unknown) {
     values.value = { ...values.value, [fieldCode]: value };
 }
 function fieldWidth(field: ArchiveFieldDto) {
-    return Math.min(24, Math.max(8, (field.editColSpan || 1) * 8));
+    const colSpan = props.surface === "detail" ? field.detailColSpan : field.editColSpan;
+    return Math.min(24, Math.max(8, (colSpan || 1) * 8));
 }
 function numberLimit(field: ArchiveFieldDto) {
     if (field.fieldType !== "INTEGER" && field.fieldType !== "DECIMAL") return undefined;

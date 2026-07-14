@@ -127,12 +127,12 @@ public class ArchiveItemCommandService {
         String archiveNo = StringUtils.trimToNull(request.archiveNo());
         ensureItemArchiveNoUnique(category.categoryCode(), archiveNo, null);
         Map<String, @Nullable Object> convertedDynamicFields =
-                fieldValueConverter.convertDynamicFields(fields, dynamicFields);
+                fieldValueConverter.convertFields(fields, dynamicFields, "dynamicFields");
         Map<String, @Nullable Object> convertedPhysicalFields =
                 requestPhysicalFields == null
                         ? Map.of()
-                        : fieldValueConverter.convertDynamicFields(
-                                physicalFields, requestPhysicalFields);
+                        : fieldValueConverter.convertFields(
+                                physicalFields, requestPhysicalFields, "physicalFields");
         assertProposedItemInDataScope(
                 userId,
                 category,
@@ -217,13 +217,14 @@ public class ArchiveItemCommandService {
         Map<String, @Nullable Object> requestDynamicFields =
                 request.dynamicFields() == null ? before.dynamicFields() : request.dynamicFields();
         Map<String, @Nullable Object> convertedDynamicFields =
-                fieldValueConverter.convertDynamicFields(before.fields(), requestDynamicFields);
+                fieldValueConverter.convertFields(
+                        before.fields(), requestDynamicFields, "dynamicFields");
         Map<String, @Nullable Object> requestPhysicalFields = request.physicalFields();
         Map<String, @Nullable Object> convertedPhysicalFields =
                 requestPhysicalFields == null
                         ? Map.of()
-                        : fieldValueConverter.convertDynamicFields(
-                                before.physicalFields(), requestPhysicalFields);
+                        : fieldValueConverter.convertFields(
+                                before.physicalFields(), requestPhysicalFields, "physicalFields");
         assertProposedItemInDataScope(
                 userId,
                 category,

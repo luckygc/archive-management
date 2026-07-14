@@ -73,6 +73,7 @@ const editorDetail = ref<ArchiveRecordDetailDto>();
 const securityLevels = ref<ArchiveSecurityLevelDto[]>([]);
 const retentionPeriods = ref<ArchiveRetentionPeriodDto[]>([]);
 const editorFieldErrors = reactive<Record<string, string>>({});
+const editorFormError = ref<string>();
 const editorForm = reactive({
     categoryId: undefined as number | undefined,
     fondsCode: "",
@@ -88,7 +89,11 @@ const downloadingTemplate = ref(false);
 const importing = ref(false);
 const exporting = ref(false);
 const editorLoading = ref(false);
+const referencesLoading = ref(false);
+const referencesLoadError = ref<string>();
 const saving = ref(false);
+let editorRequestVersion = 0;
+let referencesRequestVersion = 0;
 const {
     audits,
     canCreateElectronicFile,
@@ -111,22 +116,38 @@ const {
 const { busyAction, lock, remove, unlock } = useArchiveItemLifecycle(refresh);
 
 const editorFields = computed(() =>
-    editorState.value?.mode === "create" ? fields.value : (editorDetail.value?.fields ?? []),
+    editorState.value?.mode === "create"
+        ? fields.value.filter((field) => field.fieldScope === "METADATA")
+        : (editorDetail.value?.fields ?? []),
 );
-const editorPhysicalFields = computed(() => editorDetail.value?.physicalFields ?? []);
+const editorPhysicalFields = computed(() =>
+    editorState.value?.mode === "create"
+        ? fields.value.filter((field) => field.fieldScope === "PHYSICAL")
+        : (editorDetail.value?.physicalFields ?? []),
+);
 
 onMounted(loadEditorReferences);
 
 async function loadEditorReferences() {
+    const requestVersion = ++referencesRequestVersion;
+    referencesLoading.value = true;
+    referencesLoadError.value = undefined;
     try {
-        const [securityResponse, retentionResponse] = await Promise.all([
+        const [securityResult, retentionResult] = await Promise.allSettled([
             listArchiveSecurityLevels(true),
             listArchiveRetentionPeriods(true),
         ]);
-        securityLevels.value = securityResponse.items.filter((item) => item.enabled);
-        retentionPeriods.value = retentionResponse.items.filter((item) => item.enabled);
-    } catch (error) {
-        ElMessage.error(errorMessage(error, "加载密级和保管期限失败"));
+        if (requestVersion !== referencesRequestVersion) return;
+        const errors: string[] = [];
+        if (securityResult.status === "fulfilled")
+            securityLevels.value = securityResult.value.items.filter((item) => item.enabled);
+        else errors.push(errorMessage(securityResult.reason, "加载密级失败"));
+        if (retentionResult.status === "fulfilled")
+            retentionPeriods.value = retentionResult.value.items.filter((item) => item.enabled);
+        else errors.push(errorMessage(retentionResult.reason, "加载保管期限失败"));
+        referencesLoadError.value = errors.length ? errors.join("；") : undefined;
+    } finally {
+        if (requestVersion === referencesRequestVersion) referencesLoading.value = false;
     }
 }
 async function downloadTemplate() {
@@ -183,6 +204,7 @@ async function exportCurrent() {
 }
 function openCreateEditor() {
     if (!queryForm.categoryId) return;
+    invalidateEditorRequest();
     Object.assign(editorForm, {
         categoryId: queryForm.categoryId,
         fondsCode: "",
@@ -205,12 +227,14 @@ function rowId(value: unknown) {
 async function openRecordEditor(value: unknown, mode: "detail" | "edit") {
     const id = rowId(value);
     if (!id) return;
+    const requestVersion = ++editorRequestVersion;
     editorState.value = { mode, archiveItemId: id };
     editorDetail.value = undefined;
+    clearEditorFieldErrors();
     editorLoading.value = true;
     try {
         const detail = await getArchiveRecord(id, mode === "detail" ? "DETAIL" : "EDIT");
-        if (editorState.value?.archiveItemId !== id || editorState.value.mode !== mode) return;
+        if (requestVersion !== editorRequestVersion) return;
         editorDetail.value = detail;
         Object.assign(editorForm, {
             categoryId: detail.category.id,
@@ -223,12 +247,12 @@ async function openRecordEditor(value: unknown, mode: "detail" | "edit") {
             physicalFields: { ...detail.physicalFieldValues },
             dynamicFields: { ...detail.dynamicFields },
         });
-        clearEditorFieldErrors();
     } catch (error) {
+        if (requestVersion !== editorRequestVersion) return;
         ElMessage.error(errorMessage(error, "加载档案详情失败"));
         editorState.value = undefined;
     } finally {
-        editorLoading.value = false;
+        if (requestVersion === editorRequestVersion) editorLoading.value = false;
     }
 }
 async function saveRecord() {
@@ -255,7 +279,7 @@ async function saveRecord() {
         else if (mode === "edit")
             await updateArchiveRecord(editorState.value.archiveItemId!, common);
         ElMessage.success(mode === "create" ? "档案已创建" : "档案已更新");
-        editorState.value = undefined;
+        closeEditor();
         await refresh();
     } catch (error) {
         applyEditorFieldViolations(error);
@@ -272,23 +296,26 @@ async function saveRecord() {
 }
 
 function closeEditor() {
+    invalidateEditorRequest();
+}
+
+function clearEditorFieldErrors() {
+    for (const field of Object.keys(editorFieldErrors)) delete editorFieldErrors[field];
+    editorFormError.value = undefined;
+}
+
+function invalidateEditorRequest() {
+    editorRequestVersion += 1;
+    editorLoading.value = false;
     editorState.value = undefined;
     editorDetail.value = undefined;
     clearEditorFieldErrors();
 }
 
-function clearEditorFieldErrors() {
-    for (const field of Object.keys(editorFieldErrors)) delete editorFieldErrors[field];
-}
-
 function applyEditorFieldViolations(error: unknown) {
     if (!(error instanceof HttpClientError)) return;
-    const physicalFieldCodes = new Set(
-        (editorDetail.value?.physicalFields ?? []).map((field) => field.fieldCode),
-    );
-    const dynamicFieldCodes = new Set(
-        (editorDetail.value?.fields ?? []).map((field) => field.fieldCode),
-    );
+    const physicalFieldCodes = new Set(editorPhysicalFields.value.map((field) => field.fieldCode));
+    const dynamicFieldCodes = new Set(editorFields.value.map((field) => field.fieldCode));
     const fixedFields = new Set([
         "categoryId",
         "fondsCode",
@@ -298,23 +325,25 @@ function applyEditorFieldViolations(error: unknown) {
         "securityLevelId",
         "retentionPeriodId",
     ]);
+    const formErrors: string[] = [];
     for (const violation of error.fieldViolations) {
         if (!violation.field || !violation.message) continue;
         const field = violation.field;
         let targetField: string | undefined;
-        if (field.startsWith("physicalFields.")) targetField = field;
-        else if (field.startsWith("dynamicFields.")) {
+        if (field.startsWith("physicalFields.")) {
+            const fieldCode = field.slice("physicalFields.".length);
+            if (physicalFieldCodes.has(fieldCode)) targetField = field;
+        } else if (field.startsWith("dynamicFields.")) {
             const fieldCode = field.slice("dynamicFields.".length);
-            targetField =
-                physicalFieldCodes.has(fieldCode) && !dynamicFieldCodes.has(fieldCode)
-                    ? `physicalFields.${fieldCode}`
-                    : field;
+            if (dynamicFieldCodes.has(fieldCode)) targetField = field;
         } else if (fixedFields.has(field)) targetField = field;
         if (targetField)
             editorFieldErrors[targetField] = editorFieldErrors[targetField]
                 ? `${editorFieldErrors[targetField]}；${violation.message}`
                 : violation.message;
+        else formErrors.push(violation.message);
     }
+    editorFormError.value = [...new Set(formErrors)].join("；") || undefined;
 }
 </script>
 
@@ -420,9 +449,13 @@ function applyEditorFieldViolations(error: unknown) {
             :security-levels="securityLevels"
             :retention-periods="retentionPeriods"
             :field-errors="editorFieldErrors"
+            :form-error="editorFormError"
             :loading="editorLoading"
+            :references-loading="referencesLoading"
+            :references-load-error="referencesLoadError"
             :saving="saving"
             @close="closeEditor"
+            @retry-references="loadEditorReferences"
             @save="saveRecord"
         />
     </section>

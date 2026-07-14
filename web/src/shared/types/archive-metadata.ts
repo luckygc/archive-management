@@ -116,6 +116,7 @@ export interface ArchiveFieldDto {
     id: number;
     categoryId: number;
     archiveLevel: ArchiveLevel;
+    fieldScope: ArchiveFieldScope;
     fieldCode: string;
     fieldName: string;
     fieldType: ArchiveFieldType;

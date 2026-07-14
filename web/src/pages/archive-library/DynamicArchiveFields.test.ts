@@ -68,6 +68,7 @@ function createField(field: Partial<ArchiveFieldDto>): ArchiveFieldDto {
         enabled: true,
         exactSearchable: false,
         dataScopeFilterable: false,
+        fieldScope: "METADATA",
         fieldCode: "field",
         fieldName: "字段",
         fieldType: "TEXT",

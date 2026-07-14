@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/vue";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/vue";
 import ElementPlus from "element-plus";
 import { createPinia, setActivePinia } from "pinia";
 import { defineComponent, h } from "vue";
@@ -45,14 +45,14 @@ vi.mock("./useArchiveItemLifecycle", () => ({
 }));
 vi.mock("@/pages/archive-library/ArchiveAdvancedQueryPanel.vue", () => ({
     default: defineComponent({
-        emits: ["submit"],
-        template: `<button type="button" @click="$emit('submit', { categoryId: 1 })">提交查询</button>`,
+        emits: ["submit", "update:modelValue"],
+        template: `<button type="button" @click="$emit('update:modelValue', { categoryId: 1, conditions: [], relatedGroups: [] }); $emit('submit', { categoryId: 1, conditions: [], relatedGroups: [] })">提交查询</button>`,
     }),
 }));
 vi.mock("@/pages/archive-library/ArchiveResultTable.vue", () => ({
     default: defineComponent({
         props: ["result"],
-        template: `<div><slot name="actions" :row="result.items[0]" /></div>`,
+        template: `<div><div v-for="row in result.items" :key="row.id"><slot name="actions" :row="row" /></div></div>`,
     }),
 }));
 vi.mock("@/pages/archive-library/DynamicArchiveFields.vue", () => ({
@@ -332,6 +332,159 @@ describe("ArchiveItemManagementPage", () => {
             ),
         );
     });
+    it("新建时按字段范围分组并分别提交实物字段和动态字段", async () => {
+        mocks.listArchiveFonds.mockResolvedValue({
+            items: [{ fondsCode: "F001", fondsName: "默认全宗" }],
+        });
+        mocks.listArchiveFields.mockResolvedValue({
+            items: [
+                archiveField("METADATA", "title", "题名", 11),
+                archiveField("PHYSICAL", "box_no", "盒号", 12),
+            ],
+        });
+        renderPage(["archive:item:create"]);
+        await fireEvent.click(await screen.findByRole("button", { name: "提交查询" }));
+        await waitFor(() => expect(mocks.listArchiveFields).toHaveBeenCalledWith(1, "ITEM"));
+        await fireEvent.click(screen.getByRole("button", { name: /新建档案/ }));
+
+        const physicalGroup = screen.getByRole("heading", { name: "实物字段" }).nextElementSibling!;
+        const dynamicGroup = screen.getByRole("heading", { name: "动态字段" }).nextElementSibling!;
+        expect(within(physicalGroup as HTMLElement).getByLabelText("盒号")).toBeInTheDocument();
+        expect(
+            within(physicalGroup as HTMLElement).queryByLabelText("题名"),
+        ).not.toBeInTheDocument();
+        expect(within(dynamicGroup as HTMLElement).getByLabelText("题名")).toBeInTheDocument();
+        expect(
+            within(dynamicGroup as HTMLElement).queryByLabelText("盒号"),
+        ).not.toBeInTheDocument();
+
+        await fireEvent.click(screen.getByLabelText("全宗"));
+        await fireEvent.click(await screen.findByText("F001 默认全宗"));
+        await fireEvent.update(screen.getByLabelText("盒号"), "BOX-001");
+        await fireEvent.update(screen.getByLabelText("题名"), "建设工程档案");
+        await fireEvent.click(screen.getByRole("button", { name: "保存" }));
+
+        await waitFor(() =>
+            expect(mocks.createArchiveRecord).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    categoryId: 1,
+                    physicalFields: { box_no: "BOX-001" },
+                    dynamicFields: { title: "建设工程档案" },
+                }),
+            ),
+        );
+    });
+    it("连续打开两条档案时旧请求失败不关闭新抽屉", async () => {
+        mocks.searchArchiveRecords.mockResolvedValue({ fields: [], items: [{ id: 1 }, { id: 2 }] });
+        const first = deferred<ReturnType<typeof detail>>();
+        const second = deferred<ReturnType<typeof detail>>();
+        mocks.getArchiveRecord.mockImplementationOnce(() => first.promise);
+        mocks.getArchiveRecord.mockImplementationOnce(() => second.promise);
+        renderPage(["archive:item:read", "archive:item:update"]);
+        await fireEvent.click(await screen.findByRole("button", { name: "提交查询" }));
+        const editButtons = await screen.findAllByRole("button", { name: "编辑" });
+        await fireEvent.click(editButtons[0]!);
+        await fireEvent.click(editButtons[1]!);
+
+        first.reject(new Error("旧请求失败"));
+        await waitFor(() => expect(screen.getByText("编辑档案 2")).toBeInTheDocument());
+        second.resolve(detail(2, "第二条档案"));
+        expect(await screen.findByDisplayValue("第二条档案")).toBeInTheDocument();
+    });
+    it("旧请求成功时不提前结束新请求加载状态", async () => {
+        mocks.searchArchiveRecords.mockResolvedValue({ fields: [], items: [{ id: 1 }, { id: 2 }] });
+        const first = deferred<ReturnType<typeof detail>>();
+        const second = deferred<ReturnType<typeof detail>>();
+        mocks.getArchiveRecord.mockImplementationOnce(() => first.promise);
+        mocks.getArchiveRecord.mockImplementationOnce(() => second.promise);
+        renderPage(["archive:item:read", "archive:item:update"]);
+        await fireEvent.click(await screen.findByRole("button", { name: "提交查询" }));
+        const editButtons = await screen.findAllByRole("button", { name: "编辑" });
+        await fireEvent.click(editButtons[0]!);
+        await fireEvent.click(editButtons[1]!);
+
+        first.resolve(detail(1, "第一条档案"));
+        await waitFor(() => expect(document.querySelector(".el-loading-mask")).not.toBeNull());
+        second.resolve(detail(2, "第二条档案"));
+        expect(await screen.findByDisplayValue("第二条档案")).toBeInTheDocument();
+    });
+    it("同一档案重复打开时旧成功结果不覆盖新结果", async () => {
+        mocks.searchArchiveRecords.mockResolvedValue({ fields: [], items: [{ id: 1 }] });
+        const first = deferred<ReturnType<typeof detail>>();
+        const second = deferred<ReturnType<typeof detail>>();
+        mocks.getArchiveRecord.mockImplementationOnce(() => first.promise);
+        mocks.getArchiveRecord.mockImplementationOnce(() => second.promise);
+        renderPage(["archive:item:read", "archive:item:update"]);
+        await fireEvent.click(await screen.findByRole("button", { name: "提交查询" }));
+        const editButton = await screen.findByRole("button", { name: "编辑" });
+        await fireEvent.click(editButton);
+        await fireEvent.click(editButton);
+
+        second.resolve(detail(1, "最新结果"));
+        expect(await screen.findByDisplayValue("最新结果")).toBeInTheDocument();
+        first.resolve(detail(1, "过期结果"));
+        await waitFor(() => expect(screen.getByLabelText("题名")).toHaveValue("最新结果"));
+    });
+    it("关闭抽屉后旧成功结果不再回填", async () => {
+        mocks.searchArchiveRecords.mockResolvedValue({ fields: [], items: [{ id: 1 }] });
+        const pending = deferred<ReturnType<typeof detail>>();
+        mocks.getArchiveRecord.mockReturnValue(pending.promise);
+        renderPage(["archive:item:read", "archive:item:update"]);
+        await fireEvent.click(await screen.findByRole("button", { name: "提交查询" }));
+        await fireEvent.click(await screen.findByRole("button", { name: "编辑" }));
+        await fireEvent.click(screen.getByRole("button", { name: "取消" }));
+        pending.resolve(detail(1, "不应回填"));
+
+        await waitFor(() => expect(screen.queryByDisplayValue("不应回填")).not.toBeInTheDocument());
+        expect(screen.queryByText("编辑档案 1")).not.toBeInTheDocument();
+    });
+    it("打开新建抽屉后旧详情失败不关闭新抽屉", async () => {
+        mocks.searchArchiveRecords.mockResolvedValue({ fields: [], items: [{ id: 1 }] });
+        const pending = deferred<ReturnType<typeof detail>>();
+        mocks.getArchiveRecord.mockReturnValue(pending.promise);
+        renderPage(["archive:item:read", "archive:item:create", "archive:item:update"]);
+        await fireEvent.click(await screen.findByRole("button", { name: "提交查询" }));
+        await fireEvent.click(await screen.findByRole("button", { name: "编辑" }));
+        await fireEvent.click(screen.getByRole("button", { name: /新建档案/ }));
+        pending.reject(new Error("过期详情失败"));
+
+        await waitFor(() =>
+            expect(screen.getByRole("button", { name: "保存" })).toBeInTheDocument(),
+        );
+        expect(screen.queryByText("编辑档案 1")).not.toBeInTheDocument();
+    });
+    it("参考数据独立加载失败时保留成功项并支持原位重试", async () => {
+        mocks.listArchiveSecurityLevels.mockRejectedValueOnce(new Error("密级服务不可用"));
+        mocks.searchArchiveRecords.mockResolvedValue({ fields: [], items: [{ id: 9 }] });
+        mocks.getArchiveRecord.mockResolvedValue(detail());
+        renderPage(["archive:item:read", "archive:item:update"]);
+        await fireEvent.click(await screen.findByRole("button", { name: "提交查询" }));
+        await fireEvent.click(await screen.findByRole("button", { name: "编辑" }));
+
+        expect((await screen.findAllByText("长期")).length).toBeGreaterThan(0);
+        expect(await screen.findByText(/密级服务不可用/)).toBeInTheDocument();
+        await fireEvent.click(screen.getByRole("button", { name: "重试参考数据" }));
+        await waitFor(() => expect(mocks.listArchiveSecurityLevels).toHaveBeenCalledTimes(2));
+        expect(screen.queryByText(/密级服务不可用/)).not.toBeInTheDocument();
+        expect((await screen.findAllByText("秘密")).length).toBeGreaterThan(0);
+    });
+    it("参考数据加载期间不把当前 ID 标记为不可用", async () => {
+        const security = deferred<{ items: never[] }>();
+        const retention = deferred<{ items: never[] }>();
+        mocks.listArchiveSecurityLevels.mockReturnValue(security.promise);
+        mocks.listArchiveRetentionPeriods.mockReturnValue(retention.promise);
+        mocks.searchArchiveRecords.mockResolvedValue({ fields: [], items: [{ id: 9 }] });
+        mocks.getArchiveRecord.mockResolvedValue(detail());
+        renderPage(["archive:item:read", "archive:item:update"]);
+        await fireEvent.click(await screen.findByRole("button", { name: "提交查询" }));
+        await fireEvent.click(await screen.findByRole("button", { name: "编辑" }));
+        await screen.findByLabelText("题名");
+
+        expect(screen.queryByText(/当前密级 ID/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/当前保管期限 ID/)).not.toBeInTheDocument();
+        security.resolve({ items: [] });
+        retention.resolve({ items: [] });
+    });
     it("字段校验失败时回填固定、实物和动态字段错误并保留用户输入", async () => {
         mocks.searchArchiveRecords.mockResolvedValue({ fields: [], items: [{ id: 9 }] });
         mocks.getArchiveRecord.mockResolvedValue(detail());
@@ -342,9 +495,9 @@ describe("ArchiveItemManagementPage", () => {
                 "INVALID_ARGUMENT",
                 [
                     { field: "archiveNo", message: "档号已存在" },
-                    // 当前服务端复用动态字段转换器，实物字段可能仍返回 dynamicFields 前缀。
-                    { field: "dynamicFields.box_no", message: "盒号格式不合法" },
+                    { field: "physicalFields.box_no", message: "盒号格式不合法" },
                     { field: "dynamicFields.title", message: "题名长度不能超过 200" },
+                    { field: "dynamicFields.unknown", message: "未知字段错误" },
                 ],
                 "trace-task-4",
             ),
@@ -360,6 +513,7 @@ describe("ArchiveItemManagementPage", () => {
         expect(await screen.findByText("档号已存在")).toBeInTheDocument();
         expect(screen.getByText("盒号格式不合法")).toBeInTheDocument();
         expect(screen.getByText("题名长度不能超过 200")).toBeInTheDocument();
+        expect(screen.getByText("未知字段错误")).toBeInTheDocument();
         expect(screen.getByLabelText("档号")).toHaveValue("A-009");
         expect(screen.getByLabelText("盒号")).toHaveValue("BAD-BOX");
         expect(screen.getByLabelText("题名")).toHaveValue("仍需修订的题名");
@@ -387,7 +541,7 @@ const category = {
     updatedAt: "",
 };
 
-function detail() {
+function detail(id = 9, title = "建设工程档案") {
     const baseField = {
         archiveLevel: "ITEM" as const,
         categoryId: 1,
@@ -402,6 +556,7 @@ function detail() {
         enabled: true,
         exactSearchable: false,
         dataScopeFilterable: false,
+        fieldScope: "METADATA" as const,
         fieldType: "TEXT" as const,
         listSortOrder: 1,
         listVisible: true,
@@ -411,7 +566,7 @@ function detail() {
     };
     return {
         item: {
-            id: 9,
+            id,
             fondsCode: "F001",
             fondsName: "默认全宗",
             categoryCode: "contract",
@@ -433,11 +588,12 @@ function detail() {
                 columnName: "f_title",
             },
         ],
-        dynamicFields: { title: "建设工程档案" },
+        dynamicFields: { title },
         physicalFields: [
             {
                 ...baseField,
                 id: 12,
+                fieldScope: "PHYSICAL" as const,
                 fieldCode: "box_no",
                 fieldName: "盒号",
                 columnName: "f_box_no",
@@ -445,4 +601,30 @@ function detail() {
         ],
         physicalFieldValues: { box_no: "BOX-001" },
     };
+}
+
+function archiveField(
+    fieldScope: "METADATA" | "PHYSICAL",
+    fieldCode: string,
+    fieldName: string,
+    id: number,
+) {
+    return {
+        ...detail().fields[0]!,
+        id,
+        fieldScope,
+        fieldCode,
+        fieldName,
+        columnName: `f_${fieldCode}`,
+    };
+}
+
+function deferred<T>() {
+    let resolve!: (value: T) => void;
+    let reject!: (reason?: unknown) => void;
+    const promise = new Promise<T>((onResolve, onReject) => {
+        resolve = onResolve;
+        reject = onReject;
+    });
+    return { promise, reject, resolve };
 }

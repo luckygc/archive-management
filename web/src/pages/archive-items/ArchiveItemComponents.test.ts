@@ -118,6 +118,28 @@ describe("档案管理拆分组件", () => {
         expect(await screen.findByText("详情备注格式不合法")).toBeInTheDocument();
     });
 
+    it("详情表面使用详情列宽而不是编辑列宽", async () => {
+        const view = render(DynamicArchiveFields, {
+            props: {
+                modelValue: { detail_note: "详情" },
+                fields: [
+                    createField({
+                        fieldCode: "detail_note",
+                        fieldName: "详情备注",
+                        detailColSpan: 3,
+                        editColSpan: 1,
+                    }),
+                ],
+                disabled: true,
+                surface: "detail",
+            },
+            global: { plugins: [ElementPlus], stubs: { TransitionGroup: false } },
+        });
+
+        expect(view.container.querySelector(".el-col")).toHaveClass("el-col-24");
+        expect(view.container.querySelector(".el-col")).not.toHaveClass("el-col-8");
+    });
+
     it("当前参考项停用时保留 ID 提示而不伪造选项名称", async () => {
         render(ArchiveItemEditorDrawer, {
             props: {
@@ -177,7 +199,12 @@ const category = {
     createdAt: "",
     updatedAt: "",
 };
-const physicalField = createField({ id: 1, fieldCode: "box_no", fieldName: "盒号" });
+const physicalField = createField({
+    id: 1,
+    fieldScope: "PHYSICAL",
+    fieldCode: "box_no",
+    fieldName: "盒号",
+});
 const dynamicField = createField({ id: 2, fieldCode: "title", fieldName: "题名" });
 
 function editorForm() {
@@ -233,6 +260,7 @@ function createField(field: Partial<ArchiveFieldDto>): ArchiveFieldDto {
         enabled: true,
         exactSearchable: false,
         dataScopeFilterable: false,
+        fieldScope: "METADATA",
         fieldCode: "field",
         fieldName: "字段",
         fieldType: "TEXT",
