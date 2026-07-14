@@ -1,3 +1,5 @@
 package github.luckygc.am.module.archive.mapper;
 
-public record ArchiveSqlAssignment(String columnName, Object value) {}
+import org.jspecify.annotations.Nullable;
+
+public record ArchiveSqlAssignment(String columnName, @Nullable Object value) {}

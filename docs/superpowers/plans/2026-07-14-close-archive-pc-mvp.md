@@ -769,6 +769,7 @@ git commit -m "feat: 开发档案明细表配置"
 - Modify: `web/src/pages/archive-items/ArchiveItemEditorDrawer.vue`
 
 **Interfaces:**
+- Produces: `GET /api/v1/archive-items/{archiveItem}/line-tables`，供普通档案读取者在条目数据范围内读取已启用、已构建的只读明细定义；响应不暴露物理表名或列名。
 - Produces: `GET/POST /api/v1/archive-items/{archiveItem}/line-tables/{lineTable}/rows` 和 `PATCH/DELETE .../rows/{row}`。
 - List: `CursorPageResponse<ArchiveItemLineRowResponse>`，URL query 使用 `limit/cursor`，固定按 `lineOrder ASC, id ASC` 排序。
 - Create request: `CreateArchiveItemLineRowRequest(int lineOrder, Map<String, @Nullable Object> values)`。

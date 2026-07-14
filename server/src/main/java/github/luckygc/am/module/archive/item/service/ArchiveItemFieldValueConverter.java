@@ -15,6 +15,8 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 
 import github.luckygc.am.common.exception.BadRequestException;
+import github.luckygc.am.module.archive.item.service.ArchiveItemLineTableService.ArchiveItemLineFieldDto;
+import github.luckygc.am.module.archive.metadata.ArchiveFieldType;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFieldDto;
 
 @Service
@@ -24,11 +26,47 @@ class ArchiveItemFieldValueConverter {
             List<ArchiveFieldDto> fields,
             Map<String, @Nullable Object> fieldValues,
             String fieldPathPrefix) {
-        Map<String, ArchiveFieldDto> fieldsByCode =
+        return convertDefinitions(
+                fields.stream()
+                        .map(
+                                field ->
+                                        new FieldDefinition(
+                                                field.fieldCode(),
+                                                field.fieldName(),
+                                                field.fieldType(),
+                                                field.textLength()))
+                        .toList(),
+                fieldValues,
+                fieldPathPrefix);
+    }
+
+    Map<String, @Nullable Object> convertLineFields(
+            List<ArchiveItemLineFieldDto> fields,
+            Map<String, @Nullable Object> fieldValues,
+            String fieldPathPrefix) {
+        return convertDefinitions(
+                fields.stream()
+                        .map(
+                                field ->
+                                        new FieldDefinition(
+                                                field.fieldCode(),
+                                                field.fieldName(),
+                                                field.fieldType(),
+                                                null))
+                        .toList(),
+                fieldValues,
+                fieldPathPrefix);
+    }
+
+    private Map<String, @Nullable Object> convertDefinitions(
+            List<FieldDefinition> fields,
+            Map<String, @Nullable Object> fieldValues,
+            String fieldPathPrefix) {
+        Map<String, FieldDefinition> fieldsByCode =
                 fields.stream()
                         .collect(
                                 java.util.stream.Collectors.toMap(
-                                        ArchiveFieldDto::fieldCode, field -> field));
+                                        FieldDefinition::fieldCode, field -> field));
         for (String fieldCode : fieldValues.keySet()) {
             if (!fieldsByCode.containsKey(fieldCode)) {
                 throw badRequest(
@@ -37,7 +75,7 @@ class ArchiveItemFieldValueConverter {
         }
 
         Map<String, @Nullable Object> converted = new LinkedHashMap<>();
-        for (ArchiveFieldDto field : fields) {
+        for (FieldDefinition field : fields) {
             converted.put(
                     field.fieldCode(),
                     convertValue(field, fieldValues.get(field.fieldCode()), fieldPathPrefix));
@@ -46,20 +84,25 @@ class ArchiveItemFieldValueConverter {
     }
 
     private @Nullable Object convertValue(
-            ArchiveFieldDto field, @Nullable Object value, String fieldPathPrefix) {
+            FieldDefinition field, @Nullable Object value, String fieldPathPrefix) {
         if (value instanceof String text) {
             value = StringUtils.trimToNull(text);
         }
         if (value == null) {
             return null;
         }
+        if (value instanceof Map<?, ?>
+                || value instanceof Iterable<?>
+                || value.getClass().isArray()) {
+            throw badRequest(
+                    field.fieldName() + "格式不合法",
+                    fieldPath(fieldPathPrefix, field.fieldCode()),
+                    field.fieldName() + "格式不合法");
+        }
         try {
             return switch (field.fieldType()) {
                 case TEXT -> convertTextValue(field, value, fieldPathPrefix);
-                case INTEGER ->
-                        value instanceof Number number
-                                ? number.intValue()
-                                : Integer.parseInt(value.toString());
+                case INTEGER -> new BigDecimal(value.toString()).intValueExact();
                 case DECIMAL ->
                         value instanceof BigDecimal decimal
                                 ? decimal
@@ -71,9 +114,11 @@ class ArchiveItemFieldValueConverter {
                 case DATETIME ->
                         value instanceof LocalDateTime localDateTime
                                 ? Timestamp.valueOf(localDateTime)
-                                : Timestamp.valueOf(LocalDateTime.parse(value.toString()));
+                                : dateTimeValue(value.toString());
             };
-        } catch (DateTimeParseException | IllegalArgumentException exception) {
+        } catch (DateTimeParseException
+                | IllegalArgumentException
+                | ArithmeticException exception) {
             throw badRequest(
                     field.fieldName() + "格式不合法",
                     fieldPath(fieldPathPrefix, field.fieldCode()),
@@ -81,7 +126,13 @@ class ArchiveItemFieldValueConverter {
         }
     }
 
-    private String convertTextValue(ArchiveFieldDto field, Object value, String fieldPathPrefix) {
+    private Timestamp dateTimeValue(String value) {
+        return value.indexOf(' ') >= 0
+                ? Timestamp.valueOf(value)
+                : Timestamp.valueOf(LocalDateTime.parse(value));
+    }
+
+    private String convertTextValue(FieldDefinition field, Object value, String fieldPathPrefix) {
         String text = StringUtils.trimToNull(value.toString());
         if (text == null) {
             return "";
@@ -104,4 +155,10 @@ class ArchiveItemFieldValueConverter {
     private BadRequestException badRequest(String message, String field, String description) {
         return new BadRequestException(message, field, description);
     }
+
+    private record FieldDefinition(
+            String fieldCode,
+            String fieldName,
+            ArchiveFieldType fieldType,
+            @Nullable Integer textLength) {}
 }

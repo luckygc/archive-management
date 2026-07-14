@@ -7,6 +7,13 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.jspecify.annotations.Nullable;
 
+import github.luckygc.am.module.archive.mapper.ArchiveItemLineRowCommands.ArchiveItemLineRowDeleteCommand;
+import github.luckygc.am.module.archive.mapper.ArchiveItemLineRowCommands.ArchiveItemLineRowInsertCommand;
+import github.luckygc.am.module.archive.mapper.ArchiveItemLineRowCommands.ArchiveItemLineRowLookup;
+import github.luckygc.am.module.archive.mapper.ArchiveItemLineRowCommands.ArchiveItemLineRowPageQuery;
+import github.luckygc.am.module.archive.mapper.ArchiveItemLineRowCommands.ArchiveItemLineRowProjectionQuery;
+import github.luckygc.am.module.archive.mapper.ArchiveItemLineRowCommands.ArchiveItemLineRowUpdateCommand;
+
 @Mapper
 public interface ArchiveMapper {
 
@@ -255,6 +262,16 @@ public interface ArchiveMapper {
             @Param("sortOrder") int sortOrder,
             @Param("userId") Long userId);
 
-    List<Map<String, Object>> listItemLineRows(
-            @Param("tableName") String tableName, @Param("itemId") Long itemId);
+    List<Map<String, Object>> listItemLineRows(@Param("query") ArchiveItemLineRowPageQuery query);
+
+    List<Map<String, Object>> listItemLineRowsForProjection(
+            @Param("query") ArchiveItemLineRowProjectionQuery query);
+
+    Map<String, Object> getItemLineRow(@Param("lookup") ArchiveItemLineRowLookup lookup);
+
+    Long insertItemLineRow(@Param("command") ArchiveItemLineRowInsertCommand command);
+
+    int updateItemLineRow(@Param("command") ArchiveItemLineRowUpdateCommand command);
+
+    int deleteItemLineRow(@Param("command") ArchiveItemLineRowDeleteCommand command);
 }

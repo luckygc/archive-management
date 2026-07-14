@@ -49,12 +49,15 @@
 
 新增以下项目 API，Controller 的每个方法显式写完整路径：
 
+- `GET /api/v1/archive-items/{archiveItem}/line-tables`
 - `GET /api/v1/archive-items/{archiveItem}/line-tables/{lineTable}/rows`
 - `POST /api/v1/archive-items/{archiveItem}/line-tables/{lineTable}/rows`
 - `PATCH /api/v1/archive-items/{archiveItem}/line-tables/{lineTable}/rows/{row}`
 - `DELETE /api/v1/archive-items/{archiveItem}/line-tables/{lineTable}/rows/{row}`
 
-列表使用统一游标响应，`limit`、`cursor` 通过 URL query 提交，固定按 `lineOrder ASC, id ASC` 排序。创建使用 `CreateArchiveItemLineRowRequest`，部分更新使用 `PatchArchiveItemLineRowRequest`，响应使用 `ArchiveItemLineRowResponse`。PATCH 中 `values` 对象缺失的字段键表示不修改，显式 `null` 表示清空对应动态字段；`lineOrder` 缺失表示不修改，显式 `null` 返回 `INVALID_ARGUMENT`。Controller 在现有 Jackson `JsonNode` 边界或等价的字段出现性表示中区分缺失与显式 null，再构造语义明确的请求对象，不为此引入新的 nullable 包。
+条目范围的明细定义读取先校验档案读取权限与数据范围，只返回当前条目分类下已启用且已构建的明细表。响应使用独立只读视图，仅包含界面渲染所需的表、字段标识和展示信息，不暴露物理表名、物理列名或元数据管理属性；分类元数据维护接口继续要求元数据管理权限。
+
+行列表使用统一游标响应，`limit`、`cursor` 通过 URL query 提交，固定按 `lineOrder ASC, id ASC` 排序。创建使用 `CreateArchiveItemLineRowRequest`，部分更新使用 `PatchArchiveItemLineRowRequest`，响应使用 `ArchiveItemLineRowResponse`。PATCH 中 `values` 对象缺失的字段键表示不修改，显式 `null` 表示清空对应动态字段；`lineOrder` 缺失表示不修改，显式 `null` 返回 `INVALID_ARGUMENT`。Controller 在现有 Jackson `JsonNode` 边界或等价的字段出现性表示中区分缺失与显式 null，再构造语义明确的请求对象，不为此引入新的 nullable 包。
 
 Service 先校验档案数据范围、更新权限、档案可编辑状态、明细表已构建且属于档案分类，再把字段编码映射为元数据白名单列。动态表名和列名只能来自已验证定义，请求键和值不得直接拼接 SQL；MyBatis 负责动态行查询与写入，删除沿用逻辑删除字段。
 

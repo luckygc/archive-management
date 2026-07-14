@@ -922,16 +922,19 @@
     </select>
 
     <select id="getItemLineTable" resultType="map">
-        select id,
-               category_id,
-               table_code,
-               table_name,
-               physical_table_name,
-               sort_order,
-               enabled
-        from am_archive_item_line_table
-        where id = #{id}
-          and deleted_flag = false
+        select lt.id,
+               lt.category_id,
+               c.category_code,
+               lt.table_code,
+               lt.table_name,
+               lt.physical_table_name,
+               lt.sort_order,
+               lt.enabled
+        from am_archive_item_line_table lt
+        join am_archive_category c on c.id = lt.category_id
+                                  and c.deleted_flag = false
+        where lt.id = #{id}
+          and lt.deleted_flag = false
     </select>
 
     <select id="insertItemLineTable" resultType="long">
@@ -979,10 +982,104 @@
     </select>
 
     <select id="listItemLineRows" resultType="map">
-        select *
-        from ${tableName}
-        where item_id = #{itemId}
+        select id,
+               item_id,
+               line_order
+        <foreach collection="query.selectColumns" item="columnName">
+               , ${columnName}
+        </foreach>
+        from ${query.tableName}
+        where item_id = #{query.itemId}
+          and deleted_flag = false
+        <if test="query.cursorLineOrder != null and query.cursorId != null">
+            <choose>
+                <when test="query.previous">
+                    and (line_order &lt; #{query.cursorLineOrder}
+                         or (line_order = #{query.cursorLineOrder} and id &lt; #{query.cursorId}))
+                </when>
+                <otherwise>
+                    and (line_order &gt; #{query.cursorLineOrder}
+                         or (line_order = #{query.cursorLineOrder} and id &gt; #{query.cursorId}))
+                </otherwise>
+            </choose>
+        </if>
+        order by line_order
+        <choose>
+            <when test="query.previous">desc</when>
+            <otherwise>asc</otherwise>
+        </choose>,
+        id
+        <choose>
+            <when test="query.previous">desc</when>
+            <otherwise>asc</otherwise>
+        </choose>
+        limit #{query.rowLimit}
+    </select>
+
+    <select id="getItemLineRow" resultType="map">
+        select id,
+               item_id,
+               line_order
+        <foreach collection="lookup.selectColumns" item="columnName">
+               , ${columnName}
+        </foreach>
+        from ${lookup.tableName}
+        where id = #{lookup.rowId}
+          and item_id = #{lookup.itemId}
+          and deleted_flag = false
+    </select>
+
+    <select id="listItemLineRowsForProjection" resultType="map">
+        select id,
+               item_id,
+               line_order
+        <foreach collection="query.selectColumns" item="columnName">
+               , ${columnName}
+        </foreach>
+        from ${query.tableName}
+        where item_id = #{query.itemId}
           and deleted_flag = false
         order by line_order, id
     </select>
+
+    <select id="insertItemLineRow" resultType="long">
+        insert into ${command.tableName}
+            (item_id, line_order
+            <foreach collection="command.assignments" item="assignment">
+                , ${assignment.columnName}
+            </foreach>)
+        values
+            (#{command.itemId}, #{command.lineOrder}
+            <foreach collection="command.assignments" item="assignment">
+                , #{assignment.value}
+            </foreach>)
+        returning id
+    </select>
+
+    <update id="updateItemLineRow">
+        update ${command.tableName}
+        <set>
+            <if test="command.lineOrderPresent">
+                line_order = #{command.lineOrder},
+            </if>
+            <foreach collection="command.assignments" item="assignment">
+                ${assignment.columnName} = #{assignment.value},
+            </foreach>
+            updated_at = localtimestamp
+        </set>
+        where id = #{command.rowId}
+          and item_id = #{command.itemId}
+          and deleted_flag = false
+    </update>
+
+    <update id="deleteItemLineRow">
+        update ${command.tableName}
+        set deleted_flag = true,
+            deleted_at = localtimestamp,
+            deleted_by = #{command.userId},
+            updated_at = localtimestamp
+        where id = #{command.rowId}
+          and item_id = #{command.itemId}
+          and deleted_flag = false
+    </update>
 </mapper>

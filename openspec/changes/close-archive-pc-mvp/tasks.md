@@ -53,12 +53,12 @@
 
 ## 8. 增加明细行 CRUD 与档案编辑
 
-- [ ] 8.1 编写并运行明细行 Service 和 Controller 定向失败测试，确认因权限、数据范围、分类归属、锁定状态、PATCH 出现性语义、路径资源一致性或逻辑删除行为缺失而失败
-- [ ] 8.2 实现明细行查询、创建、PATCH、删除 Service 与完整 Controller 路径；列表使用 `CursorPageResponse`、URL query 中的 `limit`/`cursor` 和 `lineOrder ASC, id ASC`
-- [ ] 8.3 使用 Jackson `JsonNode` 边界或等价出现性表示构造 `PatchArchiveItemLineRowRequest`：`values` 缺失键不修改、显式 null 清空，`lineOrder` 缺失不修改、显式 null 返回 `INVALID_ARGUMENT`
-- [ ] 8.4 在 MyBatis 中实现白名单动态表和列映射、参数绑定、部分字段更新与逻辑删除，禁止请求标识符直接拼接 SQL
-- [ ] 8.5 编写并运行明细行前端客户端和编辑组件定向失败测试，确认因新增、PATCH、删除或只读行为缺失而失败，再在档案编辑器中完成对应交互
-- [ ] 8.6 运行明细行后端 Service/Controller 与前端客户端/组件定向测试，并执行同次 Java 变更的 Spotless 格式化
+- [x] 8.1 编写并运行明细行 Service 和 Controller 定向失败测试，确认因权限、数据范围、分类归属、锁定状态、PATCH 出现性语义、路径资源一致性或逻辑删除行为缺失而失败
+- [x] 8.2 实现条目范围只读明细定义与明细行查询、创建、PATCH、删除 Service 及完整 Controller 路径；定义响应不暴露物理标识符，行列表使用 `CursorPageResponse`、URL query 中的 `limit`/`cursor` 和 `lineOrder ASC, id ASC`
+- [x] 8.3 使用 Jackson `JsonNode` 边界或等价出现性表示构造 `PatchArchiveItemLineRowRequest`：`values` 缺失键不修改、显式 null 清空，`lineOrder` 缺失不修改、显式 null 返回 `INVALID_ARGUMENT`
+- [x] 8.4 在 MyBatis 中实现白名单动态表和列映射、参数绑定、部分字段更新与逻辑删除，禁止请求标识符直接拼接 SQL
+- [x] 8.5 编写并运行明细行前端客户端和编辑组件定向失败测试，确认因新增、PATCH、删除或只读行为缺失而失败，再在档案编辑器中完成对应交互
+- [x] 8.6 运行明细行后端 Service/Controller 与前端客户端/组件定向测试，并执行同次 Java 变更的 Spotless 格式化
 
 ## 9. 统一路由、菜单和按钮权限
 

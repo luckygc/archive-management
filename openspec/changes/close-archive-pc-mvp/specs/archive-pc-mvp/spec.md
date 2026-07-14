@@ -179,6 +179,15 @@
 
 系统 SHALL 将已构建明细表的行数据作为档案条目下的子资源进行查询、创建、修改和逻辑删除。
 
+#### Scenario: 读取条目范围明细定义
+
+- **WHEN** 具备档案读取权限的用户打开数据范围内的档案详情或编辑器
+- **THEN** 服务端 SHALL 通过 `GET /api/v1/archive-items/{archiveItem}/line-tables` 返回该条目分类下已启用且已构建的明细表和字段定义
+- **AND** 响应 SHALL 只包含界面需要的表与字段标识、名称、类型和排序
+- **AND** 响应 SHALL NOT 包含物理表名、物理列名或元数据管理属性
+- **AND** 服务端 SHALL NOT 要求用户具备 `archive:metadata:manage` 权限
+- **AND** 服务端 SHALL 校验 `archive:item:read` 权限和条目数据范围
+
 #### Scenario: 分页读取明细行
 
 - **WHEN** 用户读取档案指定明细表的行数据

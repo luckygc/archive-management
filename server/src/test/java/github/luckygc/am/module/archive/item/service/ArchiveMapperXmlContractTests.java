@@ -20,6 +20,50 @@ import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 class ArchiveMapperXmlContractTests {
 
     @Test
+    @DisplayName("明细行列表使用显式投影、复合游标与 pageSize 加一窗口")
+    void lineRowListShouldUseExplicitProjectionAndCompositeCursor() throws Exception {
+        String sql = selectStatement(archiveMapperXml(), "listItemLineRows");
+
+        assertThat(mapperParamNames("listItemLineRows")).containsExactly("query");
+        assertThat(sql).doesNotContain("select *");
+        assertThat(sql).contains("collection=\"query.selectColumns\"");
+        assertThat(sql).contains("line_order &gt; #{query.cursorLineOrder}");
+        assertThat(sql).contains("id &gt; #{query.cursorId}");
+        assertThat(sql).contains("line_order &lt; #{query.cursorLineOrder}");
+        assertThat(sql).contains("id &lt; #{query.cursorId}");
+        assertThat(sql).contains("limit #{query.rowLimit}");
+    }
+
+    @Test
+    @DisplayName("明细行写入仅拼接服务端标识符并参数绑定所有请求值")
+    void lineRowWritesShouldBindValuesAndScopeByPath() throws Exception {
+        String insert = selectStatement(archiveMapperXml(), "insertItemLineRow");
+        String update = updateStatement(archiveMapperXml(), "updateItemLineRow");
+        String delete = updateStatement(archiveMapperXml(), "deleteItemLineRow");
+
+        assertThat(insert).contains("${command.tableName}", "${assignment.columnName}");
+        assertThat(insert).contains("#{assignment.value}");
+        assertThat(insert).doesNotContain("${assignment.value}");
+        assertThat(update).contains("id = #{command.rowId}", "item_id = #{command.itemId}");
+        assertThat(delete)
+                .contains(
+                        "deleted_flag = true",
+                        "deleted_at = localtimestamp",
+                        "deleted_by = #{command.userId}",
+                        "item_id = #{command.itemId}");
+    }
+
+    @Test
+    @DisplayName("搜索投影明细查询不使用星号暴露审计列")
+    void lineProjectionShouldUseExplicitColumns() throws Exception {
+        String sql = selectStatement(archiveMapperXml(), "listItemLineRowsForProjection");
+
+        assertThat(sql).doesNotContain("select *");
+        assertThat(sql).contains("collection=\"query.selectColumns\"");
+        assertThat(sql).contains("deleted_flag = false", "order by line_order, id");
+    }
+
+    @Test
     @DisplayName("动态档案表查询 Mapper 参数按语义分组")
     void dynamicItemQueriesShouldUseGroupedMapperParameters() {
         assertThat(mapperParamNames("listDynamicItems"))
@@ -158,6 +202,12 @@ class ArchiveMapperXmlContractTests {
     private String selectStatement(String xml, String id) {
         int start = xml.indexOf("<select id=\"" + id + "\"");
         int end = xml.indexOf("</select>", start);
+        return xml.substring(start, end);
+    }
+
+    private String updateStatement(String xml, String id) {
+        int start = xml.indexOf("<update id=\"" + id + "\"");
+        int end = xml.indexOf("</update>", start);
         return xml.substring(start, end);
     }
 

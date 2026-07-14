@@ -2,14 +2,21 @@ import { describe, expect, it, vi } from "vite-plus/test";
 
 import {
     buildArchiveLineTable,
+    createArchiveItemLineRow,
     createArchiveLineField,
     createArchiveLineTable,
+    deleteArchiveItemLineRow,
+    listArchiveItemLineTables,
+    listArchiveItemLineRows,
     listArchiveLineFields,
     listArchiveLineTables,
+    patchArchiveItemLineRow,
 } from "./archive-line-tables";
 
 const httpClientMock = vi.hoisted(() => ({
+    delete: vi.fn(),
     get: vi.fn(),
+    patch: vi.fn(),
     post: vi.fn(),
 }));
 
@@ -66,6 +73,46 @@ describe("archive line table API", () => {
 
         expect(httpClientMock.post).toHaveBeenCalledWith(
             "/api/v1/archive-item-line-tables/12:build",
+        );
+    });
+
+    it("使用档案与明细表下的游标集合资源列出和创建行", async () => {
+        httpClientMock.get.mockResolvedValue({ items: [] });
+        httpClientMock.post.mockResolvedValue({ id: 9 });
+        const payload = { lineOrder: 0, values: { amount: "12.50" } };
+
+        await listArchiveItemLineRows(3, 4, { limit: 100, cursor: "next-token" });
+        await createArchiveItemLineRow(3, 4, payload);
+
+        expect(httpClientMock.get).toHaveBeenCalledWith(
+            "/api/v1/archive-items/3/line-tables/4/rows?limit=100&cursor=next-token",
+        );
+        expect(httpClientMock.post).toHaveBeenCalledWith(
+            "/api/v1/archive-items/3/line-tables/4/rows",
+            payload,
+        );
+    });
+
+    it("普通读取者通过档案范围资源加载已构建明细定义", async () => {
+        httpClientMock.get.mockResolvedValue({ items: [] });
+
+        await listArchiveItemLineTables(3);
+
+        expect(httpClientMock.get).toHaveBeenCalledWith("/api/v1/archive-items/3/line-tables");
+    });
+
+    it("PATCH 保留显式 null 且删除使用精确行资源", async () => {
+        const payload = { values: { remark: null } };
+
+        await patchArchiveItemLineRow(3, 4, 9, payload);
+        await deleteArchiveItemLineRow(3, 4, 9);
+
+        expect(httpClientMock.patch).toHaveBeenCalledWith(
+            "/api/v1/archive-items/3/line-tables/4/rows/9",
+            payload,
+        );
+        expect(httpClientMock.delete).toHaveBeenCalledWith(
+            "/api/v1/archive-items/3/line-tables/4/rows/9",
         );
     });
 });

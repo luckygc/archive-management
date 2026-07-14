@@ -8,6 +8,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jspecify.annotations.Nullable;
@@ -15,7 +16,9 @@ import org.springframework.jdbc.support.JdbcUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.archive.ArchiveLevel;
+import github.luckygc.am.module.archive.mapper.ArchiveItemLineRowCommands.ArchiveItemLineRowProjectionQuery;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.metadata.ArchiveDynamicTableNames;
 import github.luckygc.am.module.archive.metadata.service.ArchiveCategoryService;
@@ -29,6 +32,8 @@ public class ArchiveItemSearchProjectionService {
     private static final String SEARCH_EVENT_UPSERT = "UPSERT";
     private static final String SEARCH_EVENT_DELETE = "DELETE";
     private static final int SEARCH_OUTBOX_DRAIN_LIMIT = 100;
+    private static final int POSTGRESQL_IDENTIFIER_LIMIT = 63;
+    private static final Pattern IDENTIFIER_PATTERN = Pattern.compile("[a-z][a-z0-9_]*");
     private static final DateTimeFormatter DATE_TIME_FORMATTER =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -145,13 +150,22 @@ public class ArchiveItemSearchProjectionService {
         for (Map<String, @Nullable Object> lineTable :
                 archiveMapper.listItemLineTables(categoryId)) {
             String tableName = string(lineTable, "physicalTableName");
-            if (StringUtils.isBlank(tableName) || archiveMapper.tableExists(tableName) == 0) {
+            validateIdentifier(tableName, "动态明细表名非法");
+            if (archiveMapper.tableExists(tableName) == 0) {
                 continue;
             }
             List<Map<String, @Nullable Object>> fields =
                     archiveMapper.listItemLineFields(number(lineTable, "id").longValue());
+            List<String> selectColumns = new ArrayList<>();
+            for (Map<String, @Nullable Object> field : fields) {
+                String columnName = string(field, "columnName");
+                validateIdentifier(columnName, "字段列名非法");
+                selectColumns.add(columnName);
+            }
             List<Map<String, @Nullable Object>> rows =
-                    archiveMapper.listItemLineRows(tableName, itemId);
+                    archiveMapper.listItemLineRowsForProjection(
+                            new ArchiveItemLineRowProjectionQuery(
+                                    tableName, itemId, selectColumns));
             for (Map<String, @Nullable Object> row : rows) {
                 StringBuilder lineText = new StringBuilder();
                 for (Map<String, @Nullable Object> field : fields) {
@@ -276,6 +290,14 @@ public class ArchiveItemSearchProjectionService {
             return row.get(key);
         }
         return row.get(JdbcUtils.convertPropertyNameToUnderscoreName(key));
+    }
+
+    private void validateIdentifier(@Nullable String value, String message) {
+        if (StringUtils.isBlank(value)
+                || value.length() > POSTGRESQL_IDENTIFIER_LIMIT
+                || !IDENTIFIER_PATTERN.matcher(value).matches()) {
+            throw new BadRequestException(message);
+        }
     }
 
     public record SearchProjectionRebuildResult(Long categoryId, int rebuiltCount) {}

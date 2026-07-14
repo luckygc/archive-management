@@ -37,3 +37,42 @@ export interface CreateArchiveLineFieldRequest {
     exactSearchable: boolean;
     sortOrder: number;
 }
+
+export interface ArchiveItemLineRowResponse {
+    id: number;
+    archiveItemId: number;
+    lineTableId: number;
+    lineOrder: number;
+    values: Record<string, unknown | null>;
+}
+
+export interface ArchiveItemLineTableDefinitionResponse {
+    id: number;
+    tableCode: string;
+    tableName: string;
+    sortOrder: number;
+    fields: ArchiveItemLineFieldDefinitionResponse[];
+}
+
+export interface ArchiveItemLineFieldDefinitionResponse {
+    id: number;
+    fieldCode: string;
+    fieldName: string;
+    fieldType: ArchiveFieldType;
+    sortOrder: number;
+}
+
+export interface ListArchiveItemLineRowsQuery {
+    limit?: number;
+    cursor?: string;
+}
+
+export interface CreateArchiveItemLineRowRequest {
+    lineOrder: number;
+    values: Record<string, unknown | null>;
+}
+
+export interface PatchArchiveItemLineRowRequest {
+    lineOrder?: number;
+    values?: Record<string, unknown | null>;
+}

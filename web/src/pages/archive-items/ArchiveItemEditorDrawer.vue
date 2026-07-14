@@ -3,6 +3,7 @@ import type { FormInstance } from "element-plus";
 import { computed, ref } from "vue";
 
 import DynamicArchiveFields from "@/pages/archive-library/DynamicArchiveFields.vue";
+import ArchiveItemLineRows from "./ArchiveItemLineRows.vue";
 import type {
     ArchiveCategoryDto,
     ArchiveFieldDto,
@@ -261,6 +262,11 @@ function fieldErrorGroup(prefix: "physicalFields" | "dynamicFields") {
                     :disabled="formDisabled"
                     :field-errors="dynamicFieldErrors"
                     :surface="state.mode === 'detail' ? 'detail' : 'edit'"
+                />
+                <ArchiveItemLineRows
+                    v-if="state.archiveItemId && detail"
+                    :archive-item-id="state.archiveItemId"
+                    :readonly="formDisabled"
                 />
                 <template v-if="state.mode !== 'detail'">
                     <el-button :disabled="saving" @click="emit('close')">取消</el-button>

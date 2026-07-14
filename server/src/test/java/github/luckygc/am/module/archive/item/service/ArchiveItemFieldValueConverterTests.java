@@ -3,6 +3,7 @@ package github.luckygc.am.module.archive.item.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.sql.Timestamp;
 import java.util.List;
 import java.util.Map;
 
@@ -20,6 +21,50 @@ import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.Ar
 class ArchiveItemFieldValueConverterTests {
 
     private final ArchiveItemFieldValueConverter converter = new ArchiveItemFieldValueConverter();
+
+    @Test
+    @DisplayName("整数字段拒绝小数而不是静默截断")
+    void integerFieldShouldRejectFractionalNumber() {
+        ArchiveFieldDto field = field("count", "数量", ArchiveFieldType.INTEGER, null);
+
+        assertThatThrownBy(
+                        () ->
+                                converter.convertFields(
+                                        List.of(field), Map.of("count", 1.5), "values"))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("数量格式不合法");
+    }
+
+    @Test
+    @DisplayName("日期时间字段接受界面使用的空格分隔格式")
+    void dateTimeFieldShouldAcceptDisplayFormat() {
+        ArchiveFieldDto field = field("signed_at", "签署时间", ArchiveFieldType.DATETIME, null);
+
+        Map<String, Object> converted =
+                converter.convertFields(
+                        List.of(field), Map.of("signed_at", "2026-07-15 09:30:00"), "values");
+
+        assertThat(converted.get("signed_at")).isEqualTo(Timestamp.valueOf("2026-07-15 09:30:00"));
+    }
+
+    @Test
+    @DisplayName("动态字段拒绝对象和数组值")
+    void fieldShouldRejectStructuredValue() {
+        ArchiveFieldDto field = field("title", "题名", ArchiveFieldType.TEXT, null);
+
+        assertThatThrownBy(
+                        () ->
+                                converter.convertFields(
+                                        List.of(field),
+                                        Map.of("title", Map.of("nested", "value")),
+                                        "values"))
+                .isInstanceOfSatisfying(
+                        BadRequestException.class,
+                        exception ->
+                                assertThat(exception.fieldViolations())
+                                        .extracting("field")
+                                        .containsExactly("values.title"));
+    }
 
     @Test
     @DisplayName("实物字段格式错误返回实物字段路径")
