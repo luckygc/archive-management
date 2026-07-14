@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import { ElMessage, ElMessageBox } from "element-plus";
-import { computed, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref } from "vue";
 
-import { errorMessage } from "@archive-management/frontend-core/api";
+import { errorMessage, HttpClientError } from "@archive-management/frontend-core/api";
 
+import {
+    listArchiveRetentionPeriods,
+    listArchiveSecurityLevels,
+} from "@/shared/api/archive-metadata";
 import {
     createArchiveRecord,
     downloadArchiveImportTemplate,
@@ -12,6 +16,10 @@ import {
     importArchiveRecords,
     updateArchiveRecord,
 } from "@/shared/api/archive-records";
+import type {
+    ArchiveRetentionPeriodDto,
+    ArchiveSecurityLevelDto,
+} from "@/shared/types/archive-metadata";
 import type {
     ArchiveElectronicStatus,
     ArchiveRecordDetailDto,
@@ -62,12 +70,18 @@ const {
 } = useArchiveItemSearch();
 const editorState = ref<{ mode: "create" | "detail" | "edit"; archiveItemId?: number }>();
 const editorDetail = ref<ArchiveRecordDetailDto>();
+const securityLevels = ref<ArchiveSecurityLevelDto[]>([]);
+const retentionPeriods = ref<ArchiveRetentionPeriodDto[]>([]);
+const editorFieldErrors = reactive<Record<string, string>>({});
 const editorForm = reactive({
     categoryId: undefined as number | undefined,
     fondsCode: "",
     archiveNo: "",
     archiveYear: new Date().getFullYear(),
     electronicStatus: "DRAFT" as ArchiveElectronicStatus,
+    securityLevelId: undefined as number | undefined,
+    retentionPeriodId: undefined as number | undefined,
+    physicalFields: {} as Record<string, unknown>,
     dynamicFields: {} as Record<string, unknown>,
 });
 const downloadingTemplate = ref(false);
@@ -99,6 +113,22 @@ const { busyAction, lock, remove, unlock } = useArchiveItemLifecycle(refresh);
 const editorFields = computed(() =>
     editorState.value?.mode === "create" ? fields.value : (editorDetail.value?.fields ?? []),
 );
+const editorPhysicalFields = computed(() => editorDetail.value?.physicalFields ?? []);
+
+onMounted(loadEditorReferences);
+
+async function loadEditorReferences() {
+    try {
+        const [securityResponse, retentionResponse] = await Promise.all([
+            listArchiveSecurityLevels(true),
+            listArchiveRetentionPeriods(true),
+        ]);
+        securityLevels.value = securityResponse.items.filter((item) => item.enabled);
+        retentionPeriods.value = retentionResponse.items.filter((item) => item.enabled);
+    } catch (error) {
+        ElMessage.error(errorMessage(error, "加载密级和保管期限失败"));
+    }
+}
 async function downloadTemplate() {
     if (!queryForm.categoryId) return ElMessage.warning("请先选择档案分类");
     downloadingTemplate.value = true;
@@ -159,8 +189,12 @@ function openCreateEditor() {
         archiveNo: "",
         archiveYear: new Date().getFullYear(),
         electronicStatus: "DRAFT",
+        securityLevelId: undefined,
+        retentionPeriodId: undefined,
+        physicalFields: {},
         dynamicFields: {},
     });
+    clearEditorFieldErrors();
     editorDetail.value = undefined;
     editorState.value = { mode: "create" };
 }
@@ -178,15 +212,18 @@ async function openRecordEditor(value: unknown, mode: "detail" | "edit") {
         const detail = await getArchiveRecord(id, mode === "detail" ? "DETAIL" : "EDIT");
         if (editorState.value?.archiveItemId !== id || editorState.value.mode !== mode) return;
         editorDetail.value = detail;
-        if (mode === "edit")
-            Object.assign(editorForm, {
-                categoryId: detail.category.id,
-                fondsCode: detail.item.fondsCode,
-                archiveNo: detail.item.archiveNo ?? "",
-                archiveYear: detail.item.archiveYear,
-                electronicStatus: detail.item.electronicStatus,
-                dynamicFields: { ...detail.dynamicFields },
-            });
+        Object.assign(editorForm, {
+            categoryId: detail.category.id,
+            fondsCode: detail.item.fondsCode,
+            archiveNo: detail.item.archiveNo ?? "",
+            archiveYear: detail.item.archiveYear,
+            electronicStatus: detail.item.electronicStatus,
+            securityLevelId: detail.item.securityLevelId,
+            retentionPeriodId: detail.item.retentionPeriodId,
+            physicalFields: { ...detail.physicalFieldValues },
+            dynamicFields: { ...detail.dynamicFields },
+        });
+        clearEditorFieldErrors();
     } catch (error) {
         ElMessage.error(errorMessage(error, "加载档案详情失败"));
         editorState.value = undefined;
@@ -201,11 +238,16 @@ async function saveRecord() {
         archiveNo: editorForm.archiveNo.trim() || undefined,
         archiveYear: editorForm.archiveYear,
         electronicStatus: editorForm.electronicStatus,
-        physicalFields: {},
+        securityLevelId: editorForm.securityLevelId,
+        retentionPeriodId: editorForm.retentionPeriodId,
+        physicalFields: normalizeArchiveRecordFormValues({
+            dynamicFields: editorForm.physicalFields,
+        }).dynamicFields,
         dynamicFields: normalizeArchiveRecordFormValues({ dynamicFields: editorForm.dynamicFields })
             .dynamicFields,
     };
     const mode = editorState.value.mode;
+    clearEditorFieldErrors();
     saving.value = true;
     try {
         if (mode === "create")
@@ -216,9 +258,62 @@ async function saveRecord() {
         editorState.value = undefined;
         await refresh();
     } catch (error) {
-        ElMessage.error(errorMessage(error, mode === "create" ? "创建档案失败" : "更新档案失败"));
+        applyEditorFieldViolations(error);
+        const fallback = mode === "create" ? "创建档案失败" : "更新档案失败";
+        const message = errorMessage(error, fallback);
+        ElMessage.error(
+            error instanceof HttpClientError && error.traceId
+                ? `${message}（追踪 ID：${error.traceId}）`
+                : message,
+        );
     } finally {
         saving.value = false;
+    }
+}
+
+function closeEditor() {
+    editorState.value = undefined;
+    editorDetail.value = undefined;
+    clearEditorFieldErrors();
+}
+
+function clearEditorFieldErrors() {
+    for (const field of Object.keys(editorFieldErrors)) delete editorFieldErrors[field];
+}
+
+function applyEditorFieldViolations(error: unknown) {
+    if (!(error instanceof HttpClientError)) return;
+    const physicalFieldCodes = new Set(
+        (editorDetail.value?.physicalFields ?? []).map((field) => field.fieldCode),
+    );
+    const dynamicFieldCodes = new Set(
+        (editorDetail.value?.fields ?? []).map((field) => field.fieldCode),
+    );
+    const fixedFields = new Set([
+        "categoryId",
+        "fondsCode",
+        "archiveNo",
+        "archiveYear",
+        "electronicStatus",
+        "securityLevelId",
+        "retentionPeriodId",
+    ]);
+    for (const violation of error.fieldViolations) {
+        if (!violation.field || !violation.message) continue;
+        const field = violation.field;
+        let targetField: string | undefined;
+        if (field.startsWith("physicalFields.")) targetField = field;
+        else if (field.startsWith("dynamicFields.")) {
+            const fieldCode = field.slice("dynamicFields.".length);
+            targetField =
+                physicalFieldCodes.has(fieldCode) && !dynamicFieldCodes.has(fieldCode)
+                    ? `physicalFields.${fieldCode}`
+                    : field;
+        } else if (fixedFields.has(field)) targetField = field;
+        if (targetField)
+            editorFieldErrors[targetField] = editorFieldErrors[targetField]
+                ? `${editorFieldErrors[targetField]}；${violation.message}`
+                : violation.message;
     }
 }
 </script>
@@ -319,11 +414,15 @@ async function saveRecord() {
             :detail="editorDetail"
             :form="editorForm"
             :fields="editorFields"
+            :physical-fields="editorPhysicalFields"
             :categories="categories"
             :fonds="fonds"
+            :security-levels="securityLevels"
+            :retention-periods="retentionPeriods"
+            :field-errors="editorFieldErrors"
             :loading="editorLoading"
             :saving="saving"
-            @close="editorState = undefined"
+            @close="closeEditor"
             @save="saveRecord"
         />
     </section>

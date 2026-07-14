@@ -1,9 +1,10 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/vue";
 import ElementPlus from "element-plus";
 import { createPinia, setActivePinia } from "pinia";
-import { defineComponent } from "vue";
+import { defineComponent, h } from "vue";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { HttpClientError } from "@archive-management/frontend-core/api";
 import { usePermissionStore } from "@/stores/permissionStore";
 import ArchiveItemManagementPage from "./ArchiveItemManagementPage.vue";
 
@@ -24,7 +25,9 @@ const mocks = vi.hoisted(() => ({
     listArchiveFields: vi.fn(),
     listArchiveItemAudits: vi.fn(),
     listArchiveItemElectronicFiles: vi.fn(),
+    listArchiveRetentionPeriods: vi.fn(),
     listArchiveRelatedFilterCategories: vi.fn(),
+    listArchiveSecurityLevels: vi.fn(),
     searchArchiveRecords: vi.fn(),
     unbindArchiveItemElectronicFile: vi.fn(),
     updateArchiveRecord: vi.fn(),
@@ -53,7 +56,46 @@ vi.mock("@/pages/archive-library/ArchiveResultTable.vue", () => ({
     }),
 }));
 vi.mock("@/pages/archive-library/DynamicArchiveFields.vue", () => ({
-    default: defineComponent({ template: `<div />` }),
+    default: defineComponent({
+        props: ["modelValue", "fields", "disabled", "fieldErrors"],
+        emits: ["update:modelValue"],
+        setup(props, { emit }) {
+            return () =>
+                h(
+                    "div",
+                    (
+                        props.fields as Array<{ id: number; fieldCode: string; fieldName: string }>
+                    ).map((field) =>
+                        h("label", { key: field.id }, [
+                            field.fieldName,
+                            h("input", {
+                                "aria-label": field.fieldName,
+                                disabled: props.disabled,
+                                value: (props.modelValue as Record<string, unknown>)[
+                                    field.fieldCode
+                                ],
+                                onInput: (event: Event) =>
+                                    emit("update:modelValue", {
+                                        ...(props.modelValue as Record<string, unknown>),
+                                        [field.fieldCode]: (event.target as HTMLInputElement).value,
+                                    }),
+                            }),
+                            (props.fieldErrors as Record<string, string> | undefined)?.[
+                                field.fieldCode
+                            ]
+                                ? h(
+                                      "span",
+                                      { role: "alert" },
+                                      (props.fieldErrors as Record<string, string>)[
+                                          field.fieldCode
+                                      ],
+                                  )
+                                : undefined,
+                        ]),
+                    ),
+                );
+        },
+    }),
     normalizeArchiveRecordFormValues: (value: unknown) => value,
 }));
 
@@ -62,6 +104,46 @@ beforeEach(() => {
     mocks.listArchiveCategories.mockResolvedValue({ items: [] });
     mocks.listArchiveFonds.mockResolvedValue({ items: [] });
     mocks.listArchiveFields.mockResolvedValue({ items: [] });
+    mocks.listArchiveSecurityLevels.mockResolvedValue({
+        items: [
+            {
+                id: 2,
+                levelName: "秘密",
+                enabled: true,
+                sortOrder: 1,
+                createdAt: "",
+                updatedAt: "",
+            },
+            {
+                id: 20,
+                levelName: "绝密（停用）",
+                enabled: false,
+                sortOrder: 2,
+                createdAt: "",
+                updatedAt: "",
+            },
+        ],
+    });
+    mocks.listArchiveRetentionPeriods.mockResolvedValue({
+        items: [
+            {
+                id: 3,
+                periodName: "长期",
+                enabled: true,
+                sortOrder: 1,
+                createdAt: "",
+                updatedAt: "",
+            },
+            {
+                id: 30,
+                periodName: "永久（停用）",
+                enabled: false,
+                sortOrder: 2,
+                createdAt: "",
+                updatedAt: "",
+            },
+        ],
+    });
     mocks.listArchiveRelatedFilterCategories.mockResolvedValue({ items: [] });
     mocks.searchArchiveRecords.mockResolvedValue({ fields: [], items: [{ id: 1 }] });
     mocks.busyAction.value = undefined;
@@ -216,6 +298,73 @@ describe("ArchiveItemManagementPage", () => {
         expect(screen.queryByText("管理列表加载失败")).not.toBeInTheDocument();
         expect(screen.getByRole("button", { name: "下一页" })).toBeEnabled();
     });
+    it("编辑时加载启用参考数据并分别回填提交实物字段和动态字段", async () => {
+        mocks.searchArchiveRecords.mockResolvedValue({ fields: [], items: [{ id: 9 }] });
+        mocks.getArchiveRecord.mockResolvedValue(detail());
+        renderPage(["archive:item:read", "archive:item:update"]);
+
+        await waitFor(() => {
+            expect(mocks.listArchiveSecurityLevels).toHaveBeenCalledWith(true);
+            expect(mocks.listArchiveRetentionPeriods).toHaveBeenCalledWith(true);
+        });
+        await fireEvent.click(await screen.findByRole("button", { name: "提交查询" }));
+        await fireEvent.click(await screen.findByRole("button", { name: "编辑" }));
+
+        expect((await screen.findAllByText("秘密")).length).toBeGreaterThan(0);
+        expect(screen.getAllByText("长期").length).toBeGreaterThan(0);
+        expect(screen.queryByText("绝密（停用）")).not.toBeInTheDocument();
+        expect(screen.queryByText("永久（停用）")).not.toBeInTheDocument();
+        expect(screen.getByLabelText("盒号")).toHaveValue("BOX-001");
+        expect(screen.getByLabelText("题名")).toHaveValue("建设工程档案");
+        await fireEvent.update(screen.getByLabelText("盒号"), "BOX-009");
+        await fireEvent.update(screen.getByLabelText("题名"), "建设工程档案（修订）");
+        await fireEvent.click(screen.getByRole("button", { name: "保存" }));
+
+        await waitFor(() =>
+            expect(mocks.updateArchiveRecord).toHaveBeenCalledWith(
+                9,
+                expect.objectContaining({
+                    securityLevelId: 2,
+                    retentionPeriodId: 3,
+                    physicalFields: { box_no: "BOX-009" },
+                    dynamicFields: { title: "建设工程档案（修订）" },
+                }),
+            ),
+        );
+    });
+    it("字段校验失败时回填固定、实物和动态字段错误并保留用户输入", async () => {
+        mocks.searchArchiveRecords.mockResolvedValue({ fields: [], items: [{ id: 9 }] });
+        mocks.getArchiveRecord.mockResolvedValue(detail());
+        mocks.updateArchiveRecord.mockRejectedValue(
+            new HttpClientError(
+                "字段校验失败",
+                400,
+                "INVALID_ARGUMENT",
+                [
+                    { field: "archiveNo", message: "档号已存在" },
+                    // 当前服务端复用动态字段转换器，实物字段可能仍返回 dynamicFields 前缀。
+                    { field: "dynamicFields.box_no", message: "盒号格式不合法" },
+                    { field: "dynamicFields.title", message: "题名长度不能超过 200" },
+                ],
+                "trace-task-4",
+            ),
+        );
+        renderPage(["archive:item:read", "archive:item:update"]);
+        await fireEvent.click(await screen.findByRole("button", { name: "提交查询" }));
+        await fireEvent.click(await screen.findByRole("button", { name: "编辑" }));
+        await fireEvent.update(await screen.findByLabelText("档号"), "A-009");
+        await fireEvent.update(screen.getByLabelText("盒号"), "BAD-BOX");
+        await fireEvent.update(screen.getByLabelText("题名"), "仍需修订的题名");
+        await fireEvent.click(screen.getByRole("button", { name: "保存" }));
+
+        expect(await screen.findByText("档号已存在")).toBeInTheDocument();
+        expect(screen.getByText("盒号格式不合法")).toBeInTheDocument();
+        expect(screen.getByText("题名长度不能超过 200")).toBeInTheDocument();
+        expect(screen.getByLabelText("档号")).toHaveValue("A-009");
+        expect(screen.getByLabelText("盒号")).toHaveValue("BAD-BOX");
+        expect(screen.getByLabelText("题名")).toHaveValue("仍需修订的题名");
+        expect(await screen.findByText(/trace-task-4/)).toBeInTheDocument();
+    });
 });
 function renderPage(permissionCodes: string[], superAdmin = false) {
     const pinia = createPinia();
@@ -223,4 +372,77 @@ function renderPage(permissionCodes: string[], superAdmin = false) {
     usePermissionStore().permissionCodes = permissionCodes;
     usePermissionStore().superAdmin = superAdmin;
     return render(ArchiveItemManagementPage, { global: { plugins: [ElementPlus, pinia] } });
+}
+
+const category = {
+    id: 1,
+    schemeId: 1,
+    categoryCode: "contract",
+    categoryName: "合同档案",
+    managementMode: "ITEM_ONLY" as const,
+    enabled: true,
+    sortOrder: 0,
+    tableStatus: "BUILT" as const,
+    createdAt: "",
+    updatedAt: "",
+};
+
+function detail() {
+    const baseField = {
+        archiveLevel: "ITEM" as const,
+        categoryId: 1,
+        createdAt: "",
+        detailColSpan: 1,
+        detailSortOrder: 1,
+        detailVisible: true,
+        editColSpan: 1,
+        editControl: "INPUT" as const,
+        editSortOrder: 1,
+        editVisible: true,
+        enabled: true,
+        exactSearchable: false,
+        dataScopeFilterable: false,
+        fieldType: "TEXT" as const,
+        listSortOrder: 1,
+        listVisible: true,
+        sortOrder: 1,
+        textLength: 200,
+        updatedAt: "",
+    };
+    return {
+        item: {
+            id: 9,
+            fondsCode: "F001",
+            fondsName: "默认全宗",
+            categoryCode: "contract",
+            categoryName: "合同档案",
+            archiveNo: "A-001",
+            electronicStatus: "DRAFT",
+            securityLevelId: 2,
+            retentionPeriodId: 3,
+            archiveYear: 2026,
+            lockedFlag: false,
+        },
+        category,
+        fields: [
+            {
+                ...baseField,
+                id: 11,
+                fieldCode: "title",
+                fieldName: "题名",
+                columnName: "f_title",
+            },
+        ],
+        dynamicFields: { title: "建设工程档案" },
+        physicalFields: [
+            {
+                ...baseField,
+                id: 12,
+                fieldCode: "box_no",
+                fieldName: "盒号",
+                columnName: "f_box_no",
+            },
+        ],
+        physicalFieldValues: { box_no: "BOX-001" },
+    };
 }

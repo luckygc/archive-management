@@ -3,7 +3,12 @@ import type { FormInstance } from "element-plus";
 import { computed, ref } from "vue";
 
 import DynamicArchiveFields from "@/pages/archive-library/DynamicArchiveFields.vue";
-import type { ArchiveCategoryDto, ArchiveFieldDto } from "@/shared/types/archive-metadata";
+import type {
+    ArchiveCategoryDto,
+    ArchiveFieldDto,
+    ArchiveRetentionPeriodDto,
+    ArchiveSecurityLevelDto,
+} from "@/shared/types/archive-metadata";
 import type {
     ArchiveElectronicStatus,
     ArchiveRecordDetailDto,
@@ -18,30 +23,58 @@ const props = defineProps<{
         archiveNo: string;
         archiveYear: number;
         electronicStatus: ArchiveElectronicStatus;
+        securityLevelId?: number;
+        retentionPeriodId?: number;
+        physicalFields: Record<string, unknown>;
         dynamicFields: Record<string, unknown>;
     };
     fields: ArchiveFieldDto[];
+    physicalFields: ArchiveFieldDto[];
     categories: ArchiveCategoryDto[];
     fonds: Array<{ fondsCode: string; fondsName: string }>;
+    securityLevels: ArchiveSecurityLevelDto[];
+    retentionPeriods: ArchiveRetentionPeriodDto[];
+    fieldErrors: Record<string, string>;
     loading: boolean;
     saving: boolean;
 }>();
 
 const emit = defineEmits<{ close: []; save: [] }>();
 const formRef = ref<FormInstance>();
-const detailFields = computed(() =>
-    [...(props.detail?.fields ?? [])]
-        .filter((field) => field.enabled && field.detailVisible)
-        .sort(
-            (left, right) =>
-                left.detailSortOrder - right.detailSortOrder || left.sortOrder - right.sortOrder,
-        ),
+const formDisabled = computed(
+    () => props.state?.mode === "detail" || props.detail?.item.lockedFlag === true,
 );
+const enabledSecurityLevels = computed(() => props.securityLevels.filter((item) => item.enabled));
+const enabledRetentionPeriods = computed(() =>
+    props.retentionPeriods.filter((item) => item.enabled),
+);
+const unavailableSecurityLevelId = computed(() => {
+    const currentId = props.form.securityLevelId;
+    return currentId !== undefined &&
+        !enabledSecurityLevels.value.some((item) => item.id === currentId)
+        ? currentId
+        : undefined;
+});
+const unavailableRetentionPeriodId = computed(() => {
+    const currentId = props.form.retentionPeriodId;
+    return currentId !== undefined &&
+        !enabledRetentionPeriods.value.some((item) => item.id === currentId)
+        ? currentId
+        : undefined;
+});
+const physicalFieldErrors = computed(() => fieldErrorGroup("physicalFields"));
+const dynamicFieldErrors = computed(() => fieldErrorGroup("dynamicFields"));
+
 async function submit() {
+    if (formDisabled.value) return;
     if (await formRef.value?.validate().catch(() => false)) emit("save");
 }
-function formatValue(value: unknown) {
-    return value == null || value === "" ? "-" : String(value);
+function fieldErrorGroup(prefix: "physicalFields" | "dynamicFields") {
+    const result: Record<string, string> = {};
+    for (const [path, message] of Object.entries(props.fieldErrors)) {
+        if (path.startsWith(`${prefix}.`)) result[path.slice(prefix.length + 1)] = message;
+    }
+    return result;
 }
 </script>
 
@@ -60,23 +93,8 @@ function formatValue(value: unknown) {
         @close="emit('close')"
     >
         <template v-if="state?.mode === 'detail' && detail">
-            <el-descriptions border :column="2">
+            <el-descriptions border :column="3">
                 <el-descriptions-item label="档案 ID">{{ detail.item.id }}</el-descriptions-item>
-                <el-descriptions-item label="档案分类">{{
-                    detail.category.categoryName
-                }}</el-descriptions-item>
-                <el-descriptions-item label="全宗">{{
-                    detail.item.fondsName
-                }}</el-descriptions-item>
-                <el-descriptions-item label="档号">{{
-                    detail.item.archiveNo || "-"
-                }}</el-descriptions-item>
-                <el-descriptions-item label="年度">{{
-                    detail.item.archiveYear
-                }}</el-descriptions-item>
-                <el-descriptions-item label="电子状态">{{
-                    detail.item.electronicStatus
-                }}</el-descriptions-item>
                 <el-descriptions-item label="锁定">{{
                     detail.item.lockedFlag ? "是" : "否"
                 }}</el-descriptions-item>
@@ -84,28 +102,15 @@ function formatValue(value: unknown) {
                     detail.item.lockReason || "-"
                 }}</el-descriptions-item>
             </el-descriptions>
-            <h3>动态字段</h3>
-            <el-empty
-                v-if="detailFields.length === 0"
-                description="无可展示字段"
-                :image-size="48"
-            />
-            <el-descriptions v-else border :column="2">
-                <el-descriptions-item
-                    v-for="field in detailFields"
-                    :key="field.id"
-                    :label="field.fieldName"
-                    >{{ formatValue(detail.dynamicFields[field.fieldCode]) }}</el-descriptions-item
-                >
-            </el-descriptions>
         </template>
         <el-form
-            v-else-if="state && state.mode !== 'detail'"
+            v-if="state"
             ref="formRef"
             :model="form"
+            :disabled="formDisabled"
             label-position="top"
         >
-            <el-form-item label="档案分类"
+            <el-form-item label="档案分类" :error="fieldErrors.categoryId"
                 ><el-input
                     disabled
                     :model-value="
@@ -115,6 +120,7 @@ function formatValue(value: unknown) {
             <el-form-item
                 label="全宗"
                 prop="fondsCode"
+                :error="fieldErrors.fondsCode"
                 :rules="[{ required: true, message: '请选择全宗', trigger: 'change' }]"
             >
                 <el-select v-model="form.fondsCode" filterable
@@ -127,14 +133,18 @@ function formatValue(value: unknown) {
             </el-form-item>
             <el-row :gutter="16">
                 <el-col :span="8"
-                    ><el-form-item label="档号"><el-input v-model="form.archiveNo" /></el-form-item
+                    ><el-form-item label="档号" prop="archiveNo" :error="fieldErrors.archiveNo"
+                        ><el-input v-model="form.archiveNo" /></el-form-item
                 ></el-col>
                 <el-col :span="8"
-                    ><el-form-item label="年度"
+                    ><el-form-item label="年度" prop="archiveYear" :error="fieldErrors.archiveYear"
                         ><el-input-number v-model="form.archiveYear" :min="1" /></el-form-item
                 ></el-col>
                 <el-col :span="8"
-                    ><el-form-item label="电子状态"
+                    ><el-form-item
+                        label="电子状态"
+                        prop="electronicStatus"
+                        :error="fieldErrors.electronicStatus"
                         ><el-select v-model="form.electronicStatus"
                             ><el-option label="草稿" value="DRAFT" /><el-option
                                 label="已归档"
@@ -143,9 +153,82 @@ function formatValue(value: unknown) {
                                 value="BORROWED" /></el-select></el-form-item
                 ></el-col>
             </el-row>
-            <DynamicArchiveFields v-model="form.dynamicFields" :fields="fields" />
-            <el-button :disabled="saving" @click="emit('close')">取消</el-button>
-            <el-button :loading="saving" type="primary" @click="submit">保存</el-button>
+            <el-row :gutter="16">
+                <el-col :span="12">
+                    <el-form-item
+                        label="密级"
+                        prop="securityLevelId"
+                        :error="fieldErrors.securityLevelId"
+                    >
+                        <div class="reference-field">
+                            <el-select v-model="form.securityLevelId" clearable>
+                                <el-option
+                                    v-for="item in enabledSecurityLevels"
+                                    :key="item.id"
+                                    :label="item.levelName"
+                                    :value="item.id"
+                                />
+                            </el-select>
+                            <el-text v-if="unavailableSecurityLevelId !== undefined" type="info">
+                                当前密级 ID：{{ unavailableSecurityLevelId }}（已停用或不可用）
+                            </el-text>
+                        </div>
+                    </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                    <el-form-item
+                        label="保管期限"
+                        prop="retentionPeriodId"
+                        :error="fieldErrors.retentionPeriodId"
+                    >
+                        <div class="reference-field">
+                            <el-select v-model="form.retentionPeriodId" clearable>
+                                <el-option
+                                    v-for="item in enabledRetentionPeriods"
+                                    :key="item.id"
+                                    :label="item.periodName"
+                                    :value="item.id"
+                                />
+                            </el-select>
+                            <el-text v-if="unavailableRetentionPeriodId !== undefined" type="info">
+                                当前保管期限 ID：{{
+                                    unavailableRetentionPeriodId
+                                }}（已停用或不可用）
+                            </el-text>
+                        </div>
+                    </el-form-item>
+                </el-col>
+            </el-row>
+            <h3>实物字段</h3>
+            <DynamicArchiveFields
+                v-model="form.physicalFields"
+                :fields="physicalFields"
+                :disabled="formDisabled"
+                :field-errors="physicalFieldErrors"
+                :surface="state.mode === 'detail' ? 'detail' : 'edit'"
+            />
+            <h3>动态字段</h3>
+            <DynamicArchiveFields
+                v-model="form.dynamicFields"
+                :fields="fields"
+                :disabled="formDisabled"
+                :field-errors="dynamicFieldErrors"
+                :surface="state.mode === 'detail' ? 'detail' : 'edit'"
+            />
+            <template v-if="state.mode !== 'detail'">
+                <el-button :disabled="saving" @click="emit('close')">取消</el-button>
+                <el-button :disabled="formDisabled" :loading="saving" type="primary" @click="submit"
+                    >保存</el-button
+                >
+            </template>
         </el-form>
     </el-drawer>
 </template>
+
+<style scoped>
+.reference-field {
+    display: grid;
+    width: 100%;
+    gap: 4px;
+}
+</style>

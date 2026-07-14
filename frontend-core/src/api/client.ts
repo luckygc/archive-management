@@ -21,18 +21,21 @@ export class HttpClientError extends Error {
     readonly status: number;
     readonly code?: string;
     readonly fieldViolations: Array<{ field?: string; message?: string }>;
+    readonly traceId?: string;
 
     constructor(
         message: string,
         status: number,
         code?: string,
         fieldViolations: Array<{ field?: string; message?: string }> = [],
+        traceId?: string,
     ) {
         super(message);
         this.name = "HttpClientError";
         this.status = status;
         this.code = code;
         this.fieldViolations = fieldViolations;
+        this.traceId = traceId;
     }
 }
 
@@ -193,6 +196,7 @@ function toHttpClientError(error: unknown) {
                 response.status,
                 body.code,
                 fieldViolations,
+                body.traceId,
             );
         }
 

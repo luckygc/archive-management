@@ -15,17 +15,33 @@ import { computed } from "vue";
 
 import type { ArchiveFieldDto } from "@/shared/types/archive-metadata";
 
-const props = withDefaults(defineProps<{ fields: ArchiveFieldDto[]; disabled?: boolean }>(), {
-    disabled: false,
-});
+const props = withDefaults(
+    defineProps<{
+        fields: ArchiveFieldDto[];
+        disabled?: boolean;
+        fieldErrors?: Record<string, string>;
+        surface?: "edit" | "detail";
+    }>(),
+    {
+        disabled: false,
+        fieldErrors: () => ({}),
+        surface: "edit",
+    },
+);
 const values = defineModel<Record<string, unknown>>({ default: () => ({}) });
 
 const visibleFields = computed(() =>
     [...props.fields]
-        .filter((field) => field.enabled && field.editVisible)
+        .filter(
+            (field) =>
+                field.enabled &&
+                (props.surface === "detail" ? field.detailVisible : field.editVisible),
+        )
         .sort(
             (left, right) =>
-                left.editSortOrder - right.editSortOrder || left.sortOrder - right.sortOrder,
+                (props.surface === "detail"
+                    ? left.detailSortOrder - right.detailSortOrder
+                    : left.editSortOrder - right.editSortOrder) || left.sortOrder - right.sortOrder,
         ),
 );
 
@@ -46,7 +62,7 @@ function numberLimit(field: ArchiveFieldDto) {
 <template>
     <el-row :gutter="16">
         <el-col v-for="field in visibleFields" :key="field.id" :span="fieldWidth(field)">
-            <el-form-item :label="field.fieldName">
+            <el-form-item :label="field.fieldName" :error="fieldErrors[field.fieldCode]">
                 <el-input
                     v-if="field.editControl === 'TEXTAREA'"
                     :model-value="String(values[field.fieldCode] ?? '')"
