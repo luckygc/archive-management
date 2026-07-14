@@ -924,7 +924,7 @@ git commit -m "feat: 支持档案明细行维护"
 **Interfaces:**
 - Produces: `RouteMeta.permission?: string`、`permissionStore.has(code)`、`canAccessRoute(route, permissionStore)`。
 
-- [ ] **Step 1: 写权限失败测试**
+- [x] **Step 1: 写权限失败测试**
 
 ```ts
 it("超级管理员拥有未枚举权限", () => {
@@ -940,13 +940,13 @@ it("隐藏无权限叶子和没有可见子项的分组", () => {
 });
 ```
 
-- [ ] **Step 2: 运行并确认当前全量显示失败**
+- [x] **Step 2: 运行并确认当前全量显示失败**
 
 ```bash
 pnpm --filter @archive-management/web test -- permissionStore.test.ts routes.test.ts RouteMenuItem.test.ts
 ```
 
-- [ ] **Step 3: 实现唯一权限判断**
+- [x] **Step 3: 实现唯一权限判断**
 
 ```ts
 function has(code: string) {
@@ -961,7 +961,7 @@ export function canAccessRoute(record: RouteRecordRaw, has: (code: string) => bo
 }
 ```
 
-- [ ] **Step 4: 标注路由并拦截直接访问**
+- [x] **Step 4: 标注路由并拦截直接访问**
 
 `archive/library`、`archive/items`、`archive/volumes` 使用 `archive:item:read`；目录配置使用 `archive:metadata:manage`；治理使用 `archive:governance:manage`；各系统管理页面使用其现有权限码。尚未完成的 intake、storage 和 settings 在对应阶段完成前设置 `menu: false`。
 
@@ -971,7 +971,7 @@ if (to.meta.permission && !permissionStore.has(to.meta.permission)) {
 }
 ```
 
-- [ ] **Step 5: 验证权限与提交**
+- [x] **Step 5: 验证权限与提交**
 
 ```bash
 pnpm --filter @archive-management/web test -- permissionStore.test.ts routes.test.ts RouteMenuItem.test.ts

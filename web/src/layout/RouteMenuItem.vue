@@ -2,6 +2,9 @@
 import { computed } from "vue";
 import type { RouteRecordRaw } from "vue-router";
 
+import { canAccessRoute } from "@/app/routes";
+import { usePermissionStore } from "@/stores/permissionStore";
+
 defineOptions({ name: "RouteMenuItem" });
 
 const props = withDefaults(
@@ -13,8 +16,11 @@ const props = withDefaults(
 );
 
 const path = computed(() => joinPath(props.parentPath, String(props.routeRecord.path)));
+const permissionStore = usePermissionStore();
 const children = computed(() =>
-    (props.routeRecord.children ?? []).filter((item) => item.meta?.menu),
+    (props.routeRecord.children ?? []).filter(
+        (item) => item.meta?.menu === true && canAccessRoute(item, permissionStore),
+    ),
 );
 
 function joinPath(parentPath: string, path: string) {

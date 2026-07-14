@@ -4,7 +4,7 @@ import { useRouter } from "vue-router";
 import type { TabsPaneContext, TabPaneName } from "element-plus";
 import { Collection, Refresh, User } from "@element-plus/icons-vue";
 
-import { workspaceRoutes } from "@/app/routes";
+import { canAccessRoute, workspaceRoutes } from "@/app/routes";
 import RouteMenuItem from "@/layout/RouteMenuItem.vue";
 import PageTabRouterView from "@/shared/tabs/PageTabRouterView.vue";
 import { usePageTabsStore } from "@/stores/pageTabsStore";
@@ -17,7 +17,17 @@ const tabsStore = usePageTabsStore();
 const sessionStore = useSessionStore();
 const permissionStore = usePermissionStore();
 const displayName = computed(() => sessionStore.currentUser?.displayName || "-");
-const menuRoutes = workspaceRoutes.filter((item) => item.meta?.menu);
+const menuRoutes = computed(() =>
+    workspaceRoutes.filter(
+        (item) => item.meta?.menu === true && canAccessRoute(item, permissionStore),
+    ),
+);
+const visibleTabs = computed(() =>
+    tabsStore.tabs.filter((tab) => {
+        const permission = router.resolve(tab.fullPath).meta.permission;
+        return !permission || permissionStore.has(permission);
+    }),
+);
 const breadcrumbs = computed(() =>
     currentRoute.value.matched
         .filter((item) => item.meta.title && !item.meta.public)
@@ -94,7 +104,7 @@ async function logout() {
                     @tab-remove="closeTab"
                 >
                     <ElTabPane
-                        v-for="tab in tabsStore.tabs"
+                        v-for="tab in visibleTabs"
                         :key="tab.fullPath"
                         :name="tab.fullPath"
                         :label="tab.title"

@@ -14,17 +14,17 @@ export const usePermissionStore = defineStore("permission-summary", () => {
             const response = await getCurrentUserPermissions();
             permissionCodes.value = response.permissionCodes;
             superAdmin.value = response.superAdmin;
+            initialized.value = true;
         } catch (error) {
             permissionCodes.value = [];
             superAdmin.value = false;
+            initialized.value = false;
             throw error;
-        } finally {
-            initialized.value = true;
         }
     }
 
     function has(code: string) {
-        return permissionCodeSet.value.has(code);
+        return superAdmin.value || permissionCodeSet.value.has(code);
     }
 
     function reset() {

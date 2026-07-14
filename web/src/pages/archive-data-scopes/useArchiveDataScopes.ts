@@ -4,7 +4,6 @@ import { computed, onMounted, reactive, ref, watch } from "vue";
 
 import {
     createArchiveDataScope,
-    getCurrentUserPermissions,
     listArchiveDataScopeFields,
     listArchiveDataScopes,
     updateArchiveDataScope,
@@ -23,6 +22,7 @@ import type {
     ArchiveSecurityLevelDto,
 } from "@/shared/types/archive-metadata";
 import type { ArchiveDataScopeDto } from "@/shared/types/authorization";
+import { usePermissionStore } from "@/stores/permissionStore";
 import {
     emptyArchiveDataScopeForm,
     toArchiveDataScopeForm,
@@ -31,6 +31,7 @@ import {
 import type { ArchiveDataScopeFormValues } from "./archiveDataScopeForm";
 
 export function useArchiveDataScopes() {
+    const permissionStore = usePermissionStore();
     const scopes = ref<ArchiveDataScopeDto[]>([]);
     const fonds = ref<ArchiveFondsDto[]>([]);
     const categories = ref<ArchiveCategoryDto[]>([]);
@@ -38,7 +39,7 @@ export function useArchiveDataScopes() {
     const retentionPeriods = ref<ArchiveRetentionPeriodDto[]>([]);
     const fieldsByCategory = reactive(new Map<number, ArchiveFieldDto[]>());
     const loadingFieldIds = reactive(new Set<number>());
-    const canManageDataScopes = ref(false);
+    const canManageDataScopes = computed(() => permissionStore.has("archive:data-scope:manage"));
     const loading = ref(false);
     const saving = ref(false);
     const open = ref(false);
@@ -56,26 +57,14 @@ export function useArchiveDataScopes() {
         loading.value = true;
         const results = await Promise.allSettled([
             listArchiveDataScopes(false),
-            getCurrentUserPermissions(),
             listArchiveFonds(true),
             listArchiveCategories(true),
             listArchiveSecurityLevels(true),
             listArchiveRetentionPeriods(true),
         ]);
-        const [
-            scopeResult,
-            permissionResult,
-            fondsResult,
-            categoryResult,
-            securityResult,
-            retentionResult,
-        ] = results;
+        const [scopeResult, fondsResult, categoryResult, securityResult, retentionResult] = results;
         if (scopeResult?.status === "fulfilled") scopes.value = scopeResult.value.items;
         else ElMessage.error("数据范围加载失败");
-        if (permissionResult?.status === "fulfilled")
-            canManageDataScopes.value = permissionResult.value.permissionCodes.includes(
-                "archive:data-scope:manage",
-            );
         if (fondsResult?.status === "fulfilled") fonds.value = fondsResult.value.items;
         if (categoryResult?.status === "fulfilled") categories.value = categoryResult.value.items;
         if (securityResult?.status === "fulfilled")

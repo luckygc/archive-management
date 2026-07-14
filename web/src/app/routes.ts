@@ -1,5 +1,5 @@
 import type { Component } from "vue";
-import type { RouteRecordRaw } from "vue-router";
+import type { RouteLocationNormalized, RouteRecordRaw } from "vue-router";
 import { createRouter, createWebHashHistory } from "vue-router";
 
 import {
@@ -56,6 +56,7 @@ export const workspaceRoutes: RouteRecordRaw[] = [
         "档案搜索",
         Search,
         () => import("@/pages/archive-library/ArchiveLibraryPage.vue"),
+        { permission: "archive:item:read" },
     ),
     route(
         "archive/items",
@@ -63,6 +64,7 @@ export const workspaceRoutes: RouteRecordRaw[] = [
         "档案管理",
         Folder,
         () => import("@/pages/archive-items/ArchiveItemManagementPage.vue"),
+        { permission: "archive:item:read" },
     ),
     route(
         "archive/volumes",
@@ -79,6 +81,7 @@ export const workspaceRoutes: RouteRecordRaw[] = [
             "全宗管理",
             OfficeBuilding,
             () => import("@/pages/archive-fonds/ArchiveFondsPage.vue"),
+            { permission: "archive:metadata:manage" },
         ),
         route(
             "categories",
@@ -86,6 +89,7 @@ export const workspaceRoutes: RouteRecordRaw[] = [
             "档案分类",
             Collection,
             () => import("@/pages/archive-categories/ArchiveCategoriesPage.vue"),
+            { permission: "archive:metadata:manage" },
         ),
     ]),
     route(
@@ -94,7 +98,7 @@ export const workspaceRoutes: RouteRecordRaw[] = [
         "归档接收",
         UploadFilled,
         () => import("@/pages/intake/IntakePage.vue"),
-        { cache: false },
+        { cache: false, menu: false },
     ),
     group("archive/governance", "档案治理", DataAnalysis, [
         route(
@@ -103,6 +107,7 @@ export const workspaceRoutes: RouteRecordRaw[] = [
             "治理方案",
             DataAnalysis,
             () => import("@/pages/archive-governance/ArchiveGovernancePage.vue"),
+            { permission: "archive:governance:manage" },
         ),
         route(
             "ontology",
@@ -110,6 +115,7 @@ export const workspaceRoutes: RouteRecordRaw[] = [
             "本体管理",
             Aim,
             () => import("@/pages/archive-ontology/ArchiveOntologyPage.vue"),
+            { permission: "archive:governance:manage" },
         ),
         route(
             "rules",
@@ -117,6 +123,7 @@ export const workspaceRoutes: RouteRecordRaw[] = [
             "本地规则",
             Key,
             () => import("@/pages/archive-rules/ArchiveRulesPage.vue"),
+            { permission: "archive:governance:manage" },
         ),
         route(
             "rule-traces",
@@ -124,6 +131,7 @@ export const workspaceRoutes: RouteRecordRaw[] = [
             "规则追踪",
             Document,
             () => import("@/pages/archive-rule-traces/ArchiveRuleTracesPage.vue"),
+            { permission: "archive:governance:manage" },
         ),
     ]),
     group("system", "系统配置", Setting, [
@@ -133,6 +141,7 @@ export const workspaceRoutes: RouteRecordRaw[] = [
             "用户管理",
             User,
             () => import("@/pages/authentication-users/AuthenticationUsersPage.vue"),
+            { permission: "authentication:user:manage" },
         ),
         route(
             "authorization",
@@ -140,6 +149,7 @@ export const workspaceRoutes: RouteRecordRaw[] = [
             "授权管理",
             Lock,
             () => import("@/pages/authorization-management/AuthorizationManagementPage.vue"),
+            { permission: "authorization:permission:manage" },
         ),
         route(
             "roles",
@@ -147,6 +157,7 @@ export const workspaceRoutes: RouteRecordRaw[] = [
             "角色管理",
             UserFilled,
             () => import("@/pages/authorization-roles/AuthorizationRolesPage.vue"),
+            { permission: "authorization:role:manage" },
         ),
         route(
             "data-scopes",
@@ -154,6 +165,7 @@ export const workspaceRoutes: RouteRecordRaw[] = [
             "数据范围",
             Box,
             () => import("@/pages/archive-data-scopes/ArchiveDataScopesPage.vue"),
+            { permission: "archive:data-scope:manage" },
         ),
         route(
             "organization-departments",
@@ -161,6 +173,7 @@ export const workspaceRoutes: RouteRecordRaw[] = [
             "组织架构",
             OfficeBuilding,
             () => import("@/pages/organization-departments/OrganizationDepartmentsPage.vue"),
+            { permission: "organization:department:manage" },
         ),
         route(
             "storage",
@@ -168,7 +181,7 @@ export const workspaceRoutes: RouteRecordRaw[] = [
             "存储配置",
             Files,
             () => import("@/pages/placeholder/PlaceholderPage.vue"),
-            { cache: false, pageTitle: "存储配置" },
+            { cache: false, menu: false, pageTitle: "存储配置" },
         ),
         route(
             "login-sessions",
@@ -176,6 +189,7 @@ export const workspaceRoutes: RouteRecordRaw[] = [
             "登录会话",
             Monitor,
             () => import("@/pages/login-sessions/LoginSessionsPage.vue"),
+            { permission: "authentication:session:manage" },
         ),
         route(
             "authentication-events",
@@ -183,6 +197,7 @@ export const workspaceRoutes: RouteRecordRaw[] = [
             "认证审计",
             Avatar,
             () => import("@/pages/authentication-events/AuthenticationEventsPage.vue"),
+            { permission: "authentication:audit:read" },
         ),
         route(
             "settings",
@@ -190,7 +205,7 @@ export const workspaceRoutes: RouteRecordRaw[] = [
             "系统参数",
             Setting,
             () => import("@/pages/placeholder/PlaceholderPage.vue"),
-            { cache: false, pageTitle: "系统参数" },
+            { cache: false, menu: false, pageTitle: "系统参数" },
         ),
     ]),
 ];
@@ -213,6 +228,12 @@ export const router = createRouter({
             meta: { title: "会话校验失败", public: true },
         },
         {
+            path: "/forbidden",
+            name: "forbidden",
+            component: () => import("@/pages/forbidden/ForbiddenPage.vue"),
+            meta: { title: "无访问权限", menu: false, cache: false },
+        },
+        {
             path: "/",
             component: () => import("@/layout/AppShell.vue"),
             children: workspaceRoutes,
@@ -220,7 +241,9 @@ export const router = createRouter({
     ],
 });
 
-router.beforeEach(async (to) => {
+router.beforeEach(navigationGuard);
+
+export async function navigationGuard(to: Pick<RouteLocationNormalized, "fullPath" | "meta">) {
     if (to.meta.public) {
         return true;
     }
@@ -243,10 +266,34 @@ router.beforeEach(async (to) => {
 
     const permissionStore = usePermissionStore();
     if (!permissionStore.initialized) {
-        await permissionStore.fetchSummary().catch(() => undefined);
+        try {
+            await permissionStore.fetchSummary();
+        } catch {
+            return {
+                path: "/authentication-error",
+                query: { redirect: to.fullPath },
+                replace: true,
+            };
+        }
+    }
+    if (to.meta.permission && !permissionStore.has(to.meta.permission)) {
+        return { name: "forbidden", replace: true };
     }
     return true;
-});
+}
+
+export interface PermissionChecker {
+    has(code: string): boolean;
+}
+
+export function canAccessRoute(record: RouteRecordRaw, permission: PermissionChecker): boolean {
+    const requiredPermission = record.meta?.permission;
+    if (requiredPermission && !permission.has(requiredPermission)) return false;
+    const menuChildren = (record.children ?? []).filter((child) => child.meta?.menu === true);
+    if (menuChildren.length > 0)
+        return menuChildren.some((child) => canAccessRoute(child, permission));
+    return !(record.meta?.menu === true && record.children?.length && record.component == null);
+}
 
 function route(
     path: string,

@@ -29,7 +29,6 @@ export function useArchiveItemResources(openLink: (href: string) => void) {
     );
     const canReadAudit = computed(
         () =>
-            permissionStore.superAdmin ||
             permissionStore.has("archive:item:audit:read") ||
             permissionStore.has("archive:item:read-audit"),
     );
