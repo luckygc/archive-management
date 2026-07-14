@@ -133,6 +133,7 @@ async function loadRows(tableId: number, cursor = states[tableId]?.cursor) {
 }
 
 function changeTable(name: string | number) {
+    if (commandBusy.value) return;
     const tableId = Number(name);
     if (!Number.isSafeInteger(tableId)) return;
     activeTableId.value = tableId;
@@ -175,7 +176,7 @@ function resetFormValues(
 }
 
 function cancelEdit() {
-    commandRequestVersion += 1;
+    if (editingRow.value || saving.value) commandRequestVersion += 1;
     saving.value = false;
     editingRow.value = undefined;
     formError.value = undefined;

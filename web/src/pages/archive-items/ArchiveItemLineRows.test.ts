@@ -183,6 +183,26 @@ describe("档案明细行", () => {
         expect(mocks.delete).not.toHaveBeenCalled();
     });
 
+    it("删除请求发出后切为只读仍完成刷新且不残留忙碌状态", async () => {
+        let resolveDelete!: () => void;
+        mocks.delete.mockReturnValueOnce(
+            new Promise<void>((resolve) => {
+                resolveDelete = resolve;
+            }),
+        );
+        const view = renderRows();
+        await screen.findByText("甲公司");
+
+        await fireEvent.click(screen.getByRole("button", { name: "删除" }));
+        await waitFor(() => expect(mocks.delete).toHaveBeenCalledOnce());
+        await view.rerender({ archiveItemId: 3, readonly: true });
+        resolveDelete();
+
+        await waitFor(() => expect(mocks.listRows).toHaveBeenCalledTimes(2));
+        await view.rerender({ archiveItemId: 3, readonly: false });
+        expect(screen.getByRole("button", { name: "删除" })).toBeEnabled();
+    });
+
     it("保存命令进行中禁用删除以避免命令交叉并发", async () => {
         let resolvePatch!: (value: unknown) => void;
         mocks.patch.mockReturnValueOnce(
