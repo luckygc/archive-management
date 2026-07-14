@@ -294,16 +294,155 @@ describe("AppShell", () => {
         await vi.advanceTimersByTimeAsync(PERMISSION_REFRESH_INTERVAL_MS);
         expect(permissionApiMocks.getCurrentUserPermissions).toHaveBeenCalledTimes(3);
     });
+
+    it("挂载时权限快照仅剩五秒也会在到期点立即停止渲染", async () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date("2026-07-15T00:00:00Z"));
+        const { permissionStore } = await renderShell({
+            initialPath: "/archive/items",
+            permissionCodes: ["archive:item:read"],
+            snapshotAgeMs: PERMISSION_SNAPSHOT_TTL_MS - 5_000,
+        });
+        permissionApiMocks.getCurrentUserPermissions.mockRejectedValue(
+            new Error("permission unavailable"),
+        );
+
+        await vi.advanceTimersByTimeAsync(4_999);
+        expect(screen.getByText("敏感档案内容")).toBeInTheDocument();
+
+        await vi.advanceTimersByTimeAsync(1);
+        expect(permissionStore.expired).toBe(true);
+        expect(screen.getByText("权限校验失败")).toBeInTheDocument();
+        expect(screen.queryByText("敏感档案内容")).not.toBeInTheDocument();
+        expect(permissionApiMocks.getCurrentUserPermissions).toHaveBeenCalledTimes(2);
+    });
+
+    it("提前刷新成功后取消旧到期点并按新 validUntil 重排", async () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date("2026-07-15T00:00:00Z"));
+        const { permissionStore } = await renderShell({
+            initialPath: "/archive/items",
+            permissionCodes: ["archive:item:read"],
+            snapshotAgeMs: PERMISSION_SNAPSHOT_TTL_MS - 5_000,
+        });
+        const oldValidUntil = permissionStore.snapshot.validUntil!;
+        await vi.advanceTimersByTimeAsync(1_000);
+        permissionApiMocks.getCurrentUserPermissions.mockResolvedValue({
+            superAdmin: false,
+            permissionCodes: ["archive:item:read"],
+        });
+
+        window.dispatchEvent(new Event("focus"));
+        await Promise.resolve();
+        await nextTick();
+
+        const newValidUntil = permissionStore.snapshot.validUntil!;
+        expect(newValidUntil).toBe(Date.now() + PERMISSION_SNAPSHOT_TTL_MS);
+        expect(newValidUntil).toBeGreaterThan(oldValidUntil);
+        permissionApiMocks.getCurrentUserPermissions.mockRejectedValue(
+            new Error("permission unavailable"),
+        );
+
+        await vi.advanceTimersByTimeAsync(oldValidUntil - Date.now());
+        expect(permissionStore.ready).toBe(true);
+        expect(screen.getByText("敏感档案内容")).toBeInTheDocument();
+
+        await vi.advanceTimersByTimeAsync(newValidUntil - Date.now());
+        expect(permissionStore.expired).toBe(true);
+        expect(screen.getByText("权限校验失败")).toBeInTheDocument();
+        expect(screen.queryByText("敏感档案内容")).not.toBeInTheDocument();
+    });
+
+    it("reset 和卸载都会清除权限到期 timeout", async () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date("2026-07-15T00:00:00Z"));
+        const { permissionStore, unmount } = await renderShell({
+            initialPath: "/archive/items",
+            permissionCodes: ["archive:item:read"],
+        });
+        const clearTimeout = vi.spyOn(window, "clearTimeout");
+
+        permissionStore.reset();
+        await nextTick();
+        expect(clearTimeout).toHaveBeenCalled();
+
+        permissionApiMocks.getCurrentUserPermissions.mockResolvedValue({
+            superAdmin: false,
+            permissionCodes: ["archive:item:read"],
+        });
+        await permissionStore.fetchSummary();
+        await nextTick();
+        clearTimeout.mockClear();
+
+        unmount();
+        expect(clearTimeout).toHaveBeenCalled();
+    });
+
+    it("到期 timeout 与 interval、focus、visible 同刻只发起一个请求", async () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date("2026-07-15T00:00:00Z"));
+        const { permissionStore } = await renderShell({
+            initialPath: "/archive/items",
+            permissionCodes: ["archive:item:read"],
+        });
+        permissionApiMocks.getCurrentUserPermissions.mockRejectedValueOnce(
+            new Error("permission unavailable"),
+        );
+        await vi.advanceTimersByTimeAsync(
+            PERMISSION_SNAPSHOT_TTL_MS - PERMISSION_REFRESH_INTERVAL_MS,
+        );
+        const refresh = deferred<{ superAdmin: boolean; permissionCodes: string[] }>();
+        permissionApiMocks.getCurrentUserPermissions.mockReturnValue(refresh.promise);
+
+        await vi.advanceTimersByTimeAsync(PERMISSION_REFRESH_INTERVAL_MS);
+        window.dispatchEvent(new Event("focus"));
+        document.dispatchEvent(new Event("visibilitychange"));
+        await Promise.resolve();
+
+        expect(permissionStore.expired).toBe(true);
+        expect(permissionApiMocks.getCurrentUserPermissions).toHaveBeenCalledTimes(3);
+
+        refresh.resolve({ superAdmin: false, permissionCodes: ["archive:item:read"] });
+        await refresh.promise;
+    });
+
+    it("后台定时器未执行时恢复 visible 仍会先同步提交过期状态", async () => {
+        vi.useFakeTimers();
+        const startedAt = new Date("2026-07-15T00:00:00Z");
+        vi.setSystemTime(startedAt);
+        const { permissionStore } = await renderShell({
+            initialPath: "/archive/items",
+            permissionCodes: ["archive:item:read"],
+        });
+        permissionApiMocks.getCurrentUserPermissions.mockRejectedValue(
+            new Error("permission unavailable"),
+        );
+        vi.setSystemTime(startedAt.getTime() + PERMISSION_SNAPSHOT_TTL_MS - 1_000);
+        window.dispatchEvent(new Event("focus"));
+        await Promise.resolve();
+        expect(permissionApiMocks.getCurrentUserPermissions).toHaveBeenCalledTimes(2);
+
+        vi.setSystemTime(startedAt.getTime() + PERMISSION_SNAPSHOT_TTL_MS + 1_000);
+        document.dispatchEvent(new Event("visibilitychange"));
+        await nextTick();
+
+        expect(permissionStore.expired).toBe(true);
+        expect(permissionStore.ready).toBe(false);
+        expect(screen.getByText("权限校验失败")).toBeInTheDocument();
+        expect(permissionApiMocks.getCurrentUserPermissions).toHaveBeenCalledTimes(2);
+    });
 });
 
 async function renderShell({
     blockForbidden = false,
     initialPath,
     permissionCodes,
+    snapshotAgeMs = 0,
 }: {
     blockForbidden?: boolean;
     initialPath: string;
     permissionCodes: string[];
+    snapshotAgeMs?: number;
 }) {
     const pinia = createPinia();
     setActivePinia(pinia);
@@ -321,6 +460,7 @@ async function renderShell({
         permissionCodes,
     });
     await permissionStore.fetchSummary();
+    if (snapshotAgeMs > 0) vi.advanceTimersByTime(snapshotAgeMs);
     const tabsStore = usePageTabsStore();
     tabsStore.$patch({
         activeFullPath: initialPath,

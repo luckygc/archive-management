@@ -1005,6 +1005,14 @@ cd server && mise exec -- mvn -q -Dtest=AuthenticationUserManagementServiceTests
 pnpm --filter @archive-management/web exec vp test run src/stores/permissionStore.test.ts src/app/routes.test.ts src/layout/AppShell.test.ts
 ```
 
+- [x] **Step 9: 精确对齐权限快照到期点**
+
+AppShell 为当前有效快照按 `validUntil` 维护一个 timeout；刷新成功后取消旧 timeout 并按新到期点重排，reset 和卸载时清理。timeout、interval、focus 和 visible 继续复用 Store 的单一在途请求；恢复 visible 时即使请求被节流也先同步提交过期状态。
+
+```bash
+pnpm --filter @archive-management/web exec vp test run src/layout/AppShell.test.ts
+```
+
 ### Task 10: 用数据范围内真实统计替换工作台假数据
 
 **Files:**

@@ -39,6 +39,7 @@ const showPermissionVerificationError = computed(
 );
 let permissionEffectSequence = 0;
 let refreshTimer: number | undefined;
+let permissionExpiryTimer: number | undefined;
 
 watch(
     () => [permissionStore.snapshot.revision, currentRoute.value.fullPath] as const,
@@ -57,6 +58,27 @@ watch(
     { immediate: true },
 );
 
+watch(
+    () =>
+        [
+            permissionStore.snapshot.revision,
+            permissionStore.snapshot.validUntil,
+            permissionStore.snapshot.expired,
+        ] as const,
+    ([, validUntil, expired]) => {
+        clearPermissionExpiryTimer();
+        if (!permissionStore.initialized || expired || validUntil == null) return;
+        permissionExpiryTimer = window.setTimeout(
+            () => {
+                permissionExpiryTimer = undefined;
+                runScheduledPermissionRefresh();
+            },
+            Math.max(0, validUntil - Date.now()),
+        );
+    },
+    { immediate: true },
+);
+
 onMounted(() => {
     refreshTimer = window.setInterval(
         runScheduledPermissionRefresh,
@@ -68,9 +90,16 @@ onMounted(() => {
 
 onUnmounted(() => {
     if (refreshTimer !== undefined) window.clearInterval(refreshTimer);
+    clearPermissionExpiryTimer();
     window.removeEventListener("focus", runScheduledPermissionRefresh);
     document.removeEventListener("visibilitychange", refreshWhenVisible);
 });
+
+function clearPermissionExpiryTimer() {
+    if (permissionExpiryTimer === undefined) return;
+    window.clearTimeout(permissionExpiryTimer);
+    permissionExpiryTimer = undefined;
+}
 
 function runScheduledPermissionRefresh() {
     void permissionStore.refreshIfNeeded().catch(() => undefined);
