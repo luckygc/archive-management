@@ -70,6 +70,24 @@ class ArchiveMapperXmlContractTests {
     }
 
     @Test
+    @DisplayName("关系分页 SQL 在数据库内解析另一端、数据范围和 id 游标")
+    void relationListSqlShouldFilterRelatedEndpointInsideCursorQuery() throws Exception {
+        String sql = selectStatement(archiveMapperXml(), "listItemRelations");
+
+        assertThat(mapperParamNames("listItemRelations"))
+                .containsExactly("archiveItemId", "criteria", "page");
+        assertThat(sql).contains("rel.source_item_id = #{archiveItemId}");
+        assertThat(sql).contains("rel.target_item_id = #{archiveItemId}");
+        assertThat(sql).contains("case when rel.source_item_id = #{archiveItemId}");
+        assertThat(sql).contains("criteria.targetScopes");
+        assertThat(sql).contains("scope.groups");
+        assertThat(sql).contains("${scope.tableName}");
+        assertThat(sql).contains("rel.id &gt; #{page.cursorId}");
+        assertThat(sql).contains("rel.id &lt; #{page.cursorId}");
+        assertThat(sql).contains("limit #{page.rowLimit}");
+    }
+
+    @Test
     @DisplayName("档案 Mapper XML 能被 MyBatis 解析")
     void archiveMapperXmlShouldBeParseable() throws Exception {
         Configuration configuration = new Configuration();

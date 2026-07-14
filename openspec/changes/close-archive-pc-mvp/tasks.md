@@ -38,11 +38,11 @@
 
 ## 6. 开发档案关系维护
 
-- [ ] 6.1 编写并运行关系 Controller/Service/Mapper、前端客户端和关系 Drawer 定向失败测试，确认因关系列表游标分页或维护行为缺失而失败
-- [ ] 6.2 将 `GET /api/v1/archive-items/{archiveItem}/relations` 改为 `CursorPageResponse<ArchiveItemRelationResponse>`；扩展现有 MyBatis Mapper，在同一分页 SQL 中连接目标档案摘要、应用 `ArchiveDataScopeFilter` SQL 分组和 `id ASC` cursor 边界，`depth` 进入查询摘要。禁止分页后由 Repository/Service 逐行过滤，不新增平行 Repository、adapter 或分页状态源
-- [ ] 6.3 接通关系前端 cursor 客户端，并用分类、关键字和游标搜索选择目标档案，禁止手工输入 ID 和选择当前档案
-- [ ] 6.4 在档案资源 Drawer 增加关系页签与现有 cursor 组件，读取使用 `archive:item:read`，创建与删除使用 `archive:item:update`
-- [ ] 6.5 运行关系后端和前端定向测试，验证自关联、重复或越权冲突，成功后只刷新关系页签
+- [x] 6.1 编写并运行关系 Controller/Service/Mapper、前端客户端和关系 Drawer 定向失败测试，确认因关系列表游标分页或维护行为缺失而失败
+- [x] 6.2 将 `GET /api/v1/archive-items/{archiveItem}/relations` 改为 `CursorPageResponse<ArchiveItemRelationResponse>`；扩展现有 MyBatis Mapper，在同一分页 SQL 中连接目标档案摘要、应用 `ArchiveDataScopeFilter` SQL 分组和 `id ASC` cursor 边界，`depth` 进入查询摘要。禁止分页后由 Repository/Service 逐行过滤，不新增平行 Repository、adapter 或分页状态源
+- [x] 6.3 接通关系前端 cursor 客户端，并用分类、关键字和游标搜索选择目标档案，禁止手工输入 ID 和选择当前档案
+- [x] 6.4 在档案资源 Drawer 增加关系页签与现有 cursor 组件，读取使用 `archive:item:read`，创建与删除使用 `archive:item:update`
+- [x] 6.5 运行关系后端和前端定向测试，验证自关联、重复或越权冲突，成功后只刷新关系页签
 
 ## 7. 开发明细表定义 PC 配置
 

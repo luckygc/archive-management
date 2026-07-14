@@ -6,11 +6,13 @@ import type {
     ArchiveItemAuditDto,
     ArchiveItemElectronicFileDto,
     ArchiveItemElectronicFileUploadOptions,
+    ArchiveItemRelationResponse,
     ArchiveRecordDetailDto,
     ArchiveRecordDto,
     ArchiveRecordListDto,
     CreateArchiveRecordRequest,
     ListArchiveItemAuditsRequest,
+    ListArchiveItemRelationsQuery,
     SearchArchiveRecordsQuery,
     SearchArchiveRecordsRequest,
     UpdateArchiveRecordRequest,
@@ -150,6 +152,32 @@ export function listArchiveItemAudits(query: ListArchiveItemAuditsRequest) {
             cursor: query.cursor,
             requestTotal: query.requestTotal,
         })}`,
+    );
+}
+
+export function listArchiveItemRelations(
+    archiveItemId: number,
+    query: ListArchiveItemRelationsQuery = {},
+) {
+    return httpClient.get<CursorPageResponse<ArchiveItemRelationResponse>>(
+        `/api/v1/archive-items/${archiveItemId}/relations${queryString({
+            depth: query.depth,
+            limit: query.limit,
+            cursor: query.cursor,
+        })}`,
+    );
+}
+
+export function createArchiveItemRelation(archiveItemId: number, targetItemId: number) {
+    return httpClient.post<ArchiveItemRelationResponse>(
+        `/api/v1/archive-items/${archiveItemId}/relations`,
+        { targetItemId },
+    );
+}
+
+export function deleteArchiveItemRelation(archiveItemId: number, relationId: number) {
+    return httpClient.delete<void>(
+        `/api/v1/archive-items/${archiveItemId}/relations/${relationId}`,
     );
 }
 

@@ -25,10 +25,14 @@ const mocks = vi.hoisted(() => ({
     listArchiveFields: vi.fn(),
     listArchiveItemAudits: vi.fn(),
     listArchiveItemElectronicFiles: vi.fn(),
+    listArchiveItemRelations: vi.fn(),
     listArchiveRetentionPeriods: vi.fn(),
     listArchiveRelatedFilterCategories: vi.fn(),
     listArchiveSecurityLevels: vi.fn(),
     searchArchiveRecords: vi.fn(),
+    createArchiveItemRelation: vi.fn(),
+    deleteArchiveItemRelation: vi.fn(),
+    discoverArchiveRecords: vi.fn(),
     unbindArchiveItemElectronicFile: vi.fn(),
     updateArchiveRecord: vi.fn(),
     uploadArchiveItemElectronicFile: vi.fn(),
@@ -173,6 +177,25 @@ beforeEach(() => {
             },
         ],
     });
+    mocks.listArchiveItemRelations.mockResolvedValue({
+        items: [
+            {
+                id: 40,
+                sourceItemId: 1,
+                targetItemId: 2,
+                relatedItemId: 2,
+                direction: "OUTGOING",
+                relatedItem: {
+                    itemId: 2,
+                    fondsCode: "F001",
+                    fondsName: "默认全宗",
+                    categoryCode: "contract",
+                    categoryName: "合同档案",
+                    archiveNo: "REL-002",
+                },
+            },
+        ],
+    });
 });
 afterEach(() => {
     cleanup();
@@ -212,6 +235,29 @@ describe("ArchiveItemManagementPage", () => {
             }),
         );
         expect(await screen.findByText("CREATE")).toBeInTheDocument();
+    });
+    it("读取权限可打开关系页签且无更新权限时不显示维护入口", async () => {
+        renderPage(["archive:item:read"]);
+        await fireEvent.click(await screen.findByRole("button", { name: "提交查询" }));
+
+        await fireEvent.click(await screen.findByRole("button", { name: "关系" }));
+
+        expect(await screen.findByText("REL-002")).toBeInTheDocument();
+        expect(mocks.listArchiveItemRelations).toHaveBeenCalledWith(1, {
+            depth: 1,
+            limit: 100,
+            cursor: undefined,
+        });
+        expect(screen.queryByRole("button", { name: "确认关联" })).not.toBeInTheDocument();
+    });
+    it("只有审计读取权限时不暴露关系页签", async () => {
+        renderPage(["archive:item:audit:read"]);
+        await fireEvent.click(await screen.findByRole("button", { name: "提交查询" }));
+
+        await fireEvent.click(await screen.findByRole("button", { name: "审计" }));
+
+        expect(await screen.findByText("CREATE")).toBeInTheDocument();
+        expect(screen.queryByRole("tab", { name: "档案关系" })).not.toBeInTheDocument();
     });
     it("未锁定档案按权限提供锁定和删除入口", async () => {
         mocks.searchArchiveRecords.mockResolvedValue({

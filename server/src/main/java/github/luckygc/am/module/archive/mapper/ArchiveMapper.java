@@ -213,12 +213,18 @@ public interface ArchiveMapper {
             @Param("displayOrder") int displayOrder,
             @Param("userId") Long userId);
 
-    List<Map<String, Object>> listItemRelations(@Param("sourceItemId") Long sourceItemId);
+    List<Map<String, Object>> listItemRelations(
+            @Param("archiveItemId") Long archiveItemId,
+            @Param("criteria") ArchiveItemRelationCriteria criteria,
+            @Param("page") ArchiveItemRelationCriteria.ArchiveItemRelationPageWindow page);
+
+    Map<String, Object> getItemRelation(
+            @Param("id") Long id, @Param("archiveItemId") Long archiveItemId);
 
     Long insertItemRelation(
             @Param("sourceItemId") Long sourceItemId, @Param("targetItemId") Long targetItemId);
 
-    int deleteItemRelation(@Param("id") Long id, @Param("sourceItemId") Long sourceItemId);
+    int deleteItemRelation(@Param("id") Long id, @Param("archiveItemId") Long archiveItemId);
 
     List<Map<String, Object>> listItemLineTables(@Param("categoryId") Long categoryId);
 

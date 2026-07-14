@@ -77,6 +77,31 @@ export interface ArchiveRelatedFilterCategoryDto {
     direction: ArchiveItemRelationDirection;
 }
 
+export interface ListArchiveItemRelationsQuery {
+    depth?: number;
+    limit?: number;
+    cursor?: string;
+}
+
+export interface ArchiveItemRelationResponse {
+    id: number;
+    sourceItemId: number;
+    targetItemId: number;
+    relatedItemId: number;
+    direction: "OUTGOING" | "INCOMING";
+    createdAt?: string;
+    relatedItem: ArchiveItemRelationTargetResponse;
+}
+
+export interface ArchiveItemRelationTargetResponse {
+    itemId: number;
+    fondsCode: string;
+    fondsName: string;
+    categoryCode: string;
+    categoryName: string;
+    archiveNo?: string;
+}
+
 export interface CreateArchiveRecordRequest {
     categoryId: number;
     volumeId?: number;

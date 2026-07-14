@@ -33,7 +33,10 @@ export function useArchiveItemResources(openLink: (href: string) => void) {
             permissionStore.has("archive:item:audit:read") ||
             permissionStore.has("archive:item:read-audit"),
     );
-    const drawerState = ref<{ archiveItemId: number; activeKey: "files" | "audits" }>();
+    const drawerState = ref<{
+        archiveItemId: number;
+        activeKey: "files" | "audits" | "relations";
+    }>();
     const files = ref<ArchiveItemElectronicFileDto[]>([]);
     const audits = ref<ArchiveItemAuditDto[]>([]);
     const fileForm = reactive({ usageType: "", displayOrder: undefined as number | undefined });
@@ -42,7 +45,7 @@ export function useArchiveItemResources(openLink: (href: string) => void) {
     const downloadingFileId = ref<number>();
     const unbindingFileId = ref<number>();
 
-    async function openDrawer(value: unknown, activeKey: "files" | "audits") {
+    async function openDrawer(value: unknown, activeKey: "files" | "audits" | "relations") {
         const id = rowId(value);
         if (!id) return;
         drawerState.value = { archiveItemId: id, activeKey };
@@ -58,7 +61,7 @@ export function useArchiveItemResources(openLink: (href: string) => void) {
                 const response = await listArchiveItemElectronicFiles(state.archiveItemId);
                 if (drawerState.value?.archiveItemId === state.archiveItemId)
                     files.value = response.items;
-            } else {
+            } else if (state.activeKey === "audits") {
                 const response = await listArchiveItemAudits({
                     archiveItemId: state.archiveItemId,
                     limit: 20,
@@ -76,7 +79,7 @@ export function useArchiveItemResources(openLink: (href: string) => void) {
 
     async function changeDrawerTab(value: string | number) {
         if (!drawerState.value) return;
-        drawerState.value.activeKey = String(value) as "files" | "audits";
+        drawerState.value.activeKey = String(value) as "files" | "audits" | "relations";
         await loadDrawer();
     }
 

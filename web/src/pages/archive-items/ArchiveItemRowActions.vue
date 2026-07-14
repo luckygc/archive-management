@@ -13,6 +13,7 @@ defineEmits<{
     view: [];
     edit: [];
     files: [];
+    relations: [];
     audits: [];
     lock: [];
     unlock: [];
@@ -25,6 +26,7 @@ defineEmits<{
         <el-button link :disabled="!canRead" @click="$emit('view')">查看</el-button>
         <el-button link :disabled="!canUpdate || locked" @click="$emit('edit')">编辑</el-button>
         <el-button link :disabled="!canRead" @click="$emit('files')">文件</el-button>
+        <el-button link :disabled="!canRead" @click="$emit('relations')">关系</el-button>
         <el-button link :disabled="!canReadAudit" @click="$emit('audits')">审计</el-button>
         <el-button v-if="locked" link :disabled="!canLock || busy" @click="$emit('unlock')"
             >解锁</el-button

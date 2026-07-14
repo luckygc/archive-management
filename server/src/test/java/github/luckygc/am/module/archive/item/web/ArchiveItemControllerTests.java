@@ -12,6 +12,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.core.Authentication;
 
+import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.common.api.CursorPageTokenCodec;
 import github.luckygc.am.common.api.CursorPageTokenContext;
 import github.luckygc.am.common.security.AuthenticatedUser;
@@ -57,6 +58,22 @@ class ArchiveItemControllerTests {
 
         verify(archiveItemQueryService).searchItems(body, 9L, page);
         org.assertj.core.api.Assertions.assertThat(body.volumeId()).isEqualTo(12L);
+    }
+
+    @Test
+    @DisplayName("关系列表把 depth 和 cursor 分页请求传给服务")
+    void listRelationsShouldUseCursorPageAndDepth() {
+        Authentication authentication = authentication(9L);
+        PageRequest page = PageRequest.ofSize(100);
+        @SuppressWarnings("unchecked")
+        CursorPageResponse<ArchiveItemRelationService.ArchiveItemRelationResponse> response =
+                mock(CursorPageResponse.class);
+        when(archiveItemRelationService.listRelations(1L, 2, page, 9L)).thenReturn(response);
+
+        var actual = controller.listRelations(1L, 2, page, authentication);
+
+        org.assertj.core.api.Assertions.assertThat(actual).isSameAs(response);
+        verify(archiveItemRelationService).listRelations(1L, 2, page, 9L);
     }
 
     private Authentication authentication(Long userId) {

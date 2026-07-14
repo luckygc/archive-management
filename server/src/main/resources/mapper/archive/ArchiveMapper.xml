@@ -764,17 +764,132 @@
         select rel.id,
                rel.source_item_id,
                rel.target_item_id,
+               case when rel.source_item_id = #{archiveItemId}
+                    then rel.target_item_id else rel.source_item_id end as related_item_id,
+               case when rel.source_item_id = #{archiveItemId}
+                    then 'OUTGOING' else 'INCOMING' end as direction,
                rel.created_at,
-               ti.fonds_code as target_fonds_code,
-               ti.fonds_name as target_fonds_name,
-               ti.category_code as target_category_code,
-               ti.category_name as target_category_name,
-               ti.archive_no as target_archive_no
+               ti.fonds_code as related_fonds_code,
+               ti.fonds_name as related_fonds_name,
+               ti.category_code as related_category_code,
+               ti.category_name as related_category_name,
+               ti.archive_no as related_archive_no
         from am_archive_item_relation rel
-        join am_archive_item ti on ti.id = rel.target_item_id
+        join am_archive_item ti
+          on ti.id = case when rel.source_item_id = #{archiveItemId}
+                          then rel.target_item_id else rel.source_item_id end
           and ti.deleted_flag = false
-        where rel.source_item_id = #{sourceItemId}
+        where (rel.source_item_id = #{archiveItemId}
+               or rel.target_item_id = #{archiveItemId})
+        <if test="!criteria.allData">
+            and (
+            <foreach collection="criteria.targetScopes" item="scope" separator=" or ">
+                (
+                ti.category_code = #{scope.categoryCode}
+                and (
+                <foreach collection="scope.groups" item="group" separator=" or ">
+                    (
+                    <if test="group.fondsCodes != null and group.fondsCodes.size > 0">
+                        ti.fonds_code in
+                        <foreach collection="group.fondsCodes" item="fondsCode" open="(" separator="," close=")">
+                            #{fondsCode}
+                        </foreach>
+                    </if>
+                    <if test="group.securityLevelIds != null and group.securityLevelIds.size > 0">
+                        <if test="group.fondsCodes != null and group.fondsCodes.size > 0">and</if>
+                        ti.security_level_id in
+                        <foreach collection="group.securityLevelIds" item="securityLevelId" open="(" separator="," close=")">
+                            #{securityLevelId}
+                        </foreach>
+                    </if>
+                    <if test="group.retentionPeriodIds != null and group.retentionPeriodIds.size > 0">
+                        <if test="(group.fondsCodes != null and group.fondsCodes.size > 0) or (group.securityLevelIds != null and group.securityLevelIds.size > 0)">and</if>
+                        ti.retention_period_id in
+                        <foreach collection="group.retentionPeriodIds" item="retentionPeriodId" open="(" separator="," close=")">
+                            #{retentionPeriodId}
+                        </foreach>
+                    </if>
+                    <if test="group.conditions != null and group.conditions.size > 0">
+                        <if test="(group.fondsCodes != null and group.fondsCodes.size > 0) or (group.securityLevelIds != null and group.securityLevelIds.size > 0) or (group.retentionPeriodIds != null and group.retentionPeriodIds.size > 0)">and</if>
+                        exists (
+                            select 1
+                            from ${scope.tableName} d
+                            where d.id = ti.id
+                              and d.deleted_flag = false
+                            <foreach collection="group.conditions" item="condition">
+                                <choose>
+                                    <when test="condition.operatorName == 'EQ'">
+                                        and d.${condition.columnName} = #{condition.value}
+                                    </when>
+                                    <when test="condition.operatorName == 'IN'">
+                                        and d.${condition.columnName} in
+                                        <foreach collection="condition.values" item="conditionValue" open="(" separator="," close=")">
+                                            #{conditionValue}
+                                        </foreach>
+                                    </when>
+                                    <when test="condition.operatorName == 'IS_NULL'">
+                                        and d.${condition.columnName} is null
+                                    </when>
+                                    <when test="condition.operatorName == 'IS_NOT_NULL'">
+                                        and d.${condition.columnName} is not null
+                                    </when>
+                                </choose>
+                            </foreach>
+                        )
+                    </if>
+                    <if test="(group.fondsCodes == null or group.fondsCodes.size == 0) and (group.securityLevelIds == null or group.securityLevelIds.size == 0) and (group.retentionPeriodIds == null or group.retentionPeriodIds.size == 0) and (group.conditions == null or group.conditions.size == 0)">
+                        false
+                    </if>
+                    )
+                </foreach>
+                )
+                )
+            </foreach>
+            <if test="criteria.targetScopes == null or criteria.targetScopes.size == 0">
+                false
+            </if>
+            )
+        </if>
+        <if test="page.cursorId != null">
+            <choose>
+                <when test="page.previous">
+                    and rel.id &lt; #{page.cursorId}
+                </when>
+                <otherwise>
+                    and rel.id &gt; #{page.cursorId}
+                </otherwise>
+            </choose>
+        </if>
         order by rel.id
+        <choose>
+            <when test="page.previous">desc</when>
+            <otherwise>asc</otherwise>
+        </choose>
+        limit #{page.rowLimit}
+    </select>
+
+    <select id="getItemRelation" resultType="map">
+        select rel.id,
+               rel.source_item_id,
+               rel.target_item_id,
+               case when rel.source_item_id = #{archiveItemId}
+                    then rel.target_item_id else rel.source_item_id end as related_item_id,
+               case when rel.source_item_id = #{archiveItemId}
+                    then 'OUTGOING' else 'INCOMING' end as direction,
+               rel.created_at,
+               ti.fonds_code as related_fonds_code,
+               ti.fonds_name as related_fonds_name,
+               ti.category_code as related_category_code,
+               ti.category_name as related_category_name,
+               ti.archive_no as related_archive_no
+        from am_archive_item_relation rel
+        join am_archive_item ti
+          on ti.id = case when rel.source_item_id = #{archiveItemId}
+                          then rel.target_item_id else rel.source_item_id end
+          and ti.deleted_flag = false
+        where rel.id = #{id}
+          and (rel.source_item_id = #{archiveItemId}
+               or rel.target_item_id = #{archiveItemId})
     </select>
 
     <select id="insertItemRelation" resultType="long">
@@ -788,7 +903,8 @@
     <delete id="deleteItemRelation">
         delete from am_archive_item_relation
         where id = #{id}
-          and source_item_id = #{sourceItemId}
+          and (source_item_id = #{archiveItemId}
+               or target_item_id = #{archiveItemId})
     </delete>
 
     <select id="listItemLineTables" resultType="map">

@@ -5,9 +5,10 @@ import type {
     ArchiveItemAuditDto,
     ArchiveItemElectronicFileDto,
 } from "@/shared/types/archive-records";
+import ArchiveItemRelationsDrawer from "./ArchiveItemRelationsDrawer.vue";
 
 defineProps<{
-    state?: { archiveItemId: number; activeKey: "files" | "audits" };
+    state?: { archiveItemId: number; activeKey: "files" | "audits" | "relations" };
     loading: boolean;
     fileForm: { usageType: string; displayOrder?: number };
     files: ArchiveItemElectronicFileDto[];
@@ -15,6 +16,8 @@ defineProps<{
     canCreateFile: boolean;
     canDeleteFile: boolean;
     canDownloadFile: boolean;
+    canReadRelation: boolean;
+    canUpdateRelation: boolean;
     uploading: boolean;
     downloadingFileId?: number;
     unbindingFileId?: number;
@@ -102,6 +105,14 @@ function formatSize(size: number) {
                     <el-table-column label="操作人" prop="operatedBy" width="120" />
                     <el-table-column label="时间" prop="operatedAt" width="180" />
                 </el-table>
+            </el-tab-pane>
+            <el-tab-pane v-if="canReadRelation" label="档案关系" name="relations">
+                <ArchiveItemRelationsDrawer
+                    v-if="state"
+                    :archive-item-id="state.archiveItemId"
+                    :active="state.activeKey === 'relations'"
+                    :can-update="canUpdateRelation"
+                />
             </el-tab-pane>
         </el-tabs>
     </el-drawer>

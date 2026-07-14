@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import github.luckygc.am.common.api.CollectionResponse;
+import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.common.api.RawRequestStrings;
 import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.archive.item.service.ArchiveItemCommandService;
@@ -31,8 +32,8 @@ import github.luckygc.am.module.archive.item.service.ArchiveItemReadService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemReadService.ArchiveItemDetailDto;
 import github.luckygc.am.module.archive.item.service.ArchiveItemReadService.ArchiveItemDto;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRelationService;
-import github.luckygc.am.module.archive.item.service.ArchiveItemRelationService.ArchiveItemRelationDto;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRelationService.ArchiveItemRelationRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemRelationService.ArchiveItemRelationResponse;
 import github.luckygc.am.module.archive.metadata.ArchiveLayoutSurface;
 
 @RestController
@@ -177,23 +178,24 @@ public class ArchiveItemController {
     }
 
     @GetMapping("/api/v1/archive-items/{id}/relations")
-    public CollectionResponse<ArchiveItemRelationDto> listRelations(
+    public CursorPageResponse<ArchiveItemRelationResponse> listRelations(
             @PathVariable Long id,
             @RequestParam(defaultValue = "1") Integer depth,
+            PageRequest page,
             Authentication authentication) {
-        return CollectionResponse.of(
-                archiveItemRelationService.listRelations(
-                        id,
-                        depth,
-                        AuthenticatedUsers.requireUserId(
-                                authentication == null ? null : authentication.getPrincipal())));
+        return archiveItemRelationService.listRelations(
+                id,
+                depth,
+                page,
+                AuthenticatedUsers.requireUserId(
+                        authentication == null ? null : authentication.getPrincipal()));
     }
 
     @PostMapping("/api/v1/archive-items/{id}/relations")
     @ResponseStatus(HttpStatus.CREATED)
-    public ArchiveItemRelationDto createRelation(
+    public ArchiveItemRelationResponse createRelation(
             @PathVariable Long id,
-            @RequestBody ArchiveItemRelationRequest request,
+            @RequestBody(required = false) ArchiveItemRelationRequest request,
             Authentication authentication) {
         return archiveItemRelationService.createRelation(
                 id,

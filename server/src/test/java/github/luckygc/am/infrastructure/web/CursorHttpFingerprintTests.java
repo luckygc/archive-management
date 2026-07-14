@@ -31,6 +31,27 @@ class CursorHttpFingerprintTests {
     }
 
     @Test
+    @DisplayName("关系列表 depth 纳入查询摘要且 limit 和 cursor 不纳入")
+    void relationDepthParticipatesInFingerprint() {
+        MockHttpServletRequest first =
+                new MockHttpServletRequest("GET", "/api/v1/archive-items/1/relations");
+        first.addParameter("depth", "1");
+        first.addParameter("limit", "100");
+        first.addParameter("cursor", "first-page");
+        MockHttpServletRequest same =
+                new MockHttpServletRequest("GET", "/api/v1/archive-items/1/relations");
+        same.addParameter("depth", "1");
+        same.addParameter("limit", "200");
+        same.addParameter("cursor", "next-page");
+        MockHttpServletRequest different =
+                new MockHttpServletRequest("GET", "/api/v1/archive-items/1/relations");
+        different.addParameter("depth", "2");
+
+        assertThat(fingerprint.fingerprint(first)).isEqualTo(fingerprint.fingerprint(same));
+        assertThat(fingerprint.fingerprint(first)).isNotEqualTo(fingerprint.fingerprint(different));
+    }
+
+    @Test
     @DisplayName("URL 查询参数顺序和分页控制参数不影响查询摘要")
     void queryParamOrderAndPageControlsShouldNotAffectFingerprint() {
         MockHttpServletRequest first = jsonRequest("{\"categoryId\":1,\"keyword\":\"合同\"}");

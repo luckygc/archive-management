@@ -107,7 +107,11 @@ class ArchiveItemDataScopeQueryTests {
                         new ArchiveItemCursorPageAssembler(archiveMapper));
         archiveItemRelationService =
                 new ArchiveItemRelationService(
-                        archiveMapper, archiveItemReadService, permissionService);
+                        archiveMapper,
+                        archiveItemReadService,
+                        dataScopeService,
+                        archiveCategoryService,
+                        permissionService);
     }
 
     @Test
@@ -357,14 +361,17 @@ class ArchiveItemDataScopeQueryTests {
     void listRelationsShouldRequireReadPermissionAndSourceDataScope() {
         when(permissionService.hasPermission(9L, "archive:item:read")).thenReturn(false);
 
-        assertThatThrownBy(() -> archiveItemRelationService.listRelations(10L, 1, 9L))
+        assertThatThrownBy(
+                        () ->
+                                archiveItemRelationService.listRelations(
+                                        10L, 1, PageRequest.ofSize(100), 9L))
                 .isInstanceOfSatisfying(
                         ResponseStatusException.class,
                         exception ->
                                 assertThat(exception.getStatusCode())
                                         .isEqualTo(HttpStatus.FORBIDDEN));
 
-        verify(archiveMapper, never()).listItemRelations(10L);
+        verify(archiveMapper, never()).listItemRelations(anyLong(), any(), any());
     }
 
     @Test

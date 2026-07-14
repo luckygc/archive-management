@@ -2,7 +2,10 @@ import { describe, expect, it, vi } from "vite-plus/test";
 
 import { updateArchiveFonds } from "./archive-metadata";
 import {
+    createArchiveItemRelation,
     deleteArchiveRecord,
+    deleteArchiveItemRelation,
+    listArchiveItemRelations,
     searchArchiveRecords,
     uploadArchiveItemElectronicFile,
 } from "./archive-records";
@@ -83,5 +86,32 @@ describe("archive API", () => {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ reason: "重复数据" }),
         });
+    });
+
+    it("使用 URL query 游标读取档案关系", async () => {
+        httpClientMock.get.mockResolvedValue({ items: [] });
+
+        await listArchiveItemRelations(1, {
+            depth: 2,
+            limit: 100,
+            cursor: "next-relation",
+        });
+
+        expect(httpClientMock.get).toHaveBeenCalledWith(
+            "/api/v1/archive-items/1/relations?depth=2&limit=100&cursor=next-relation",
+        );
+    });
+
+    it("创建和删除关系复用档案关系子资源", async () => {
+        httpClientMock.post.mockResolvedValue({ id: 8 });
+        httpClientMock.delete.mockResolvedValue(undefined);
+
+        await createArchiveItemRelation(1, 2);
+        await deleteArchiveItemRelation(1, 8);
+
+        expect(httpClientMock.post).toHaveBeenCalledWith("/api/v1/archive-items/1/relations", {
+            targetItemId: 2,
+        });
+        expect(httpClientMock.delete).toHaveBeenCalledWith("/api/v1/archive-items/1/relations/8");
     });
 });
