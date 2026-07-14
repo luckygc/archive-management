@@ -117,6 +117,33 @@ describe("ArchiveItemManagementPage", () => {
         );
         expect(await screen.findByText("CREATE")).toBeInTheDocument();
     });
+    it("查询后使用响应游标翻页", async () => {
+        mocks.searchArchiveRecords.mockResolvedValue({
+            fields: [],
+            items: [{ id: 1 }],
+            next: "next-2",
+        });
+        renderPage(["archive:item:read"]);
+        await fireEvent.click(await screen.findByRole("button", { name: "提交查询" }));
+        await fireEvent.click(await screen.findByRole("button", { name: "下一页" }));
+
+        await waitFor(() =>
+            expect(mocks.searchArchiveRecords).toHaveBeenLastCalledWith(
+                expect.objectContaining({ categoryId: 1, limit: 100, cursor: "next-2" }),
+            ),
+        );
+    });
+    it("列表加载失败后原位重试", async () => {
+        mocks.searchArchiveRecords
+            .mockRejectedValueOnce(new Error("管理列表加载失败"))
+            .mockResolvedValueOnce({ fields: [], items: [{ id: 1 }] });
+        renderPage(["archive:item:read"]);
+        await fireEvent.click(await screen.findByRole("button", { name: "提交查询" }));
+
+        expect(await screen.findByText("管理列表加载失败")).toBeInTheDocument();
+        await fireEvent.click(screen.getByRole("button", { name: "重试" }));
+        await waitFor(() => expect(mocks.searchArchiveRecords).toHaveBeenCalledTimes(2));
+    });
 });
 function renderPage(permissionCodes: string[], superAdmin = false) {
     const pinia = createPinia();

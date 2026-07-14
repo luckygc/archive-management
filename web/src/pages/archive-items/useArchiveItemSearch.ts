@@ -1,6 +1,8 @@
 import { ElMessage } from "element-plus";
 import { onMounted, reactive, ref, watch } from "vue";
 
+import { errorMessage } from "@archive-management/frontend-core/api";
+
 import { searchArchiveRecords } from "@/shared/api/archive-records";
 import {
     listArchiveCategories,
@@ -28,7 +30,10 @@ export function useArchiveItemSearch() {
     const result = ref<ArchiveRecordListDto>();
     const committedQuery = ref<SearchArchiveRecordsQuery>();
     const orderBy = ref<ArchiveRecordOrderBy[]>([]);
+    const limit = ref(100);
+    const cursor = ref<string>();
     const loading = ref(false);
+    const loadError = ref<string>();
     let categoryLoadVersion = 0;
 
     onMounted(async () => {
@@ -60,6 +65,8 @@ export function useArchiveItemSearch() {
                 result.value = undefined;
                 committedQuery.value = undefined;
                 orderBy.value = [];
+                cursor.value = undefined;
+                loadError.value = undefined;
             }
             try {
                 const [fieldResponse, relatedResponse] = await Promise.all([
@@ -85,12 +92,19 @@ export function useArchiveItemSearch() {
         },
     );
 
-    async function execute(query: SearchArchiveRecordsQuery) {
+    async function execute(query: SearchArchiveRecordsQuery, nextCursor?: string) {
         loading.value = true;
+        loadError.value = undefined;
+        cursor.value = nextCursor;
         try {
-            result.value = await searchArchiveRecords(query);
+            result.value = await searchArchiveRecords({
+                ...query,
+                orderBy: orderBy.value.length ? orderBy.value : undefined,
+                limit: limit.value,
+                cursor: nextCursor,
+            });
         } catch (error) {
-            ElMessage.error(error instanceof Error ? error.message : "查询失败");
+            loadError.value = errorMessage(error, "查询失败");
         } finally {
             loading.value = false;
         }
@@ -99,14 +113,19 @@ export function useArchiveItemSearch() {
         const query = { ...toSearchQuery(values), keyword: undefined };
         committedQuery.value = query;
         orderBy.value = [];
+        clearResultCursors();
         void execute(query);
     }
     function refresh() {
-        if (committedQuery.value)
-            void execute({
-                ...committedQuery.value,
-                orderBy: orderBy.value.length ? orderBy.value : undefined,
-            });
+        if (committedQuery.value) void execute(committedQuery.value, cursor.value);
+    }
+    function page(nextCursor: string) {
+        if (committedQuery.value) void execute(committedQuery.value, nextCursor);
+    }
+    function limitChange(nextLimit: number) {
+        limit.value = nextLimit;
+        clearResultCursors();
+        if (committedQuery.value) void execute(committedQuery.value);
     }
     function reset() {
         Object.assign(queryForm, {
@@ -119,11 +138,25 @@ export function useArchiveItemSearch() {
         result.value = undefined;
         committedQuery.value = undefined;
         orderBy.value = [];
+        cursor.value = undefined;
+        loadError.value = undefined;
     }
     function orderResults(next: ArchiveRecordOrderBy[]) {
         if (!committedQuery.value) return;
         orderBy.value = next;
-        void execute({ ...committedQuery.value, orderBy: next.length ? next : undefined });
+        clearResultCursors();
+        void execute(committedQuery.value);
+    }
+    function clearResultCursors() {
+        cursor.value = undefined;
+        if (!result.value) return;
+        result.value = {
+            ...result.value,
+            self: undefined,
+            prev: undefined,
+            next: undefined,
+            first: undefined,
+        };
     }
 
     return {
@@ -131,9 +164,13 @@ export function useArchiveItemSearch() {
         committedQuery,
         fields,
         fonds,
+        limit,
+        limitChange,
         loading,
+        loadError,
         orderBy,
         orderResults,
+        page,
         queryForm,
         refresh,
         relatedCategories,

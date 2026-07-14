@@ -16,6 +16,7 @@ import type {
     ArchiveElectronicStatus,
     ArchiveRecordDetailDto,
 } from "@/shared/types/archive-records";
+import CursorPagination from "@/shared/components/CursorPagination.vue";
 import { usePermissionStore } from "@/stores/permissionStore";
 
 import ArchiveAdvancedQueryPanel from "@/pages/archive-library/ArchiveAdvancedQueryPanel.vue";
@@ -40,9 +41,13 @@ const {
     committedQuery,
     fields,
     fonds,
+    limit,
+    limitChange,
     loading,
+    loadError,
     orderBy,
     orderResults,
+    page,
     queryForm,
     refresh,
     relatedCategories,
@@ -247,8 +252,10 @@ async function saveRecord() {
                     @reset="reset" /></el-collapse-item
         ></el-collapse>
         <el-card class="am-page__result" shadow="never"
+            ><el-alert v-if="loadError" :title="loadError" type="error" show-icon :closable="false"
+                ><el-button link :loading="loading" @click="refresh">重试</el-button></el-alert
             ><ArchiveResultTable
-                v-if="result"
+                v-else-if="result"
                 :result="result"
                 :loading="loading"
                 :order-by="orderBy"
@@ -269,8 +276,17 @@ async function saveRecord() {
                         >审计</el-button
                     ></template
                 ></ArchiveResultTable
-            ><el-empty v-else description="选择分类并提交高级查询后显示管理列表"
-        /></el-card>
+            ><el-empty v-else description="选择分类并提交高级查询后显示管理列表" />
+            <div v-if="result" class="am-table-footer">
+                <CursorPagination
+                    :limit="limit"
+                    :prev="result.prev"
+                    :next="result.next"
+                    :loading="loading"
+                    @page="page"
+                    @limit-change="limitChange"
+                /></div
+        ></el-card>
         <ArchiveItemResourcesDrawer
             :state="drawerState"
             :loading="drawerLoading"
