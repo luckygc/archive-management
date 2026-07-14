@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch } from "vue";
+import { computed, onMounted, onUnmounted, watch } from "vue";
 import { isNavigationFailure, useRouter } from "vue-router";
 import type { TabsPaneContext, TabPaneName } from "element-plus";
 import { Collection, Refresh, User } from "@element-plus/icons-vue";
@@ -9,7 +9,7 @@ import RouteMenuItem from "@/layout/RouteMenuItem.vue";
 import ForbiddenPage from "@/pages/forbidden/ForbiddenPage.vue";
 import PageTabRouterView from "@/shared/tabs/PageTabRouterView.vue";
 import { usePageTabsStore } from "@/stores/pageTabsStore";
-import { usePermissionStore } from "@/stores/permissionStore";
+import { PERMISSION_REFRESH_INTERVAL_MS, usePermissionStore } from "@/stores/permissionStore";
 import { useSessionStore } from "@/stores/sessionStore";
 
 const router = useRouter();
@@ -30,17 +30,21 @@ const breadcrumbs = computed(() =>
 );
 const showInlineForbidden = computed(
     () =>
-        permissionStore.initialized &&
+        permissionStore.ready &&
         currentRoute.value.name !== "forbidden" &&
         !hasRoutePermission(currentRoute.value.meta, permissionStore),
 );
+const showPermissionVerificationError = computed(
+    () => permissionStore.initialized && !permissionStore.ready,
+);
 let permissionEffectSequence = 0;
+let refreshTimer: number | undefined;
 
 watch(
-    () => permissionStore.snapshot,
-    (snapshot) => {
+    () => [permissionStore.snapshot.revision, currentRoute.value.fullPath] as const,
+    () => {
         const effectId = ++permissionEffectSequence;
-        if (!snapshot.initialized) return;
+        if (!permissionStore.ready) return;
         const deniedFullPath = currentRoute.value.fullPath;
         const currentAllowed = hasRoutePermission(currentRoute.value.meta, permissionStore);
         tabsStore.removeInaccessible(
@@ -48,10 +52,41 @@ watch(
             currentAllowed ? undefined : deniedFullPath,
         );
         if (!currentAllowed && currentRoute.value.name !== "forbidden")
-            void redirectDeniedRoute(effectId, snapshot.revision, deniedFullPath);
+            void redirectDeniedRoute(effectId, permissionStore.snapshot.revision, deniedFullPath);
     },
     { immediate: true },
 );
+
+onMounted(() => {
+    refreshTimer = window.setInterval(
+        runScheduledPermissionRefresh,
+        PERMISSION_REFRESH_INTERVAL_MS,
+    );
+    window.addEventListener("focus", runScheduledPermissionRefresh);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+});
+
+onUnmounted(() => {
+    if (refreshTimer !== undefined) window.clearInterval(refreshTimer);
+    window.removeEventListener("focus", runScheduledPermissionRefresh);
+    document.removeEventListener("visibilitychange", refreshWhenVisible);
+});
+
+function runScheduledPermissionRefresh() {
+    void permissionStore.refreshIfNeeded().catch(() => undefined);
+}
+
+function refreshWhenVisible() {
+    if (document.visibilityState === "visible") runScheduledPermissionRefresh();
+}
+
+async function retryPermissionVerification() {
+    try {
+        await permissionStore.ensureFresh();
+    } catch {
+        // 保持稳定的内联校验失败状态，允许用户再次重试。
+    }
+}
 
 async function redirectDeniedRoute(effectId: number, revision: number, deniedFullPath: string) {
     try {
@@ -181,7 +216,27 @@ async function logout() {
                 </div>
             </div>
             <ElMain class="am-shell__content">
-                <ForbiddenPage v-if="showInlineForbidden" embedded />
+                <section
+                    v-if="showPermissionVerificationError"
+                    class="am-page"
+                    aria-labelledby="permission-verification-error-title"
+                >
+                    <ElResult
+                        icon="error"
+                        title="权限校验失败"
+                        sub-title="当前无法验证账号权限，已暂停显示受保护内容。请检查网络后重试。"
+                    >
+                        <template #title>
+                            <h1 id="permission-verification-error-title">权限校验失败</h1>
+                        </template>
+                        <template #extra>
+                            <ElButton type="primary" @click="retryPermissionVerification"
+                                >重新校验权限</ElButton
+                            >
+                        </template>
+                    </ElResult>
+                </section>
+                <ForbiddenPage v-else-if="showInlineForbidden" embedded />
                 <PageTabRouterView v-else />
             </ElMain>
         </ElContainer>

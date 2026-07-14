@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
     listArchiveVolumes: vi.fn(),
     searchArchiveRecords: vi.fn(),
 }));
+const permissionApiMocks = vi.hoisted(() => ({ getCurrentUserPermissions: vi.fn() }));
 
 vi.mock("@/shared/api/archive-volumes", () => ({
     addArchiveItemToVolume: mocks.addArchiveItemToVolume,
@@ -33,16 +34,16 @@ vi.mock("@/shared/api/archive-records", () => ({
     discoverArchiveRecords: mocks.discoverArchiveRecords,
     searchArchiveRecords: mocks.searchArchiveRecords,
 }));
+vi.mock("@/shared/api/authorization", () => permissionApiMocks);
 
-beforeEach(() => {
+beforeEach(async () => {
     setActivePinia(createPinia());
     const permissionStore = usePermissionStore();
-    permissionStore.snapshot = {
-        initialized: true,
+    permissionApiMocks.getCurrentUserPermissions.mockResolvedValue({
         permissionCodes: ["archive:item:read", "archive:item:create"],
-        revision: permissionStore.snapshot.revision + 1,
         superAdmin: false,
-    };
+    });
+    await permissionStore.fetchSummary();
     mocks.listArchiveFonds.mockResolvedValue({
         items: [
             {

@@ -37,8 +37,10 @@ const mocks = vi.hoisted(() => ({
     updateArchiveRecord: vi.fn(),
     uploadArchiveItemElectronicFile: vi.fn(),
 }));
+const permissionApiMocks = vi.hoisted(() => ({ getCurrentUserPermissions: vi.fn() }));
 vi.mock("@/shared/api/archive-metadata", () => mocks);
 vi.mock("@/shared/api/archive-records", () => mocks);
+vi.mock("@/shared/api/authorization", () => permissionApiMocks);
 vi.mock("./useArchiveItemLifecycle", () => ({
     useArchiveItemLifecycle: () => ({
         busyAction: mocks.busyAction,
@@ -204,14 +206,14 @@ afterEach(() => {
 
 describe("ArchiveItemManagementPage", () => {
     it("无权限时禁用写入入口", async () => {
-        renderPage([]);
+        await renderPage([]);
         expect(await screen.findByRole("button", { name: /导入模板/ })).toBeDisabled();
         expect(screen.getByRole("button", { name: /^导入$/ })).toBeDisabled();
         expect(screen.getByRole("button", { name: /导出/ })).toBeDisabled();
         expect(screen.getByRole("button", { name: /新建档案/ })).toBeDisabled();
     });
     it("查询后按权限打开文件与审计入口", async () => {
-        renderPage(
+        await renderPage(
             [
                 "archive:item:read",
                 "archive:item:create",
@@ -237,7 +239,7 @@ describe("ArchiveItemManagementPage", () => {
         expect(await screen.findByText("CREATE")).toBeInTheDocument();
     });
     it("读取权限可打开关系页签且无更新权限时不显示维护入口", async () => {
-        renderPage(["archive:item:read"]);
+        await renderPage(["archive:item:read"]);
         await fireEvent.click(await screen.findByRole("button", { name: "提交查询" }));
 
         await fireEvent.click(await screen.findByRole("button", { name: "关系" }));
@@ -251,7 +253,7 @@ describe("ArchiveItemManagementPage", () => {
         expect(screen.queryByRole("button", { name: "确认关联" })).not.toBeInTheDocument();
     });
     it("只有审计读取权限时不暴露关系页签", async () => {
-        renderPage(["archive:item:audit:read"]);
+        await renderPage(["archive:item:audit:read"]);
         await fireEvent.click(await screen.findByRole("button", { name: "提交查询" }));
 
         await fireEvent.click(await screen.findByRole("button", { name: "审计" }));
@@ -264,7 +266,7 @@ describe("ArchiveItemManagementPage", () => {
             fields: [],
             items: [{ id: 1, locked_flag: false }],
         });
-        renderPage([
+        await renderPage([
             "archive:item:read",
             "archive:item:update",
             "archive:item:lock",
@@ -284,7 +286,7 @@ describe("ArchiveItemManagementPage", () => {
             fields: [],
             items: [{ id: 1, locked_flag: true }],
         });
-        renderPage([
+        await renderPage([
             "archive:item:read",
             "archive:item:update",
             "archive:item:lock",
@@ -306,7 +308,7 @@ describe("ArchiveItemManagementPage", () => {
             items: [{ id: 1, locked_flag: false }],
         });
         mocks.busyAction.value = "lock";
-        renderPage(["archive:item:read"]);
+        await renderPage(["archive:item:read"]);
 
         await fireEvent.click(await screen.findByRole("button", { name: "提交查询" }));
 
@@ -321,7 +323,7 @@ describe("ArchiveItemManagementPage", () => {
             items: [{ id: 1 }],
             next: "next-2",
         });
-        renderPage(["archive:item:read"]);
+        await renderPage(["archive:item:read"]);
         await fireEvent.click(await screen.findByRole("button", { name: "提交查询" }));
         await fireEvent.click(await screen.findByRole("button", { name: "下一页" }));
 
@@ -335,7 +337,7 @@ describe("ArchiveItemManagementPage", () => {
         mocks.searchArchiveRecords
             .mockRejectedValueOnce(new Error("管理列表加载失败"))
             .mockResolvedValueOnce({ fields: [], items: [{ id: 1 }], next: "retry-next" });
-        renderPage(["archive:item:read"]);
+        await renderPage(["archive:item:read"]);
         await fireEvent.click(await screen.findByRole("button", { name: "提交查询" }));
 
         expect(await screen.findByText("管理列表加载失败")).toBeInTheDocument();
@@ -347,7 +349,7 @@ describe("ArchiveItemManagementPage", () => {
     it("编辑时加载启用参考数据并分别回填提交实物字段和动态字段", async () => {
         mocks.searchArchiveRecords.mockResolvedValue({ fields: [], items: [{ id: 9 }] });
         mocks.getArchiveRecord.mockResolvedValue(detail());
-        renderPage(["archive:item:read", "archive:item:update"]);
+        await renderPage(["archive:item:read", "archive:item:update"]);
 
         await waitFor(() => {
             expect(mocks.listArchiveSecurityLevels).toHaveBeenCalledWith(true);
@@ -388,7 +390,7 @@ describe("ArchiveItemManagementPage", () => {
                 archiveField("PHYSICAL", "box_no", "盒号", 12),
             ],
         });
-        renderPage(["archive:item:create"]);
+        await renderPage(["archive:item:create"]);
         await fireEvent.click(await screen.findByRole("button", { name: "提交查询" }));
         await waitFor(() => expect(mocks.listArchiveFields).toHaveBeenCalledWith(1, "ITEM"));
         await fireEvent.click(screen.getByRole("button", { name: /新建档案/ }));
@@ -426,7 +428,7 @@ describe("ArchiveItemManagementPage", () => {
         const second = deferred<ReturnType<typeof detail>>();
         mocks.getArchiveRecord.mockImplementationOnce(() => first.promise);
         mocks.getArchiveRecord.mockImplementationOnce(() => second.promise);
-        renderPage(["archive:item:read", "archive:item:update"]);
+        await renderPage(["archive:item:read", "archive:item:update"]);
         await fireEvent.click(await screen.findByRole("button", { name: "提交查询" }));
         const editButtons = await screen.findAllByRole("button", { name: "编辑" });
         await fireEvent.click(editButtons[0]!);
@@ -443,7 +445,7 @@ describe("ArchiveItemManagementPage", () => {
         const second = deferred<ReturnType<typeof detail>>();
         mocks.getArchiveRecord.mockImplementationOnce(() => first.promise);
         mocks.getArchiveRecord.mockImplementationOnce(() => second.promise);
-        renderPage(["archive:item:read", "archive:item:update"]);
+        await renderPage(["archive:item:read", "archive:item:update"]);
         await fireEvent.click(await screen.findByRole("button", { name: "提交查询" }));
         const editButtons = await screen.findAllByRole("button", { name: "编辑" });
         await fireEvent.click(editButtons[0]!);
@@ -460,7 +462,7 @@ describe("ArchiveItemManagementPage", () => {
         const second = deferred<ReturnType<typeof detail>>();
         mocks.getArchiveRecord.mockImplementationOnce(() => first.promise);
         mocks.getArchiveRecord.mockImplementationOnce(() => second.promise);
-        renderPage(["archive:item:read", "archive:item:update"]);
+        await renderPage(["archive:item:read", "archive:item:update"]);
         await fireEvent.click(await screen.findByRole("button", { name: "提交查询" }));
         const editButton = await screen.findByRole("button", { name: "编辑" });
         await fireEvent.click(editButton);
@@ -475,7 +477,7 @@ describe("ArchiveItemManagementPage", () => {
         mocks.searchArchiveRecords.mockResolvedValue({ fields: [], items: [{ id: 1 }] });
         const pending = deferred<ReturnType<typeof detail>>();
         mocks.getArchiveRecord.mockReturnValue(pending.promise);
-        renderPage(["archive:item:read", "archive:item:update"]);
+        await renderPage(["archive:item:read", "archive:item:update"]);
         await fireEvent.click(await screen.findByRole("button", { name: "提交查询" }));
         await fireEvent.click(await screen.findByRole("button", { name: "编辑" }));
         await fireEvent.click(screen.getByRole("button", { name: "取消" }));
@@ -488,7 +490,7 @@ describe("ArchiveItemManagementPage", () => {
         mocks.searchArchiveRecords.mockResolvedValue({ fields: [], items: [{ id: 1 }] });
         const pending = deferred<ReturnType<typeof detail>>();
         mocks.getArchiveRecord.mockReturnValue(pending.promise);
-        renderPage(["archive:item:read", "archive:item:create", "archive:item:update"]);
+        await renderPage(["archive:item:read", "archive:item:create", "archive:item:update"]);
         await fireEvent.click(await screen.findByRole("button", { name: "提交查询" }));
         await fireEvent.click(await screen.findByRole("button", { name: "编辑" }));
         await fireEvent.click(screen.getByRole("button", { name: /新建档案/ }));
@@ -503,7 +505,7 @@ describe("ArchiveItemManagementPage", () => {
         mocks.listArchiveSecurityLevels.mockRejectedValueOnce(new Error("密级服务不可用"));
         mocks.searchArchiveRecords.mockResolvedValue({ fields: [], items: [{ id: 9 }] });
         mocks.getArchiveRecord.mockResolvedValue(detail());
-        renderPage(["archive:item:read", "archive:item:update"]);
+        await renderPage(["archive:item:read", "archive:item:update"]);
         await fireEvent.click(await screen.findByRole("button", { name: "提交查询" }));
         await fireEvent.click(await screen.findByRole("button", { name: "编辑" }));
 
@@ -521,7 +523,7 @@ describe("ArchiveItemManagementPage", () => {
         mocks.listArchiveRetentionPeriods.mockReturnValue(retention.promise);
         mocks.searchArchiveRecords.mockResolvedValue({ fields: [], items: [{ id: 9 }] });
         mocks.getArchiveRecord.mockResolvedValue(detail());
-        renderPage(["archive:item:read", "archive:item:update"]);
+        await renderPage(["archive:item:read", "archive:item:update"]);
         await fireEvent.click(await screen.findByRole("button", { name: "提交查询" }));
         await fireEvent.click(await screen.findByRole("button", { name: "编辑" }));
         await screen.findByLabelText("题名");
@@ -548,7 +550,7 @@ describe("ArchiveItemManagementPage", () => {
                 "trace-task-4",
             ),
         );
-        renderPage(["archive:item:read", "archive:item:update"]);
+        await renderPage(["archive:item:read", "archive:item:update"]);
         await fireEvent.click(await screen.findByRole("button", { name: "提交查询" }));
         await fireEvent.click(await screen.findByRole("button", { name: "编辑" }));
         await fireEvent.update(await screen.findByLabelText("档号"), "A-009");
@@ -566,16 +568,15 @@ describe("ArchiveItemManagementPage", () => {
         expect(await screen.findByText(/trace-task-4/)).toBeInTheDocument();
     });
 });
-function renderPage(permissionCodes: string[], superAdmin = false) {
+async function renderPage(permissionCodes: string[], superAdmin = false) {
     const pinia = createPinia();
     setActivePinia(pinia);
     const permissionStore = usePermissionStore();
-    permissionStore.snapshot = {
-        initialized: true,
+    permissionApiMocks.getCurrentUserPermissions.mockResolvedValueOnce({
         permissionCodes,
-        revision: permissionStore.snapshot.revision + 1,
         superAdmin,
-    };
+    });
+    await permissionStore.fetchSummary();
     return render(ArchiveItemManagementPage, { global: { plugins: [ElementPlus, pinia] } });
 }
 

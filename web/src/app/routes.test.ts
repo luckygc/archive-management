@@ -1,6 +1,6 @@
 import { createPinia, setActivePinia } from "pinia";
 import type { RouteRecordRaw } from "vue-router";
-import { beforeEach, describe, expect, it } from "vite-plus/test";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import { usePermissionStore } from "@/stores/permissionStore";
 import { useSessionStore } from "@/stores/sessionStore";
@@ -13,7 +13,16 @@ import {
     workspaceRoutes,
 } from "./routes";
 
-beforeEach(() => setActivePinia(createPinia()));
+const permissionApiMocks = vi.hoisted(() => ({ getCurrentUserPermissions: vi.fn() }));
+vi.mock("@/shared/api/authorization", () => permissionApiMocks);
+
+beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.resetAllMocks();
+});
+afterEach(() => vi.useRealTimers());
+
+const PERMISSION_SNAPSHOT_TTL_MS = 300_000;
 
 describe("workspaceRoutes", () => {
     it("由嵌套路由同时提供菜单与面包屑层级", () => {
@@ -153,7 +162,7 @@ describe("workspaceRoutes", () => {
     });
 
     it("权限初始化完成后将无权直达请求定向到 403", async () => {
-        authenticate({ initializedPermissions: true });
+        await authenticate();
 
         await expect(navigationGuard(router.resolve("/archive/items"))).resolves.toEqual({
             name: "forbidden",
@@ -162,24 +171,20 @@ describe("workspaceRoutes", () => {
     });
 
     it("权限尚未初始化时等待加载而不提前判定无权", async () => {
-        const { permissionStore } = authenticate({ initializedPermissions: false });
-        permissionStore.fetchSummary = async () => {
-            permissionStore.snapshot = {
-                initialized: true,
-                permissionCodes: ["archive:item:read"],
-                revision: permissionStore.snapshot.revision + 1,
-                superAdmin: false,
-            };
-        };
+        await authenticate({ initializedPermissions: false });
+        permissionApiMocks.getCurrentUserPermissions.mockResolvedValue({
+            superAdmin: false,
+            permissionCodes: ["archive:item:read"],
+        });
 
         await expect(navigationGuard(router.resolve("/archive/items"))).resolves.toBe(true);
     });
 
     it("权限摘要加载失败时进入会话校验失败页而不是误判 403", async () => {
-        const { permissionStore } = authenticate({ initializedPermissions: false });
-        permissionStore.fetchSummary = async () => {
-            throw new Error("permission unavailable");
-        };
+        await authenticate({ initializedPermissions: false });
+        permissionApiMocks.getCurrentUserPermissions.mockRejectedValue(
+            new Error("permission unavailable"),
+        );
 
         await expect(navigationGuard(router.resolve("/archive/items"))).resolves.toEqual({
             path: "/authentication-error",
@@ -189,20 +194,32 @@ describe("workspaceRoutes", () => {
     });
 
     it("403 页面本身不会再次重定向", async () => {
-        authenticate({ initializedPermissions: true });
+        await authenticate();
 
         await expect(navigationGuard(router.resolve("/forbidden"))).resolves.toBe(true);
     });
 
     it("仅数据范围权限可直接进入授权管理", async () => {
-        const { permissionStore } = authenticate({ initializedPermissions: true });
-        permissionStore.snapshot = {
-            ...permissionStore.snapshot,
-            permissionCodes: ["archive:data-scope:manage"],
-            revision: permissionStore.snapshot.revision + 1,
-        };
+        await authenticate({ permissionCodes: ["archive:data-scope:manage"] });
 
         await expect(navigationGuard(router.resolve("/system/authorization"))).resolves.toBe(true);
+    });
+
+    it("权限快照过期且重新校验失败时进入校验失败页而不是沿用旧授权", async () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date("2026-07-15T00:00:00Z"));
+        await authenticate({ permissionCodes: ["archive:item:read"] });
+        vi.advanceTimersByTime(PERMISSION_SNAPSHOT_TTL_MS);
+        permissionApiMocks.getCurrentUserPermissions.mockRejectedValue(
+            new Error("permission unavailable"),
+        );
+
+        await expect(navigationGuard(router.resolve("/archive/items"))).resolves.toEqual({
+            path: "/authentication-error",
+            query: { redirect: "/archive/items" },
+            replace: true,
+        });
+        expect(permissionApiMocks.getCurrentUserPermissions).toHaveBeenCalledTimes(2);
     });
 
     it("在路由边界清洗登录后跳转地址", () => {
@@ -213,7 +230,13 @@ describe("workspaceRoutes", () => {
     });
 });
 
-function authenticate({ initializedPermissions }: { initializedPermissions: boolean }) {
+async function authenticate({
+    initializedPermissions = true,
+    permissionCodes = [],
+}: {
+    initializedPermissions?: boolean;
+    permissionCodes?: string[];
+} = {}) {
     const sessionStore = useSessionStore();
     sessionStore.initialized = true;
     sessionStore.currentUser = {
@@ -223,11 +246,12 @@ function authenticate({ initializedPermissions }: { initializedPermissions: bool
         roles: [],
     };
     const permissionStore = usePermissionStore();
-    permissionStore.snapshot = {
-        initialized: initializedPermissions,
-        permissionCodes: [],
-        revision: permissionStore.snapshot.revision + 1,
-        superAdmin: false,
-    };
+    if (initializedPermissions) {
+        permissionApiMocks.getCurrentUserPermissions.mockResolvedValueOnce({
+            superAdmin: false,
+            permissionCodes,
+        });
+        await permissionStore.fetchSummary();
+    }
     return { permissionStore, sessionStore };
 }

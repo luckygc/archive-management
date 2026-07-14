@@ -997,6 +997,14 @@ pnpm --filter @archive-management/web exec vp test run src/stores/permissionStor
 cd server && mise exec -- mvn -q -Dtest=AuthenticationUserManagementServiceTests,AuthenticationUserManagementControllerTests test
 ```
 
+- [x] **Step 8: 收紧会话期权限有效边界与只读快照**
+
+权限快照增加五分钟有效期并冻结对象及权限码数组，调用方只读访问。AppShell 每 60 秒以及 focus/visible 时检查，在最后 60 秒预刷新；并发触发复用单一请求，快速失败自动节流，卸载后清理。路由守卫到期时先刷新，失败则显示可原位重试的权限校验错误并停止渲染受保护内容；用户离开导航失败后保留的无权路由时清理其页签和缓存。
+
+```bash
+pnpm --filter @archive-management/web exec vp test run src/stores/permissionStore.test.ts src/app/routes.test.ts src/layout/AppShell.test.ts
+```
+
 ### Task 10: 用数据范围内真实统计替换工作台假数据
 
 **Files:**

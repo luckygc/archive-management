@@ -268,16 +268,14 @@ export async function navigationGuard(to: Pick<RouteLocationNormalized, "fullPat
     }
 
     const permissionStore = usePermissionStore();
-    if (!permissionStore.initialized) {
-        try {
-            await permissionStore.fetchSummary();
-        } catch {
-            return {
-                path: "/authentication-error",
-                query: { redirect: to.fullPath },
-                replace: true,
-            };
-        }
+    try {
+        await permissionStore.ensureFresh();
+    } catch {
+        return {
+            path: "/authentication-error",
+            query: { redirect: to.fullPath },
+            replace: true,
+        };
     }
     if (!hasRoutePermission(to.meta, permissionStore)) {
         return { name: "forbidden", replace: true };

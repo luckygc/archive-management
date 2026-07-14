@@ -8,6 +8,7 @@ import AuthorizationManagementPage from "./AuthorizationManagementPage.vue";
 
 const archiveApiMocks = vi.hoisted(() => ({
     getAuthenticationUser: vi.fn(),
+    getCurrentUserPermissions: vi.fn(),
     getDepartmentArchiveDataScopes: vi.fn(),
     getRoleArchiveDataScopes: vi.fn(),
     getRolePermissions: vi.fn(),
@@ -78,7 +79,7 @@ afterEach(() => {
 
 describe("AuthorizationManagementPage", () => {
     it("选择角色后加载并展示权限和数据范围", async () => {
-        renderPage(["authorization:permission:manage", "archive:data-scope:manage"]);
+        await renderPage(["authorization:permission:manage", "archive:data-scope:manage"]);
         await selectCurrentSubject("档案管理员");
 
         await waitFor(() => {
@@ -90,7 +91,7 @@ describe("AuthorizationManagementPage", () => {
     });
 
     it("仅功能权限管理员只加载和呈现角色功能权限", async () => {
-        renderPage(["authorization:permission:manage"]);
+        await renderPage(["authorization:permission:manage"]);
         await selectCurrentSubject("档案管理员");
 
         await waitFor(() => expect(archiveApiMocks.getRolePermissions).toHaveBeenCalledWith(2));
@@ -115,7 +116,7 @@ describe("AuthorizationManagementPage", () => {
         });
         archiveApiMocks.getUserArchiveDataScopes.mockResolvedValue({ userId: 5, scopeIds: [] });
 
-        renderPage(["archive:data-scope:manage"]);
+        await renderPage(["archive:data-scope:manage"]);
         await fireEvent.click(await screen.findByText("部门"));
         await selectCurrentSubject("D003 综合部");
 
@@ -137,9 +138,9 @@ describe("AuthorizationManagementPage", () => {
             items: Array<{ id: number; roleName: string; enabled: boolean; createdAt: string }>;
         }>();
         archiveApiMocks.listAuthorizationRoles.mockReturnValueOnce(roleCatalog.promise);
-        const permissionStore = renderPage(["authorization:permission:manage"]);
+        const permissionStore = await renderPage(["authorization:permission:manage"]);
 
-        setPermissions(permissionStore, [
+        await setPermissions(permissionStore, [
             "authorization:permission:manage",
             "archive:data-scope:manage",
         ]);
@@ -167,7 +168,7 @@ describe("AuthorizationManagementPage", () => {
             items: [{ id: 5, username: "zhangsan", displayName: "张三" }],
         });
         archiveApiMocks.getUserArchiveDataScopes.mockReturnValue(userScopes.promise);
-        const permissionStore = renderPage([
+        const permissionStore = await renderPage([
             "authorization:permission:manage",
             "archive:data-scope:manage",
         ]);
@@ -176,14 +177,14 @@ describe("AuthorizationManagementPage", () => {
         await fireEvent.click(screen.getByRole("button", { name: "编辑" }));
         expect(screen.getByRole("dialog", { name: "编辑数据范围" })).toBeInTheDocument();
 
-        setPermissions(permissionStore, ["authorization:permission:manage"]);
+        await setPermissions(permissionStore, ["authorization:permission:manage"]);
 
         await waitFor(() => expect(screen.queryByText("用户")).not.toBeInTheDocument());
         expect(screen.queryByRole("dialog", { name: "编辑数据范围" })).not.toBeInTheDocument();
         expect(screen.queryByText("数据范围")).not.toBeInTheDocument();
         expect(await screen.findByText("搜索并选择角色")).toBeInTheDocument();
 
-        setPermissions(permissionStore, [
+        await setPermissions(permissionStore, [
             "authorization:permission:manage",
             "archive:data-scope:manage",
         ]);
@@ -203,11 +204,11 @@ describe("AuthorizationManagementPage", () => {
             .mockResolvedValueOnce({
                 items: [{ id: 6, username: "lisi", displayName: "李四" }],
             });
-        const permissionStore = renderPage(["archive:data-scope:manage"]);
+        const permissionStore = await renderPage(["archive:data-scope:manage"]);
 
-        setPermissions(permissionStore, ["authorization:permission:manage"]);
+        await setPermissions(permissionStore, ["authorization:permission:manage"]);
         oldUsers.resolve({ items: [{ id: 5, username: "zhangsan", displayName: "张三" }] });
-        setPermissions(permissionStore, [
+        await setPermissions(permissionStore, [
             "authorization:permission:manage",
             "archive:data-scope:manage",
         ]);
@@ -223,24 +224,26 @@ describe("AuthorizationManagementPage", () => {
     });
 });
 
-function renderPage(permissionCodes: string[]) {
+async function renderPage(permissionCodes: string[]) {
     const pinia = createPinia();
     setActivePinia(pinia);
     const permissionStore = usePermissionStore();
-    setPermissions(permissionStore, permissionCodes);
+    await setPermissions(permissionStore, permissionCodes);
     render(AuthorizationManagementPage, {
         global: { plugins: [ElementPlus, pinia] },
     });
     return permissionStore;
 }
 
-function setPermissions(store: ReturnType<typeof usePermissionStore>, permissionCodes: string[]) {
-    store.snapshot = {
-        initialized: true,
+async function setPermissions(
+    store: ReturnType<typeof usePermissionStore>,
+    permissionCodes: string[],
+) {
+    archiveApiMocks.getCurrentUserPermissions.mockResolvedValueOnce({
         permissionCodes,
-        revision: store.snapshot.revision + 1,
         superAdmin: false,
-    };
+    });
+    await store.fetchSummary();
 }
 
 function deferred<T>() {

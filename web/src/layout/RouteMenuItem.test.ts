@@ -2,14 +2,20 @@ import { cleanup, render, screen } from "@testing-library/vue";
 import ElementPlus from "element-plus";
 import { createPinia, getActivePinia, setActivePinia } from "pinia";
 import type { RouteRecordRaw } from "vue-router";
-import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import { usePermissionStore } from "@/stores/permissionStore";
 
 import RouteMenuItem from "./RouteMenuItem.vue";
 
+const permissionApiMocks = vi.hoisted(() => ({ getCurrentUserPermissions: vi.fn() }));
+vi.mock("@/shared/api/authorization", () => permissionApiMocks);
+
 afterEach(cleanup);
-beforeEach(() => setActivePinia(createPinia()));
+beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.resetAllMocks();
+});
 
 describe("RouteMenuItem", () => {
     it("递归渲染任意层级的可见路由菜单", () => {
@@ -45,14 +51,13 @@ describe("RouteMenuItem", () => {
         expect(screen.getByText("四级")).toBeInTheDocument();
     });
 
-    it("只渲染有权叶子并隐藏没有可访问子项的分组", () => {
+    it("只渲染有权叶子并隐藏没有可访问子项的分组", async () => {
         const permissionStore = usePermissionStore();
-        permissionStore.snapshot = {
-            initialized: true,
+        permissionApiMocks.getCurrentUserPermissions.mockResolvedValue({
             permissionCodes: ["archive:item:read"],
-            revision: permissionStore.snapshot.revision + 1,
             superAdmin: false,
-        };
+        });
+        await permissionStore.fetchSummary();
         const routeRecord: RouteRecordRaw = {
             path: "root",
             meta: { title: "根菜单", menu: true },

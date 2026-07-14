@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/vue";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/vue";
 import ElementPlus from "element-plus";
 import { createPinia, setActivePinia } from "pinia";
 import { nextTick } from "vue";
@@ -14,7 +14,13 @@ const permissionApiMocks = vi.hoisted(() => ({ getCurrentUserPermissions: vi.fn(
 vi.mock("@/shared/api/authorization", () => permissionApiMocks);
 
 beforeEach(() => vi.resetAllMocks());
-afterEach(cleanup);
+afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+});
+
+const PERMISSION_REFRESH_INTERVAL_MS = 60_000;
+const PERMISSION_SNAPSHOT_TTL_MS = 300_000;
 
 describe("AppShell", () => {
     it("当前页权限被收回时立即卸载缓存内容、清理页签并进入 403", async () => {
@@ -175,6 +181,118 @@ describe("AppShell", () => {
         expect(await screen.findByText("没有访问权限")).toBeInTheDocument();
         expect(tabsStore.tabs.map((item) => item.fullPath)).toContain("/archive/items");
         expect(screen.queryByText("敏感档案内容")).not.toBeInTheDocument();
+
+        await fireEvent.click(screen.getByText("返回工作台"));
+
+        await waitFor(() => expect(router.currentRoute.value.fullPath).toBe("/"));
+        expect(tabsStore.tabs.map((item) => item.fullPath)).not.toContain("/archive/items");
+        expect(tabsStore.activeFullPath).toBe("/");
+    });
+
+    it("会话存续期间无需手工刷新即可在有界时间收敛服务端撤权", async () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date("2026-07-15T00:00:00Z"));
+        const { router } = await renderShell({
+            initialPath: "/archive/items",
+            permissionCodes: ["archive:item:read"],
+        });
+        permissionApiMocks.getCurrentUserPermissions.mockResolvedValue({
+            superAdmin: false,
+            permissionCodes: [],
+        });
+
+        await vi.advanceTimersByTimeAsync(
+            PERMISSION_SNAPSHOT_TTL_MS - PERMISSION_REFRESH_INTERVAL_MS,
+        );
+
+        expect(permissionApiMocks.getCurrentUserPermissions).toHaveBeenCalledTimes(2);
+        expect(router.currentRoute.value.name).toBe("forbidden");
+        expect(screen.queryByText("敏感档案内容")).not.toBeInTheDocument();
+    });
+
+    it("提前刷新失败保留尚有效页面，到期后停止渲染并可重试恢复", async () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date("2026-07-15T00:00:00Z"));
+        const { permissionStore } = await renderShell({
+            initialPath: "/archive/items",
+            permissionCodes: ["archive:item:read"],
+        });
+        permissionApiMocks.getCurrentUserPermissions.mockRejectedValue(
+            new Error("permission unavailable"),
+        );
+
+        await vi.advanceTimersByTimeAsync(
+            PERMISSION_SNAPSHOT_TTL_MS - PERMISSION_REFRESH_INTERVAL_MS,
+        );
+        expect(permissionStore.ready).toBe(true);
+        expect(screen.getByText("敏感档案内容")).toBeInTheDocument();
+
+        await vi.advanceTimersByTimeAsync(PERMISSION_REFRESH_INTERVAL_MS);
+        expect(permissionStore.ready).toBe(false);
+        expect(screen.getByText("权限校验失败")).toBeInTheDocument();
+        expect(screen.queryByText("没有访问权限")).not.toBeInTheDocument();
+        expect(screen.queryByText("敏感档案内容")).not.toBeInTheDocument();
+
+        permissionApiMocks.getCurrentUserPermissions.mockResolvedValue({
+            superAdmin: false,
+            permissionCodes: ["archive:item:read"],
+        });
+        await fireEvent.click(screen.getByText("重新校验权限"));
+        await nextTick();
+
+        expect(permissionStore.ready).toBe(true);
+        expect(screen.getByText("敏感档案内容")).toBeInTheDocument();
+    });
+
+    it("定时、focus 和 visible 刷新复用单一在途请求且卸载后不再调度", async () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date("2026-07-15T00:00:00Z"));
+        const { unmount } = await renderShell({
+            initialPath: "/archive/items",
+            permissionCodes: ["archive:item:read"],
+        });
+        const refresh = deferred<{ superAdmin: boolean; permissionCodes: string[] }>();
+        permissionApiMocks.getCurrentUserPermissions.mockReturnValue(refresh.promise);
+
+        await vi.advanceTimersByTimeAsync(
+            PERMISSION_SNAPSHOT_TTL_MS - PERMISSION_REFRESH_INTERVAL_MS,
+        );
+        window.dispatchEvent(new Event("focus"));
+        window.dispatchEvent(new Event("focus"));
+        document.dispatchEvent(new Event("visibilitychange"));
+        await Promise.resolve();
+
+        expect(permissionApiMocks.getCurrentUserPermissions).toHaveBeenCalledTimes(2);
+        refresh.resolve({ superAdmin: false, permissionCodes: ["archive:item:read"] });
+        await refresh.promise;
+        unmount();
+        await vi.advanceTimersByTimeAsync(PERMISSION_SNAPSHOT_TTL_MS);
+        expect(permissionApiMocks.getCurrentUserPermissions).toHaveBeenCalledTimes(2);
+    });
+
+    it("自动刷新快速失败后会节流连续 focus 事件", async () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date("2026-07-15T00:00:00Z"));
+        await renderShell({
+            initialPath: "/archive/items",
+            permissionCodes: ["archive:item:read"],
+        });
+        permissionApiMocks.getCurrentUserPermissions.mockRejectedValue(
+            new Error("permission unavailable"),
+        );
+
+        await vi.advanceTimersByTimeAsync(
+            PERMISSION_SNAPSHOT_TTL_MS - PERMISSION_REFRESH_INTERVAL_MS,
+        );
+        window.dispatchEvent(new Event("focus"));
+        window.dispatchEvent(new Event("focus"));
+        document.dispatchEvent(new Event("visibilitychange"));
+        await Promise.resolve();
+
+        expect(permissionApiMocks.getCurrentUserPermissions).toHaveBeenCalledTimes(2);
+
+        await vi.advanceTimersByTimeAsync(PERMISSION_REFRESH_INTERVAL_MS);
+        expect(permissionApiMocks.getCurrentUserPermissions).toHaveBeenCalledTimes(3);
     });
 });
 
@@ -250,7 +368,7 @@ async function renderShell({
     await router.push(initialPath);
     await router.isReady();
 
-    render(
+    const rendered = render(
         { template: "<RouterView />" },
         {
             global: {
@@ -264,7 +382,7 @@ async function renderShell({
             },
         },
     );
-    return { permissionStore, router, tabsStore };
+    return { permissionStore, router, tabsStore, unmount: rendered.unmount };
 }
 
 function deferred<T>() {
