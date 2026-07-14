@@ -37,6 +37,7 @@ const cursor = ref<string>();
 const loading = ref(false);
 const loadError = ref<string>();
 let categoryLoadVersion = 0;
+let requestVersion = 0;
 
 onMounted(async () => {
     try {
@@ -59,10 +60,9 @@ watch(
             form.conditions = [];
             form.fondsCode = undefined;
             form.keyword = undefined;
-            result.value = undefined;
-            orderBy.value = [];
-            cursor.value = undefined;
-            loadError.value = undefined;
+            fields.value = [];
+            relatedCategories.value = [];
+            relatedFieldsByCategory.value = new Map();
         }
         try {
             const [fieldResponse, relatedResponse] = await Promise.all([
@@ -93,20 +93,23 @@ watch(
     },
 );
 async function execute(query: SearchArchiveRecordsQuery, nextCursor?: string) {
+    const version = ++requestVersion;
+    const request = {
+        ...query,
+        orderBy: orderBy.value.length ? orderBy.value.map((item) => ({ ...item })) : undefined,
+        limit: limit.value,
+        cursor: nextCursor,
+    };
     loading.value = true;
     loadError.value = undefined;
     cursor.value = nextCursor;
     try {
-        result.value = await discoverArchiveRecords({
-            ...query,
-            orderBy: orderBy.value.length ? orderBy.value : undefined,
-            limit: limit.value,
-            cursor: nextCursor,
-        });
+        const response = await discoverArchiveRecords(request);
+        if (version === requestVersion) result.value = response;
     } catch (error) {
-        loadError.value = errorMessage(error, "查询失败");
+        if (version === requestVersion) loadError.value = errorMessage(error, "查询失败");
     } finally {
-        loading.value = false;
+        if (version === requestVersion) loading.value = false;
     }
 }
 function submit(values: ArchiveQueryFormValues) {
@@ -134,6 +137,8 @@ function limitChange(nextLimit: number) {
     if (committedQuery.value) void execute(committedQuery.value);
 }
 function reset() {
+    requestVersion += 1;
+    loading.value = false;
     Object.assign(form, {
         categoryId: undefined,
         fondsCode: undefined,

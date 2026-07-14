@@ -35,6 +35,7 @@ export function useArchiveItemSearch() {
     const loading = ref(false);
     const loadError = ref<string>();
     let categoryLoadVersion = 0;
+    let requestVersion = 0;
 
     onMounted(async () => {
         try {
@@ -62,11 +63,9 @@ export function useArchiveItemSearch() {
             if (previous !== undefined && previous !== categoryId) {
                 queryForm.conditions = [];
                 queryForm.relatedGroups = [];
-                result.value = undefined;
-                committedQuery.value = undefined;
-                orderBy.value = [];
-                cursor.value = undefined;
-                loadError.value = undefined;
+                fields.value = [];
+                relatedCategories.value = [];
+                relatedFieldsByCategory.value = new Map();
             }
             try {
                 const [fieldResponse, relatedResponse] = await Promise.all([
@@ -93,20 +92,23 @@ export function useArchiveItemSearch() {
     );
 
     async function execute(query: SearchArchiveRecordsQuery, nextCursor?: string) {
+        const version = ++requestVersion;
+        const request = {
+            ...query,
+            orderBy: orderBy.value.length ? orderBy.value.map((item) => ({ ...item })) : undefined,
+            limit: limit.value,
+            cursor: nextCursor,
+        };
         loading.value = true;
         loadError.value = undefined;
         cursor.value = nextCursor;
         try {
-            result.value = await searchArchiveRecords({
-                ...query,
-                orderBy: orderBy.value.length ? orderBy.value : undefined,
-                limit: limit.value,
-                cursor: nextCursor,
-            });
+            const response = await searchArchiveRecords(request);
+            if (version === requestVersion) result.value = response;
         } catch (error) {
-            loadError.value = errorMessage(error, "查询失败");
+            if (version === requestVersion) loadError.value = errorMessage(error, "查询失败");
         } finally {
-            loading.value = false;
+            if (version === requestVersion) loading.value = false;
         }
     }
     function submit(values: ArchiveQueryFormValues) {
@@ -128,6 +130,8 @@ export function useArchiveItemSearch() {
         if (committedQuery.value) void execute(committedQuery.value);
     }
     function reset() {
+        requestVersion += 1;
+        loading.value = false;
         Object.assign(queryForm, {
             categoryId: undefined,
             fondsCode: undefined,

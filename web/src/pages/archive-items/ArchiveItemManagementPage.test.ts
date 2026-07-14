@@ -136,13 +136,15 @@ describe("ArchiveItemManagementPage", () => {
     it("列表加载失败后原位重试", async () => {
         mocks.searchArchiveRecords
             .mockRejectedValueOnce(new Error("管理列表加载失败"))
-            .mockResolvedValueOnce({ fields: [], items: [{ id: 1 }] });
+            .mockResolvedValueOnce({ fields: [], items: [{ id: 1 }], next: "retry-next" });
         renderPage(["archive:item:read"]);
         await fireEvent.click(await screen.findByRole("button", { name: "提交查询" }));
 
         expect(await screen.findByText("管理列表加载失败")).toBeInTheDocument();
         await fireEvent.click(screen.getByRole("button", { name: "重试" }));
         await waitFor(() => expect(mocks.searchArchiveRecords).toHaveBeenCalledTimes(2));
+        expect(screen.queryByText("管理列表加载失败")).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "下一页" })).toBeEnabled();
     });
 });
 function renderPage(permissionCodes: string[], superAdmin = false) {
