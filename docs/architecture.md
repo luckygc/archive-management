@@ -43,6 +43,8 @@ web -> service -> manager -> repository/mapper
 
 Controller 不直接依赖 Repository 或 Mapper。跨业务模块复用能力时优先依赖目标模块已有 Service，不绕过目标模块操作底层表。
 
+Spring Bean 的 public 方法表示可由 Controller、事件监听器或其他 Bean 调用的业务入口。本 Bean 内部共享逻辑使用 private 方法；跨事务、权限或业务边界的协作通过构造器注入另一个具体 Bean。项目不使用 Bean 自调用来复用 public 方法，也不为单实现业务能力预留接口。Jakarta Data Repository、MyBatis Mapper、稳定基础设施端口和已有多实现策略继续使用接口合同。
+
 ## 持久化边界
 
 项目当前持久化入口是 Jakarta Data Repository 和 MyBatis：

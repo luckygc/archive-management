@@ -44,11 +44,15 @@ public class PowChallengeService {
 
     @Transactional
     public CapChallengeResponse createChallenge() {
-        return createChallenge(null);
+        return createChallengeInternal();
     }
 
     @Transactional
     public CapChallengeResponse createChallenge(@Nullable CapChallengeRequest request) {
+        return createChallengeInternal();
+    }
+
+    private CapChallengeResponse createChallengeInternal() {
         String token = randomHex(25);
         long expires = System.currentTimeMillis() + CHALLENGE_EXPIRES_MS;
 

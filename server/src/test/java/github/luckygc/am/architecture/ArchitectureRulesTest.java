@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 import jakarta.data.repository.CrudRepository;
 import jakarta.data.repository.Delete;
@@ -29,6 +31,8 @@ import org.springframework.web.bind.annotation.RestController;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaMethod;
+import com.tngtech.archunit.core.domain.JavaModifier;
+import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption.DoNotIncludeTests;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
@@ -40,6 +44,11 @@ import github.luckygc.am.common.api.CursorPageResponse;
 @AnalyzeClasses(packages = "github.luckygc.am", importOptions = DoNotIncludeTests.class)
 @DisplayName("架构边界规则")
 class ArchitectureRulesTest {
+
+    private interface SingleImplementationServiceFixture {}
+
+    private static final class SingleImplementationServiceFixtureImpl
+            implements SingleImplementationServiceFixture {}
 
     private static final Set<String> SOFT_DELETE_ENTITY_NAMES =
             Set.of(
@@ -368,6 +377,55 @@ class ArchitectureRulesTest {
     }
 
     @ArchTest
+    static void spring_component_public_methods_should_not_call_other_public_methods(
+            JavaClasses classes) {
+        List<String> violations =
+                classes.stream()
+                        .filter(ArchitectureRulesTest::isSpringComponentClass)
+                        .filter(javaClass -> !javaClass.getSimpleName().startsWith("_"))
+                        .flatMap(javaClass -> javaClass.getMethodCallsFromSelf().stream())
+                        .filter(
+                                call ->
+                                        call.getOrigin()
+                                                .getModifiers()
+                                                .contains(JavaModifier.PUBLIC))
+                        .filter(call -> call.getOriginOwner().equals(call.getTargetOwner()))
+                        .flatMap(
+                                call ->
+                                        call.getTarget().resolveMember().stream()
+                                                .filter(
+                                                        target ->
+                                                                target.getModifiers()
+                                                                        .contains(
+                                                                                JavaModifier
+                                                                                        .PUBLIC))
+                                                .filter(target -> !target.equals(call.getOrigin()))
+                                                .map(
+                                                        target ->
+                                                                call.getOrigin().getFullName()
+                                                                        + " -> "
+                                                                        + target.getFullName()
+                                                                        + " @"
+                                                                        + call.getLineNumber()))
+                        .sorted()
+                        .toList();
+
+        assertTrue(
+                violations.isEmpty(),
+                () -> "Spring Bean 的 public 方法不得调用本类其他 public 方法: " + violations);
+    }
+
+    @ArchTest
+    static void module_service_and_manager_interfaces_should_have_multiple_implementations(
+            JavaClasses classes) {
+        List<String> violations =
+                singleImplementationInterfaces(
+                        classes, ArchitectureRulesTest::isBusinessServiceOrManagerInterface);
+
+        assertTrue(violations.isEmpty(), () -> "单实现业务 Service/Manager 应直接使用具体类: " + violations);
+    }
+
+    @ArchTest
     static void cursor_page_controllers_should_return_cursor_page_response_for_common_page_contract(
             JavaClasses classes) {
         List<String> violations =
@@ -401,10 +459,71 @@ class ArchitectureRulesTest {
         ApplicationModules.of(ArchiveManagementApplication.class).verify();
     }
 
+    @Test
+    @DisplayName("单实现业务接口检测器返回接口和唯一实现")
+    void singleImplementationDetectorShouldReportContractAndImplementation() {
+        JavaClasses classes =
+                new ClassFileImporter()
+                        .importClasses(
+                                SingleImplementationServiceFixture.class,
+                                SingleImplementationServiceFixtureImpl.class);
+
+        List<String> violations =
+                singleImplementationInterfaces(
+                        classes,
+                        javaClass ->
+                                javaClass
+                                        .getSimpleName()
+                                        .equals("SingleImplementationServiceFixture"));
+
+        assertTrue(
+                violations.stream()
+                        .anyMatch(
+                                violation ->
+                                        violation.contains("SingleImplementationServiceFixture")
+                                                && violation.contains(
+                                                        "SingleImplementationServiceFixtureImpl")));
+    }
+
     private static boolean isProjectDataRepository(JavaClass javaClass) {
         return javaClass.isInterface()
                 && javaClass.getPackageName().startsWith("github.luckygc.am.module")
                 && javaClass.getSimpleName().endsWith("DataRepository");
+    }
+
+    private static List<String> singleImplementationInterfaces(
+            JavaClasses classes, Predicate<JavaClass> candidate) {
+        return classes.stream()
+                .filter(candidate)
+                .flatMap(
+                        contract -> {
+                            List<String> implementations =
+                                    contract.getAllSubclasses().stream()
+                                            .filter(implementation -> !implementation.isInterface())
+                                            .filter(
+                                                    implementation ->
+                                                            implementation
+                                                                    .getPackageName()
+                                                                    .startsWith(
+                                                                            "github.luckygc.am."))
+                                            .map(JavaClass::getName)
+                                            .sorted()
+                                            .toList();
+                            return implementations.size() < 2
+                                    ? Stream.of(contract.getName() + " 项目内实现=" + implementations)
+                                    : Stream.empty();
+                        })
+                .sorted()
+                .toList();
+    }
+
+    private static boolean isBusinessServiceOrManagerInterface(JavaClass javaClass) {
+        return javaClass.isInterface()
+                && javaClass.getPackageName().startsWith("github.luckygc.am.module.")
+                && (javaClass.getPackageName().contains(".service")
+                        || javaClass.getPackageName().contains(".manager"))
+                && (javaClass.getSimpleName().endsWith("Service")
+                        || javaClass.getSimpleName().endsWith("Manager"));
     }
 
     private static boolean hasRepositoryOperationAnnotation(JavaMethod method) {

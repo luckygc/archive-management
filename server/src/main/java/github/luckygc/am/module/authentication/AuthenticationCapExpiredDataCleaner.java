@@ -13,6 +13,8 @@ import github.luckygc.am.module.authentication.repository.AuthenticationCapToken
 @Component
 public class AuthenticationCapExpiredDataCleaner implements ExpiredDataCleaner {
 
+    private static final String CLEANER_NAME = "auth_cap";
+
     private final AuthenticationCapChallengeDataRepository challengeRepository;
     private final AuthenticationCapTokenDataRepository tokenRepository;
 
@@ -25,13 +27,13 @@ public class AuthenticationCapExpiredDataCleaner implements ExpiredDataCleaner {
 
     @Override
     public String name() {
-        return "auth_cap";
+        return CLEANER_NAME;
     }
 
     @Override
     @Transactional(rollbackFor = Throwable.class)
     public ExpiredDataCleanupResult cleanupExpired(LocalDateTime now) {
         int deleted = challengeRepository.deleteExpired(now) + tokenRepository.deleteExpired(now);
-        return new ExpiredDataCleanupResult(name(), deleted);
+        return new ExpiredDataCleanupResult(CLEANER_NAME, deleted);
     }
 }

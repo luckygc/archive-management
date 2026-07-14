@@ -73,10 +73,14 @@ public class ArchiveItemLineTableService {
                         physicalName,
                         request.sortOrder() == null ? 0 : request.sortOrder(),
                         userId);
-        return getLineTable(id, userId);
+        return getLineTableInternal(id, userId);
     }
 
     public ArchiveItemLineTableDto getLineTable(Long id, Long userId) {
+        return getLineTableInternal(id, userId);
+    }
+
+    private ArchiveItemLineTableDto getLineTableInternal(Long id, Long userId) {
         requireMetadataManage(userId);
         Map<String, Object> row = archiveMapper.getItemLineTable(id);
         if (row == null) {
@@ -91,10 +95,14 @@ public class ArchiveItemLineTableService {
                 table.physicalTableName(),
                 table.sortOrder(),
                 table.enabled(),
-                listLineFields(table.id(), userId));
+                listLineFieldsInternal(table.id(), userId));
     }
 
     public List<ArchiveItemLineFieldDto> listLineFields(Long lineTableId, Long userId) {
+        return listLineFieldsInternal(lineTableId, userId);
+    }
+
+    private List<ArchiveItemLineFieldDto> listLineFieldsInternal(Long lineTableId, Long userId) {
         requireMetadataManage(userId);
         getLineTableRow(lineTableId);
         return archiveMapper.listItemLineFields(lineTableId).stream()
@@ -128,7 +136,7 @@ public class ArchiveItemLineTableService {
                         request.exactSearchable(),
                         request.sortOrder() == null ? 0 : request.sortOrder(),
                         userId);
-        return listLineFields(lineTableId, userId).stream()
+        return listLineFieldsInternal(lineTableId, userId).stream()
                 .filter(field -> field.id().equals(id))
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("明细字段创建后不可见"));
@@ -137,7 +145,7 @@ public class ArchiveItemLineTableService {
     @Transactional
     public ArchiveItemLineTableDto buildLineTable(Long lineTableId, Long userId) {
         requireMetadataManage(userId);
-        ArchiveItemLineTableDto table = getLineTable(lineTableId, userId);
+        ArchiveItemLineTableDto table = getLineTableInternal(lineTableId, userId);
         if (table.fields().isEmpty()) {
             throw new BadRequestException("明细表没有可建表字段");
         }
@@ -171,7 +179,7 @@ public class ArchiveItemLineTableService {
         }
         archiveMapper.updateItemLineTablePhysicalName(
                 lineTableId, table.physicalTableName(), userId);
-        return getLineTable(lineTableId, userId);
+        return getLineTableInternal(lineTableId, userId);
     }
 
     private void requireMetadataManage(Long userId) {

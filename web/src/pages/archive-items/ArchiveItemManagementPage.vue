@@ -4,6 +4,8 @@ import { ElMessage, ElMessageBox } from "element-plus";
 import type { FormInstance } from "element-plus";
 import { computed, onMounted, reactive, ref, watch } from "vue";
 
+import { errorMessage } from "@archive-management/frontend-core/api";
+
 import {
     createArchiveRecord,
     downloadArchiveImportTemplate,
@@ -413,9 +415,6 @@ function formatSize(size: number) {
 }
 function formatValue(value: unknown) {
     return value == null || value === "" ? "-" : String(value);
-}
-function errorMessage(error: unknown, fallback: string) {
-    return error instanceof Error ? error.message : fallback;
 }
 const detailFields = computed(() =>
     [...(editorDetail.value?.fields ?? [])]

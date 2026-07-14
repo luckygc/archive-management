@@ -151,7 +151,11 @@ public class AuthorizationPermissionService {
 
     @Transactional(readOnly = true)
     public List<String> listUserPermissionCodes(Long userId) {
-        if (isSuperAdmin(userId)) {
+        return listUserPermissionCodesInternal(userId);
+    }
+
+    private List<String> listUserPermissionCodesInternal(Long userId) {
+        if (isSuperAdminInternal(userId)) {
             return PERMISSION_CATALOG.stream()
                     .map(PermissionDefinition::permissionCode)
                     .sorted(Comparator.naturalOrder())
@@ -181,6 +185,10 @@ public class AuthorizationPermissionService {
 
     @Transactional(readOnly = true)
     public boolean isSuperAdmin(Long userId) {
+        return isSuperAdminInternal(userId);
+    }
+
+    private boolean isSuperAdminInternal(Long userId) {
         for (AuthorizationUserRoleRelation userRole :
                 userRoleRelationRepository.findByUserId(userId)) {
             AuthorizationRole role = roleRepository.findById(userRole.getRoleId()).orElse(null);
@@ -194,12 +202,17 @@ public class AuthorizationPermissionService {
     }
 
     public boolean hasPermission(Long userId, String permissionCode) {
-        return isSuperAdmin(userId) || listUserPermissionCodes(userId).contains(permissionCode);
+        return hasPermissionInternal(userId, permissionCode);
+    }
+
+    private boolean hasPermissionInternal(Long userId, String permissionCode) {
+        return isSuperAdminInternal(userId)
+                || listUserPermissionCodesInternal(userId).contains(permissionCode);
     }
 
     public void requirePermission(Long userId, AuthorizationPermissionCode permissionCode) {
         userId = AuthenticatedUsers.requireResolvedUserId(userId);
-        if (!hasPermission(userId, permissionCode.code())) {
+        if (!hasPermissionInternal(userId, permissionCode.code())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "权限不足");
         }
     }

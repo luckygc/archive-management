@@ -12,6 +12,8 @@ import github.luckygc.am.module.authentication.repository.LoginFailureLimitDataR
 @Component
 public class LoginFailureLimitExpiredDataCleaner implements ExpiredDataCleaner {
 
+    private static final String CLEANER_NAME = "login_failure_limit";
+
     private final LoginFailureLimitDataRepository repository;
 
     public LoginFailureLimitExpiredDataCleaner(LoginFailureLimitDataRepository repository) {
@@ -20,12 +22,12 @@ public class LoginFailureLimitExpiredDataCleaner implements ExpiredDataCleaner {
 
     @Override
     public String name() {
-        return "login_failure_limit";
+        return CLEANER_NAME;
     }
 
     @Override
     @Transactional(rollbackFor = Throwable.class)
     public ExpiredDataCleanupResult cleanupExpired(LocalDateTime now) {
-        return new ExpiredDataCleanupResult(name(), repository.deleteExpired(now));
+        return new ExpiredDataCleanupResult(CLEANER_NAME, repository.deleteExpired(now));
     }
 }

@@ -22,6 +22,10 @@ public class ApiRequestSigner {
     private static final Base64.Decoder BASE64_URL_DECODER = Base64.getUrlDecoder();
 
     public String sign(CanonicalRequest request, String secret) {
+        return signInternal(request, secret);
+    }
+
+    private String signInternal(CanonicalRequest request, String secret) {
         validateSecret(secret);
         return BASE64_URL_ENCODER.encodeToString(
                 hmacSha256(secret.getBytes(StandardCharsets.UTF_8), request.canonicalText()));
@@ -31,7 +35,7 @@ public class ApiRequestSigner {
         if (StringUtils.isBlank(signature)) {
             throw badRequest(ApiRequestSignatureFilter.SIGNATURE_HEADER, "请求签名不能为空");
         }
-        byte[] expected = BASE64_URL_DECODER.decode(sign(request, secret));
+        byte[] expected = BASE64_URL_DECODER.decode(signInternal(request, secret));
         byte[] actual = decodeSignature(signature);
         if (!MessageDigest.isEqual(expected, actual)) {
             throw badRequest(ApiRequestSignatureFilter.SIGNATURE_HEADER, "请求签名不匹配");

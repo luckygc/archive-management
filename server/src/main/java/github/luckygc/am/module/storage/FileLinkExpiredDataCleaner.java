@@ -12,6 +12,8 @@ import github.luckygc.am.module.storage.repository.FileLinkDataRepository;
 @Component
 public class FileLinkExpiredDataCleaner implements ExpiredDataCleaner {
 
+    private static final String CLEANER_NAME = "file_link";
+
     private final FileLinkDataRepository fileLinkRepository;
 
     public FileLinkExpiredDataCleaner(FileLinkDataRepository fileLinkRepository) {
@@ -20,12 +22,12 @@ public class FileLinkExpiredDataCleaner implements ExpiredDataCleaner {
 
     @Override
     public String name() {
-        return "file_link";
+        return CLEANER_NAME;
     }
 
     @Override
     @Transactional(rollbackFor = Throwable.class)
     public ExpiredDataCleanupResult cleanupExpired(LocalDateTime now) {
-        return new ExpiredDataCleanupResult(name(), fileLinkRepository.deleteExpired(now));
+        return new ExpiredDataCleanupResult(CLEANER_NAME, fileLinkRepository.deleteExpired(now));
     }
 }

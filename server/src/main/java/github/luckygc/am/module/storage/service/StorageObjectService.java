@@ -90,6 +90,10 @@ public class StorageObjectService {
 
     @Transactional(readOnly = true)
     public StorageObjectDto getActiveObject(Long storageObjectId) {
+        return loadActiveObject(storageObjectId);
+    }
+
+    private StorageObjectDto loadActiveObject(Long storageObjectId) {
         StorageObject storageObject =
                 storageObjectRepository
                         .findById(storageObjectId)
@@ -119,7 +123,7 @@ public class StorageObjectService {
 
     @Transactional(readOnly = true)
     public StorageObjectDownload openObject(Long storageObjectId) {
-        StorageObjectDto storageObject = getActiveObject(storageObjectId);
+        StorageObjectDto storageObject = loadActiveObject(storageObjectId);
         try {
             FileStorageResource resource =
                     fileStorageService.getObject(

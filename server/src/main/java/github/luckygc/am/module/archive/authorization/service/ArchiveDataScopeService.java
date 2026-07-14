@@ -77,6 +77,11 @@ public class ArchiveDataScopeService {
 
     public void validateScopeDefinition(
             ArchiveDataScope scope, List<ArchiveDataScopeDimension> dimensions) {
+        validateScopeDefinitionInternal(scope, dimensions);
+    }
+
+    private void validateScopeDefinitionInternal(
+            ArchiveDataScope scope, List<ArchiveDataScopeDimension> dimensions) {
         boolean hasDimensions = !dimensions.isEmpty();
         boolean hasDynamicConditions = hasDynamicConditions(scope.getDynamicCondition());
         if (scope.getScopeType() == ArchiveDataScopeType.ALL) {
@@ -114,7 +119,7 @@ public class ArchiveDataScopeService {
                 request.enabled(),
                 request.description());
         List<ArchiveDataScopeDimension> dimensions = toDimensions(null, request.dimensions());
-        validateScopeDefinition(scope, dimensions);
+        validateScopeDefinitionInternal(scope, dimensions);
         scope = dataScopeRepository.insert(scope);
         insertDimensions(scope.getId(), dimensions);
         return toResponse(scope);
@@ -133,7 +138,7 @@ public class ArchiveDataScopeService {
                 request.enabled(),
                 request.description());
         List<ArchiveDataScopeDimension> dimensions = toDimensions(scopeId, request.dimensions());
-        validateScopeDefinition(scope, dimensions);
+        validateScopeDefinitionInternal(scope, dimensions);
         scope = dataScopeRepository.update(scope);
         dimensionRepository.deleteByScopeId(scopeId);
         insertDimensions(scopeId, dimensions);
@@ -151,11 +156,15 @@ public class ArchiveDataScopeService {
         }
         List<Long> normalizedScopeIds = normalizeEnabledScopeIds(scopeIds);
         saveSubjectDataScopes(ArchiveDataScopeSubjectType.ROLE, roleId, normalizedScopeIds);
-        return listRoleDataScopes(roleId);
+        return listRoleDataScopesInternal(roleId);
     }
 
     @Transactional(readOnly = true)
     public RoleArchiveDataScopesResponse listRoleDataScopes(Long roleId) {
+        return listRoleDataScopesInternal(roleId);
+    }
+
+    private RoleArchiveDataScopesResponse listRoleDataScopesInternal(Long roleId) {
         AuthorizationRole role =
                 roleRepository
                         .findById(roleId)
@@ -178,11 +187,15 @@ public class ArchiveDataScopeService {
         }
         List<Long> normalizedScopeIds = normalizeEnabledScopeIds(scopeIds);
         saveSubjectDataScopes(ArchiveDataScopeSubjectType.USER, userId, normalizedScopeIds);
-        return listUserDataScopes(userId);
+        return listUserDataScopesInternal(userId);
     }
 
     @Transactional(readOnly = true)
     public UserArchiveDataScopesResponse listUserDataScopes(Long userId) {
+        return listUserDataScopesInternal(userId);
+    }
+
+    private UserArchiveDataScopesResponse listUserDataScopesInternal(Long userId) {
         return new UserArchiveDataScopesResponse(
                 userId, listSubjectScopeIds(ArchiveDataScopeSubjectType.USER, userId));
     }
@@ -213,6 +226,10 @@ public class ArchiveDataScopeService {
 
     @Transactional(readOnly = true)
     public ResolvedArchiveDataScope resolveUserDataScope(Long userId) {
+        return resolveUserDataScopeInternal(userId);
+    }
+
+    private ResolvedArchiveDataScope resolveUserDataScopeInternal(Long userId) {
         List<ResolvedScope> scopes = new ArrayList<>();
         if (appendSubjectScopes(ArchiveDataScopeSubjectType.USER, userId, scopes)) {
             return ResolvedArchiveDataScope.all();
@@ -241,7 +258,7 @@ public class ArchiveDataScopeService {
     @Transactional(readOnly = true)
     public ArchiveDataScopeFilter buildItemFilter(
             Long userId, Long categoryId, @Nullable String requestedFondsCode) {
-        ResolvedArchiveDataScope resolved = resolveUserDataScope(userId);
+        ResolvedArchiveDataScope resolved = resolveUserDataScopeInternal(userId);
         if (resolved.allData()) {
             return ArchiveDataScopeFilter.all();
         }

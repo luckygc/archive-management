@@ -335,6 +335,10 @@ public class ArchiveMetadataService {
     }
 
     public ArchiveCategoryDto getCategory(Long id) {
+        return loadCategory(id);
+    }
+
+    private ArchiveCategoryDto loadCategory(Long id) {
         requireId(id);
         return categoryRepository
                 .findById(id)
@@ -384,6 +388,10 @@ public class ArchiveMetadataService {
     }
 
     public List<ArchiveFieldDto> listFields(Long categoryId) {
+        return listFieldsInternal(categoryId);
+    }
+
+    private List<ArchiveFieldDto> listFieldsInternal(Long categoryId) {
         requireId(categoryId);
         return fieldRepository.list(categoryId).stream().map(this::mapField).toList();
     }
@@ -398,14 +406,19 @@ public class ArchiveMetadataService {
     }
 
     public List<ArchiveFieldDto> listEnabledFields(Long categoryId) {
-        return listEnabledFields(categoryId, ArchiveLevel.ITEM);
+        return listEnabledFieldsInternal(categoryId, ArchiveLevel.ITEM, ArchiveFieldScope.METADATA);
     }
 
     public List<ArchiveFieldDto> listEnabledFields(Long categoryId, ArchiveLevel archiveLevel) {
-        return listEnabledFields(categoryId, archiveLevel, ArchiveFieldScope.METADATA);
+        return listEnabledFieldsInternal(categoryId, archiveLevel, ArchiveFieldScope.METADATA);
     }
 
     public List<ArchiveFieldDto> listEnabledFields(
+            Long categoryId, ArchiveLevel archiveLevel, ArchiveFieldScope fieldScope) {
+        return listEnabledFieldsInternal(categoryId, archiveLevel, fieldScope);
+    }
+
+    private List<ArchiveFieldDto> listEnabledFieldsInternal(
             Long categoryId, ArchiveLevel archiveLevel, ArchiveFieldScope fieldScope) {
         requireId(categoryId);
         return fieldRepository
@@ -425,12 +438,13 @@ public class ArchiveMetadataService {
 
     public List<ArchiveFieldDto> listEffectiveFields(
             Long categoryId, ArchiveLayoutSurface surface, Long userId) {
-        return listEffectiveFields(categoryId, ArchiveLevel.ITEM, surface, userId);
+        return listEffectiveFieldsInternal(
+                categoryId, ArchiveLevel.ITEM, ArchiveFieldScope.METADATA, surface, userId);
     }
 
     public List<ArchiveFieldDto> listEffectiveFields(
             Long categoryId, ArchiveLevel archiveLevel, ArchiveLayoutSurface surface, Long userId) {
-        return listEffectiveFields(
+        return listEffectiveFieldsInternal(
                 categoryId, archiveLevel, ArchiveFieldScope.METADATA, surface, userId);
     }
 
@@ -440,13 +454,24 @@ public class ArchiveMetadataService {
             ArchiveFieldScope fieldScope,
             ArchiveLayoutSurface surface,
             Long userId) {
-        List<ArchiveFieldDto> fields = listEnabledFields(categoryId, archiveLevel, fieldScope);
+        return listEffectiveFieldsInternal(categoryId, archiveLevel, fieldScope, surface, userId);
+    }
+
+    private List<ArchiveFieldDto> listEffectiveFieldsInternal(
+            Long categoryId,
+            ArchiveLevel archiveLevel,
+            ArchiveFieldScope fieldScope,
+            ArchiveLayoutSurface surface,
+            Long userId) {
+        List<ArchiveFieldDto> fields =
+                listEnabledFieldsInternal(categoryId, archiveLevel, fieldScope);
         return fieldLayoutService.applyEffectiveLayout(categoryId, surface, fields);
     }
 
     public ArchiveFieldLayoutDto getFieldLayout(
             Long categoryId, ArchiveLevel archiveLevel, ArchiveLayoutSurface surface) {
-        return getFieldLayout(categoryId, archiveLevel, ArchiveFieldScope.METADATA, surface);
+        return getFieldLayoutInternal(
+                categoryId, archiveLevel, ArchiveFieldScope.METADATA, surface);
     }
 
     public ArchiveFieldLayoutDto getFieldLayout(
@@ -454,12 +479,20 @@ public class ArchiveMetadataService {
             ArchiveLevel archiveLevel,
             ArchiveFieldScope fieldScope,
             ArchiveLayoutSurface surface) {
+        return getFieldLayoutInternal(categoryId, archiveLevel, fieldScope, surface);
+    }
+
+    private ArchiveFieldLayoutDto getFieldLayoutInternal(
+            Long categoryId,
+            ArchiveLevel archiveLevel,
+            ArchiveFieldScope fieldScope,
+            ArchiveLayoutSurface surface) {
         requireId(categoryId);
-        getCategory(categoryId);
+        loadCategory(categoryId);
         ArchiveLevel normalizedLevel = fieldDefinitionService.normalizeArchiveLevel(archiveLevel);
         ArchiveFieldScope normalizedScope = fieldDefinitionService.normalizeFieldScope(fieldScope);
         List<ArchiveFieldDto> fields =
-                listEnabledFields(categoryId, normalizedLevel, normalizedScope);
+                listEnabledFieldsInternal(categoryId, normalizedLevel, normalizedScope);
         return new ArchiveFieldLayoutDto(
                 surface,
                 "public",
@@ -473,7 +506,7 @@ public class ArchiveMetadataService {
             ArchiveLayoutSurface surface,
             ArchiveFieldLayoutRequest request,
             Long userId) {
-        return savePublicFieldLayout(
+        return savePublicFieldLayoutInternal(
                 categoryId, archiveLevel, ArchiveFieldScope.METADATA, surface, request, userId);
     }
 
@@ -485,24 +518,35 @@ public class ArchiveMetadataService {
             ArchiveLayoutSurface surface,
             @Nullable ArchiveFieldLayoutRequest request,
             Long userId) {
+        return savePublicFieldLayoutInternal(
+                categoryId, archiveLevel, fieldScope, surface, request, userId);
+    }
+
+    private ArchiveFieldLayoutDto savePublicFieldLayoutInternal(
+            Long categoryId,
+            ArchiveLevel archiveLevel,
+            ArchiveFieldScope fieldScope,
+            ArchiveLayoutSurface surface,
+            @Nullable ArchiveFieldLayoutRequest request,
+            Long userId) {
         requireId(categoryId);
-        ArchiveCategoryDto category = getCategory(categoryId);
+        ArchiveCategoryDto category = loadCategory(categoryId);
         ArchiveLevel normalizedLevel = fieldDefinitionService.normalizeArchiveLevel(archiveLevel);
         ArchiveFieldScope normalizedScope = fieldDefinitionService.normalizeFieldScope(fieldScope);
         fieldDefinitionService.ensureArchiveLevelAllowed(category, normalizedLevel);
         fieldLayoutService.savePublicLayout(
                 categoryId,
                 surface,
-                listEnabledFields(categoryId, normalizedLevel, normalizedScope),
+                listEnabledFieldsInternal(categoryId, normalizedLevel, normalizedScope),
                 request,
                 userId);
-        return getFieldLayout(categoryId, normalizedLevel, normalizedScope, surface);
+        return getFieldLayoutInternal(categoryId, normalizedLevel, normalizedScope, surface);
     }
 
     @Transactional
     public ArchiveFieldDto createField(Long categoryId, ArchiveFieldRequest request, Long userId) {
         requireId(categoryId);
-        ArchiveCategoryDto category = getCategory(categoryId);
+        ArchiveCategoryDto category = loadCategory(categoryId);
         ArchiveFieldDefinitionService.ArchiveFieldValues values =
                 fieldDefinitionService.validate(request);
         fieldDefinitionService.ensureArchiveLevelAllowed(category, values.archiveLevel());
@@ -520,9 +564,9 @@ public class ArchiveMetadataService {
         requireId(fieldId);
         ArchiveFieldDefinitionService.ArchiveFieldValues values =
                 fieldDefinitionService.validate(request);
-        ArchiveCategoryDto category = getCategory(categoryId);
+        ArchiveCategoryDto category = loadCategory(categoryId);
         fieldDefinitionService.ensureArchiveLevelAllowed(category, values.archiveLevel());
-        ArchiveFieldDto current = getField(fieldId);
+        ArchiveFieldDto current = loadField(fieldId);
         if (!current.categoryId().equals(categoryId)) {
             throw notFound("字段定义不存在");
         }
@@ -557,6 +601,10 @@ public class ArchiveMetadataService {
     }
 
     public ArchiveFieldDto getField(Long id) {
+        return loadField(id);
+    }
+
+    private ArchiveFieldDto loadField(Long id) {
         requireId(id);
         return fieldRepository
                 .findById(id)
@@ -566,18 +614,18 @@ public class ArchiveMetadataService {
 
     @Transactional
     public ArchiveCategoryDto buildTable(Long categoryId) {
-        return buildTable(categoryId, ArchiveLevel.ITEM, null);
+        return buildTableInternal(categoryId, ArchiveLevel.ITEM, ArchiveFieldScope.METADATA, null);
     }
 
     @Transactional
     public ArchiveCategoryDto buildTable(Long categoryId, ArchiveLevel requestedLevel) {
-        return buildTable(categoryId, requestedLevel, null);
+        return buildTableInternal(categoryId, requestedLevel, ArchiveFieldScope.METADATA, null);
     }
 
     @Transactional
     public ArchiveCategoryDto buildTable(
             Long categoryId, ArchiveLevel requestedLevel, Long userId) {
-        return buildTable(categoryId, requestedLevel, ArchiveFieldScope.METADATA, userId);
+        return buildTableInternal(categoryId, requestedLevel, ArchiveFieldScope.METADATA, userId);
     }
 
     @Transactional
@@ -586,22 +634,35 @@ public class ArchiveMetadataService {
             ArchiveLevel requestedLevel,
             ArchiveFieldScope requestedScope,
             Long userId) {
-        ArchiveCategoryDto category = getCategory(categoryId);
+        return buildTableInternal(categoryId, requestedLevel, requestedScope, userId);
+    }
+
+    private ArchiveCategoryDto buildTableInternal(
+            Long categoryId,
+            ArchiveLevel requestedLevel,
+            ArchiveFieldScope requestedScope,
+            @Nullable Long userId) {
+        ArchiveCategoryDto category = loadCategory(categoryId);
         ArchiveLevel archiveLevel = fieldDefinitionService.normalizeArchiveLevel(requestedLevel);
         ArchiveFieldScope fieldScope = fieldDefinitionService.normalizeFieldScope(requestedScope);
         fieldDefinitionService.ensureArchiveLevelAllowed(category, archiveLevel);
-        List<ArchiveFieldDto> fields = listEnabledFields(categoryId, archiveLevel, fieldScope);
+        List<ArchiveFieldDto> fields =
+                listEnabledFieldsInternal(categoryId, archiveLevel, fieldScope);
         dynamicTableService.buildTable(
                 category,
                 archiveLevel,
                 fieldScope,
                 fields,
-                listUniqueConstraints(categoryId),
+                listUniqueConstraintsInternal(categoryId),
                 userId);
-        return getCategory(categoryId);
+        return loadCategory(categoryId);
     }
 
     public List<ArchiveUniqueConstraintDto> listUniqueConstraints(Long categoryId) {
+        return listUniqueConstraintsInternal(categoryId);
+    }
+
+    private List<ArchiveUniqueConstraintDto> listUniqueConstraintsInternal(Long categoryId) {
         requireId(categoryId);
         return uniqueConstraintService.list(categoryId);
     }
@@ -610,8 +671,9 @@ public class ArchiveMetadataService {
     public ArchiveUniqueConstraintDto createUniqueConstraint(
             Long categoryId, ArchiveUniqueConstraintRequest request, Long userId) {
         requireId(categoryId);
-        ArchiveCategoryDto category = getCategory(categoryId);
-        return uniqueConstraintService.create(category, listFields(categoryId), request, userId);
+        ArchiveCategoryDto category = loadCategory(categoryId);
+        return uniqueConstraintService.create(
+                category, listFieldsInternal(categoryId), request, userId);
     }
 
     @Transactional
@@ -622,20 +684,20 @@ public class ArchiveMetadataService {
             Long userId) {
         requireId(categoryId);
         requireId(constraintId);
-        ArchiveCategoryDto category = getCategory(categoryId);
-        ArchiveUniqueConstraintDto current = getUniqueConstraint(constraintId);
+        ArchiveCategoryDto category = loadCategory(categoryId);
+        ArchiveUniqueConstraintDto current = loadUniqueConstraint(constraintId);
         if (!current.categoryId().equals(categoryId)) {
             throw notFound("唯一约束不存在");
         }
         return uniqueConstraintService.update(
-                category, current, listFields(categoryId), request, userId);
+                category, current, listFieldsInternal(categoryId), request, userId);
     }
 
     @Transactional
     public void deleteUniqueConstraint(Long categoryId, Long constraintId, Long userId) {
         requireId(categoryId);
         requireId(constraintId);
-        ArchiveUniqueConstraintDto constraint = getUniqueConstraint(constraintId);
+        ArchiveUniqueConstraintDto constraint = loadUniqueConstraint(constraintId);
         if (!constraint.categoryId().equals(categoryId)) {
             throw notFound("唯一约束不存在");
         }
@@ -643,6 +705,10 @@ public class ArchiveMetadataService {
     }
 
     public ArchiveUniqueConstraintDto getUniqueConstraint(Long id) {
+        return loadUniqueConstraint(id);
+    }
+
+    private ArchiveUniqueConstraintDto loadUniqueConstraint(Long id) {
         requireId(id);
         ArchiveUniqueConstraintDto constraint = uniqueConstraintService.find(id);
         if (constraint == null) {

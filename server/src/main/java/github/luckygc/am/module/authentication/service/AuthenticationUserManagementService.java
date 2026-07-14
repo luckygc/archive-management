@@ -168,6 +168,10 @@ public class AuthenticationUserManagementService {
 
     @Transactional(readOnly = true)
     public List<RoleSummary> listUserRoles(Long id, Long operatorUserId) {
+        return listUserRolesInternal(id, operatorUserId);
+    }
+
+    private List<RoleSummary> listUserRolesInternal(Long id, Long operatorUserId) {
         requireUserManage(operatorUserId);
         AuthenticationUser user =
                 userRepository
@@ -212,7 +216,7 @@ public class AuthenticationUserManagementService {
             relation.setRoleId(role.getId());
             userRoleRelationRepository.insert(relation);
         }
-        return listUserRoles(id, operatorUserId);
+        return listUserRolesInternal(id, operatorUserId);
     }
 
     private void requireUserManage(Long operatorUserId) {
