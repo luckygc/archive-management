@@ -176,7 +176,7 @@
                     </foreach>
                 </if>
                 <if test="(group.fondsCodes == null or group.fondsCodes.size == 0) and (group.securityLevelIds == null or group.securityLevelIds.size == 0) and (group.retentionPeriodIds == null or group.retentionPeriodIds.size == 0) and (group.conditions == null or group.conditions.size == 0)">
-                    false
+                    true
                 </if>
                 )
             </foreach>
@@ -838,7 +838,7 @@
                         )
                     </if>
                     <if test="(group.fondsCodes == null or group.fondsCodes.size == 0) and (group.securityLevelIds == null or group.securityLevelIds.size == 0) and (group.retentionPeriodIds == null or group.retentionPeriodIds.size == 0) and (group.conditions == null or group.conditions.size == 0)">
-                        false
+                        true
                     </if>
                     )
                 </foreach>

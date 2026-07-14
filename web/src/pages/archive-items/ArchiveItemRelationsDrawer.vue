@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ElMessage, ElMessageBox } from "element-plus";
-import { ref, watch } from "vue";
+import { onBeforeUnmount, ref, watch } from "vue";
 
 import { errorMessage } from "@archive-management/frontend-core/api";
 
@@ -33,6 +33,7 @@ const relationLoading = ref(false);
 const relationError = ref<string>();
 const categories = ref<ArchiveCategoryDto[]>([]);
 const categoryLoading = ref(false);
+const categoryError = ref<string>();
 const targetCategoryId = ref<number>();
 const keywordDraft = ref("");
 const committedKeyword = ref<string>();
@@ -48,6 +49,7 @@ let relationRequestVersion = 0;
 let categoryRequestVersion = 0;
 let candidateRequestVersion = 0;
 let commandRequestVersion = 0;
+let disposed = false;
 
 watch(
     () => [props.archiveItemId, props.active] as const,
@@ -56,6 +58,7 @@ watch(
         relations.value = undefined;
         relationCursor.value = undefined;
         relationError.value = undefined;
+        categoryError.value = undefined;
         candidates.value = undefined;
         candidateCursor.value = undefined;
         candidateError.value = undefined;
@@ -67,6 +70,20 @@ watch(
     },
     { immediate: true },
 );
+
+watch(targetCategoryId, () => {
+    candidateRequestVersion += 1;
+    candidateLoading.value = false;
+    candidates.value = undefined;
+    candidateCursor.value = undefined;
+    candidateError.value = undefined;
+    selectedTargetId.value = undefined;
+});
+
+onBeforeUnmount(() => {
+    disposed = true;
+    invalidateRequests();
+});
 
 async function loadRelations(cursor = relationCursor.value) {
     if (!props.active) return;
@@ -94,13 +111,14 @@ async function loadRelations(cursor = relationCursor.value) {
 async function loadCategories() {
     const version = ++categoryRequestVersion;
     categoryLoading.value = true;
+    categoryError.value = undefined;
     try {
         const response = await listArchiveCategories(true);
-        if (version === categoryRequestVersion)
+        if (version === categoryRequestVersion && !disposed)
             categories.value = response.items.filter((category) => category.enabled);
     } catch (error) {
-        if (version === categoryRequestVersion)
-            candidateError.value = errorMessage(error, "加载档案分类失败");
+        if (version === categoryRequestVersion && !disposed)
+            categoryError.value = errorMessage(error, "加载档案分类失败");
     } finally {
         if (version === categoryRequestVersion) categoryLoading.value = false;
     }
@@ -111,6 +129,7 @@ async function loadCandidates(cursor = candidateCursor.value) {
     const archiveItemId = props.archiveItemId;
     const categoryId = targetCategoryId.value;
     const version = ++candidateRequestVersion;
+    if (cursor !== candidateCursor.value) selectedTargetId.value = undefined;
     candidateCursor.value = cursor;
     candidateLoading.value = true;
     candidateError.value = undefined;
@@ -121,14 +140,22 @@ async function loadCandidates(cursor = candidateCursor.value) {
             limit: candidateLimit.value,
             cursor,
         });
-        if (version === candidateRequestVersion && isCurrentItem(archiveItemId)) {
+        if (
+            version === candidateRequestVersion &&
+            isCurrentItem(archiveItemId) &&
+            targetCategoryId.value === categoryId
+        ) {
             candidates.value = {
                 ...response,
                 items: response.items.filter((row) => Number(row.id) !== archiveItemId),
             };
         }
     } catch (error) {
-        if (version === candidateRequestVersion && isCurrentItem(archiveItemId))
+        if (
+            version === candidateRequestVersion &&
+            isCurrentItem(archiveItemId) &&
+            targetCategoryId.value === categoryId
+        )
             candidateError.value = errorMessage(error, "搜索目标档案失败");
     } finally {
         if (version === candidateRequestVersion) candidateLoading.value = false;
@@ -205,6 +232,7 @@ function changeRelationLimit(limit: number) {
 function changeCandidateLimit(limit: number) {
     candidateLimit.value = limit;
     candidateCursor.value = undefined;
+    selectedTargetId.value = undefined;
     void loadCandidates(undefined);
 }
 
@@ -221,7 +249,7 @@ function invalidateRequests() {
 }
 
 function isCurrentItem(archiveItemId: number) {
-    return props.active && props.archiveItemId === archiveItemId;
+    return !disposed && props.active && props.archiveItemId === archiveItemId;
 }
 
 function archiveNo(value: unknown) {
@@ -312,6 +340,17 @@ function archiveNo(value: unknown) {
                     确认关联
                 </el-button>
             </div>
+            <el-alert
+                v-if="categoryError"
+                :title="categoryError"
+                type="error"
+                show-icon
+                :closable="false"
+            >
+                <el-button link :loading="categoryLoading" @click="loadCategories">
+                    重试加载分类
+                </el-button>
+            </el-alert>
             <el-alert
                 v-if="candidateError"
                 :title="candidateError"

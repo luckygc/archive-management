@@ -57,6 +57,14 @@ class ArchiveMapperXmlContractTests {
     }
 
     @Test
+    @DisplayName("动态档案查询将合法空数据范围组解释为当前分类全部可见")
+    void dynamicItemQueriesShouldAllowMatchedCategoryOnlyScope() throws Exception {
+        assertThat(emptyScopeGroupFallback(dynamicItemFromWhere(archiveMapperXml())))
+                .contains("true")
+                .doesNotContain("false");
+    }
+
+    @Test
     @DisplayName("动态档案列表 SQL 由 XML 消费结构化分页和投影参数")
     void dynamicItemListSqlShouldRenderProjectionAndPageInXml() throws Exception {
         String listDynamicItems = selectStatement(archiveMapperXml(), "listDynamicItems");
@@ -85,6 +93,16 @@ class ArchiveMapperXmlContractTests {
         assertThat(sql).contains("rel.id &gt; #{page.cursorId}");
         assertThat(sql).contains("rel.id &lt; #{page.cursorId}");
         assertThat(sql).contains("limit #{page.rowLimit}");
+    }
+
+    @Test
+    @DisplayName("关系查询将合法空数据范围组解释为目标分类全部可见")
+    void relationListSqlShouldAllowMatchedCategoryOnlyScope() throws Exception {
+        assertThat(
+                        emptyScopeGroupFallback(
+                                selectStatement(archiveMapperXml(), "listItemRelations")))
+                .contains("true")
+                .doesNotContain("false");
     }
 
     @Test
@@ -141,5 +159,11 @@ class ArchiveMapperXmlContractTests {
         int start = xml.indexOf("<select id=\"" + id + "\"");
         int end = xml.indexOf("</select>", start);
         return xml.substring(start, end);
+    }
+
+    private String emptyScopeGroupFallback(String sql) {
+        int start = sql.indexOf("<if test=\"(group.fondsCodes == null");
+        int end = sql.indexOf("</if>", start);
+        return sql.substring(start, end);
     }
 }

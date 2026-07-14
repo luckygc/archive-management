@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -337,6 +338,28 @@ class ArchiveDataScopeServiceTests {
         assertThat(filter.groups())
                 .containsExactly(
                         new ArchiveDataScopeSqlGroup(List.of("F001"), List.of(), List.of()));
+    }
+
+    @Test
+    @DisplayName("仅分类维度编译为空条件组并允许该分类全部档案")
+    void buildItemFilterShouldTreatMatchedCategoryOnlyScopeAsUnrestrictedGroup() {
+        ArchiveDataScope scope = scope(100L, ArchiveDataScopeType.CONDITIONAL, true);
+        ArchiveDataScopeDimension categoryDimension = new ArchiveDataScopeDimension();
+        categoryDimension.setScopeId(100L);
+        categoryDimension.setDimensionType(ArchiveDataScopeDimensionType.CATEGORY);
+        categoryDimension.setTargetId(11L);
+        bindDirectUserScope(scope, List.of(categoryDimension));
+        when(archiveCategoryService.listCategories(true)).thenReturn(List.of(category(11L, null)));
+        when(archiveMetadataService.listFields(11L)).thenReturn(List.of());
+
+        ArchiveDataScopeResolutionTypes.ArchiveDataScopeFilter filter =
+                dataScopeService.buildItemFilter(7L, 11L, null);
+
+        assertThat(filter.empty()).isFalse();
+        assertThat(filter.groups())
+                .containsExactly(
+                        new ArchiveDataScopeSqlGroup(List.of(), List.of(), List.of(), List.of()));
+        assertThat(dataScopeService.matchesItemFilter(filter, "F999", 99L, 88L, Map.of())).isTrue();
     }
 
     @Test
