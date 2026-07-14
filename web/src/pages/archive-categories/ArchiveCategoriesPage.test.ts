@@ -19,7 +19,7 @@ const mocks = vi.hoisted(() => ({
     updateArchiveCategory: vi.fn(),
     updateArchiveField: vi.fn(),
 }));
-vi.mock("@/shared/api/archive", () => mocks);
+vi.mock("@/shared/api/archive-metadata", () => mocks);
 beforeEach(() => {
     mocks.listArchiveClassificationSchemes.mockResolvedValue({
         items: [

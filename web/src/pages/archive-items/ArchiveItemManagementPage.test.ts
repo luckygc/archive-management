@@ -25,7 +25,8 @@ const mocks = vi.hoisted(() => ({
     updateArchiveRecord: vi.fn(),
     uploadArchiveItemElectronicFile: vi.fn(),
 }));
-vi.mock("@/shared/api/archive", () => mocks);
+vi.mock("@/shared/api/archive-metadata", () => mocks);
+vi.mock("@/shared/api/archive-records", () => mocks);
 vi.mock("@/pages/archive-library/ArchiveAdvancedQueryPanel.vue", () => ({
     default: defineComponent({
         emits: ["submit"],

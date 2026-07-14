@@ -23,10 +23,9 @@ const archiveApiMocks = vi.hoisted(() => ({
     searchArchiveRuleTraces: vi.fn(),
 }));
 
-vi.mock("@/shared/api/archive", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/shared/api/archive")>()),
-    ...archiveApiMocks,
-}));
+vi.mock("@/shared/api/archive-governance", () => archiveApiMocks);
+vi.mock("@/shared/api/archive-ontology", () => archiveApiMocks);
+vi.mock("@/shared/api/archive-rules", () => archiveApiMocks);
 
 beforeEach(() => {
     archiveApiMocks.listArchiveGovernanceSchemes.mockResolvedValue({

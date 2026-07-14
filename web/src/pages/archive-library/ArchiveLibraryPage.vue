@@ -2,20 +2,19 @@
 import { ElMessage } from "element-plus";
 import { onMounted, reactive, ref, watch } from "vue";
 
+import { discoverArchiveRecords } from "@/shared/api/archive-records";
 import {
-    discoverArchiveRecords,
     listArchiveCategories,
     listArchiveFields,
     listArchiveRelatedFilterCategories,
-} from "@/shared/api/archive";
+} from "@/shared/api/archive-metadata";
+import type { ArchiveCategoryDto, ArchiveFieldDto } from "@/shared/types/archive-metadata";
 import type {
-    ArchiveCategoryDto,
-    ArchiveFieldDto,
     ArchiveRecordListDto,
     ArchiveRecordOrderBy,
     ArchiveRelatedFilterCategoryDto,
     SearchArchiveRecordsQuery,
-} from "@/shared/types/archive";
+} from "@/shared/types/archive-records";
 
 import ArchiveAdvancedQueryPanel from "./ArchiveAdvancedQueryPanel.vue";
 import type { ArchiveQueryFormValues } from "./archiveQueryTypes";

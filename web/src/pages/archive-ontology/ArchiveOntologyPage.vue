@@ -16,7 +16,7 @@ import {
     listArchiveOntologyEventTypes,
     listArchiveOntologyObjectTypes,
     listArchiveOntologyRelationTypes,
-} from "@/shared/api/archive";
+} from "@/shared/api/archive-ontology";
 import type {
     ArchiveOntologyAttributeDataType,
     ArchiveOntologyAttributeMappingDto,
@@ -28,7 +28,7 @@ import type {
     ArchiveOntologyRelationCardinality,
     ArchiveOntologyRelationDirection,
     ArchiveOntologyRelationTypeDto,
-} from "@/shared/types/archive";
+} from "@/shared/types/archive-ontology";
 
 const dataTypes: ArchiveOntologyAttributeDataType[] = [
     "TEXT",

@@ -2,7 +2,7 @@ import type {
     ArchiveItemRelatedGroup,
     ArchiveItemWhere,
     SearchArchiveRecordsQuery,
-} from "@/shared/types/archive";
+} from "@/shared/types/archive-records";
 import dayjs from "dayjs";
 
 import type {

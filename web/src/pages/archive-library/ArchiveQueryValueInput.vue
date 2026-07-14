@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 
-import type { ArchiveFieldDto } from "@/shared/types/archive";
+import type { ArchiveFieldDto } from "@/shared/types/archive-metadata";
 
 const props = defineProps<{ field?: ArchiveFieldDto; modelValue?: unknown; placeholder: string }>();
 const emit = defineEmits<{ "update:modelValue": [value: unknown] }>();

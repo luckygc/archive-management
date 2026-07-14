@@ -16,7 +16,7 @@ import {
     saveArchiveFondsCategoryScopes,
     updateArchiveCategory,
     updateArchiveField,
-} from "@/shared/api/archive";
+} from "@/shared/api/archive-metadata";
 import type {
     ArchiveCategoryDto,
     ArchiveClassificationSchemeDto,
@@ -26,7 +26,7 @@ import type {
     ArchiveFondsDto,
     ArchiveLevel,
     ArchiveManagementMode,
-} from "@/shared/types/archive";
+} from "@/shared/types/archive-metadata";
 
 const managementModeLabels: Record<ArchiveManagementMode, string> = {
     ITEM_ONLY: "仅允许著录条目",

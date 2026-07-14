@@ -1,10 +1,7 @@
 import { describe, expect, it, vi } from "vite-plus/test";
 
-import {
-    searchArchiveRecords,
-    updateArchiveFonds,
-    uploadArchiveItemElectronicFile,
-} from "./archive";
+import { updateArchiveFonds } from "./archive-metadata";
+import { searchArchiveRecords, uploadArchiveItemElectronicFile } from "./archive-records";
 
 const httpClientMock = vi.hoisted(() => ({
     delete: vi.fn(),

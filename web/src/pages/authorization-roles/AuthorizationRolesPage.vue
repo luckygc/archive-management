@@ -10,8 +10,11 @@ import {
     listAuthorizationRoles,
     saveRolePermissions,
     updateAuthorizationRole,
-} from "@/shared/api/archive";
-import type { AuthorizationPermissionDto, AuthorizationRoleDto } from "@/shared/types/archive";
+} from "@/shared/api/authorization";
+import type {
+    AuthorizationPermissionDto,
+    AuthorizationRoleDto,
+} from "@/shared/types/authorization";
 
 const roles = ref<AuthorizationRoleDto[]>([]);
 const permissions = ref<AuthorizationPermissionDto[]>([]);

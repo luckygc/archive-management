@@ -6,17 +6,15 @@ import {
     createAuthenticationUser,
     getAuthenticationUser,
     listAuthenticationUsers,
-    listAuthorizationRoles,
-    listOrganizationDepartments,
     resetAuthenticationUserPassword,
     saveAuthenticationUserRoles,
     updateAuthenticationUser,
-} from "@/shared/api/archive";
-import type {
-    AuthenticationUserDto,
-    AuthorizationRoleDto,
-    OrganizationDepartmentDto,
-} from "@/shared/types/archive";
+} from "@/shared/api/authentication";
+import { listAuthorizationRoles } from "@/shared/api/authorization";
+import { listOrganizationDepartments } from "@/shared/api/organization";
+import type { AuthenticationUserDto } from "@/shared/types/authentication";
+import type { AuthorizationRoleDto } from "@/shared/types/authorization";
+import type { OrganizationDepartmentDto } from "@/shared/types/organization";
 
 const keywordInput = ref("");
 const keyword = ref("");

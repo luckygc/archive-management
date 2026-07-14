@@ -1,7 +1,7 @@
 import { cleanup, render, screen } from "@testing-library/vue";
 import ElementPlus from "element-plus";
 import { afterEach, describe, expect, it } from "vitest";
-import type { ArchiveRecordListDto } from "@/shared/types/archive";
+import type { ArchiveRecordListDto } from "@/shared/types/archive-records";
 import ArchiveResultTable from "./ArchiveResultTable.vue";
 import { toArchiveRecordOrder } from "./archiveResultTable";
 afterEach(cleanup);

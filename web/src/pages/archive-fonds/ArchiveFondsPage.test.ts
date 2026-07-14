@@ -9,8 +9,8 @@ const archiveApiMocks = vi.hoisted(() => ({
     updateArchiveFonds: vi.fn(),
 }));
 
-vi.mock("@/shared/api/archive", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/shared/api/archive")>()),
+vi.mock("@/shared/api/archive-metadata", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/shared/api/archive-metadata")>()),
     ...archiveApiMocks,
 }));
 

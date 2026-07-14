@@ -9,15 +9,15 @@ import {
     executeArchiveRules,
     listArchiveRules,
     publishArchiveRule,
-} from "@/shared/api/archive";
+} from "@/shared/api/archive-rules";
+import type { ArchiveLevel } from "@/shared/types/archive-metadata";
 import type {
-    ArchiveLevel,
     ArchiveRuleDecisionDto,
     ArchiveRuleDto,
     ArchiveRuleEffectType,
     ArchiveRuleStatus,
     ArchiveRuleType,
-} from "@/shared/types/archive";
+} from "@/shared/types/archive-rules";
 
 const ruleTypes: ArchiveRuleType[] = [
     "VALIDATION",

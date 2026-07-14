@@ -13,21 +13,22 @@ import {
     exportArchiveRecords,
     getArchiveRecord,
     importArchiveRecords,
-    listArchiveCategories,
-    listArchiveFields,
-    listArchiveFonds,
     listArchiveItemAudits,
     listArchiveItemElectronicFiles,
-    listArchiveRelatedFilterCategories,
     searchArchiveRecords,
     unbindArchiveItemElectronicFile,
     updateArchiveRecord,
     uploadArchiveItemElectronicFile,
-} from "@/shared/api/archive";
+} from "@/shared/api/archive-records";
+import {
+    listArchiveCategories,
+    listArchiveFields,
+    listArchiveFonds,
+    listArchiveRelatedFilterCategories,
+} from "@/shared/api/archive-metadata";
+import type { ArchiveCategoryDto, ArchiveFieldDto } from "@/shared/types/archive-metadata";
 import type {
-    ArchiveCategoryDto,
     ArchiveElectronicStatus,
-    ArchiveFieldDto,
     ArchiveItemAuditDto,
     ArchiveItemElectronicFileDto,
     ArchiveRecordDetailDto,
@@ -35,7 +36,7 @@ import type {
     ArchiveRecordOrderBy,
     ArchiveRelatedFilterCategoryDto,
     SearchArchiveRecordsQuery,
-} from "@/shared/types/archive";
+} from "@/shared/types/archive-records";
 import { usePermissionStore } from "@/stores/permissionStore";
 
 import ArchiveAdvancedQueryPanel from "@/pages/archive-library/ArchiveAdvancedQueryPanel.vue";

@@ -1,7 +1,7 @@
 import { computed, ref } from "vue";
 import { defineStore } from "pinia";
 
-import { getCurrentUserPermissions } from "@/shared/api/archive";
+import { getCurrentUserPermissions } from "@/shared/api/authorization";
 
 export const usePermissionStore = defineStore("permission-summary", () => {
     const initialized = ref(false);

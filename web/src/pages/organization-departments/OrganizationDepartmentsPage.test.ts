@@ -10,8 +10,8 @@ const archiveApiMocks = vi.hoisted(() => ({
     updateOrganizationDepartment: vi.fn(),
 }));
 
-vi.mock("@/shared/api/archive", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/shared/api/archive")>()),
+vi.mock("@/shared/api/organization", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/shared/api/organization")>()),
     ...archiveApiMocks,
 }));
 

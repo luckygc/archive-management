@@ -14,8 +14,8 @@ const archiveApiMocks = vi.hoisted(() => ({
     updateAuthorizationRole: vi.fn(),
 }));
 
-vi.mock("@/shared/api/archive", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/shared/api/archive")>()),
+vi.mock("@/shared/api/authorization", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/shared/api/authorization")>()),
     ...archiveApiMocks,
 }));
 

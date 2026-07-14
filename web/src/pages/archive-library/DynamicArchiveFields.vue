@@ -13,7 +13,7 @@ export function normalizeArchiveRecordFormValues(values: unknown) {
 <script setup lang="ts">
 import { computed } from "vue";
 
-import type { ArchiveFieldDto } from "@/shared/types/archive";
+import type { ArchiveFieldDto } from "@/shared/types/archive-metadata";
 
 const props = withDefaults(defineProps<{ fields: ArchiveFieldDto[]; disabled?: boolean }>(), {
     disabled: false,

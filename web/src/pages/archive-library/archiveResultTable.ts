@@ -1,8 +1,5 @@
-import type {
-    ArchiveFieldDto,
-    ArchiveRecordOrderBy,
-    ArchiveRecordSortField,
-} from "@/shared/types/archive";
+import type { ArchiveFieldDto } from "@/shared/types/archive-metadata";
+import type { ArchiveRecordOrderBy, ArchiveRecordSortField } from "@/shared/types/archive-records";
 
 export function toArchiveRecordOrder(
     prop: string | null,

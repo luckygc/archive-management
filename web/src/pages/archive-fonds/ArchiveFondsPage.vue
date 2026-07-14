@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 
-import { listArchiveFonds, updateArchiveFonds } from "@/shared/api/archive";
-import type { ArchiveFondsDto } from "@/shared/types/archive";
+import { listArchiveFonds, updateArchiveFonds } from "@/shared/api/archive-metadata";
+import type { ArchiveFondsDto } from "@/shared/types/archive-metadata";
 
 const fonds = ref<ArchiveFondsDto[]>([]);
 const loading = ref(false);

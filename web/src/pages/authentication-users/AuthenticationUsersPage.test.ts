@@ -15,10 +15,9 @@ const archiveApiMocks = vi.hoisted(() => ({
     updateAuthenticationUser: vi.fn(),
 }));
 
-vi.mock("@/shared/api/archive", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/shared/api/archive")>()),
-    ...archiveApiMocks,
-}));
+vi.mock("@/shared/api/authentication", () => archiveApiMocks);
+vi.mock("@/shared/api/authorization", () => archiveApiMocks);
+vi.mock("@/shared/api/organization", () => archiveApiMocks);
 
 beforeEach(() => {
     archiveApiMocks.listAuthenticationUsers.mockResolvedValue({

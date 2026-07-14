@@ -3,12 +3,11 @@ import { Plus } from "@element-plus/icons-vue";
 import type { FormInstance } from "element-plus";
 import { ref, watch } from "vue";
 
+import type { ArchiveCategoryDto, ArchiveFieldDto } from "@/shared/types/archive-metadata";
 import type {
-    ArchiveCategoryDto,
-    ArchiveFieldDto,
     ArchiveItemRelationDirection,
     ArchiveRelatedFilterCategoryDto,
-} from "@/shared/types/archive";
+} from "@/shared/types/archive-records";
 import ArchiveQueryConditionRow from "./ArchiveQueryConditionRow.vue";
 import type { ArchiveQueryFormValues, QueryConditionDraft } from "./archiveQueryTypes";
 

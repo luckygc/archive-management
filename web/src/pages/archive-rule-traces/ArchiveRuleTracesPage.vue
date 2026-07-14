@@ -2,8 +2,8 @@
 import { ElMessage, type FormInstance } from "element-plus";
 import { ref } from "vue";
 
-import { searchArchiveRuleTraces } from "@/shared/api/archive";
-import type { ArchiveRuleTraceDto, ArchiveRuleType } from "@/shared/types/archive";
+import { searchArchiveRuleTraces } from "@/shared/api/archive-rules";
+import type { ArchiveRuleTraceDto, ArchiveRuleType } from "@/shared/types/archive-rules";
 
 const ruleTypes: ArchiveRuleType[] = [
     "VALIDATION",

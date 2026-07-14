@@ -2,7 +2,7 @@
 import { Lock, Setting } from "@element-plus/icons-vue";
 import { computed, ref, watch } from "vue";
 
-import type { ArchiveRecordListDto, ArchiveRecordOrderBy } from "@/shared/types/archive";
+import type { ArchiveRecordListDto, ArchiveRecordOrderBy } from "@/shared/types/archive-records";
 import { toArchiveRecordOrder } from "./archiveResultTable";
 
 type RecordRow = Record<string, unknown>;

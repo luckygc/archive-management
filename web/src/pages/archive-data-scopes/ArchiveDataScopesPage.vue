@@ -6,24 +6,28 @@ import { computed, onMounted, reactive, ref, watch } from "vue";
 import {
     createArchiveDataScope,
     getCurrentUserPermissions,
-    listArchiveCategories,
     listArchiveDataScopeFields,
     listArchiveDataScopes,
+    updateArchiveDataScope,
+} from "@/shared/api/authorization";
+import {
+    listArchiveCategories,
     listArchiveFonds,
     listArchiveRetentionPeriods,
     listArchiveSecurityLevels,
-    updateArchiveDataScope,
-} from "@/shared/api/archive";
+} from "@/shared/api/archive-metadata";
 import type {
     ArchiveCategoryDto,
-    ArchiveDataScopeDto,
-    ArchiveDataScopeDynamicFieldCondition,
-    ArchiveDataScopeRequest,
     ArchiveFieldDto,
     ArchiveFondsDto,
     ArchiveRetentionPeriodDto,
     ArchiveSecurityLevelDto,
-} from "@/shared/types/archive";
+} from "@/shared/types/archive-metadata";
+import type {
+    ArchiveDataScopeDto,
+    ArchiveDataScopeDynamicFieldCondition,
+    ArchiveDataScopeRequest,
+} from "@/shared/types/authorization";
 
 type DynamicFieldForm = Partial<ArchiveDataScopeDynamicFieldCondition> & { values: string[] };
 type ScopeFormValues = Omit<ArchiveDataScopeRequest, "dynamicCondition"> & {

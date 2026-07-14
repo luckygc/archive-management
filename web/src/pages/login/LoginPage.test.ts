@@ -20,8 +20,8 @@ vi.mock("@archive-management/frontend-core/api", async (importOriginal) => ({
     login: mocks.login,
 }));
 
-vi.mock("@/shared/api/archive", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("@/shared/api/archive")>()),
+vi.mock("@/shared/api/authorization", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/shared/api/authorization")>()),
     getCurrentUserPermissions: mocks.fetchPermissions,
 }));
 

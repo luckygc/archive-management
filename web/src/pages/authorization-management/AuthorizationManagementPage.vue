@@ -2,30 +2,31 @@
 import { ElMessage } from "element-plus";
 import { computed, onMounted, ref, watch } from "vue";
 
+import { getAuthenticationUser, listAuthenticationUsers } from "@/shared/api/authentication";
 import {
-    getAuthenticationUser,
     getDepartmentArchiveDataScopes,
     getRoleArchiveDataScopes,
     getRolePermissions,
     getUserArchiveDataScopes,
     listArchiveDataScopes,
-    listAuthenticationUsers,
     listAuthorizationPermissions,
     listAuthorizationRoles,
-    listOrganizationDepartments,
     saveDepartmentArchiveDataScopes,
     saveRoleArchiveDataScopes,
     saveRolePermissions,
     saveUserArchiveDataScopes,
-} from "@/shared/api/archive";
+} from "@/shared/api/authorization";
+import { listOrganizationDepartments } from "@/shared/api/organization";
 import type {
-    ArchiveDataScopeDto,
     AuthenticationUserDetailDto,
     AuthenticationUserDto,
+} from "@/shared/types/authentication";
+import type {
+    ArchiveDataScopeDto,
     AuthorizationPermissionDto,
     AuthorizationRoleDto,
-    OrganizationDepartmentDto,
-} from "@/shared/types/archive";
+} from "@/shared/types/authorization";
+import type { OrganizationDepartmentDto } from "@/shared/types/organization";
 
 type SubjectType = "role" | "user" | "department";
 

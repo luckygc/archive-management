@@ -17,7 +17,7 @@ import {
     resolveDefaultArchiveGovernanceVersion,
     retireArchiveGovernanceSchemeVersion,
     updateArchiveGovernanceScheme,
-} from "@/shared/api/archive";
+} from "@/shared/api/archive-governance";
 import type {
     ArchiveGovernanceBindingDto,
     ArchiveGovernanceBindingRequest,
@@ -28,7 +28,7 @@ import type {
     ArchiveGovernanceScopeDto,
     ArchiveGovernanceScopeRequest,
     ArchiveGovernanceScopeType,
-} from "@/shared/types/archive";
+} from "@/shared/types/archive-governance";
 
 const statusLabels: Record<ArchiveGovernanceSchemeVersionStatus, string> = {
     DRAFT: "草稿",

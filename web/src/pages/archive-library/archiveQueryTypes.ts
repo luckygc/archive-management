@@ -1,7 +1,7 @@
 import type {
     ArchiveItemQueryOperator,
     ArchiveItemRelationDirection,
-} from "@/shared/types/archive";
+} from "@/shared/types/archive-records";
 
 export interface QueryConditionDraft {
     fieldCode?: string;

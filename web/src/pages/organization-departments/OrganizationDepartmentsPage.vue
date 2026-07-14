@@ -7,8 +7,8 @@ import {
     createOrganizationDepartment,
     listOrganizationDepartments,
     updateOrganizationDepartment,
-} from "@/shared/api/archive";
-import type { OrganizationDepartmentDto } from "@/shared/types/archive";
+} from "@/shared/api/organization";
+import type { OrganizationDepartmentDto } from "@/shared/types/organization";
 
 interface DepartmentFormValues {
     departmentCode: string;

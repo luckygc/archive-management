@@ -2,7 +2,7 @@
 import { computed } from "vue";
 import { Delete } from "@element-plus/icons-vue";
 
-import type { ArchiveFieldDto } from "@/shared/types/archive";
+import type { ArchiveFieldDto } from "@/shared/types/archive-metadata";
 import ArchiveQueryValueInput from "./ArchiveQueryValueInput.vue";
 import type { QueryConditionDraft } from "./archiveQueryTypes";
 
