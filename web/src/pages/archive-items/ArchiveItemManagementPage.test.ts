@@ -8,12 +8,17 @@ import { usePermissionStore } from "@/stores/permissionStore";
 import ArchiveItemManagementPage from "./ArchiveItemManagementPage.vue";
 
 const mocks = vi.hoisted(() => ({
+    busyAction: { __v_isRef: true, value: undefined as string | undefined },
     createArchiveRecord: vi.fn(),
+    deleteArchiveRecord: vi.fn(),
     downloadArchiveImportTemplate: vi.fn(),
     downloadArchiveItemElectronicFile: vi.fn(),
     exportArchiveRecords: vi.fn(),
     getArchiveRecord: vi.fn(),
     importArchiveRecords: vi.fn(),
+    lifecycleLock: vi.fn(),
+    lifecycleRemove: vi.fn(),
+    lifecycleUnlock: vi.fn(),
     listArchiveCategories: vi.fn(),
     listArchiveFonds: vi.fn(),
     listArchiveFields: vi.fn(),
@@ -27,6 +32,14 @@ const mocks = vi.hoisted(() => ({
 }));
 vi.mock("@/shared/api/archive-metadata", () => mocks);
 vi.mock("@/shared/api/archive-records", () => mocks);
+vi.mock("./useArchiveItemLifecycle", () => ({
+    useArchiveItemLifecycle: () => ({
+        busyAction: mocks.busyAction,
+        lock: mocks.lifecycleLock,
+        remove: mocks.lifecycleRemove,
+        unlock: mocks.lifecycleUnlock,
+    }),
+}));
 vi.mock("@/pages/archive-library/ArchiveAdvancedQueryPanel.vue", () => ({
     default: defineComponent({
         emits: ["submit"],
@@ -36,7 +49,7 @@ vi.mock("@/pages/archive-library/ArchiveAdvancedQueryPanel.vue", () => ({
 vi.mock("@/pages/archive-library/ArchiveResultTable.vue", () => ({
     default: defineComponent({
         props: ["result"],
-        template: `<div><slot name="actions" :row="{ id: 1 }" /></div>`,
+        template: `<div><slot name="actions" :row="result.items[0]" /></div>`,
     }),
 }));
 vi.mock("@/pages/archive-library/DynamicArchiveFields.vue", () => ({
@@ -51,6 +64,7 @@ beforeEach(() => {
     mocks.listArchiveFields.mockResolvedValue({ items: [] });
     mocks.listArchiveRelatedFilterCategories.mockResolvedValue({ items: [] });
     mocks.searchArchiveRecords.mockResolvedValue({ fields: [], items: [{ id: 1 }] });
+    mocks.busyAction.value = undefined;
     mocks.listArchiveItemElectronicFiles.mockResolvedValue({
         items: [
             {
@@ -116,6 +130,62 @@ describe("ArchiveItemManagementPage", () => {
             }),
         );
         expect(await screen.findByText("CREATE")).toBeInTheDocument();
+    });
+    it("未锁定档案按权限提供锁定和删除入口", async () => {
+        mocks.searchArchiveRecords.mockResolvedValue({
+            fields: [],
+            items: [{ id: 1, locked_flag: false }],
+        });
+        renderPage([
+            "archive:item:read",
+            "archive:item:update",
+            "archive:item:lock",
+            "archive:item:delete",
+        ]);
+
+        await fireEvent.click(await screen.findByRole("button", { name: "提交查询" }));
+
+        expect(await screen.findByRole("button", { name: "锁定" })).toBeEnabled();
+        expect(screen.queryByRole("button", { name: "解锁" })).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "删除" })).toBeEnabled();
+        await fireEvent.click(screen.getByRole("button", { name: "锁定" }));
+        expect(mocks.lifecycleLock).toHaveBeenCalledWith(1);
+    });
+    it("已锁定档案提供解锁并禁用编辑和删除", async () => {
+        mocks.searchArchiveRecords.mockResolvedValue({
+            fields: [],
+            items: [{ id: 1, locked_flag: true }],
+        });
+        renderPage([
+            "archive:item:read",
+            "archive:item:update",
+            "archive:item:lock",
+            "archive:item:delete",
+        ]);
+
+        await fireEvent.click(await screen.findByRole("button", { name: "提交查询" }));
+
+        expect(await screen.findByRole("button", { name: "解锁" })).toBeEnabled();
+        expect(screen.queryByRole("button", { name: "锁定" })).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "编辑" })).toBeDisabled();
+        expect(screen.getByRole("button", { name: "删除" })).toBeDisabled();
+        await fireEvent.click(screen.getByRole("button", { name: "解锁" }));
+        expect(mocks.lifecycleUnlock).toHaveBeenCalledWith(1);
+    });
+    it("无权限或动作进行中时禁用生命周期入口", async () => {
+        mocks.searchArchiveRecords.mockResolvedValue({
+            fields: [],
+            items: [{ id: 1, locked_flag: false }],
+        });
+        mocks.busyAction.value = "lock";
+        renderPage(["archive:item:read"]);
+
+        await fireEvent.click(await screen.findByRole("button", { name: "提交查询" }));
+
+        expect(await screen.findByRole("button", { name: "锁定" })).toBeDisabled();
+        expect(screen.getByRole("button", { name: "删除" })).toBeDisabled();
+        expect(screen.getByRole("button", { name: "查看" })).toBeEnabled();
+        expect(screen.getByRole("button", { name: "文件" })).toBeEnabled();
     });
     it("查询后使用响应游标翻页", async () => {
         mocks.searchArchiveRecords.mockResolvedValue({

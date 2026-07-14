@@ -52,6 +52,14 @@ export function updateArchiveRecord(id: number, payload: UpdateArchiveRecordRequ
     return httpClient.patch<ArchiveRecordDetailDto>(`/api/v1/archive-items/${id}`, payload);
 }
 
+export function deleteArchiveRecord(id: number, reason?: string) {
+    return httpClient.request<void>(`/api/v1/archive-items/${id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason }),
+    });
+}
+
 export function lockArchiveRecord(id: number, reason?: string) {
     return httpClient.post<ArchiveRecordDto>(`/api/v1/archive-items/${id}:lock`, { reason });
 }

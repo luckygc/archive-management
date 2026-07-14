@@ -1,7 +1,11 @@
 import { describe, expect, it, vi } from "vite-plus/test";
 
 import { updateArchiveFonds } from "./archive-metadata";
-import { searchArchiveRecords, uploadArchiveItemElectronicFile } from "./archive-records";
+import {
+    deleteArchiveRecord,
+    searchArchiveRecords,
+    uploadArchiveItemElectronicFile,
+} from "./archive-records";
 
 const httpClientMock = vi.hoisted(() => ({
     delete: vi.fn(),
@@ -9,6 +13,7 @@ const httpClientMock = vi.hoisted(() => ({
     get: vi.fn(),
     patch: vi.fn(),
     post: vi.fn(),
+    request: vi.fn(),
 }));
 
 vi.mock("@archive-management/frontend-core/api", () => ({
@@ -66,5 +71,17 @@ describe("archive API", () => {
         expect(formData.get("file")).toBe(file);
         expect(formData.get("usageType")).toBe("DEFAULT");
         expect(formData.get("displayOrder")).toBe("2");
+    });
+
+    it("删除档案使用资源 DELETE 和原因请求体", async () => {
+        httpClientMock.request.mockResolvedValue(undefined);
+
+        await deleteArchiveRecord(9, "重复数据");
+
+        expect(httpClientMock.request).toHaveBeenCalledWith("/api/v1/archive-items/9", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ reason: "重复数据" }),
+        });
     });
 });

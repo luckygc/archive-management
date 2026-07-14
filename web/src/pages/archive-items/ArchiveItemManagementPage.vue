@@ -25,15 +25,19 @@ import ArchiveResultTable from "@/pages/archive-library/ArchiveResultTable.vue";
 import { normalizeArchiveRecordFormValues } from "@/pages/archive-library/DynamicArchiveFields.vue";
 import { useArchiveItemResources } from "./useArchiveItemResources";
 import ArchiveItemActions from "./ArchiveItemActions.vue";
-import ArchiveItemResourcesDrawer from "./ArchiveItemResourcesDrawer.vue";
 import ArchiveItemEditorDrawer from "./ArchiveItemEditorDrawer.vue";
+import ArchiveItemResourcesDrawer from "./ArchiveItemResourcesDrawer.vue";
+import ArchiveItemRowActions from "./ArchiveItemRowActions.vue";
 import { downloadFromLink } from "./downloadFromLink";
+import { useArchiveItemLifecycle } from "./useArchiveItemLifecycle";
 import { useArchiveItemSearch } from "./useArchiveItemSearch";
 
 const permissionStore = usePermissionStore();
 const canRead = computed(() => permissionStore.has("archive:item:read"));
 const canCreate = computed(() => permissionStore.has("archive:item:create"));
 const canUpdate = computed(() => permissionStore.has("archive:item:update"));
+const canLock = computed(() => permissionStore.has("archive:item:lock"));
+const canDelete = computed(() => permissionStore.has("archive:item:delete"));
 const canImport = computed(() => canCreate.value || canUpdate.value);
 const canExport = computed(() => permissionStore.has("archive:export"));
 const {
@@ -90,6 +94,7 @@ const {
     uploading,
     uploadElectronicFile,
 } = useArchiveItemResources(downloadFromLink);
+const { busyAction, lock, remove, unlock } = useArchiveItemLifecycle(refresh);
 
 const editorFields = computed(() =>
     editorState.value?.mode === "create" ? fields.value : (editorDetail.value?.fields ?? []),
@@ -263,19 +268,21 @@ async function saveRecord() {
                 show-actions
                 @order-change="orderResults"
                 ><template #actions="{ row }"
-                    ><el-button link :disabled="!canRead" @click="openRecordEditor(row, 'detail')"
-                        >查看</el-button
-                    ><el-button
-                        link
-                        :disabled="!canUpdate || row.locked_flag"
-                        @click="openRecordEditor(row, 'edit')"
-                        >编辑</el-button
-                    ><el-button link :disabled="!canRead" @click="openDrawer(row, 'files')"
-                        >文件</el-button
-                    ><el-button link :disabled="!canReadAudit" @click="openDrawer(row, 'audits')"
-                        >审计</el-button
-                    ></template
-                ></ArchiveResultTable
+                    ><ArchiveItemRowActions
+                        :locked="row.locked_flag === true"
+                        :can-read="canRead"
+                        :can-update="canUpdate"
+                        :can-lock="canLock"
+                        :can-delete="canDelete"
+                        :can-read-audit="canReadAudit"
+                        :busy="Boolean(busyAction)"
+                        @view="openRecordEditor(row, 'detail')"
+                        @edit="openRecordEditor(row, 'edit')"
+                        @files="openDrawer(row, 'files')"
+                        @audits="openDrawer(row, 'audits')"
+                        @lock="lock(rowId(row)!)"
+                        @unlock="unlock(rowId(row)!)"
+                        @delete="remove(rowId(row)!)" /></template></ArchiveResultTable
             ><el-empty v-else description="选择分类并提交高级查询后显示管理列表" />
             <div v-if="result" class="am-table-footer">
                 <CursorPagination
