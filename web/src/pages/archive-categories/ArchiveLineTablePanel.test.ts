@@ -37,7 +37,7 @@ describe("ArchiveLineTablePanel", () => {
         mocks.createArchiveLineTable.mockReturnValueOnce(createTableRequest.promise);
         renderPanel(7);
         expect(await screen.findByText("合同方")).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "配置合同方字段" })).toBeVisible();
+        expect(screen.getByRole("button", { name: "配置字段：合同方" })).toBeVisible();
 
         await fireEvent.click(screen.getByRole("button", { name: "新增明细表" }));
         await fireEvent.update(screen.getByLabelText("明细表编码"), "participant");
@@ -147,7 +147,7 @@ describe("ArchiveLineTablePanel", () => {
 
         await fireEvent.click(screen.getByRole("button", { name: "构建数据表" }));
         await waitFor(() => expect(mocks.buildArchiveLineTable).toHaveBeenCalledWith(12));
-        await fireEvent.click(screen.getByRole("button", { name: "配置参与方字段" }));
+        await fireEvent.click(screen.getByRole("button", { name: "配置字段：参与方" }));
 
         expect(await screen.findByText("联系人")).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "构建数据表" })).toBeEnabled();
@@ -168,7 +168,7 @@ describe("ArchiveLineTablePanel", () => {
         await waitFor(() => expect(mocks.listArchiveLineFields).toHaveBeenCalledWith(12));
 
         await screen.findByText("参与方");
-        await fireEvent.click(await screen.findByRole("button", { name: "配置参与方字段" }));
+        await fireEvent.click(await screen.findByRole("button", { name: "配置字段：参与方" }));
         expect(await screen.findByText("联系人")).toBeInTheDocument();
         oldFields.resolve({ items: [lineField()] });
         await oldFields.promise;
@@ -215,7 +215,7 @@ describe("ArchiveLineTablePanel", () => {
         await fireEvent.click(screen.getByRole("button", { name: "保存字段" }));
         await waitFor(() => expect(mocks.createArchiveLineField).toHaveBeenCalledTimes(1));
 
-        await fireEvent.click(screen.getByRole("button", { name: "配置参与方字段" }));
+        await fireEvent.click(screen.getByRole("button", { name: "配置字段：参与方" }));
         request.resolve(lineField(23, 12, "stale_field", "旧字段", "f_stale_field"));
         await request.promise;
 

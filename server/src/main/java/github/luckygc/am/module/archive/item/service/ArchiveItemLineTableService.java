@@ -26,6 +26,7 @@ import github.luckygc.am.module.authorization.service.AuthorizationPermissionSer
 @Service
 public class ArchiveItemLineTableService {
 
+    private static final int POSTGRESQL_IDENTIFIER_LIMIT = 63;
     private static final Pattern IDENTIFIER_PATTERN = Pattern.compile("[a-z][a-z0-9_]*");
 
     private final ArchiveMapper archiveMapper;
@@ -259,7 +260,9 @@ public class ArchiveItemLineTableService {
     }
 
     private void validateIdentifier(String value, String message) {
-        if (StringUtils.isBlank(value) || !IDENTIFIER_PATTERN.matcher(value).matches()) {
+        if (StringUtils.isBlank(value)
+                || value.length() > POSTGRESQL_IDENTIFIER_LIMIT
+                || !IDENTIFIER_PATTERN.matcher(value).matches()) {
             throw new BadRequestException(message);
         }
     }

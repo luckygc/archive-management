@@ -82,7 +82,7 @@ const {
                     <el-button
                         link
                         type="primary"
-                        :aria-label="`配置${row.tableName}字段`"
+                        :aria-label="`配置字段：${row.tableName}`"
                         @click.stop="selectTable(row)"
                     >
                         配置字段
