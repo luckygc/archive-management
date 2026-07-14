@@ -42,7 +42,6 @@ public class ArchiveOntologyService extends ArchiveOntologyTypes {
     private final ArchiveRuleDefinitionDataRepository ruleRepository;
     private final ArchiveFieldDataRepository fieldRepository;
     private final ArchiveGovernanceService governanceService;
-    private final ArchiveOntologyRelationService relationService;
 
     public ArchiveOntologyService(
             ArchiveOntologyObjectTypeDataRepository objectTypeRepository,
@@ -52,8 +51,7 @@ public class ArchiveOntologyService extends ArchiveOntologyTypes {
             ArchiveOntologyEventTypeDataRepository eventTypeRepository,
             ArchiveRuleDefinitionDataRepository ruleRepository,
             ArchiveFieldDataRepository fieldRepository,
-            ArchiveGovernanceService governanceService,
-            ArchiveOntologyRelationService relationService) {
+            ArchiveGovernanceService governanceService) {
         this.objectTypeRepository = objectTypeRepository;
         this.attributeTypeRepository = attributeTypeRepository;
         this.mappingRepository = mappingRepository;
@@ -62,7 +60,6 @@ public class ArchiveOntologyService extends ArchiveOntologyTypes {
         this.ruleRepository = ruleRepository;
         this.fieldRepository = fieldRepository;
         this.governanceService = governanceService;
-        this.relationService = relationService;
     }
 
     @Transactional(readOnly = true)
@@ -224,55 +221,6 @@ public class ArchiveOntologyService extends ArchiveOntologyTypes {
                 mappingRepository.findById(mappingId).orElseThrow(() -> notFound("属性映射不存在"));
         mappingRepository.update(mapping);
         mappingRepository.delete(mapping);
-    }
-
-    @Transactional(readOnly = true)
-    public List<ArchiveOntologyRelationTypeResponse> listRelationTypes() {
-        return relationService.listRelationTypes();
-    }
-
-    @Transactional
-    public ArchiveOntologyRelationTypeResponse createRelationType(
-            CreateArchiveOntologyRelationTypeRequest request, Long userId) {
-        return relationService.createRelationType(request, userId);
-    }
-
-    @Transactional
-    public ArchiveOntologyRelationTypeResponse updateRelationType(
-            Long relationTypeId, UpdateArchiveOntologyRelationTypeRequest request, Long userId) {
-        return relationService.updateRelationType(relationTypeId, request, userId);
-    }
-
-    @Transactional
-    public void deleteRelationType(Long relationTypeId, Long userId) {
-        relationService.deleteRelationType(relationTypeId, userId);
-    }
-
-    @Transactional(readOnly = true)
-    public List<ArchiveOntologyEventTypeResponse> listEventTypes() {
-        return relationService.listEventTypes();
-    }
-
-    @Transactional
-    public List<ArchiveOntologyEventTypeResponse> initializeBuiltInEventTypes(Long userId) {
-        return relationService.initializeBuiltInEventTypes(userId);
-    }
-
-    @Transactional
-    public ArchiveOntologyEventTypeResponse createEventType(
-            CreateArchiveOntologyEventTypeRequest request, Long userId) {
-        return relationService.createEventType(request, userId);
-    }
-
-    @Transactional
-    public ArchiveOntologyEventTypeResponse updateEventType(
-            Long eventTypeId, UpdateArchiveOntologyEventTypeRequest request, Long userId) {
-        return relationService.updateEventType(eventTypeId, request, userId);
-    }
-
-    @Transactional
-    public void deleteEventType(Long eventTypeId, Long userId) {
-        relationService.deleteEventType(eventTypeId, userId);
     }
 
     private ArchiveOntologyObjectType builtInObjectType(ArchiveOntologyObjectTypeCode code) {

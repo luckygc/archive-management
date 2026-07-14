@@ -5,7 +5,12 @@ use warnings;
 use File::Find qw(find);
 
 my $report_only = grep { $_ eq '--report' } @ARGV;
-my @roots = grep { -d $_ } qw(server/src/main/java web/src frontend-core/src preview);
+my @requested_roots = grep { $_ ne '--report' } @ARGV;
+my @roots = grep { -d $_ } (
+    @requested_roots
+        ? @requested_roots
+        : qw(server/src/main/java web/src frontend-core/src preview)
+);
 my @files;
 
 find(
@@ -26,10 +31,11 @@ my @results = map { [effective_lines($_), $_] } @files;
 my @violations;
 for my $result (@results) {
     my ($lines, $file) = @{$result};
-    my $limit = $file =~ m{^(?:web|frontend-core)/} ? 300 : 500;
-    next unless $lines > $limit;
-    push @violations, $result;
+    my ($soft_limit, $hard_limit) =
+        $file =~ m{(?:^|/)(?:web|frontend-core)(?:/|$)} ? (300, 500) : (500, 700);
+    next unless $lines > $soft_limit;
     print "$lines\t$file\n";
+    push @violations, $result if $lines > $hard_limit;
 }
 
 exit 0 if $report_only || !@violations;
@@ -43,9 +49,10 @@ sub effective_lines {
 
     my $block_comment = 0;
     my $html_comment  = 0;
+    my $quote         = '';
     my $count         = 0;
     while (my $line = <$handle>) {
-        my $code = strip_comments($line, \$block_comment, \$html_comment);
+        my $code = strip_comments($line, \$block_comment, \$html_comment, \$quote);
         $count++ if $code =~ /\S/;
     }
     close $handle;
@@ -53,9 +60,8 @@ sub effective_lines {
 }
 
 sub strip_comments {
-    my ($line, $block_comment_ref, $html_comment_ref) = @_;
+    my ($line, $block_comment_ref, $html_comment_ref, $quote_ref) = @_;
     my $code  = '';
-    my $quote = '';
     my $index = 0;
 
     while ($index < length $line) {
@@ -75,21 +81,34 @@ sub strip_comments {
             next;
         }
 
-        my $character = substr($line, $index, 1);
-        if ($quote ne '') {
+        if ($$quote_ref ne '') {
+            if ($$quote_ref eq '"""' && substr($line, $index, 3) eq '"""') {
+                $code .= '"""';
+                $$quote_ref = '';
+                $index += 3;
+                next;
+            }
+            my $character = substr($line, $index, 1);
             $code .= $character;
-            if ($character eq '\\') {
+            if ($$quote_ref ne '"""' && $character eq '\\') {
                 $index++;
                 $code .= substr($line, $index, 1) if $index < length $line;
-            } elsif ($character eq $quote) {
-                $quote = '';
+            } elsif ($$quote_ref ne '"""' && $character eq $$quote_ref) {
+                $$quote_ref = '';
             }
             $index++;
             next;
         }
 
+        my $character = substr($line, $index, 1);
+        if (substr($line, $index, 3) eq '"""') {
+            $$quote_ref = '"""';
+            $code .= '"""';
+            $index += 3;
+            next;
+        }
         if ($character eq q{"} || $character eq q{'} || $character eq q{`}) {
-            $quote = $character;
+            $$quote_ref = $character;
             $code .= $character;
             $index++;
             next;

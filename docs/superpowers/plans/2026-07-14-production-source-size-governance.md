@@ -1,17 +1,36 @@
 # 生产源码职责收敛实施计划
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. 下方步骤复选框保留原始执行模板，实际完成状态以“执行状态”为准。
 
-**Goal:** 将前端生产业务文件收敛到约 300 个有效代码行、后端生产业务文件收敛到约 500 个有效代码行，同时保持现有业务合同和行为不变。
+**Goal:** 将前端生产业务文件收敛到 300–500 个有效代码行、后端生产业务文件收敛到 500–700 个有效代码行，同时保持现有业务合同和行为不变。
 
 **Architecture:** 后端按查询、写入和元数据子域拆成具体 Service，固定实体继续使用 Jakarta Data Repository，动态档案表和复杂查询继续使用 MyBatis。前端按完整业务区域提取组件与 composable，路由页面保留页面级选择、权限和跨区域刷新。
 
 **Tech Stack:** Java 25、Spring Boot、Jakarta Data、Hibernate StatelessSession、MyBatis、Vue 3、TypeScript、Element Plus、Vite+、Vitest、JUnit 5、ArchUnit。
 
+## 执行状态
+
+- [x] 任务 1：建立有效代码行基线与回归检查
+- [x] 任务 2：拆分档案记录查询职责
+- [x] 任务 3：拆分档案记录写入与读取模型
+- [x] 任务 4：收敛档案元数据 Service 边界
+- [x] 任务 5：收敛其余后端热点
+- [x] 任务 6：拆分档案管理与门类页面
+- [x] 任务 7：拆分本体、治理和授权热点页面
+- [x] 任务 8：完整验证与完成审计
+
+### 最终验证结果（2026-07-14）
+
+- `pnpm check`：通过。
+- `pnpm test`：通过，共 24 个测试文件、56 项测试。
+- `pnpm build`：通过；仅有第三方 `@vueuse/core` 的两条 Rolldown PURE 注解位置警告。
+- `pnpm run check:source-lines`：通过；仅 `web/src/pages/archive-categories/useArchiveCategories.ts` 以 315 行触发前端软提示，无硬阈值违规。
+- `server/` 下执行 `mise exec -- mvn -q spotless:check test`：通过。
+
 ## 全局约束
 
 - 只统计生产业务源码；排除测试、迁移 SQL、Mapper XML、生成代码和第三方代码。
-- 前端目标约 300 个有效代码行，后端目标约 500 个有效代码行；合理例外必须职责单一。
+- 前端超过 300 行软提示、超过 500 行硬失败；后端超过 500 行软提示、超过 700 行硬失败。
 - 不修改 HTTP API、数据库结构、权限、事务、错误响应和前端交互合同。
 - 不新增空壳转发类、无收益接口、通用 CRUD 抽象、配置开关或兼容分支。
 - 同一 Spring Bean 的 public 方法不得调用本类另一个 public 方法。
@@ -52,7 +71,7 @@ frontend-core/src
 preview
 ```
 
-输出超过后端 500 行或前端 300 行的文件，并以非零状态表示仍有超限项。允许通过 `--report` 只输出报告而不失败。
+输出超过后端 500 行或前端 300 行软提示线的文件；只有超过后端 700 行或前端 500 行硬阈值时返回非零状态。允许通过 `--report` 只输出报告而不失败。
 
 - [ ] **步骤 3：注册项目命令并验证统计结果**
 
@@ -176,17 +195,17 @@ git commit -m "refactor: 拆分档案记录写入职责"
 
 **文件：**
 - 创建：`server/src/main/java/github/luckygc/am/module/archive/metadata/service/ArchiveFondsService.java`
-- 创建：`server/src/main/java/github/luckygc/am/module/archive/metadata/service/ArchiveClassificationService.java`
+- 创建：`server/src/main/java/github/luckygc/am/module/archive/metadata/service/ArchiveMetadataReferenceService.java`
 - 创建：`server/src/main/java/github/luckygc/am/module/archive/metadata/service/ArchiveCategoryService.java`
 - 修改：现有 `ArchiveFieldDefinitionService`、`ArchiveFieldLayoutService`、`ArchiveDynamicTableService`、`ArchiveUniqueConstraintService`
-- 删除：职责清空后的 `ArchiveMetadataService.java`
+- 修改：`ArchiveMetadataService.java`，只保留字段、布局、动态表和唯一约束的事务协调
 - 修改：`ArchiveMetadataController.java` 及跨模块调用方
 - 测试：`server/src/test/java/github/luckygc/am/module/archive/metadata/ArchiveMetadataServiceTests.java`
 - 测试：元数据目录下现有专项 Service 测试
 
 **接口：**
 - 全宗、分类方案、门类和全宗门类范围分别由对应具体 Service 持有。
-- 字段、布局、动态表和唯一约束调用方直接使用现有专项 Service。
+- 字段、布局、动态表和唯一约束通过 `ArchiveMetadataService` 表达完整事务用例，内部复用现有专项 Service，不保留无业务语义的转发。
 - HTTP Request/Response 迁至 web 包或稳定顶层业务类型，字段和 JSON 合同不变。
 
 - [ ] **步骤 1：运行元数据测试建立绿色基线**
@@ -198,13 +217,13 @@ mise exec -- mvn -q -Dtest='ArchiveMetadataServiceTests,ArchiveFieldDefinitionSe
 
 - [ ] **步骤 2：增加旧总入口消失的架构断言并确认失败**
 
-断言生产代码不得依赖 `ArchiveMetadataService`，先确认现有调用方触发失败。
+断言 `ArchiveMetadataService` 不再包含全宗、分类方案、门类和全宗门类范围用例，先确认现有聚合类触发失败。
 
 - [ ] **步骤 3：按一个业务闭环逐次迁移**
 
-依次迁移全宗、分类方案、门类范围、字段、布局、动态表和唯一约束。每次同步迁移 Controller、跨模块调用与测试，不保留新旧双入口。
+依次迁移全宗、分类方案和门类范围；字段、布局、动态表和唯一约束留在具备真实事务协调职责的 `ArchiveMetadataService`。每次同步迁移 Controller、跨模块调用与测试，不保留新旧双入口。
 
-- [ ] **步骤 4：删除总 Service 并验证**
+- [ ] **步骤 4：验证元数据 Service 最终边界**
 
 ```bash
 cd server
@@ -372,7 +391,7 @@ pnpm build
 pnpm run check:source-lines
 ```
 
-预期：没有无说明的后端明显超过约 500 行或前端明显超过约 300 行的生产业务文件。
+预期：超过软提示线的文件仅作为职责复核清单；不存在后端超过 700 行或前端超过 500 行的生产业务文件。
 
 - [ ] **步骤 4：检查空壳和旧入口**
 

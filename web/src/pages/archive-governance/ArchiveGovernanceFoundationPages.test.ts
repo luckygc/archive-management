@@ -1,9 +1,10 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/vue";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/vue";
 import ElementPlus from "element-plus";
 import type { Component } from "vue";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import ArchiveGovernancePage from "./ArchiveGovernancePage.vue";
+import ArchiveGovernanceDialogs from "./ArchiveGovernanceDialogs.vue";
 import ArchiveOntologyPage from "../archive-ontology/ArchiveOntologyPage.vue";
 import ArchiveRuleTracesPage from "../archive-rule-traces/ArchiveRuleTracesPage.vue";
 import ArchiveRulesPage from "../archive-rules/ArchiveRulesPage.vue";
@@ -146,6 +147,31 @@ describe("档案治理基础页面", () => {
         expect(await screen.findByDisplayValue("F001")).toBeInTheDocument();
         expect(await screen.findByDisplayValue("retention_rules")).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "解析默认版本" })).toBeInTheDocument();
+    });
+
+    it("治理方案弹层通过语义事件提交有效表单", async () => {
+        const onSubmitScheme = vi.fn();
+        render(ArchiveGovernanceDialogs, {
+            props: {
+                schemeOpen: true,
+                versionOpen: false,
+                schemeForm: {
+                    schemeCode: "default_governance",
+                    schemeName: "默认治理方案",
+                    description: "",
+                    enabled: true,
+                    sortOrder: 0,
+                },
+                versionForm: { versionCode: "", versionDescription: "" },
+                submitting: false,
+                onSubmitScheme,
+            },
+            global: { plugins: [ElementPlus] },
+        });
+
+        await fireEvent.click(await screen.findByRole("button", { name: "确定" }));
+
+        await waitFor(() => expect(onSubmitScheme).toHaveBeenCalledOnce());
     });
 
     it("渲染本体页面的对象、属性和映射入口", async () => {

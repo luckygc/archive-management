@@ -45,7 +45,8 @@ const {
         <div class="am-page__header">
             <h1>档案分类</h1>
             <div>
-                <el-button @click="scopeDialog?.show()">全宗可用分类</el-button
+                <el-button :disabled="loading || fonds.length === 0" @click="scopeDialog?.show()"
+                    >全宗可用分类</el-button
                 ><el-button type="primary" @click="openCreateCategory">新建分类</el-button
                 ><el-button
                     v-if="selectedCategory?.tableStatus === 'NOT_BUILT'"

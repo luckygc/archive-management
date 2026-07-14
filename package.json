@@ -7,7 +7,7 @@
         "ready": "pnpm run check && pnpm run test && pnpm run build",
         "dev:web": "pnpm --filter @archive-management/web run dev",
         "check": "pnpm --filter @archive-management/frontend-core run check && pnpm --filter @archive-management/web run check",
-        "check:source-lines": "perl scripts/source-lines.pl",
+        "check:source-lines": "prove scripts/source-lines.t && perl scripts/source-lines.pl",
         "check:fix": "pnpm --filter @archive-management/frontend-core run check:fix && pnpm --filter @archive-management/web run check:fix",
         "lint": "pnpm run check",
         "lint:fix": "pnpm run check:fix",

@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/vue";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/vue";
 import ElementPlus from "element-plus";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -84,8 +84,17 @@ describe("ArchiveCategoriesPage", () => {
     });
     it("提供全宗可用分类范围入口", async () => {
         renderPage();
-        await fireEvent.click(await screen.findByRole("button", { name: "全宗可用分类" }));
+        const button = await screen.findByRole("button", { name: "全宗可用分类" });
+        await waitFor(() => expect(button).toBeEnabled());
+        await fireEvent.click(button);
         expect(await screen.findByText("全宗可用分类范围")).toBeInTheDocument();
+        await waitFor(() =>
+            expect(mocks.listArchiveFondsCategoryScopes).toHaveBeenCalledWith("F001"),
+        );
+        await fireEvent.click(screen.getByRole("button", { name: "确定" }));
+        await waitFor(() =>
+            expect(mocks.saveArchiveFondsCategoryScopes).toHaveBeenCalledWith("F001", []),
+        );
     });
 });
 function renderPage() {

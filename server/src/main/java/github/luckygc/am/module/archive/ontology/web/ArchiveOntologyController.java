@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import github.luckygc.am.common.api.CollectionResponse;
 import github.luckygc.am.common.security.AuthenticatedUsers;
+import github.luckygc.am.module.archive.ontology.service.ArchiveOntologyRelationService;
 import github.luckygc.am.module.archive.ontology.service.ArchiveOntologyService;
 import github.luckygc.am.module.archive.ontology.service.ArchiveOntologyTypes.ArchiveOntologyAttributeMappingResponse;
 import github.luckygc.am.module.archive.ontology.service.ArchiveOntologyTypes.ArchiveOntologyAttributeTypeResponse;
@@ -36,12 +37,15 @@ import github.luckygc.am.module.authorization.service.AuthorizationPermissionSer
 public class ArchiveOntologyController {
 
     private final ArchiveOntologyService ontologyService;
+    private final ArchiveOntologyRelationService ontologyRelationService;
     private final AuthorizationPermissionService permissionService;
 
     public ArchiveOntologyController(
             ArchiveOntologyService ontologyService,
+            ArchiveOntologyRelationService ontologyRelationService,
             AuthorizationPermissionService permissionService) {
         this.ontologyService = ontologyService;
+        this.ontologyRelationService = ontologyRelationService;
         this.permissionService = permissionService;
     }
 
@@ -133,7 +137,7 @@ public class ArchiveOntologyController {
 
     @GetMapping("/api/v1/archive-ontology-relation-types")
     public CollectionResponse<ArchiveOntologyRelationTypeResponse> listRelationTypes() {
-        return CollectionResponse.of(ontologyService.listRelationTypes());
+        return CollectionResponse.of(ontologyRelationService.listRelationTypes());
     }
 
     @PostMapping("/api/v1/archive-ontology-relation-types")
@@ -141,7 +145,7 @@ public class ArchiveOntologyController {
     public ArchiveOntologyRelationTypeResponse createRelationType(
             @RequestBody CreateArchiveOntologyRelationTypeRequest request,
             Authentication authentication) {
-        return ontologyService.createRelationType(request, requireManage(authentication));
+        return ontologyRelationService.createRelationType(request, requireManage(authentication));
     }
 
     @PatchMapping("/api/v1/archive-ontology-relation-types/{relationTypeId}")
@@ -149,7 +153,7 @@ public class ArchiveOntologyController {
             @PathVariable Long relationTypeId,
             @RequestBody UpdateArchiveOntologyRelationTypeRequest request,
             Authentication authentication) {
-        return ontologyService.updateRelationType(
+        return ontologyRelationService.updateRelationType(
                 relationTypeId, request, requireManage(authentication));
     }
 
@@ -157,12 +161,12 @@ public class ArchiveOntologyController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteRelationType(
             @PathVariable Long relationTypeId, Authentication authentication) {
-        ontologyService.deleteRelationType(relationTypeId, requireManage(authentication));
+        ontologyRelationService.deleteRelationType(relationTypeId, requireManage(authentication));
     }
 
     @GetMapping("/api/v1/archive-ontology-event-types")
     public CollectionResponse<ArchiveOntologyEventTypeResponse> listEventTypes() {
-        return CollectionResponse.of(ontologyService.listEventTypes());
+        return CollectionResponse.of(ontologyRelationService.listEventTypes());
     }
 
     @PostMapping("/api/v1/archive-ontology-event-types")
@@ -170,7 +174,7 @@ public class ArchiveOntologyController {
     public ArchiveOntologyEventTypeResponse createEventType(
             @RequestBody CreateArchiveOntologyEventTypeRequest request,
             Authentication authentication) {
-        return ontologyService.createEventType(request, requireManage(authentication));
+        return ontologyRelationService.createEventType(request, requireManage(authentication));
     }
 
     @PatchMapping("/api/v1/archive-ontology-event-types/{eventTypeId}")
@@ -178,20 +182,21 @@ public class ArchiveOntologyController {
             @PathVariable Long eventTypeId,
             @RequestBody UpdateArchiveOntologyEventTypeRequest request,
             Authentication authentication) {
-        return ontologyService.updateEventType(eventTypeId, request, requireManage(authentication));
+        return ontologyRelationService.updateEventType(
+                eventTypeId, request, requireManage(authentication));
     }
 
     @DeleteMapping("/api/v1/archive-ontology-event-types/{eventTypeId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteEventType(@PathVariable Long eventTypeId, Authentication authentication) {
-        ontologyService.deleteEventType(eventTypeId, requireManage(authentication));
+        ontologyRelationService.deleteEventType(eventTypeId, requireManage(authentication));
     }
 
     @PostMapping("/api/v1/archive-ontology-event-types:initializeBuiltins")
     public CollectionResponse<ArchiveOntologyEventTypeResponse> initializeBuiltInEventTypes(
             Authentication authentication) {
         return CollectionResponse.of(
-                ontologyService.initializeBuiltInEventTypes(requireManage(authentication)));
+                ontologyRelationService.initializeBuiltInEventTypes(requireManage(authentication)));
     }
 
     private Long requireManage(Authentication authentication) {

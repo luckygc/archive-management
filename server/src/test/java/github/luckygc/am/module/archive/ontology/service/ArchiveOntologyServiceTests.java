@@ -59,13 +59,6 @@ class ArchiveOntologyServiceTests {
         ruleRepository = mock(ArchiveRuleDefinitionDataRepository.class);
         fieldRepository = mock(ArchiveFieldDataRepository.class);
         governanceService = mock(ArchiveGovernanceService.class);
-        ArchiveOntologyRelationService relationService =
-                new ArchiveOntologyRelationService(
-                        objectTypeRepository,
-                        relationTypeRepository,
-                        eventTypeRepository,
-                        ruleRepository,
-                        governanceService);
         service =
                 new ArchiveOntologyService(
                         objectTypeRepository,
@@ -75,8 +68,7 @@ class ArchiveOntologyServiceTests {
                         eventTypeRepository,
                         ruleRepository,
                         fieldRepository,
-                        governanceService,
-                        relationService);
+                        governanceService);
     }
 
     @Test
