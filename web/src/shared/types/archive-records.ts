@@ -24,6 +24,7 @@ export type ArchiveItemRelationDirection = "OUTGOING" | "INCOMING" | "BOTH";
 export interface SearchArchiveRecordsRequest {
     categoryId?: number;
     fondsCode?: string;
+    volumeId?: number;
     keyword?: string;
     where?: ArchiveItemWhere;
     relatedGroups?: ArchiveItemRelatedGroup[];

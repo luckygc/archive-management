@@ -28,13 +28,13 @@
 
 ## 5. 开发案卷管理 PC 页面
 
-- [ ] 5.1 编写并运行 `ArchiveVolumeDataRepository`、案卷 Service/Controller、档案 `volumeId` Mapper 与前端客户端定向失败测试，确认因案卷游标分页、`volumeId` 筛选或 `:addItem` 精确合同缺失而失败
-- [ ] 5.2 为固定实体 `ArchiveVolume` 新增 `ArchiveVolumeDataRepository`，使用 `Restriction<ArchiveVolume>`、`PageRequest`、稳定 `Order(createdAt DESC, id DESC)` 和 `CursoredPage<ArchiveVolume>` 完成列表查询；Service 在事务内转换为项目 `CursorPageResponse<ArchiveVolumeResponse>`，不暴露 provider 页类型，并补齐 Repository、Service、Controller 与 ArchUnit 验证。仅迁移案卷列表，创建、详情和唯一性查询保留现有 MyBatis，不修改 `ArchiveMapper.xml` 中的案卷列表 SQL
-- [ ] 5.3 给 `SearchArchiveItemsRequest`、查询 Service 与 MyBatis criteria/XML 增加可空 `volumeId`，纳入业务筛选和 cursor 查询摘要并补齐 Controller/Service/Mapper 测试
-- [ ] 5.4 实现案卷前端类型与客户端：列表使用 cursor 合同，`:addItem` 提交 `{ itemId, displayOrder? }` 并以 `Promise<void>` 处理 `204 No Content`
-- [ ] 5.5 编写案卷页面和路由定向测试并立即运行，确认因页面、Drawer、游标交互或 `/archive/volumes` 权限路由尚未实现而失败
-- [ ] 5.6 最小实现案卷管理页面、编辑/卷内档案 Drawer 和 `/archive/volumes` 路由，支持按全宗和分类筛选、创建、查看、游标翻页、加入档案及 `archive:item:read` 权限元数据
-- [ ] 5.7 重新运行案卷 Repository、Service、Controller、ArchUnit、客户端、页面和路由测试，确认全部转绿
+- [x] 5.1 编写并运行 `ArchiveVolumeDataRepository`、案卷 Service/Controller、档案 `volumeId` Mapper 与前端客户端定向失败测试，确认因案卷游标分页、`volumeId` 筛选或 `:addItem` 精确合同缺失而失败
+- [x] 5.2 为固定实体 `ArchiveVolume` 新增 `ArchiveVolumeDataRepository`，使用 `Restriction<ArchiveVolume>`、`PageRequest`、稳定 `Order(createdAt DESC, id DESC)` 和 `CursoredPage<ArchiveVolume>` 完成列表查询；Service 在事务内转换为项目 `CursorPageResponse<ArchiveVolumeResponse>`，不暴露 provider 页类型，并补齐 Repository、Service、Controller 与 ArchUnit 验证。仅迁移案卷列表，创建、详情和唯一性查询保留现有 MyBatis，不修改 `ArchiveMapper.xml` 中的案卷列表 SQL
+- [x] 5.3 给 `SearchArchiveItemsRequest`、查询 Service 与 MyBatis criteria/XML 增加可空 `volumeId`，纳入业务筛选和 cursor 查询摘要并补齐 Controller/Service/Mapper 测试
+- [x] 5.4 实现案卷前端类型与客户端：列表使用 cursor 合同，`:addItem` 提交 `{ itemId, displayOrder? }` 并以 `Promise<void>` 处理 `204 No Content`
+- [x] 5.5 编写案卷页面和路由定向测试并立即运行，确认因页面、Drawer、游标交互或 `/archive/volumes` 权限路由尚未实现而失败
+- [x] 5.6 最小实现案卷管理页面、编辑/卷内档案 Drawer 和 `/archive/volumes` 路由，支持按全宗和分类筛选、创建、查看、游标翻页、加入档案及 `archive:item:read` 权限元数据
+- [x] 5.7 重新运行案卷 Repository、Service、Controller、ArchUnit、客户端、页面和路由测试，确认全部转绿
 
 ## 6. 开发档案关系维护
 

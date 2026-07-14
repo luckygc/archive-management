@@ -1,5 +1,8 @@
 package github.luckygc.am.module.archive.item.web;
 
+import jakarta.data.page.PageRequest;
+
+import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -9,11 +12,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import github.luckygc.am.common.api.CollectionResponse;
+import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.archive.item.service.ArchiveVolumeService;
 import github.luckygc.am.module.archive.item.service.ArchiveVolumeService.AddItemToVolumeRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveVolumeService.ArchiveVolumeDto;
+import github.luckygc.am.module.archive.item.service.ArchiveVolumeService.ArchiveVolumeResponse;
 import github.luckygc.am.module.archive.item.service.ArchiveVolumeService.CreateArchiveVolumeRequest;
 
 @RestController
@@ -26,14 +30,17 @@ public class ArchiveVolumeController {
     }
 
     @GetMapping("/api/v1/archive-volumes")
-    public CollectionResponse<ArchiveVolumeDto> listVolumes(
-            String fondsCode, String categoryCode, Authentication authentication) {
-        return CollectionResponse.of(
-                archiveVolumeService.listVolumes(
-                        fondsCode,
-                        categoryCode,
-                        AuthenticatedUsers.requireUserId(
-                                authentication == null ? null : authentication.getPrincipal())));
+    public CursorPageResponse<ArchiveVolumeResponse> listVolumes(
+            @Nullable String fondsCode,
+            @Nullable String categoryCode,
+            PageRequest pageRequest,
+            @Nullable Authentication authentication) {
+        return archiveVolumeService.listVolumes(
+                fondsCode,
+                categoryCode,
+                pageRequest,
+                AuthenticatedUsers.requireUserId(
+                        authentication == null ? null : authentication.getPrincipal()));
     }
 
     @PostMapping("/api/v1/archive-volumes")

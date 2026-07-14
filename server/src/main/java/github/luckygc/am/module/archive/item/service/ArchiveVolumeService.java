@@ -2,8 +2,15 @@ package github.luckygc.am.module.archive.item.service;
 
 import java.time.LocalDateTime;
 import java.time.Year;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+
+import jakarta.data.Order;
+import jakarta.data.page.CursoredPage;
+import jakarta.data.page.PageRequest;
+import jakarta.data.restrict.Restrict;
+import jakarta.data.restrict.Restriction;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jspecify.annotations.Nullable;
@@ -14,12 +21,18 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeResolutionTypes.ArchiveDataScopeFilter;
+import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeResolutionTypes.ResolvedArchiveDataScope;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
 import github.luckygc.am.module.archive.governance.service.ArchiveGovernanceService;
+import github.luckygc.am.module.archive.item.ArchiveVolume;
+import github.luckygc.am.module.archive.item._ArchiveVolume;
+import github.luckygc.am.module.archive.item.repository.ArchiveVolumeDataRepository;
 import github.luckygc.am.module.archive.item.service.ArchiveItemReadService.ArchiveItemDto;
+import github.luckygc.am.module.archive.mapper.ArchiveDataScopeSqlGroup;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.metadata.ArchiveManagementMode;
 import github.luckygc.am.module.archive.metadata.service.ArchiveCategoryService;
@@ -37,6 +50,7 @@ public class ArchiveVolumeService {
     private static final String PERMISSION_ITEM_UPDATE = "archive:item:update";
 
     private final ArchiveMapper archiveMapper;
+    private final ArchiveVolumeDataRepository archiveVolumeRepository;
     private final ArchiveMetadataService archiveMetadataService;
     private final ArchiveMetadataReferenceService archiveMetadataReferenceService;
     private final ArchiveCategoryService archiveCategoryService;
@@ -47,6 +61,7 @@ public class ArchiveVolumeService {
 
     public ArchiveVolumeService(
             ArchiveMapper archiveMapper,
+            ArchiveVolumeDataRepository archiveVolumeRepository,
             ArchiveMetadataService archiveMetadataService,
             ArchiveMetadataReferenceService archiveMetadataReferenceService,
             ArchiveCategoryService archiveCategoryService,
@@ -55,6 +70,7 @@ public class ArchiveVolumeService {
             AuthorizationPermissionService permissionService,
             ArchiveDataScopeService dataScopeService) {
         this.archiveMapper = archiveMapper;
+        this.archiveVolumeRepository = archiveVolumeRepository;
         this.archiveMetadataService = archiveMetadataService;
         this.archiveMetadataReferenceService = archiveMetadataReferenceService;
         this.archiveCategoryService = archiveCategoryService;
@@ -64,15 +80,150 @@ public class ArchiveVolumeService {
         this.dataScopeService = dataScopeService;
     }
 
-    public List<ArchiveVolumeDto> listVolumes(String fondsCode, String categoryCode, Long userId) {
+    @Transactional(readOnly = true)
+    public CursorPageResponse<ArchiveVolumeResponse> listVolumes(
+            @Nullable String fondsCode,
+            @Nullable String categoryCode,
+            PageRequest pageRequest,
+            Long userId) {
         requirePermission(userId, PERMISSION_ITEM_READ);
-        return archiveMapper
-                .listArchiveVolumes(
-                        StringUtils.trimToNull(fondsCode), StringUtils.trimToNull(categoryCode))
-                .stream()
-                .map(this::toVolumeDto)
-                .filter(volume -> volumeInDataScope(volume, userId))
-                .toList();
+        String requestedFondsCode = StringUtils.trimToNull(fondsCode);
+        String requestedCategoryCode = StringUtils.trimToNull(categoryCode);
+        ResolvedArchiveDataScope resolvedScope = dataScopeService.resolveUserDataScope(userId);
+        if (resolvedScope.empty()) {
+            return emptyVolumePage(pageRequest);
+        }
+        Restriction<ArchiveVolume> restriction =
+                volumeRestriction(requestedFondsCode, requestedCategoryCode, resolvedScope, userId);
+        if (restriction == null) {
+            return emptyVolumePage(pageRequest);
+        }
+        CursoredPage<ArchiveVolume> page =
+                archiveVolumeRepository.find(
+                        restriction,
+                        pageRequest,
+                        Order.by(_ArchiveVolume.createdAt.desc(), _ArchiveVolume.id.desc()));
+        return CursorPageResponse.from(page, pageRequest, this::toVolumeResponse);
+    }
+
+    private @Nullable Restriction<ArchiveVolume> volumeRestriction(
+            @Nullable String fondsCode,
+            @Nullable String categoryCode,
+            ResolvedArchiveDataScope resolvedScope,
+            Long userId) {
+        List<Restriction<ArchiveVolume>> requestRestrictions = new ArrayList<>();
+        if (fondsCode != null) {
+            requestRestrictions.add(_ArchiveVolume.fondsCode.equalTo(fondsCode));
+        }
+        if (categoryCode != null) {
+            requestRestrictions.add(_ArchiveVolume.categoryCode.equalTo(categoryCode));
+        }
+        if (resolvedScope.allData()) {
+            return allRestrictions(requestRestrictions);
+        }
+        List<Restriction<ArchiveVolume>> scopeRestrictions = new ArrayList<>();
+        for (ArchiveCategoryDto category : archiveCategoryService.listCategories(null)) {
+            if (categoryCode != null && !categoryCode.equals(category.categoryCode())) {
+                continue;
+            }
+            ArchiveDataScopeFilter filter =
+                    dataScopeService.buildItemFilter(userId, category.id(), fondsCode);
+            if (filter.empty()) {
+                continue;
+            }
+            if (filter.allData()) {
+                scopeRestrictions.add(_ArchiveVolume.categoryCode.equalTo(category.categoryCode()));
+                continue;
+            }
+            for (ArchiveDataScopeSqlGroup group : filter.groups()) {
+                Restriction<ArchiveVolume> groupRestriction =
+                        volumeScopeGroupRestriction(category.categoryCode(), group);
+                if (groupRestriction != null) {
+                    scopeRestrictions.add(groupRestriction);
+                }
+            }
+        }
+        if (scopeRestrictions.isEmpty()) {
+            return null;
+        }
+        requestRestrictions.add(Restrict.any(scopeRestrictions));
+        return allRestrictions(requestRestrictions);
+    }
+
+    private @Nullable Restriction<ArchiveVolume> volumeScopeGroupRestriction(
+            String categoryCode, ArchiveDataScopeSqlGroup group) {
+        String fondsCode = group.fondsCodes().isEmpty() ? null : group.fondsCodes().getFirst();
+        Long securityLevelId =
+                group.securityLevelIds().isEmpty() ? null : group.securityLevelIds().getFirst();
+        Long retentionPeriodId =
+                group.retentionPeriodIds().isEmpty() ? null : group.retentionPeriodIds().getFirst();
+        if (!dataScopeService.matchesItemFilter(
+                ArchiveDataScopeFilter.groups(List.of(group)),
+                fondsCode,
+                securityLevelId,
+                retentionPeriodId,
+                Map.of())) {
+            return null;
+        }
+        List<Restriction<ArchiveVolume>> restrictions = new ArrayList<>();
+        restrictions.add(_ArchiveVolume.categoryCode.equalTo(categoryCode));
+        restrictions.add(stringValuesRestriction(_ArchiveVolume.fondsCode, group.fondsCodes()));
+        restrictions.add(
+                longValuesRestriction(_ArchiveVolume.securityLevelId, group.securityLevelIds()));
+        restrictions.add(
+                longValuesRestriction(
+                        _ArchiveVolume.retentionPeriodId, group.retentionPeriodIds()));
+        return allRestrictions(restrictions);
+    }
+
+    private Restriction<ArchiveVolume> stringValuesRestriction(
+            jakarta.data.metamodel.TextAttribute<ArchiveVolume> attribute, List<String> values) {
+        if (values.isEmpty()) {
+            return Restrict.unrestricted();
+        }
+        return Restrict.any(values.stream().map(attribute::equalTo).toList());
+    }
+
+    private Restriction<ArchiveVolume> longValuesRestriction(
+            jakarta.data.metamodel.NumericAttribute<ArchiveVolume, Long> attribute,
+            List<Long> values) {
+        if (values.isEmpty()) {
+            return Restrict.unrestricted();
+        }
+        return Restrict.any(values.stream().map(attribute::equalTo).toList());
+    }
+
+    private Restriction<ArchiveVolume> allRestrictions(
+            List<Restriction<ArchiveVolume>> restrictions) {
+        return restrictions.isEmpty() ? Restrict.unrestricted() : Restrict.all(restrictions);
+    }
+
+    private CursorPageResponse<ArchiveVolumeResponse> emptyVolumePage(PageRequest pageRequest) {
+        return CursorPageResponse.withCursorValues(
+                List.of(),
+                pageRequest.size(),
+                null,
+                null,
+                null,
+                null,
+                pageRequest.requestTotal() ? 0L : null);
+    }
+
+    private ArchiveVolumeResponse toVolumeResponse(ArchiveVolume volume) {
+        return new ArchiveVolumeResponse(
+                volume.getId(),
+                volume.getFondsCode(),
+                volume.getFondsName(),
+                volume.getCategoryCode(),
+                volume.getCategoryName(),
+                volume.getArchiveNo(),
+                volume.getElectronicStatus(),
+                volume.getArchiveYear(),
+                volume.isLockedFlag(),
+                volume.getLockReason(),
+                volume.getLockedBy(),
+                volume.getLockedAt(),
+                volume.getCreatedAt());
     }
 
     public ArchiveVolumeDto getVolume(Long id, Long userId) {
@@ -182,18 +333,6 @@ public class ArchiveVolumeService {
         userId = AuthenticatedUsers.requireResolvedUserId(userId);
         if (!permissionService.hasPermission(userId, permissionCode)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "权限不足");
-        }
-    }
-
-    private boolean volumeInDataScope(ArchiveVolumeDto volume, Long userId) {
-        try {
-            assertVolumeInDataScope(volume, userId);
-            return true;
-        } catch (ResponseStatusException exception) {
-            if (exception.getStatusCode() == HttpStatus.FORBIDDEN) {
-                return false;
-            }
-            throw exception;
         }
     }
 
@@ -307,4 +446,19 @@ public class ArchiveVolumeService {
             String lockReason,
             Long lockedBy,
             LocalDateTime lockedAt) {}
+
+    public record ArchiveVolumeResponse(
+            Long id,
+            String fondsCode,
+            String fondsName,
+            String categoryCode,
+            String categoryName,
+            @Nullable String archiveNo,
+            String electronicStatus,
+            int archiveYear,
+            boolean lockedFlag,
+            @Nullable String lockReason,
+            @Nullable Long lockedBy,
+            @Nullable LocalDateTime lockedAt,
+            LocalDateTime createdAt) {}
 }

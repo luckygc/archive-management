@@ -6,6 +6,7 @@ import org.jspecify.annotations.Nullable;
 
 public record ArchiveDynamicItemCriteria(
         @Nullable String requestedFondsCode,
+        @Nullable Long volumeId,
         List<ArchiveDataScopeSqlGroup> dataScopeGroups,
         List<ArchiveSqlCondition> conditions,
         List<ArchiveSqlRelatedGroup> relatedGroups,

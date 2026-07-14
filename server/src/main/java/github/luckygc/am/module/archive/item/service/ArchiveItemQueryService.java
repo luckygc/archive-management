@@ -191,6 +191,7 @@ public class ArchiveItemQueryService {
                         visibleFields,
                         deleted,
                         requestedFondsCode,
+                        request.volumeId(),
                         dataScopeFilter.allData() ? List.of() : dataScopeFilter.groups(),
                         conditions,
                         relatedGroups,
@@ -409,12 +410,42 @@ public class ArchiveItemQueryService {
             @Nullable List<@Nullable ArchiveItemRelatedGroup> relatedGroups,
             @Nullable Integer limit,
             @Nullable String cursor,
-            @Nullable List<@Nullable ArchiveItemOrderBy> orderBy) {
+            @Nullable List<@Nullable ArchiveItemOrderBy> orderBy,
+            @Nullable Long volumeId) {
+
+        public SearchArchiveItemsRequest(
+                @Nullable Long categoryId,
+                @Nullable String fondsCode,
+                @Nullable String keyword,
+                @Nullable ArchiveItemWhere where,
+                @Nullable List<@Nullable ArchiveItemRelatedGroup> relatedGroups,
+                @Nullable Integer limit,
+                @Nullable String cursor,
+                @Nullable List<@Nullable ArchiveItemOrderBy> orderBy) {
+            this(
+                    categoryId,
+                    fondsCode,
+                    keyword,
+                    where,
+                    relatedGroups,
+                    limit,
+                    cursor,
+                    orderBy,
+                    null);
+        }
 
         public SearchArchiveItemsRequest withPage(
                 @Nullable Integer limit, @Nullable String cursor) {
             return new SearchArchiveItemsRequest(
-                    categoryId, fondsCode, keyword, where, relatedGroups, limit, cursor, orderBy);
+                    categoryId,
+                    fondsCode,
+                    keyword,
+                    where,
+                    relatedGroups,
+                    limit,
+                    cursor,
+                    orderBy,
+                    volumeId);
         }
     }
 

@@ -2,6 +2,7 @@ package github.luckygc.am.module.archive.item.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -12,7 +13,13 @@ import static org.mockito.Mockito.when;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+
+import jakarta.data.Order;
+import jakarta.data.page.CursoredPage;
+import jakarta.data.page.PageRequest;
+import jakarta.data.restrict.Restriction;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -24,6 +31,9 @@ import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeRe
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
 import github.luckygc.am.module.archive.governance.ArchiveGovernanceSchemeVersion;
 import github.luckygc.am.module.archive.governance.service.ArchiveGovernanceService;
+import github.luckygc.am.module.archive.item.ArchiveVolume;
+import github.luckygc.am.module.archive.item._ArchiveVolume;
+import github.luckygc.am.module.archive.item.repository.ArchiveVolumeDataRepository;
 import github.luckygc.am.module.archive.item.service.ArchiveVolumeService.CreateArchiveVolumeRequest;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.metadata.ArchiveManagementMode;
@@ -39,6 +49,7 @@ import github.luckygc.am.module.authorization.service.AuthorizationPermissionSer
 class ArchiveVolumePermissionTests {
 
     private ArchiveMapper archiveMapper;
+    private ArchiveVolumeDataRepository archiveVolumeRepository;
     private ArchiveMetadataService archiveMetadataService;
     private ArchiveMetadataReferenceService archiveMetadataReferenceService;
     private ArchiveCategoryService archiveCategoryService;
@@ -51,6 +62,7 @@ class ArchiveVolumePermissionTests {
     @BeforeEach
     void setUp() {
         archiveMapper = mock(ArchiveMapper.class);
+        archiveVolumeRepository = mock(ArchiveVolumeDataRepository.class);
         archiveMetadataService = mock(ArchiveMetadataService.class);
         archiveMetadataReferenceService = mock(ArchiveMetadataReferenceService.class);
         archiveCategoryService = mock(ArchiveCategoryService.class);
@@ -65,6 +77,7 @@ class ArchiveVolumePermissionTests {
         archiveVolumeService =
                 new ArchiveVolumeService(
                         archiveMapper,
+                        archiveVolumeRepository,
                         archiveMetadataService,
                         archiveMetadataReferenceService,
                         archiveCategoryService,
@@ -79,14 +92,60 @@ class ArchiveVolumePermissionTests {
     void listVolumesShouldRequireArchiveItemReadPermission() {
         when(permissionService.hasPermission(9L, "archive:item:read")).thenReturn(false);
 
-        assertThatThrownBy(() -> archiveVolumeService.listVolumes(null, null, 9L))
+        assertThatThrownBy(
+                        () ->
+                                archiveVolumeService.listVolumes(
+                                        null, null, PageRequest.ofSize(100), 9L))
                 .isInstanceOfSatisfying(
                         ResponseStatusException.class,
                         exception ->
                                 assertThat(exception.getStatusCode())
                                         .isEqualTo(HttpStatus.FORBIDDEN));
 
-        verify(archiveMapper, never()).listArchiveVolumes(null, null);
+        verify(archiveVolumeRepository, never()).find(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("案卷列表使用数据范围 Restriction 和稳定排序")
+    void listVolumesShouldUseRestrictionAndStableOrder() {
+        when(permissionService.hasPermission(8L, "archive:item:read")).thenReturn(true);
+        when(dataScopeService.resolveUserDataScope(8L))
+                .thenReturn(
+                        github.luckygc.am.module.archive.authorization.service
+                                .ArchiveDataScopeResolutionTypes.ResolvedArchiveDataScope.all());
+        @SuppressWarnings("unchecked")
+        CursoredPage<ArchiveVolume> page = mock(CursoredPage.class);
+        when(page.content()).thenReturn(List.of());
+        when(page.numberOfElements()).thenReturn(0);
+        when(page.hasTotals()).thenReturn(false);
+        when(archiveVolumeRepository.find(any(), any(), any())).thenReturn(page);
+        PageRequest request = PageRequest.ofSize(100);
+
+        archiveVolumeService.listVolumes("F001", "ACCOUNTING", request, 8L);
+
+        verify(archiveVolumeRepository)
+                .find(
+                        any(Restriction.class),
+                        eq(request),
+                        eq(Order.by(_ArchiveVolume.createdAt.desc(), _ArchiveVolume.id.desc())));
+        verify(dataScopeService, never()).matchesItemFilter(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("数据范围为空时直接返回空 cursor 页且不访问 Repository")
+    void listVolumesShouldReturnEmptyCursorPageForEmptyDataScope() {
+        when(permissionService.hasPermission(8L, "archive:item:read")).thenReturn(true);
+        when(dataScopeService.resolveUserDataScope(8L))
+                .thenReturn(
+                        github.luckygc.am.module.archive.authorization.service
+                                .ArchiveDataScopeResolutionTypes.ResolvedArchiveDataScope.none());
+
+        var response = archiveVolumeService.listVolumes(null, null, PageRequest.ofSize(100), 8L);
+
+        assertThat(response.items()).isEmpty();
+        assertThat(response.next()).isNull();
+        assertThat(response.prev()).isNull();
+        verify(archiveVolumeRepository, never()).find(any(), any(), any());
     }
 
     @Test

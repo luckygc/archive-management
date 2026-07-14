@@ -48,6 +48,15 @@ class ArchiveMapperXmlContractTests {
     }
 
     @Test
+    @DisplayName("动态档案查询按固定字段 volumeId 过滤卷内档案")
+    void dynamicItemQueriesShouldFilterByVolumeId() throws Exception {
+        String dynamicItemFromWhere = dynamicItemFromWhere(archiveMapperXml());
+
+        assertThat(dynamicItemFromWhere).contains("criteria.volumeId != null");
+        assertThat(dynamicItemFromWhere).contains("i.volume_id = #{criteria.volumeId}");
+    }
+
+    @Test
     @DisplayName("动态档案列表 SQL 由 XML 消费结构化分页和投影参数")
     void dynamicItemListSqlShouldRenderProjectionAndPageInXml() throws Exception {
         String listDynamicItems = selectStatement(archiveMapperXml(), "listDynamicItems");

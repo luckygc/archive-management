@@ -47,7 +47,7 @@ class ArchiveItemControllerTests {
     @DisplayName("搜索接口从 URL 查询参数接收 cursor 分页控制")
     void searchItemsShouldUseUrlQueryPageControls() {
         SearchArchiveItemsRequest body =
-                new SearchArchiveItemsRequest(1L, "F001", "合同", null, null, 10, "body", null);
+                new SearchArchiveItemsRequest(1L, "F001", "合同", null, null, 10, "body", null, 12L);
         Authentication authentication = authentication(9L);
         CursorPageTokenContext context = new CursorPageTokenContext("fingerprint");
         String cursor = CursorPageTokenCodec.encode("next", List.of(99L), 50, context);
@@ -56,6 +56,7 @@ class ArchiveItemControllerTests {
         controller.searchItems(body, page, authentication);
 
         verify(archiveItemQueryService).searchItems(body, 9L, page);
+        org.assertj.core.api.Assertions.assertThat(body.volumeId()).isEqualTo(12L);
     }
 
     private Authentication authentication(Long userId) {

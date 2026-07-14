@@ -11,6 +11,7 @@ import {
     Document,
     Files,
     Folder,
+    FolderOpened,
     HomeFilled,
     UploadFilled,
     Key,
@@ -34,6 +35,7 @@ declare module "vue-router" {
         affixTab?: boolean;
         cache?: boolean;
         public?: boolean;
+        permission?: string;
     }
 }
 
@@ -61,6 +63,14 @@ export const workspaceRoutes: RouteRecordRaw[] = [
         "档案管理",
         Folder,
         () => import("@/pages/archive-items/ArchiveItemManagementPage.vue"),
+    ),
+    route(
+        "archive/volumes",
+        "archive-volumes",
+        "案卷管理",
+        FolderOpened,
+        () => import("@/pages/archive-volumes/ArchiveVolumesPage.vue"),
+        { permission: "archive:item:read" },
     ),
     group("archive/catalog", "目录配置", Collection, [
         route(
@@ -244,15 +254,21 @@ function route(
     title: string,
     icon: Component,
     component: () => Promise<unknown>,
-    extra: { affixTab?: boolean; cache?: boolean; menu?: boolean; pageTitle?: string } = {},
+    extra: {
+        affixTab?: boolean;
+        cache?: boolean;
+        menu?: boolean;
+        pageTitle?: string;
+        permission?: string;
+    } = {},
 ): RouteRecordRaw {
-    const { affixTab = false, cache = true, menu = true, ...props } = extra;
+    const { affixTab = false, cache = true, menu = true, permission, ...props } = extra;
     return {
         path,
         name,
         component,
         props,
-        meta: { title, icon, menu, affixTab, cache },
+        meta: { title, icon, menu, affixTab, cache, permission },
     } as RouteRecordRaw;
 }
 

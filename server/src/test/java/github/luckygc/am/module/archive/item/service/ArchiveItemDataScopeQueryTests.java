@@ -177,6 +177,35 @@ class ArchiveItemDataScopeQueryTests {
     }
 
     @Test
+    @DisplayName("卷内档案搜索把 volumeId 传入 MyBatis criteria")
+    void searchItemsShouldPassVolumeIdIntoMyBatisCriteria() {
+        when(archiveCategoryService.getCategory(1L)).thenReturn(category());
+        when(archiveMapper.tableExists("am_archive_item_contract")).thenReturn(1);
+        when(archiveMetadataService.listEffectiveFields(
+                        eq(1L), eq(ArchiveLevel.ITEM), any(), eq(9L)))
+                .thenReturn(List.of());
+        when(archiveMetadataService.listUniqueConstraints(1L)).thenReturn(List.of());
+        when(dataScopeService.buildItemFilter(9L, 1L, null))
+                .thenReturn(ArchiveDataScopeFilter.all());
+        when(archiveMapper.listDynamicItems(any(), any(), any(), any())).thenReturn(List.of());
+
+        archiveItemQueryService.searchItems(
+                new SearchArchiveItemsRequest(1L, null, null, null, null, null, null, null, 12L),
+                9L,
+                PageRequest.ofSize(100));
+
+        verify(archiveMapper)
+                .listDynamicItems(
+                        any(),
+                        any(),
+                        argThat(
+                                criteria ->
+                                        criteria != null
+                                                && Long.valueOf(12L).equals(criteria.volumeId())),
+                        any());
+    }
+
+    @Test
     @DisplayName("动态分页复用 Jakarta Data 游标值对象")
     void dynamicPaginationShouldReuseJakartaDataCursorValueObject() {
         assertThat(

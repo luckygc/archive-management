@@ -120,6 +120,9 @@
         <if test="criteria.requestedFondsCode != null and criteria.requestedFondsCode != ''">
             and i.fonds_code = #{criteria.requestedFondsCode}
         </if>
+        <if test="criteria.volumeId != null">
+            and i.volume_id = #{criteria.volumeId}
+        </if>
         <if test="criteria.dataScopeGroups != null and criteria.dataScopeGroups.size > 0">
             and (
             <foreach collection="criteria.dataScopeGroups" item="group" separator=" or ">

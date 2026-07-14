@@ -26,6 +26,7 @@ import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeRe
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
 import github.luckygc.am.module.archive.governance.service.ArchiveGovernanceService;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemAuditDataRepository;
+import github.luckygc.am.module.archive.item.repository.ArchiveVolumeDataRepository;
 import github.luckygc.am.module.archive.item.service.ArchiveItemCommandService.CreateArchiveItemRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemCommandService.UpdateArchiveItemRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveVolumeService.CreateArchiveVolumeRequest;
@@ -88,6 +89,7 @@ class ArchiveItemFondsValidationTests {
         archiveVolumeService =
                 new ArchiveVolumeService(
                         archiveMapper,
+                        mock(ArchiveVolumeDataRepository.class),
                         archiveMetadataService,
                         archiveMetadataReferenceService,
                         archiveCategoryService,

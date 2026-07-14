@@ -14,6 +14,23 @@ class CursorHttpFingerprintTests {
     private final CursorHttpFingerprint fingerprint = new CursorHttpFingerprint();
 
     @Test
+    @DisplayName("volumeId 纳入查询摘要且分页 URL 参数不纳入")
+    void volumeIdParticipatesInFingerprintWhilePageControlsDoNot() {
+        org.springframework.mock.web.MockHttpServletRequest first =
+                jsonRequest("{\"volumeId\":12}");
+        first.addParameter("limit", "100");
+        first.addParameter("cursor", "opaque-one");
+        org.springframework.mock.web.MockHttpServletRequest same = jsonRequest("{\"volumeId\":12}");
+        same.addParameter("limit", "200");
+        same.addParameter("cursor", "opaque-two");
+        org.springframework.mock.web.MockHttpServletRequest different =
+                jsonRequest("{\"volumeId\":13}");
+
+        assertThat(fingerprint.fingerprint(first)).isEqualTo(fingerprint.fingerprint(same));
+        assertThat(fingerprint.fingerprint(first)).isNotEqualTo(fingerprint.fingerprint(different));
+    }
+
+    @Test
     @DisplayName("URL 查询参数顺序和分页控制参数不影响查询摘要")
     void queryParamOrderAndPageControlsShouldNotAffectFingerprint() {
         MockHttpServletRequest first = jsonRequest("{\"categoryId\":1,\"keyword\":\"合同\"}");

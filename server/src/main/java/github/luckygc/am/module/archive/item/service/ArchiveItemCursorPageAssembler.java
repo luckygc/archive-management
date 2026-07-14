@@ -50,6 +50,7 @@ class ArchiveItemCursorPageAssembler {
             List<ArchiveFieldDto> visibleFields,
             boolean deleted,
             @Nullable String requestedFondsCode,
+            @Nullable Long volumeId,
             List<ArchiveDataScopeSqlGroup> dataScopeGroups,
             List<ArchiveSqlCondition> conditions,
             List<ArchiveSqlRelatedGroup> relatedGroups,
@@ -64,7 +65,12 @@ class ArchiveItemCursorPageAssembler {
                 new ArchiveDynamicItemProjection(projectionFields(visibleFields));
         ArchiveDynamicItemCriteria criteria =
                 new ArchiveDynamicItemCriteria(
-                        requestedFondsCode, dataScopeGroups, conditions, relatedGroups, keyword);
+                        requestedFondsCode,
+                        volumeId,
+                        dataScopeGroups,
+                        conditions,
+                        relatedGroups,
+                        keyword);
         ArchiveDynamicItemPageWindow pageWindow =
                 new ArchiveDynamicItemPageWindow(
                         queryOrderBy, cursorPredicates(queryOrderBy, cursor), limit + 1);

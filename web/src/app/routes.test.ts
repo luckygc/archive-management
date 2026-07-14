@@ -20,6 +20,16 @@ describe("workspaceRoutes", () => {
         expect(router.resolve("/intake").meta.cache).toBe(false);
     });
 
+    it("案卷管理路由懒加载页面并复用档案读取权限", () => {
+        const resolved = router.resolve("/archive/volumes");
+        const route = workspaceRoutes.find((item) => item.path === "archive/volumes");
+
+        expect(resolved.name).toBe("archive-volumes");
+        expect(resolved.meta.title).toBe("案卷管理");
+        expect(resolved.meta.permission).toBe("archive:item:read");
+        expect(typeof route?.component).toBe("function");
+    });
+
     it("在路由边界清洗登录后跳转地址", () => {
         expect(normalizeRedirect("/archive/items?fonds=A")).toBe("/archive/items?fonds=A");
         expect(normalizeRedirect("//outside.example")).toBe("/");
