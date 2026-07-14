@@ -1,70 +1,161 @@
 <script setup lang="ts">
-import { Check, Clock, Coin, MessageBox } from "@element-plus/icons-vue";
+import { ElSkeleton } from "element-plus";
+import { onBeforeUnmount, onMounted, ref } from "vue";
 
-interface TodoItem {
-    key: string;
-    title: string;
-    module: string;
-    status: "待处理" | "处理中" | "已完成";
+import { errorMessage } from "@archive-management/frontend-core/api";
+
+import { getWorkspaceSummary } from "@/shared/api/workspace";
+import type { WorkspaceSummaryResponse } from "@/shared/types/workspace";
+
+const summary = ref<WorkspaceSummaryResponse>();
+const loading = ref(false);
+const loadError = ref<string>();
+let disposed = false;
+let requestVersion = 0;
+
+onMounted(() => void loadSummary());
+
+onBeforeUnmount(() => {
+    disposed = true;
+    requestVersion += 1;
+});
+
+async function loadSummary() {
+    if (loading.value || disposed) return;
+    const version = ++requestVersion;
+    loading.value = true;
+    loadError.value = undefined;
+    try {
+        const response = await getWorkspaceSummary();
+        if (!disposed && version === requestVersion) summary.value = response;
+    } catch (error) {
+        if (!disposed && version === requestVersion) {
+            loadError.value = errorMessage(error, "加载档案摘要失败");
+        }
+    } finally {
+        if (!disposed && version === requestVersion) loading.value = false;
+    }
 }
 
-const todos: TodoItem[] = [
-    { key: "1", title: "财务凭证归档批次待确认", module: "移交接收", status: "待处理" },
-    { key: "2", title: "项目档案字段布局待发布", module: "目录配置", status: "处理中" },
-    { key: "3", title: "历史系统同步目录已完成", module: "同步接入", status: "已完成" },
+const metrics: Array<{ label: string; key: keyof WorkspaceSummaryResponse }> = [
+    { label: "档案总数", key: "archiveItemCount" },
+    { label: "草稿档案", key: "draftCount" },
+    { label: "已锁定档案", key: "lockedCount" },
+    { label: "电子文件", key: "electronicFileCount" },
 ];
-
-function statusType(status: TodoItem["status"]) {
-    if (status === "已完成") return "success";
-    if (status === "处理中") return "primary";
-    return "warning";
-}
 </script>
 
 <template>
     <section class="am-page">
         <div class="am-page__header"><h1>工作台</h1></div>
-        <el-row :gutter="16">
-            <el-col
-                v-for="item in [
-                    { title: '档案记录', value: 1280, icon: Coin },
-                    { title: '待接收批次', value: 8, icon: MessageBox },
-                    { title: '处理中任务', value: 16, icon: Clock },
-                    { title: '今日完成', value: 42, icon: Check },
-                ]"
-                :key="item.title"
-                :xs="24"
-                :md="12"
-                :xl="6"
-                class="dashboard-stat"
+        <el-card class="dashboard-summary" header="档案概览" shadow="never">
+            <div
+                v-if="loading && !summary"
+                class="dashboard-summary__loading"
+                aria-label="正在加载档案摘要"
+                aria-live="polite"
             >
-                <el-card shadow="never">
-                    <el-statistic :title="item.title" :value="item.value">
-                        <template #prefix
-                            ><el-icon><component :is="item.icon" /></el-icon
-                        ></template>
-                    </el-statistic>
-                </el-card>
-            </el-col>
-            <el-col :span="24">
-                <el-card header="近期事项" shadow="never">
-                    <el-table :data="todos" row-key="key">
-                        <el-table-column label="事项" prop="title" />
-                        <el-table-column label="模块" prop="module" width="120" />
-                        <el-table-column label="状态" width="110">
-                            <template #default="{ row }">
-                                <el-tag :type="statusType(row.status)">{{ row.status }}</el-tag>
-                            </template>
-                        </el-table-column>
-                    </el-table>
-                </el-card>
-            </el-col>
-        </el-row>
+                <ElSkeleton :rows="2" animated />
+            </div>
+            <el-alert
+                v-else-if="loadError"
+                title="档案摘要加载失败"
+                type="error"
+                show-icon
+                :closable="false"
+            >
+                <p class="dashboard-summary__error">{{ loadError }}</p>
+                <el-button
+                    link
+                    :loading="loading"
+                    aria-label="重试加载档案摘要"
+                    @click="loadSummary"
+                >
+                    重试
+                </el-button>
+            </el-alert>
+            <dl v-else-if="summary" class="dashboard-summary__metrics" aria-live="polite">
+                <div v-for="metric in metrics" :key="metric.key" class="dashboard-summary__metric">
+                    <dt>{{ metric.label }}</dt>
+                    <dd>{{ summary[metric.key].toLocaleString() }}</dd>
+                </div>
+            </dl>
+        </el-card>
     </section>
 </template>
 
 <style scoped>
-.dashboard-stat {
-    margin-bottom: 16px;
+.dashboard-summary__loading {
+    min-height: 96px;
+}
+
+.dashboard-summary__error {
+    margin: 4px 0 8px;
+}
+
+.dashboard-summary__metrics {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin: 0;
+}
+
+.dashboard-summary__metric {
+    min-width: 0;
+    padding: 8px 20px;
+    border-right: 1px solid var(--el-border-color-lighter);
+}
+
+.dashboard-summary__metric:first-child {
+    padding-left: 8px;
+}
+
+.dashboard-summary__metric:last-child {
+    border-right: 0;
+}
+
+.dashboard-summary__metric dt {
+    color: var(--el-text-color-secondary);
+    font-size: 14px;
+    line-height: 22px;
+}
+
+.dashboard-summary__metric dd {
+    margin: 8px 0 0;
+    color: var(--el-text-color-primary);
+    font-size: 28px;
+    font-weight: 600;
+    line-height: 36px;
+    font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 900px) {
+    .dashboard-summary__metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        row-gap: 16px;
+    }
+
+    .dashboard-summary__metric:nth-child(2) {
+        border-right: 0;
+    }
+
+    .dashboard-summary__metric:nth-child(3) {
+        padding-left: 8px;
+    }
+}
+
+@media (max-width: 560px) {
+    .dashboard-summary__metrics {
+        grid-template-columns: 1fr;
+    }
+
+    .dashboard-summary__metric {
+        padding: 8px;
+        border-right: 0;
+        border-bottom: 1px solid var(--el-border-color-lighter);
+    }
+
+    .dashboard-summary__metric:last-child {
+        border-bottom: 0;
+    }
 }
 </style>

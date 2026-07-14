@@ -1018,11 +1018,15 @@ pnpm --filter @archive-management/web exec vp test run src/layout/AppShell.test.
 **Files:**
 - Create: `server/src/main/java/github/luckygc/am/module/archive/item/web/ArchiveWorkspaceController.java`
 - Create: `server/src/main/java/github/luckygc/am/module/archive/item/service/ArchiveWorkspaceService.java`
+- Create: `server/src/main/java/github/luckygc/am/module/archive/item/service/ArchiveWorkspaceCategorySummary.java`
 - Modify: `server/src/main/java/github/luckygc/am/module/archive/item/service/ArchiveItemQueryService.java`
+- Modify: `server/src/main/java/github/luckygc/am/module/archive/item/service/ArchiveItemCursorPageAssembler.java`
 - Modify: `server/src/main/java/github/luckygc/am/module/archive/mapper/ArchiveMapper.java`
 - Modify: `server/src/main/resources/mapper/archive/ArchiveMapper.xml`
 - Create: `server/src/test/java/github/luckygc/am/module/archive/item/service/ArchiveWorkspaceServiceTests.java`
-- Modify: `server/src/test/java/github/luckygc/am/module/archive/item/service/ArchiveItemQueryServiceBoundaryTests.java`
+- Create: `server/src/test/java/github/luckygc/am/module/archive/item/service/ArchiveItemQueryWorkspaceTests.java`
+- Create: `server/src/test/java/github/luckygc/am/module/archive/item/service/ArchiveWorkspaceMapperIntegrationTests.java`
+- Modify: `server/src/test/java/github/luckygc/am/module/archive/item/service/ArchiveMapperXmlContractTests.java`
 - Create: `server/src/test/java/github/luckygc/am/module/archive/item/web/ArchiveWorkspaceControllerTests.java`
 - Create: `web/src/shared/types/workspace.ts`
 - Create: `web/src/shared/api/workspace.ts`
@@ -1033,9 +1037,9 @@ pnpm --filter @archive-management/web exec vp test run src/layout/AppShell.test.
 **Interfaces:**
 - Produces: `GET /api/v1/workspace-summary`。
 - Response: `WorkspaceSummaryResponse(long archiveItemCount, long draftCount, long lockedCount, long electronicFileCount)`。
-- Query interface: `ArchiveItemQueryService.ArchiveWorkspaceCategorySummary summarizeCategoryForWorkspace(Long categoryId, Long userId)` 和 `ArchiveMapper.summarizeDynamicItems(ArchiveDynamicItemSource source, ArchiveDynamicItemCriteria criteria)`。
+- Query interface: `ArchiveWorkspaceCategorySummary ArchiveItemQueryService.summarizeCategoryForWorkspace(Long categoryId, Long userId)` 和 `ArchiveMapper.summarizeDynamicItems(ArchiveDynamicItemSource source, ArchiveDynamicItemCriteria criteria)`。
 
-- [ ] **Step 1: 写数据范围统计失败测试**
+- [x] **Step 1: 写数据范围统计失败测试**
 
 ```java
 @Test
@@ -1050,15 +1054,17 @@ void summaryUsesResolvedItemDataScope() {
 }
 ```
 
-- [ ] **Step 2: 运行并确认 Service 缺失**
+- [x] **Step 2: 运行并确认 Service 缺失**
 
 ```bash
 cd server && mise exec -- mvn -q -Dtest=ArchiveWorkspaceServiceTests test
 ```
 
-- [ ] **Step 3: 按分类复用现有查询上下文并执行聚合**
+- [x] **Step 3: 按分类复用现有查询上下文并执行聚合**
 
 `ArchiveWorkspaceService` 枚举启用分类，并调用另一个 Spring Bean `ArchiveItemQueryService.summarizeCategoryForWorkspace(categoryId, userId)`；后者复用现有分类动态表、数据范围和查询条件编译，不在工作台复制权限 SQL。每个分类执行一次聚合，Service 将结果相加。空数据范围返回全零。
+
+工作台是所有已认证用户可进入的默认路由。`ArchiveWorkspaceService` 在枚举分类前检查 `archive:item:read`；无读取权限返回全零且不访问分类或 Mapper，避免泄露档案存在性，同时不把默认工作台改为 403。
 
 ```sql
 <select id="summarizeDynamicItems" resultType="map">
@@ -1079,7 +1085,7 @@ cd server && mise exec -- mvn -q -Dtest=ArchiveWorkspaceServiceTests test
 
 在 XML 中抽取并复用现有动态表请求条件和数据范围 SQL 片段，避免搜索与摘要形成两份条件实现。
 
-- [ ] **Step 4: 写页面失败测试并替换硬编码数据**
+- [x] **Step 4: 写页面失败测试并替换硬编码数据**
 
 ```ts
 it("渲染服务端摘要且不包含演示待办", async () => {
@@ -1097,7 +1103,7 @@ it("渲染服务端摘要且不包含演示待办", async () => {
 
 工作台保留四个真实统计；近期事项区域在审批阶段完成前移除，不显示虚构空壳。
 
-- [ ] **Step 5: 验证并提交**
+- [x] **Step 5: 验证并提交**
 
 ```bash
 cd server && mise exec -- mvn -q -Dtest=ArchiveWorkspaceServiceTests,ArchiveWorkspaceControllerTests test

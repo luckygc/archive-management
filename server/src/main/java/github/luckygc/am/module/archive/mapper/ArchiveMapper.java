@@ -51,6 +51,10 @@ public interface ArchiveMapper {
             @Param("source") ArchiveDynamicItemSource source,
             @Param("criteria") ArchiveDynamicItemCriteria criteria);
 
+    Map<String, Object> summarizeDynamicItems(
+            @Param("source") ArchiveDynamicItemSource source,
+            @Param("criteria") ArchiveDynamicItemCriteria criteria);
+
     List<Map<String, Object>> listItemsForSearchRebuild(
             @Param("tableName") String tableName,
             @Param("selectColumns") String selectColumns,

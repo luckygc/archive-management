@@ -19,7 +19,6 @@ import org.springframework.jdbc.support.JdbcUtils;
 import org.springframework.stereotype.Service;
 
 import github.luckygc.am.common.api.KeysetCursoredPageRecord;
-import github.luckygc.am.module.archive.mapper.ArchiveDataScopeSqlGroup;
 import github.luckygc.am.module.archive.mapper.ArchiveDynamicItemCriteria;
 import github.luckygc.am.module.archive.mapper.ArchiveDynamicItemPageWindow;
 import github.luckygc.am.module.archive.mapper.ArchiveDynamicItemPageWindow.CursorComparison;
@@ -27,10 +26,8 @@ import github.luckygc.am.module.archive.mapper.ArchiveDynamicItemPageWindow.Curs
 import github.luckygc.am.module.archive.mapper.ArchiveDynamicItemProjection;
 import github.luckygc.am.module.archive.mapper.ArchiveDynamicItemSource;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
-import github.luckygc.am.module.archive.mapper.ArchiveSqlCondition;
 import github.luckygc.am.module.archive.mapper.ArchiveSqlOrder;
 import github.luckygc.am.module.archive.mapper.ArchiveSqlOrder.Direction;
-import github.luckygc.am.module.archive.mapper.ArchiveSqlRelatedGroup;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFieldDto;
 
 @Service
@@ -46,31 +43,16 @@ class ArchiveItemCursorPageAssembler {
 
     CursoredPage<Map<String, @Nullable Object>> queryDynamicItemPage(
             PageRequest pageRequest,
-            String tableName,
+            ArchiveDynamicItemSource source,
             List<ArchiveFieldDto> visibleFields,
-            boolean deleted,
-            @Nullable String requestedFondsCode,
-            @Nullable Long volumeId,
-            List<ArchiveDataScopeSqlGroup> dataScopeGroups,
-            List<ArchiveSqlCondition> conditions,
-            List<ArchiveSqlRelatedGroup> relatedGroups,
-            @Nullable String keyword,
+            ArchiveDynamicItemCriteria criteria,
             List<ArchiveSqlOrder> orderBy,
             @Nullable Cursor cursor) {
         int limit = pageRequest.size();
         List<ArchiveSqlOrder> queryOrderBy =
                 isPreviousCursor(pageRequest) ? invert(orderBy) : orderBy;
-        ArchiveDynamicItemSource source = new ArchiveDynamicItemSource(tableName, deleted);
         ArchiveDynamicItemProjection projection =
                 new ArchiveDynamicItemProjection(projectionFields(visibleFields));
-        ArchiveDynamicItemCriteria criteria =
-                new ArchiveDynamicItemCriteria(
-                        requestedFondsCode,
-                        volumeId,
-                        dataScopeGroups,
-                        conditions,
-                        relatedGroups,
-                        keyword);
         ArchiveDynamicItemPageWindow pageWindow =
                 new ArchiveDynamicItemPageWindow(
                         queryOrderBy, cursorPredicates(queryOrderBy, cursor), limit + 1);

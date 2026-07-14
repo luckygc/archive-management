@@ -29,6 +29,8 @@ import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeRe
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
 import github.luckygc.am.module.archive.item.ArchiveItemQueryOperator;
 import github.luckygc.am.module.archive.item.ArchiveItemRelationDirection;
+import github.luckygc.am.module.archive.mapper.ArchiveDynamicItemCriteria;
+import github.luckygc.am.module.archive.mapper.ArchiveDynamicItemSource;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.mapper.ArchiveSqlCondition;
 import github.luckygc.am.module.archive.mapper.ArchiveSqlOrder;
@@ -127,6 +129,22 @@ public class ArchiveItemQueryService {
                 .toList();
     }
 
+    public ArchiveWorkspaceCategorySummary summarizeCategoryForWorkspace(
+            Long categoryId, Long userId) {
+        requirePermission(userId, "archive:item:read");
+        ArchiveCategoryDto category = archiveCategoryService.getCategory(categoryId);
+        ArchiveLevel archiveLevel = ArchiveLevel.ITEM;
+        ensureArchiveLevelAllowed(category, archiveLevel);
+        ArchiveDynamicItemSource source = dynamicItemSource(category, archiveLevel, false);
+        ArchiveDynamicItemCriteria criteria =
+                dynamicItemCriteria(userId, categoryId, null, null, List.of(), List.of(), null);
+        if (criteria == null) {
+            return ArchiveWorkspaceCategorySummary.empty();
+        }
+        Map<String, @Nullable Object> row = archiveMapper.summarizeDynamicItems(source, criteria);
+        return ArchiveWorkspaceCategorySummary.fromMapperRow(row);
+    }
+
     private ArchiveItemListDto queryItems(
             @Nullable SearchArchiveItemsRequest request,
             Long userId,
@@ -158,7 +176,6 @@ public class ArchiveItemQueryService {
         ArchiveCategoryDto category = archiveCategoryService.getCategory(request.categoryId());
         ArchiveLevel archiveLevel = ArchiveLevel.ITEM;
         ensureArchiveLevelAllowed(category, archiveLevel);
-        String tableName = dynamicTableName(category, archiveLevel);
         List<ArchiveFieldDto> fields =
                 archiveMetadataService.listEffectiveFields(
                         request.categoryId(), archiveLevel, ArchiveLayoutSurface.TABLE, userId);
@@ -169,9 +186,7 @@ public class ArchiveItemQueryService {
                                 java.util.Comparator.comparingInt(ArchiveFieldDto::listSortOrder)
                                         .thenComparing(ArchiveFieldDto::id))
                         .toList();
-        if (!isDynamicTableBuilt(category, archiveLevel)) {
-            throw new ResponseStatusException(HttpStatus.PRECONDITION_FAILED, "档案分类动态表未创建");
-        }
+        ArchiveDynamicItemSource source = dynamicItemSource(category, archiveLevel, deleted);
         List<String> indexedFieldCodes = indexedFieldCodes(request.categoryId(), archiveLevel);
         List<ArchiveSqlOrder> orderBy =
                 deleted ? deletedOrderBy() : orderBy(request.orderBy(), fields, indexedFieldCodes);
@@ -182,25 +197,21 @@ public class ArchiveItemQueryService {
         List<ArchiveSqlRelatedGroup> relatedGroups =
                 criteriaCompiler.buildRelatedGroups(request.relatedGroups(), userId);
         String requestedFondsCode = StringUtils.trimToNull(request.fondsCode());
-        ArchiveDataScopeFilter dataScopeFilter =
-                dataScopeService.buildItemFilter(userId, request.categoryId(), requestedFondsCode);
-        if (dataScopeFilter.empty()) {
+        ArchiveDynamicItemCriteria criteria =
+                dynamicItemCriteria(
+                        userId,
+                        request.categoryId(),
+                        requestedFondsCode,
+                        request.volumeId(),
+                        conditions,
+                        relatedGroups,
+                        keyword);
+        if (criteria == null) {
             return itemList(category, fields, emptyPage(pageRequest, 0L));
         }
         CursoredPage<Map<String, @Nullable Object>> itemPage =
                 pageAssembler.queryDynamicItemPage(
-                        pageRequest,
-                        tableName,
-                        visibleFields,
-                        deleted,
-                        requestedFondsCode,
-                        request.volumeId(),
-                        dataScopeFilter.allData() ? List.of() : dataScopeFilter.groups(),
-                        conditions,
-                        relatedGroups,
-                        keyword,
-                        orderBy,
-                        cursor);
+                        pageRequest, source, visibleFields, criteria, orderBy, cursor);
         CursorPageResponse<Map<String, @Nullable Object>> page =
                 CursorPageResponse.from(itemPage, pageRequest, item -> item);
         return itemList(category, fields, page);
@@ -350,24 +361,42 @@ public class ArchiveItemQueryService {
         return ArchiveDynamicTableNames.tableName(category, archiveLevel, fieldScope);
     }
 
-    private ArchiveLevel normalizeArchiveLevel(ArchiveLevel archiveLevel) {
-        return ArchiveDynamicTableNames.normalizeArchiveLevel(archiveLevel);
-    }
-
     private void ensureArchiveLevelAllowed(ArchiveCategoryDto category, ArchiveLevel archiveLevel) {
         if (!ArchiveDynamicTableNames.supportsArchiveLevel(category, archiveLevel)) {
             throw badRequest("该分类未启用案卷管理");
         }
     }
 
-    private boolean isDynamicTableBuilt(ArchiveCategoryDto category, ArchiveLevel archiveLevel) {
-        return isDynamicTableBuilt(category, archiveLevel, ArchiveFieldScope.METADATA);
+    private ArchiveDynamicItemSource dynamicItemSource(
+            ArchiveCategoryDto category, ArchiveLevel archiveLevel, boolean deleted) {
+        String tableName = dynamicTableName(category, archiveLevel);
+        ArchiveDynamicItemSource source = new ArchiveDynamicItemSource(tableName, deleted);
+        if (archiveMapper.tableExists(source.tableName()) <= 0) {
+            throw new ResponseStatusException(HttpStatus.PRECONDITION_FAILED, "档案分类动态表未创建");
+        }
+        return source;
     }
 
-    private boolean isDynamicTableBuilt(
-            ArchiveCategoryDto category, ArchiveLevel archiveLevel, ArchiveFieldScope fieldScope) {
-        String tableName = dynamicTableName(category, archiveLevel, fieldScope);
-        return StringUtils.isNotBlank(tableName) && archiveMapper.tableExists(tableName) > 0;
+    private @Nullable ArchiveDynamicItemCriteria dynamicItemCriteria(
+            Long userId,
+            Long categoryId,
+            @Nullable String requestedFondsCode,
+            @Nullable Long volumeId,
+            List<ArchiveSqlCondition> conditions,
+            List<ArchiveSqlRelatedGroup> relatedGroups,
+            @Nullable String fullTextKeyword) {
+        ArchiveDataScopeFilter dataScopeFilter =
+                dataScopeService.buildItemFilter(userId, categoryId, requestedFondsCode);
+        if (dataScopeFilter.empty()) {
+            return null;
+        }
+        return new ArchiveDynamicItemCriteria(
+                requestedFondsCode,
+                volumeId,
+                dataScopeFilter.allData() ? List.of() : dataScopeFilter.groups(),
+                conditions,
+                relatedGroups,
+                fullTextKeyword);
     }
 
     private BadRequestException badRequest(String message) {

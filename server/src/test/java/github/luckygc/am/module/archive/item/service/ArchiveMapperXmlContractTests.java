@@ -69,6 +69,21 @@ class ArchiveMapperXmlContractTests {
         assertThat(mapperParamNames("listDynamicItems"))
                 .containsExactly("source", "projection", "criteria", "page");
         assertThat(mapperParamNames("countDynamicItems")).containsExactly("source", "criteria");
+        assertThat(mapperParamNames("summarizeDynamicItems")).containsExactly("source", "criteria");
+    }
+
+    @Test
+    @DisplayName("工作台摘要复用动态查询范围并避免电子文件放大档案计数")
+    void workspaceSummaryShouldReuseDynamicCriteriaAndCountDistinctFiles() throws Exception {
+        String sql = selectStatement(archiveMapperXml(), "summarizeDynamicItems");
+
+        assertThat(sql).contains("<include refid=\"dynamicItemFromWhere\"/>");
+        assertThat(sql).contains("count(distinct visible.id)");
+        assertThat(sql).contains("filter (where visible.electronic_status = 'DRAFT')");
+        assertThat(sql).contains("filter (where visible.locked_flag = true)");
+        assertThat(sql).contains("count(distinct ef.id)");
+        assertThat(sql).contains("left join am_archive_item_electronic_file ef");
+        assertThat(sql).doesNotContain("ef.deleted_flag", "ef.deleted_at");
     }
 
     @Test

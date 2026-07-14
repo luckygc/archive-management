@@ -358,6 +358,23 @@
         <include refid="dynamicItemFromWhere"/>
     </select>
 
+    <select id="summarizeDynamicItems" resultType="map">
+        select count(distinct visible.id) as archive_item_count,
+               count(distinct visible.id)
+                   filter (where visible.electronic_status = 'DRAFT') as draft_count,
+               count(distinct visible.id)
+                   filter (where visible.locked_flag = true) as locked_count,
+               count(distinct ef.id) as electronic_file_count
+        from (
+            select i.id,
+                   i.electronic_status,
+                   i.locked_flag
+            <include refid="dynamicItemFromWhere"/>
+        ) visible
+        left join am_archive_item_electronic_file ef
+          on ef.archive_item_id = visible.id
+    </select>
+
     <select id="listItemsForSearchRebuild" resultType="map">
         select i.id,
                i.fonds_code

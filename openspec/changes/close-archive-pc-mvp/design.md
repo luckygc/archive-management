@@ -67,7 +67,9 @@ Service 先校验档案数据范围、更新权限、档案可编辑状态、明
 
 新增 `GET /api/v1/workspace-summary`，返回 `WorkspaceSummaryResponse(archiveItemCount, draftCount, lockedCount, electronicFileCount)`。`ArchiveWorkspaceService` 枚举启用分类并调用另一个 Spring Bean 中的分类摘要方法；该方法复用档案查询已有的动态表、结构化条件和数据范围编译，再由 Service 汇总。这样搜索与摘要不会形成两套权限 SQL，也符合同一 Bean 的 public 方法不互调规则。
 
-MVP 接受按启用分类逐次聚合的成本，因为它最小化权限语义分叉；后续只有在真实性能证据出现时才考虑物化摘要或批量聚合。工作台删除虚构待办，审批能力上线前不返回待办占位字段。
+工作台是所有已认证用户都能进入的默认路由，不额外要求档案读取权限。服务端在枚举分类前检查 `archive:item:read`：缺少该权限时返回四项全零，不执行分类或动态表查询；拥有读取权限时再按用户数据范围统计。这样既不泄露档案存在性，也不会把无档案权限用户的默认工作台变成永久 403。
+
+MVP 接受按启用分类逐次聚合的成本，因为它最小化权限语义分叉；后续只有在真实性能证据出现时才考虑物化摘要或批量聚合。聚合 SQL 复用搜索的动态 `FROM/WHERE` 与数据范围片段，通过 PostgreSQL `FILTER` 计算档案、草稿和锁定数，并按关联表物理删除合同 `count(distinct ef.id)` 计算电子文件数。工作台删除虚构待办，审批能力上线前不返回待办占位字段。
 
 持久化入口按查询形态选择：固定实体的普通 CRUD 和固定字段普通分页优先使用 Jakarta Data；动态表、统计、复杂连接以及需要把数据范围编译进同一分页 SQL 的查询使用 MyBatis。因此案卷列表使用 Jakarta Data，关系列表、动态明细行和工作台摘要保持 MyBatis，避免把“固定表”误解为所有查询都必须经由同一种持久化入口。
 
