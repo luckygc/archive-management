@@ -5,7 +5,7 @@ import { ref, watch } from "vue";
 import { errorMessage } from "@archive-management/frontend-core/api";
 
 import { addArchiveItemToVolume } from "@/shared/api/archive-volumes";
-import { searchArchiveRecords } from "@/shared/api/archive-records";
+import { discoverArchiveRecords, searchArchiveRecords } from "@/shared/api/archive-records";
 import CursorPagination from "@/shared/components/CursorPagination.vue";
 import type { ArchiveRecordListDto } from "@/shared/types/archive-records";
 import type { ArchiveVolumeResponse } from "@/shared/types/archive-volumes";
@@ -84,7 +84,7 @@ async function loadCandidates(nextCursor = candidateCursor.value) {
     candidateError.value = undefined;
     candidateCursor.value = nextCursor;
     try {
-        const response = await searchArchiveRecords({
+        const response = await discoverArchiveRecords({
             categoryId: props.categoryId,
             fondsCode: props.volume.fondsCode,
             keyword: candidateKeyword.value,

@@ -11,6 +11,7 @@ import ArchiveVolumesPage from "./ArchiveVolumesPage.vue";
 const mocks = vi.hoisted(() => ({
     addArchiveItemToVolume: vi.fn(),
     createArchiveVolume: vi.fn(),
+    discoverArchiveRecords: vi.fn(),
     getArchiveVolume: vi.fn(),
     listArchiveCategories: vi.fn(),
     listArchiveFonds: vi.fn(),
@@ -29,6 +30,7 @@ vi.mock("@/shared/api/archive-metadata", () => ({
     listArchiveFonds: mocks.listArchiveFonds,
 }));
 vi.mock("@/shared/api/archive-records", () => ({
+    discoverArchiveRecords: mocks.discoverArchiveRecords,
     searchArchiveRecords: mocks.searchArchiveRecords,
 }));
 
@@ -50,6 +52,7 @@ beforeEach(() => {
     });
     mocks.listArchiveCategories.mockResolvedValue({ items: [category()] });
     mocks.listArchiveVolumes.mockResolvedValue({ items: [volume()], next: "next-volume" });
+    mocks.discoverArchiveRecords.mockResolvedValue({ fields: [], items: [] });
     mocks.searchArchiveRecords.mockResolvedValue({ fields: [], items: [] });
     mocks.addArchiveItemToVolume.mockResolvedValue(undefined);
 });
@@ -134,12 +137,12 @@ describe("ArchiveVolumeItemsDrawer", () => {
                 items: [{ id: 71, archiveNo: "IN-VOLUME" }],
                 next: "items-next",
             })
-            .mockResolvedValueOnce({
-                fields: [],
-                items: [{ id: 91, archiveNo: "A-2026-091" }],
-                next: "candidate-next",
-            })
             .mockResolvedValueOnce({ fields: [], items: [{ id: 71, archiveNo: "IN-VOLUME" }] });
+        mocks.discoverArchiveRecords.mockResolvedValueOnce({
+            fields: [],
+            items: [{ id: 91, archiveNo: "A-2026-091" }],
+            next: "candidate-next",
+        });
         const addRequest = deferred<void>();
         mocks.addArchiveItemToVolume.mockImplementationOnce(() => addRequest.promise);
         render(ArchiveVolumeItemsDrawer, {
@@ -158,19 +161,25 @@ describe("ArchiveVolumeItemsDrawer", () => {
         expect(mocks.addArchiveItemToVolume).toHaveBeenCalledTimes(1);
         expect(mocks.addArchiveItemToVolume).toHaveBeenCalledWith(12, 91, undefined);
         addRequest.resolve();
-        await waitFor(() => expect(mocks.searchArchiveRecords).toHaveBeenCalledTimes(3));
+        await waitFor(() => expect(mocks.searchArchiveRecords).toHaveBeenCalledTimes(2));
         expect(mocks.searchArchiveRecords).toHaveBeenLastCalledWith({
             categoryId: 7,
             fondsCode: "F001",
             volumeId: 12,
             limit: 100,
         });
+        expect(mocks.discoverArchiveRecords).toHaveBeenCalledWith({
+            categoryId: 7,
+            fondsCode: "F001",
+            keyword: undefined,
+            limit: 100,
+        });
         expect(within(candidates).queryByLabelText("档案 ID")).not.toBeInTheDocument();
     });
 
     it("按提交关键词搜索候选档案、翻页保持条件并排除当前案卷条目", async () => {
-        mocks.searchArchiveRecords
-            .mockResolvedValueOnce({ fields: [], items: [] })
+        mocks.searchArchiveRecords.mockResolvedValueOnce({ fields: [], items: [] });
+        mocks.discoverArchiveRecords
             .mockResolvedValueOnce({
                 fields: [],
                 items: [
@@ -207,7 +216,7 @@ describe("ArchiveVolumeItemsDrawer", () => {
         );
         await fireEvent.click(within(candidates).getByRole("button", { name: "搜索候选档案" }));
         await waitFor(() =>
-            expect(mocks.searchArchiveRecords).toHaveBeenLastCalledWith({
+            expect(mocks.discoverArchiveRecords).toHaveBeenLastCalledWith({
                 categoryId: 7,
                 fondsCode: "F001",
                 keyword: "合同",
@@ -217,7 +226,7 @@ describe("ArchiveVolumeItemsDrawer", () => {
 
         await fireEvent.click(within(candidates).getByRole("button", { name: "下一页" }));
         await waitFor(() =>
-            expect(mocks.searchArchiveRecords).toHaveBeenLastCalledWith({
+            expect(mocks.discoverArchiveRecords).toHaveBeenLastCalledWith({
                 categoryId: 7,
                 fondsCode: "F001",
                 keyword: "合同",
@@ -225,6 +234,13 @@ describe("ArchiveVolumeItemsDrawer", () => {
                 cursor: "candidate-next",
             }),
         );
+        expect(mocks.searchArchiveRecords).toHaveBeenCalledTimes(1);
+        expect(mocks.searchArchiveRecords).toHaveBeenCalledWith({
+            categoryId: 7,
+            fondsCode: "F001",
+            volumeId: 12,
+            limit: 100,
+        });
     });
 
     it("切换案卷后忽略旧加入成功且不结束新案卷的加入状态", async () => {
@@ -264,7 +280,8 @@ describe("ArchiveVolumeItemsDrawer", () => {
         await oldAddRequest.promise;
         await waitFor(() => expect(success).not.toHaveBeenCalled());
         expect(currentAddButton).toBeDisabled();
-        expect(mocks.searchArchiveRecords).toHaveBeenCalledTimes(4);
+        expect(mocks.searchArchiveRecords).toHaveBeenCalledTimes(2);
+        expect(mocks.discoverArchiveRecords).toHaveBeenCalledTimes(2);
 
         currentAddRequest.resolve();
         await currentAddRequest.promise;
@@ -274,12 +291,11 @@ describe("ArchiveVolumeItemsDrawer", () => {
         const addRequest = deferred<void>();
         const error = vi.spyOn(ElMessage, "error");
         mocks.addArchiveItemToVolume.mockImplementationOnce(() => addRequest.promise);
-        mocks.searchArchiveRecords
-            .mockResolvedValueOnce({ fields: [], items: [] })
-            .mockResolvedValueOnce({
-                fields: [],
-                items: [{ id: 91, archiveNo: "A-2026-091" }],
-            });
+        mocks.searchArchiveRecords.mockResolvedValueOnce({ fields: [], items: [] });
+        mocks.discoverArchiveRecords.mockResolvedValueOnce({
+            fields: [],
+            items: [{ id: 91, archiveNo: "A-2026-091" }],
+        });
         const view = render(ArchiveVolumeItemsDrawer, {
             props: { volume: volume(), categoryId: 7 },
             global: { plugins: [ElementPlus] },
@@ -295,7 +311,8 @@ describe("ArchiveVolumeItemsDrawer", () => {
         await addRequest.promise.catch(() => undefined);
 
         await waitFor(() => expect(error).not.toHaveBeenCalled());
-        expect(mocks.searchArchiveRecords).toHaveBeenCalledTimes(2);
+        expect(mocks.searchArchiveRecords).toHaveBeenCalledTimes(1);
+        expect(mocks.discoverArchiveRecords).toHaveBeenCalledTimes(1);
     });
 });
 
@@ -379,14 +396,15 @@ function deferred<T>() {
 function mockDrawerSearchSessions() {
     mocks.searchArchiveRecords
         .mockResolvedValueOnce({ fields: [], items: [] })
+        .mockResolvedValueOnce({ fields: [], items: [] })
+        .mockResolvedValueOnce({ fields: [], items: [] });
+    mocks.discoverArchiveRecords
         .mockResolvedValueOnce({
             fields: [],
             items: [{ id: 91, archiveNo: "OLD-CANDIDATE" }],
         })
-        .mockResolvedValueOnce({ fields: [], items: [] })
         .mockResolvedValueOnce({
             fields: [],
             items: [{ id: 92, archiveNo: "CURRENT-CANDIDATE" }],
-        })
-        .mockResolvedValueOnce({ fields: [], items: [] });
+        });
 }
