@@ -11,7 +11,7 @@ import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.archive.item.ArchiveItemAudit;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemAuditDataRepository;
-import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveItemDto;
+import github.luckygc.am.module.archive.item.service.ArchiveItemReadService.ArchiveItemDto;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
 
@@ -22,13 +22,13 @@ public class ArchiveItemLockService {
     private static final String AUDIT_OPERATION_UNLOCK = "UNLOCK";
 
     private final ArchiveMapper archiveMapper;
-    private final ArchiveItemRoutingService archiveItemService;
+    private final ArchiveItemReadService archiveItemService;
     private final AuthorizationPermissionService permissionService;
     private final ArchiveItemAuditDataRepository auditRepository;
 
     public ArchiveItemLockService(
             ArchiveMapper archiveMapper,
-            ArchiveItemRoutingService archiveItemService,
+            ArchiveItemReadService archiveItemService,
             AuthorizationPermissionService permissionService,
             ArchiveItemAuditDataRepository auditRepository) {
         this.archiveMapper = archiveMapper;

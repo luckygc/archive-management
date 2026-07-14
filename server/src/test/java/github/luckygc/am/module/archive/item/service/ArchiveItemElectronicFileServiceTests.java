@@ -45,7 +45,7 @@ class ArchiveItemElectronicFileServiceTests {
     private ArchiveItemDataRepository archiveItemRepository;
     private ArchiveItemAuditDataRepository archiveItemAuditRepository;
     private AuthorizationPermissionService permissionService;
-    private ArchiveItemRoutingService archiveItemRoutingService;
+    private ArchiveItemReadService archiveItemRoutingService;
     private ArchiveItemElectronicFileService electronicFileService;
 
     @BeforeEach
@@ -55,7 +55,7 @@ class ArchiveItemElectronicFileServiceTests {
         archiveItemRepository = mock(ArchiveItemDataRepository.class);
         archiveItemAuditRepository = mock(ArchiveItemAuditDataRepository.class);
         permissionService = mock(AuthorizationPermissionService.class);
-        archiveItemRoutingService = mock(ArchiveItemRoutingService.class);
+        archiveItemRoutingService = mock(ArchiveItemReadService.class);
         when(permissionService.hasPermission(9L, "archive:item:create")).thenReturn(true);
         when(permissionService.hasPermission(9L, "archive:item:update")).thenReturn(true);
         when(permissionService.hasPermission(9L, "archive:item:read")).thenReturn(true);

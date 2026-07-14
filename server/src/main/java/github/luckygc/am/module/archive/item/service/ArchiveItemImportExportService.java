@@ -53,7 +53,7 @@ public class ArchiveItemImportExportService {
     private static final int EXPORT_MAX_ROWS = 5000;
 
     private final ArchiveMetadataService archiveMetadataService;
-    private final ArchiveItemRoutingService archiveItemRoutingService;
+    private final ArchiveItemCommandService archiveItemRoutingService;
     private final ArchiveItemQueryService archiveItemQueryService;
     private final AuthorizationPermissionService permissionService;
     private final ArchiveDataScopeService dataScopeService;
@@ -62,7 +62,7 @@ public class ArchiveItemImportExportService {
 
     public ArchiveItemImportExportService(
             ArchiveMetadataService archiveMetadataService,
-            ArchiveItemRoutingService archiveItemRoutingService,
+            ArchiveItemCommandService archiveItemRoutingService,
             ArchiveItemQueryService archiveItemQueryService,
             AuthorizationPermissionService permissionService,
             ArchiveDataScopeService dataScopeService,
@@ -255,8 +255,8 @@ public class ArchiveItemImportExportService {
             for (ArchiveFieldDto field : fields) {
                 dynamicFields.put(field.fieldCode(), cell(rawRow, indexes.get(field.fieldName())));
             }
-            ArchiveItemRoutingService.CreateArchiveItemRequest request =
-                    new ArchiveItemRoutingService.CreateArchiveItemRequest(
+            ArchiveItemCommandService.CreateArchiveItemRequest request =
+                    new ArchiveItemCommandService.CreateArchiveItemRequest(
                             categoryId,
                             null,
                             cell(rawRow, indexes.get(HEADER_FONDS_CODE)),
@@ -333,7 +333,7 @@ public class ArchiveItemImportExportService {
             ArchiveImportRow row,
             Set<String> batchArchiveNos,
             List<ArchiveImportRowError> errors) {
-        ArchiveItemRoutingService.CreateArchiveItemRequest request = row.createRequest();
+        ArchiveItemCommandService.CreateArchiveItemRequest request = row.createRequest();
         if (StringUtils.isBlank(request.fondsCode())) {
             errors.add(new ArchiveImportRowError(row.rowNumber(), HEADER_FONDS_CODE, "全宗不能为空"));
         } else {
@@ -476,13 +476,13 @@ public class ArchiveItemImportExportService {
     private static final class ArchiveImportRow {
 
         private final int rowNumber;
-        private final ArchiveItemRoutingService.CreateArchiveItemRequest createRequest;
+        private final ArchiveItemCommandService.CreateArchiveItemRequest createRequest;
         private final List<ArchiveImportRowError> parseErrors;
         private @Nullable ArchiveItem existingItem;
 
         private ArchiveImportRow(
                 int rowNumber,
-                ArchiveItemRoutingService.CreateArchiveItemRequest createRequest,
+                ArchiveItemCommandService.CreateArchiveItemRequest createRequest,
                 @Nullable ArchiveItem existingItem,
                 List<ArchiveImportRowError> parseErrors) {
             this.rowNumber = rowNumber;
@@ -495,12 +495,12 @@ public class ArchiveItemImportExportService {
             return rowNumber;
         }
 
-        private ArchiveItemRoutingService.CreateArchiveItemRequest createRequest() {
+        private ArchiveItemCommandService.CreateArchiveItemRequest createRequest() {
             return createRequest;
         }
 
-        private ArchiveItemRoutingService.UpdateArchiveItemRequest updateRequest() {
-            return new ArchiveItemRoutingService.UpdateArchiveItemRequest(
+        private ArchiveItemCommandService.UpdateArchiveItemRequest updateRequest() {
+            return new ArchiveItemCommandService.UpdateArchiveItemRequest(
                     createRequest.volumeId(),
                     createRequest.fondsCode(),
                     createRequest.archiveNo(),
@@ -528,7 +528,7 @@ public class ArchiveItemImportExportService {
     private record ImportRowDataScopeCheck(
             ArchiveCategoryDto category,
             List<ArchiveFieldDto> fields,
-            ArchiveItemRoutingService.CreateArchiveItemRequest request,
+            ArchiveItemCommandService.CreateArchiveItemRequest request,
             Map<String, @Nullable Object> convertedFields,
             Long userId,
             int rowNumber,

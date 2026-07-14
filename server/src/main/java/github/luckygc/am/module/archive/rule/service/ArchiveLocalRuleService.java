@@ -21,7 +21,7 @@ import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
-import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService;
+import github.luckygc.am.module.archive.item.service.ArchiveItemReadService;
 import github.luckygc.am.module.archive.item.service.ArchiveVolumeService;
 import github.luckygc.am.module.archive.mapper.ArchiveRuleExecutionCriteria;
 import github.luckygc.am.module.archive.mapper.ArchiveRuleMapper;
@@ -63,7 +63,7 @@ public class ArchiveLocalRuleService {
     private final ArchiveRuleConditionEvaluator conditionEvaluator =
             new ArchiveRuleConditionEvaluator();
     private final ArchiveDataScopeService dataScopeService;
-    private final ArchiveItemRoutingService archiveItemRoutingService;
+    private final ArchiveItemReadService archiveItemRoutingService;
     private final ArchiveVolumeService archiveVolumeService;
     private final JsonMapper jsonMapper;
 
@@ -74,7 +74,7 @@ public class ArchiveLocalRuleService {
             ArchiveRuleMapper ruleMapper,
             ArchiveOntologyAttributeTypeDataRepository attributeTypeRepository,
             ArchiveDataScopeService dataScopeService,
-            ArchiveItemRoutingService archiveItemRoutingService,
+            ArchiveItemReadService archiveItemRoutingService,
             ArchiveVolumeService archiveVolumeService,
             JsonMapper jsonMapper) {
         this.ruleRepository = ruleRepository;

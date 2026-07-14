@@ -50,7 +50,7 @@ import github.luckygc.am.module.authorization.service.AuthorizationPermissionSer
 class ArchiveItemImportExportServiceTests {
 
     private ArchiveMetadataService archiveMetadataService;
-    private ArchiveItemRoutingService archiveItemRoutingService;
+    private ArchiveItemCommandService archiveItemRoutingService;
     private ArchiveItemQueryService archiveItemQueryService;
     private AuthorizationPermissionService permissionService;
     private ArchiveDataScopeService dataScopeService;
@@ -61,7 +61,7 @@ class ArchiveItemImportExportServiceTests {
     @BeforeEach
     void setUp() {
         archiveMetadataService = mock(ArchiveMetadataService.class);
-        archiveItemRoutingService = mock(ArchiveItemRoutingService.class);
+        archiveItemRoutingService = mock(ArchiveItemCommandService.class);
         archiveItemQueryService = mock(ArchiveItemQueryService.class);
         permissionService = mock(AuthorizationPermissionService.class);
         dataScopeService = mock(ArchiveDataScopeService.class);

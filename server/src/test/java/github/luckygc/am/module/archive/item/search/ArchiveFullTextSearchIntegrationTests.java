@@ -22,11 +22,11 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import github.luckygc.am.app.ArchiveManagementApplication;
 import github.luckygc.am.common.api.CursorPageTokenContext;
+import github.luckygc.am.module.archive.item.service.ArchiveItemCommandService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService.ArchiveItemListDto;
 import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService.ArchiveItemOrderBy;
 import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService.SearchArchiveItemsRequest;
-import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService;
 
 @Testcontainers(disabledWithoutDocker = true)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
@@ -51,7 +51,7 @@ class ArchiveFullTextSearchIntegrationTests {
                     .withUsername("postgres")
                     .withPassword("postgres");
 
-    @Autowired private ArchiveItemRoutingService archiveItemRoutingService;
+    @Autowired private ArchiveItemCommandService archiveItemRoutingService;
 
     @Autowired private ArchiveItemQueryService archiveItemQueryService;
 
@@ -278,7 +278,7 @@ class ArchiveFullTextSearchIntegrationTests {
         grantSuperAdminRole(99L);
 
         archiveItemRoutingService.deleteItem(
-                itemId, 99L, new ArchiveItemRoutingService.DeleteItemRequest("测试删除"));
+                itemId, 99L, new ArchiveItemCommandService.DeleteItemRequest("测试删除"));
 
         assertDeletedMetadata("am_archive_item", itemId, 99L);
         assertDeletedMetadata(itemTableName, itemId, 99L);

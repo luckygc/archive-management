@@ -1,13 +1,7 @@
 package github.luckygc.am.module.archive.item.service;
 
-import java.math.BigDecimal;
-import java.sql.Date;
-import java.sql.Timestamp;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.Year;
 import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -18,7 +12,6 @@ import org.jspecify.annotations.Nullable;
 import org.mybatis.spring.MyBatisSystemException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
-import org.springframework.jdbc.support.JdbcUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -31,6 +24,8 @@ import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeSe
 import github.luckygc.am.module.archive.governance.service.ArchiveGovernanceService;
 import github.luckygc.am.module.archive.item.ArchiveItemAudit;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemAuditDataRepository;
+import github.luckygc.am.module.archive.item.service.ArchiveItemReadService.ArchiveItemDetailDto;
+import github.luckygc.am.module.archive.item.service.ArchiveItemReadService.ArchiveItemDto;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.mapper.ArchiveSqlAssignment;
 import github.luckygc.am.module.archive.metadata.ArchiveDynamicTableNames;
@@ -43,7 +38,7 @@ import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
 
 @Service
-public class ArchiveItemRoutingService {
+public class ArchiveItemCommandService {
 
     private static final String AUDIT_OPERATION_CREATE = "CREATE";
     private static final String AUDIT_OPERATION_UPDATE = "UPDATE";
@@ -59,15 +54,19 @@ public class ArchiveItemRoutingService {
     private final ArchiveDataScopeService dataScopeService;
     private final AuthorizationPermissionService permissionService;
     private final ArchiveItemAuditDataRepository auditRepository;
+    private final ArchiveItemReadService archiveItemReadService;
+    private final ArchiveItemFieldValueConverter fieldValueConverter;
 
-    public ArchiveItemRoutingService(
+    public ArchiveItemCommandService(
             ArchiveMetadataService archiveMetadataService,
             ArchiveGovernanceService governanceService,
             ArchiveMapper archiveMapper,
             ArchiveItemSearchProjectionService searchProjectionService,
             ArchiveDataScopeService dataScopeService,
             AuthorizationPermissionService permissionService,
-            ArchiveItemAuditDataRepository auditRepository) {
+            ArchiveItemAuditDataRepository auditRepository,
+            ArchiveItemReadService archiveItemReadService,
+            ArchiveItemFieldValueConverter fieldValueConverter) {
         this.archiveMetadataService = archiveMetadataService;
         this.governanceService = governanceService;
         this.archiveMapper = archiveMapper;
@@ -75,6 +74,8 @@ public class ArchiveItemRoutingService {
         this.dataScopeService = dataScopeService;
         this.permissionService = permissionService;
         this.auditRepository = auditRepository;
+        this.archiveItemReadService = archiveItemReadService;
+        this.fieldValueConverter = fieldValueConverter;
     }
 
     @Transactional
@@ -117,11 +118,12 @@ public class ArchiveItemRoutingService {
         String archiveNo = StringUtils.trimToNull(request.archiveNo());
         ensureItemArchiveNoUnique(category.categoryCode(), archiveNo, null);
         Map<String, @Nullable Object> convertedDynamicFields =
-                convertDynamicFields(fields, dynamicFields);
+                fieldValueConverter.convertDynamicFields(fields, dynamicFields);
         Map<String, @Nullable Object> convertedPhysicalFields =
                 requestPhysicalFields == null
                         ? Map.of()
-                        : convertDynamicFields(physicalFields, requestPhysicalFields);
+                        : fieldValueConverter.convertDynamicFields(
+                                physicalFields, requestPhysicalFields);
         assertProposedItemInDataScope(
                 userId,
                 category,
@@ -166,82 +168,9 @@ public class ArchiveItemRoutingService {
                     category, archiveLevel, recordId, physicalFields, convertedPhysicalFields);
         }
         searchProjectionService.upsert(recordId, category, fields, convertedDynamicFields);
-        ArchiveItemDto record = loadItem(recordId);
+        ArchiveItemDto record = archiveItemReadService.getItem(recordId);
         insertItemAudit(AUDIT_OPERATION_CREATE, record, null, userId);
         return record;
-    }
-
-    @Transactional
-    public SearchProjectionRebuildResult rebuildSearchProjection(Long categoryId) {
-        ArchiveCategoryDto category = archiveMetadataService.getCategory(categoryId);
-        int rebuilt = 0;
-        ArchiveLevel archiveLevel = ArchiveLevel.ITEM;
-        if (!isDynamicTableBuilt(category, archiveLevel)) {
-            return new SearchProjectionRebuildResult(categoryId, 0);
-        }
-        String tableName = dynamicTableName(category, archiveLevel);
-        List<ArchiveFieldDto> fields =
-                archiveMetadataService.listEnabledFields(categoryId, archiveLevel);
-        if (fields.isEmpty()) {
-            return new SearchProjectionRebuildResult(categoryId, 0);
-        }
-        List<Map<String, @Nullable Object>> rows =
-                archiveMapper.listItemsForSearchRebuild(
-                        tableName, selectColumns(List.of()), archiveLevel.value());
-        for (Map<String, @Nullable Object> row : rows) {
-            searchProjectionService.enqueueUpsert(number(row, "id").longValue());
-            rebuilt++;
-        }
-        searchProjectionService.drainOutbox();
-        return new SearchProjectionRebuildResult(categoryId, rebuilt);
-    }
-
-    public void assertItemInDataScope(Long id, Long userId) {
-        assertItemInDataScopeById(id, userId);
-    }
-
-    private void assertItemInDataScopeById(Long id, Long userId) {
-        userId = AuthenticatedUsers.requireResolvedUserId(userId);
-        ArchiveItemDto record = loadItem(id);
-        ArchiveCategoryDto category = getCategoryByCode(record.categoryCode());
-        assertItemInDataScope(userId, category, record);
-    }
-
-    public ArchiveItemDetailDto getItemDetail(
-            Long id, Long userId, @Nullable ArchiveLayoutSurface surface) {
-        return loadItemDetail(id, userId, surface);
-    }
-
-    private ArchiveItemDetailDto loadItemDetail(
-            Long id, Long userId, @Nullable ArchiveLayoutSurface surface) {
-        requirePermission(userId, "archive:item:read");
-        ArchiveItemDto record = loadItem(id);
-        ArchiveCategoryDto category = getCategoryByCode(record.categoryCode());
-        assertItemInDataScope(userId, category, record);
-        List<ArchiveFieldDto> fields =
-                archiveMetadataService.listEffectiveFields(
-                        category.id(),
-                        ArchiveLevel.ITEM,
-                        ArchiveFieldScope.METADATA,
-                        surface == null ? ArchiveLayoutSurface.DETAIL : surface,
-                        userId);
-        List<ArchiveFieldDto> physicalFields =
-                archiveMetadataService.listEffectiveFields(
-                        category.id(),
-                        ArchiveLevel.ITEM,
-                        ArchiveFieldScope.PHYSICAL,
-                        surface == null ? ArchiveLayoutSurface.DETAIL : surface,
-                        userId);
-        Map<String, @Nullable Object> dynamicRecord = loadDynamicRecord(category, record.id());
-        Map<String, @Nullable Object> physicalRecord =
-                loadDynamicRecord(category, record.id(), ArchiveFieldScope.PHYSICAL);
-        return new ArchiveItemDetailDto(
-                record,
-                category,
-                fields,
-                dynamicFieldsByCode(dynamicRecord, fields),
-                physicalFields,
-                dynamicFieldsByCode(physicalRecord, physicalFields));
     }
 
     @Transactional
@@ -251,9 +180,10 @@ public class ArchiveItemRoutingService {
         if (request == null) {
             throw badRequest("请求体不能为空");
         }
-        ArchiveItemDetailDto before = loadItemDetail(id, userId, ArchiveLayoutSurface.EDIT);
-        assertItemInDataScope(userId, before.category(), before.item());
-        ensureItemEditable(before.item());
+        ArchiveItemDetailDto before =
+                archiveItemReadService.getItemDetail(id, userId, ArchiveLayoutSurface.EDIT);
+        archiveItemReadService.assertItemInDataScope(userId, before.category(), before.item());
+        archiveItemReadService.ensureItemEditable(before.item());
         ArchiveCategoryDto category = before.category();
         String tableName = dynamicTableName(category, ArchiveLevel.ITEM);
         if (!isDynamicTableBuilt(category, ArchiveLevel.ITEM)) {
@@ -277,12 +207,13 @@ public class ArchiveItemRoutingService {
         Map<String, @Nullable Object> requestDynamicFields =
                 request.dynamicFields() == null ? before.dynamicFields() : request.dynamicFields();
         Map<String, @Nullable Object> convertedDynamicFields =
-                convertDynamicFields(before.fields(), requestDynamicFields);
+                fieldValueConverter.convertDynamicFields(before.fields(), requestDynamicFields);
         Map<String, @Nullable Object> requestPhysicalFields = request.physicalFields();
         Map<String, @Nullable Object> convertedPhysicalFields =
                 requestPhysicalFields == null
                         ? Map.of()
-                        : convertDynamicFields(before.physicalFields(), requestPhysicalFields);
+                        : fieldValueConverter.convertDynamicFields(
+                                before.physicalFields(), requestPhysicalFields);
         assertProposedItemInDataScope(
                 userId,
                 category,
@@ -335,7 +266,8 @@ public class ArchiveItemRoutingService {
                     convertedPhysicalFields);
         }
         searchProjectionService.refreshFromDynamicRecord(id, category, ArchiveLevel.ITEM);
-        ArchiveItemDetailDto after = loadItemDetail(id, userId, ArchiveLayoutSurface.EDIT);
+        ArchiveItemDetailDto after =
+                archiveItemReadService.getItemDetail(id, userId, ArchiveLayoutSurface.EDIT);
         insertItemAudit(AUDIT_OPERATION_UPDATE, after.item(), null, userId);
         return after;
     }
@@ -343,10 +275,11 @@ public class ArchiveItemRoutingService {
     @Transactional
     public void deleteItem(Long id, Long userId, @Nullable DeleteItemRequest request) {
         requirePermission(userId, "archive:item:delete");
-        ArchiveItemDto record = loadItem(id);
-        ArchiveCategoryDto category = getCategoryByCode(record.categoryCode());
-        assertItemInDataScope(userId, category, record);
-        ensureItemEditable(record);
+        ArchiveItemDto record = archiveItemReadService.getItem(id);
+        ArchiveCategoryDto category =
+                archiveItemReadService.getCategoryByCode(record.categoryCode());
+        archiveItemReadService.assertItemInDataScope(userId, category, record);
+        archiveItemReadService.ensureItemEditable(record);
         String tableName = dynamicTableName(category, ArchiveLevel.ITEM);
         insertItemAudit(
                 AUDIT_OPERATION_DELETE,
@@ -366,36 +299,6 @@ public class ArchiveItemRoutingService {
             throw badRequest("档案条目已锁定，不能删除");
         }
         searchProjectionService.delete(id);
-    }
-
-    public ArchiveItemDto getItem(Long id) {
-        return loadItem(id);
-    }
-
-    private ArchiveItemDto loadItem(Long id) {
-        if (id == null || id <= 0) {
-            throw badRequest("档案条目 ID 不合法");
-        }
-        Map<String, @Nullable Object> row = archiveMapper.getArchiveItem(id);
-        if (row == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "档案条目不存在");
-        }
-        return new ArchiveItemDto(
-                number(row, "id").longValue(),
-                longOrNull(row, "volumeId"),
-                string(row, "fondsCode"),
-                string(row, "fondsName"),
-                string(row, "categoryCode"),
-                string(row, "categoryName"),
-                string(row, "archiveNo"),
-                string(row, "electronicStatus"),
-                longOrNull(row, "securityLevelId"),
-                longOrNull(row, "retentionPeriodId"),
-                number(row, "archiveYear").intValue(),
-                bool(row, "lockedFlag"),
-                string(row, "lockReason"),
-                longOrNull(row, "lockedBy"),
-                dateTime(row, "lockedAt"));
     }
 
     private void upsertPhysicalFieldsIfPresent(
@@ -419,70 +322,6 @@ public class ArchiveItemRoutingService {
             archiveMapper.updateDynamicRecord(
                     tableName, recordId, dynamicAssignments(fields, convertedFields));
         }
-    }
-
-    private Map<String, @Nullable Object> loadDynamicRecord(ArchiveCategoryDto category, Long id) {
-        ArchiveItemDto record = getItem(id);
-        return loadDynamicRecord(category, ArchiveLevel.ITEM, id, ArchiveFieldScope.METADATA);
-    }
-
-    private Map<String, @Nullable Object> loadDynamicRecord(
-            ArchiveCategoryDto category, Long id, ArchiveFieldScope fieldScope) {
-        ArchiveItemDto record = getItem(id);
-        return loadDynamicRecord(category, ArchiveLevel.ITEM, id, fieldScope);
-    }
-
-    private Map<String, @Nullable Object> loadDynamicRecord(
-            ArchiveCategoryDto category,
-            ArchiveLevel archiveLevel,
-            Long id,
-            ArchiveFieldScope fieldScope) {
-        String tableName = dynamicTableName(category, archiveLevel, fieldScope);
-        if (!isDynamicTableBuilt(category, archiveLevel, fieldScope)) {
-            return Map.of();
-        }
-        Map<String, @Nullable Object> dynamicRecord =
-                archiveMapper.loadDynamicRecord(tableName, id);
-        return dynamicRecord == null ? Map.of() : dynamicRecord;
-    }
-
-    private Map<String, @Nullable Object> dynamicFieldsByCode(
-            Map<String, @Nullable Object> dynamicRecord, List<ArchiveFieldDto> fields) {
-        Map<String, @Nullable Object> dynamicFields = new LinkedHashMap<>();
-        for (ArchiveFieldDto field : fields) {
-            dynamicFields.put(
-                    field.fieldCode(),
-                    normalizeDynamicFieldValue(field, dynamicRecord.get(field.columnName())));
-        }
-        return dynamicFields;
-    }
-
-    private @Nullable Object normalizeDynamicFieldValue(
-            ArchiveFieldDto field, @Nullable Object value) {
-        if (value == null) {
-            return null;
-        }
-        return switch (field.fieldType()) {
-            case DATE -> {
-                if (value instanceof Date date) {
-                    yield date.toLocalDate().toString();
-                }
-                if (value instanceof LocalDate localDate) {
-                    yield localDate.toString();
-                }
-                yield value;
-            }
-            case DATETIME -> {
-                if (value instanceof Timestamp timestamp) {
-                    yield timestamp.toLocalDateTime().format(DATE_TIME_FORMATTER);
-                }
-                if (value instanceof LocalDateTime localDateTime) {
-                    yield localDateTime.format(DATE_TIME_FORMATTER);
-                }
-                yield value;
-            }
-            default -> value;
-        };
     }
 
     private String dynamicTableName(ArchiveCategoryDto category, ArchiveLevel archiveLevel) {
@@ -526,34 +365,6 @@ public class ArchiveItemRoutingService {
             return null;
         }
         return volumeId;
-    }
-
-    public void ensureItemEditable(Long id) {
-        ensureItemEditable(loadItem(id));
-    }
-
-    private void ensureItemEditable(ArchiveItemDto record) {
-        if (record.lockedFlag()) {
-            throw badRequest("档案条目已锁定，不能修改");
-        }
-    }
-
-    private ArchiveCategoryDto getCategoryByCode(String categoryCode) {
-        return archiveMetadataService.listCategories(null).stream()
-                .filter(category -> category.categoryCode().equals(categoryCode))
-                .findFirst()
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "档案分类不存在"));
-    }
-
-    private String selectColumns(List<ArchiveFieldDto> fields) {
-        if (fields.isEmpty()) {
-            return "";
-        }
-        StringBuilder columns = new StringBuilder();
-        for (ArchiveFieldDto field : fields) {
-            columns.append(", d.").append(field.columnName());
-        }
-        return columns.toString();
     }
 
     private void insertDynamicRecord(
@@ -606,74 +417,6 @@ public class ArchiveItemRoutingService {
         return badRequest("档号已存在", "archiveNo", "档号已存在");
     }
 
-    private Map<String, @Nullable Object> convertDynamicFields(
-            List<ArchiveFieldDto> fields, Map<String, @Nullable Object> dynamicFields) {
-        Map<String, ArchiveFieldDto> fieldsByCode =
-                fields.stream()
-                        .collect(
-                                java.util.stream.Collectors.toMap(
-                                        ArchiveFieldDto::fieldCode, field -> field));
-        for (String fieldCode : dynamicFields.keySet()) {
-            if (!fieldsByCode.containsKey(fieldCode)) {
-                throw badRequest("动态字段不存在：" + fieldCode, "dynamicFields." + fieldCode, "动态字段不存在");
-            }
-        }
-
-        Map<String, @Nullable Object> converted = new LinkedHashMap<>();
-        for (ArchiveFieldDto field : fields) {
-            converted.put(
-                    field.fieldCode(), convertValue(field, dynamicFields.get(field.fieldCode())));
-        }
-        return converted;
-    }
-
-    private @Nullable Object convertValue(ArchiveFieldDto field, @Nullable Object value) {
-        if (value instanceof String text) {
-            value = StringUtils.trimToNull(text);
-        }
-        if (value == null) {
-            return null;
-        }
-        try {
-            return switch (field.fieldType()) {
-                case TEXT -> convertTextValue(field, value);
-                case INTEGER ->
-                        value instanceof Number number
-                                ? number.intValue()
-                                : Integer.parseInt(value.toString());
-                case DECIMAL ->
-                        value instanceof BigDecimal decimal
-                                ? decimal
-                                : new BigDecimal(value.toString());
-                case DATE ->
-                        value instanceof LocalDate localDate
-                                ? Date.valueOf(localDate)
-                                : Date.valueOf(value.toString());
-                case DATETIME ->
-                        value instanceof LocalDateTime localDateTime
-                                ? Timestamp.valueOf(localDateTime)
-                                : Timestamp.valueOf(LocalDateTime.parse(value.toString()));
-            };
-        } catch (DateTimeParseException | IllegalArgumentException exception) {
-            throw badRequest(
-                    field.fieldName() + "格式不合法",
-                    "dynamicFields." + field.fieldCode(),
-                    field.fieldName() + "格式不合法");
-        }
-    }
-
-    private String convertTextValue(ArchiveFieldDto field, Object value) {
-        String text = StringUtils.trimToNull(value.toString());
-        if (text == null) {
-            return "";
-        }
-        if (field.textLength() != null && text.length() > field.textLength()) {
-            String message = field.fieldName() + "长度不能超过 " + field.textLength();
-            throw badRequest(message, "dynamicFields." + field.fieldCode(), message);
-        }
-        return text;
-    }
-
     private void insertItemAudit(
             String operationType, ArchiveItemDto record, String operationReason, Long operatedBy) {
         ArchiveItemAudit audit = new ArchiveItemAudit();
@@ -700,28 +443,6 @@ public class ArchiveItemRoutingService {
         userId = AuthenticatedUsers.requireResolvedUserId(userId);
         if (!permissionService.hasPermission(userId, permissionCode)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "权限不足");
-        }
-    }
-
-    private void assertItemInDataScope(
-            Long userId, ArchiveCategoryDto category, ArchiveItemDto record) {
-        userId = AuthenticatedUsers.requireResolvedUserId(userId);
-        ArchiveDataScopeFilter filter =
-                dataScopeService.buildItemFilter(userId, category.id(), record.fondsCode());
-        if (filter.empty()) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "数据范围不足");
-        }
-        if (filter.allData()) {
-            return;
-        }
-        Map<String, @Nullable Object> dynamicRecord = loadDynamicRecord(category, record.id());
-        if (!dataScopeService.matchesItemFilter(
-                filter,
-                record.fondsCode(),
-                record.securityLevelId(),
-                record.retentionPeriodId(),
-                dynamicRecord)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "数据范围不足");
         }
     }
 
@@ -752,41 +473,6 @@ public class ArchiveItemRoutingService {
         }
     }
 
-    private @Nullable String string(Map<String, @Nullable Object> row, String key) {
-        Object value = value(row, key);
-        return value == null ? null : value.toString();
-    }
-
-    private boolean bool(Map<String, @Nullable Object> row, String key) {
-        Object value = value(row, key);
-        return value instanceof Boolean bool ? bool : Boolean.parseBoolean(String.valueOf(value));
-    }
-
-    private Number number(Map<String, @Nullable Object> row, String key) {
-        Object value = value(row, key);
-        if (value instanceof Number number) {
-            return number;
-        }
-        throw new IllegalStateException("缺少数值字段：" + key);
-    }
-
-    private @Nullable Long longOrNull(Map<String, @Nullable Object> row, String key) {
-        Object value = value(row, key);
-        return value instanceof Number number ? number.longValue() : null;
-    }
-
-    private @Nullable LocalDateTime dateTime(Map<String, @Nullable Object> row, String key) {
-        Object value = value(row, key);
-        return value instanceof LocalDateTime dateTime ? dateTime : null;
-    }
-
-    private @Nullable Object value(Map<String, @Nullable Object> row, String key) {
-        if (row.containsKey(key)) {
-            return row.get(key);
-        }
-        return row.get(JdbcUtils.convertPropertyNameToUnderscoreName(key));
-    }
-
     public record CreateArchiveItemRequest(
             @Nullable Long categoryId,
             @Nullable Long volumeId,
@@ -811,31 +497,4 @@ public class ArchiveItemRoutingService {
             @Nullable Map<String, @Nullable Object> dynamicFields) {}
 
     public record DeleteItemRequest(@Nullable String reason) {}
-
-    public record ArchiveItemDto(
-            Long id,
-            @Nullable Long volumeId,
-            String fondsCode,
-            String fondsName,
-            String categoryCode,
-            String categoryName,
-            @Nullable String archiveNo,
-            String electronicStatus,
-            @Nullable Long securityLevelId,
-            @Nullable Long retentionPeriodId,
-            int archiveYear,
-            boolean lockedFlag,
-            @Nullable String lockReason,
-            @Nullable Long lockedBy,
-            @Nullable LocalDateTime lockedAt) {}
-
-    public record ArchiveItemDetailDto(
-            ArchiveItemDto item,
-            ArchiveCategoryDto category,
-            List<ArchiveFieldDto> fields,
-            Map<String, @Nullable Object> dynamicFields,
-            List<ArchiveFieldDto> physicalFields,
-            Map<String, @Nullable Object> physicalFieldValues) {}
-
-    public record SearchProjectionRebuildResult(Long categoryId, int rebuiltCount) {}
 }

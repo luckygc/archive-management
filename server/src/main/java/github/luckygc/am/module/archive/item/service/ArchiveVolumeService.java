@@ -19,7 +19,7 @@ import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService.ArchiveDataScopeFilter;
 import github.luckygc.am.module.archive.governance.service.ArchiveGovernanceService;
-import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveItemDto;
+import github.luckygc.am.module.archive.item.service.ArchiveItemReadService.ArchiveItemDto;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.metadata.ArchiveManagementMode;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
@@ -37,7 +37,7 @@ public class ArchiveVolumeService {
     private final ArchiveMapper archiveMapper;
     private final ArchiveMetadataService archiveMetadataService;
     private final ArchiveGovernanceService governanceService;
-    private final ArchiveItemRoutingService archiveItemRoutingService;
+    private final ArchiveItemReadService archiveItemRoutingService;
     private final AuthorizationPermissionService permissionService;
     private final ArchiveDataScopeService dataScopeService;
 
@@ -45,7 +45,7 @@ public class ArchiveVolumeService {
             ArchiveMapper archiveMapper,
             ArchiveMetadataService archiveMetadataService,
             ArchiveGovernanceService governanceService,
-            ArchiveItemRoutingService archiveItemRoutingService,
+            ArchiveItemReadService archiveItemRoutingService,
             AuthorizationPermissionService permissionService,
             ArchiveDataScopeService dataScopeService) {
         this.archiveMapper = archiveMapper;

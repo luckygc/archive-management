@@ -16,7 +16,8 @@ import org.springframework.web.bind.annotation.RestController;
 import github.luckygc.am.common.api.CollectionResponse;
 import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.archive.ArchiveLevel;
-import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService;
+import github.luckygc.am.module.archive.item.service.ArchiveItemSearchProjectionService;
+import github.luckygc.am.module.archive.item.service.ArchiveItemSearchProjectionService.SearchProjectionRebuildResult;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldScope;
 import github.luckygc.am.module.archive.metadata.ArchiveLayoutSurface;
 import github.luckygc.am.module.archive.metadata.service.ArchiveFondsService;
@@ -47,17 +48,17 @@ public class ArchiveMetadataController {
 
     private final ArchiveMetadataService archiveMetadataService;
     private final ArchiveFondsService archiveFondsService;
-    private final ArchiveItemRoutingService archiveItemRoutingService;
+    private final ArchiveItemSearchProjectionService searchProjectionService;
     private final AuthorizationPermissionService permissionService;
 
     public ArchiveMetadataController(
             ArchiveMetadataService archiveMetadataService,
             ArchiveFondsService archiveFondsService,
-            ArchiveItemRoutingService archiveItemRoutingService,
+            ArchiveItemSearchProjectionService searchProjectionService,
             AuthorizationPermissionService permissionService) {
         this.archiveMetadataService = archiveMetadataService;
         this.archiveFondsService = archiveFondsService;
-        this.archiveItemRoutingService = archiveItemRoutingService;
+        this.searchProjectionService = searchProjectionService;
         this.permissionService = permissionService;
     }
 
@@ -267,10 +268,10 @@ public class ArchiveMetadataController {
     }
 
     @PostMapping("/api/v1/archive-categories/{id}:rebuildSearchProjection")
-    public ArchiveItemRoutingService.SearchProjectionRebuildResult rebuildSearchProjection(
+    public SearchProjectionRebuildResult rebuildSearchProjection(
             @PathVariable Long id, Authentication authentication) {
         requireMetadataManage(authentication);
-        return archiveItemRoutingService.rebuildSearchProjection(id);
+        return searchProjectionService.rebuild(id);
     }
 
     @GetMapping("/api/v1/archive-categories/{categoryId}/unique-constraints")

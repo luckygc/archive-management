@@ -17,38 +17,42 @@ import org.springframework.web.bind.annotation.RestController;
 import github.luckygc.am.common.api.CollectionResponse;
 import github.luckygc.am.common.api.RawRequestStrings;
 import github.luckygc.am.common.security.AuthenticatedUsers;
+import github.luckygc.am.module.archive.item.service.ArchiveItemCommandService;
+import github.luckygc.am.module.archive.item.service.ArchiveItemCommandService.CreateArchiveItemRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemCommandService.DeleteItemRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemCommandService.UpdateArchiveItemRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemLockService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemLockService.LockItemRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService.ArchiveItemListDto;
 import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService.ArchiveRelatedFilterCategoryDto;
 import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService.SearchArchiveItemsRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemReadService;
+import github.luckygc.am.module.archive.item.service.ArchiveItemReadService.ArchiveItemDetailDto;
+import github.luckygc.am.module.archive.item.service.ArchiveItemReadService.ArchiveItemDto;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRelationService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRelationService.ArchiveItemRelationDto;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRelationService.ArchiveItemRelationRequest;
-import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService;
-import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveItemDetailDto;
-import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveItemDto;
-import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.CreateArchiveItemRequest;
-import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.DeleteItemRequest;
-import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.UpdateArchiveItemRequest;
 import github.luckygc.am.module.archive.metadata.ArchiveLayoutSurface;
 
 @RestController
 public class ArchiveItemController {
 
-    private final ArchiveItemRoutingService archiveItemRoutingService;
+    private final ArchiveItemCommandService archiveItemRoutingService;
     private final ArchiveItemQueryService archiveItemQueryService;
+    private final ArchiveItemReadService archiveItemReadService;
     private final ArchiveItemRelationService archiveItemRelationService;
     private final ArchiveItemLockService archiveItemLockService;
 
     public ArchiveItemController(
-            ArchiveItemRoutingService archiveItemRoutingService,
+            ArchiveItemCommandService archiveItemRoutingService,
             ArchiveItemQueryService archiveItemQueryService,
+            ArchiveItemReadService archiveItemReadService,
             ArchiveItemRelationService archiveItemRelationService,
             ArchiveItemLockService archiveItemLockService) {
         this.archiveItemRoutingService = archiveItemRoutingService;
         this.archiveItemQueryService = archiveItemQueryService;
+        this.archiveItemReadService = archiveItemReadService;
         this.archiveItemRelationService = archiveItemRelationService;
         this.archiveItemLockService = archiveItemLockService;
     }
@@ -120,7 +124,7 @@ public class ArchiveItemController {
             @PathVariable Long id,
             @RequestParam(required = false) ArchiveLayoutSurface surface,
             Authentication authentication) {
-        return archiveItemRoutingService.getItemDetail(
+        return archiveItemReadService.getItemDetail(
                 id,
                 AuthenticatedUsers.requireUserId(
                         authentication == null ? null : authentication.getPrincipal()),

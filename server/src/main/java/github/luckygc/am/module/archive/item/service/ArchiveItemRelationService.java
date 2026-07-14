@@ -21,12 +21,12 @@ import github.luckygc.am.module.authorization.service.AuthorizationPermissionSer
 public class ArchiveItemRelationService {
 
     private final ArchiveMapper archiveMapper;
-    private final ArchiveItemRoutingService archiveItemService;
+    private final ArchiveItemReadService archiveItemService;
     private final AuthorizationPermissionService permissionService;
 
     public ArchiveItemRelationService(
             ArchiveMapper archiveMapper,
-            ArchiveItemRoutingService archiveItemService,
+            ArchiveItemReadService archiveItemService,
             AuthorizationPermissionService permissionService) {
         this.archiveMapper = archiveMapper;
         this.archiveItemService = archiveItemService;

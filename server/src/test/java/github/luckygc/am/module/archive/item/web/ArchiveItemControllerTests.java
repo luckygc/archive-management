@@ -15,19 +15,22 @@ import org.springframework.security.core.Authentication;
 import github.luckygc.am.common.api.CursorPageTokenCodec;
 import github.luckygc.am.common.api.CursorPageTokenContext;
 import github.luckygc.am.common.security.AuthenticatedUser;
+import github.luckygc.am.module.archive.item.service.ArchiveItemCommandService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemLockService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService.SearchArchiveItemsRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemReadService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRelationService;
-import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService;
 
 @DisplayName("档案条目 HTTP 入口")
 class ArchiveItemControllerTests {
 
-    private final ArchiveItemRoutingService archiveItemRoutingService =
-            mock(ArchiveItemRoutingService.class);
+    private final ArchiveItemCommandService archiveItemRoutingService =
+            mock(ArchiveItemCommandService.class);
     private final ArchiveItemQueryService archiveItemQueryService =
             mock(ArchiveItemQueryService.class);
+    private final ArchiveItemReadService archiveItemReadService =
+            mock(ArchiveItemReadService.class);
     private final ArchiveItemRelationService archiveItemRelationService =
             mock(ArchiveItemRelationService.class);
     private final ArchiveItemLockService archiveItemLockService =
@@ -36,6 +39,7 @@ class ArchiveItemControllerTests {
             new ArchiveItemController(
                     archiveItemRoutingService,
                     archiveItemQueryService,
+                    archiveItemReadService,
                     archiveItemRelationService,
                     archiveItemLockService);
 

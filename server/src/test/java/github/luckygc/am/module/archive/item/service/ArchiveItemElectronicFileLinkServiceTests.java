@@ -22,7 +22,7 @@ class ArchiveItemElectronicFileLinkServiceTests {
 
     private ArchiveMapper archiveMapper;
     private AuthorizationPermissionService permissionService;
-    private ArchiveItemRoutingService archiveItemRoutingService;
+    private ArchiveItemReadService archiveItemRoutingService;
     private FileLinkService fileLinkService;
     private ArchiveItemElectronicFileService electronicFileService;
     private ArchiveItemElectronicFileLinkService linkService;
@@ -31,7 +31,7 @@ class ArchiveItemElectronicFileLinkServiceTests {
     void setUp() {
         archiveMapper = mock(ArchiveMapper.class);
         permissionService = mock(AuthorizationPermissionService.class);
-        archiveItemRoutingService = mock(ArchiveItemRoutingService.class);
+        archiveItemRoutingService = mock(ArchiveItemReadService.class);
         fileLinkService = mock(FileLinkService.class);
         electronicFileService = mock(ArchiveItemElectronicFileService.class);
         when(permissionService.hasPermission(9L, "archive:item:download-electronic-file"))

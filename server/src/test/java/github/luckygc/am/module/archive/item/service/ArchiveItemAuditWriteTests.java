@@ -25,10 +25,10 @@ import github.luckygc.am.module.archive.governance.ArchiveGovernanceSchemeVersio
 import github.luckygc.am.module.archive.governance.service.ArchiveGovernanceService;
 import github.luckygc.am.module.archive.item.ArchiveItemAudit;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemAuditDataRepository;
+import github.luckygc.am.module.archive.item.service.ArchiveItemCommandService.CreateArchiveItemRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemCommandService.DeleteItemRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemCommandService.UpdateArchiveItemRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemLockService.LockItemRequest;
-import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.CreateArchiveItemRequest;
-import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.DeleteItemRequest;
-import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.UpdateArchiveItemRequest;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.metadata.ArchiveManagementMode;
 import github.luckygc.am.module.archive.metadata.ArchiveTableStatus;
@@ -45,7 +45,7 @@ class ArchiveItemAuditWriteTests {
     private ArchiveGovernanceService governanceService;
     private ArchiveItemSearchProjectionService searchProjectionService;
     private ArchiveItemAuditDataRepository auditRepository;
-    private ArchiveItemRoutingService archiveItemRoutingService;
+    private ArchiveItemCommandService archiveItemRoutingService;
     private ArchiveItemLockService archiveItemLockService;
 
     @BeforeEach
@@ -63,21 +63,23 @@ class ArchiveItemAuditWriteTests {
         when(permissionService.hasPermission(anyLong(), anyString())).thenReturn(true);
         when(governanceService.requireDefaultVersionForNewArchive(anyString(), anyString()))
                 .thenReturn(governanceVersion());
+        ArchiveItemReadService archiveItemReadService =
+                new ArchiveItemReadService(
+                        archiveMetadataService, archiveMapper, dataScopeService, permissionService);
         archiveItemRoutingService =
-                new ArchiveItemRoutingService(
+                new ArchiveItemCommandService(
                         archiveMetadataService,
                         governanceService,
                         archiveMapper,
                         searchProjectionService,
                         dataScopeService,
                         permissionService,
-                        auditRepository);
+                        auditRepository,
+                        archiveItemReadService,
+                        new ArchiveItemFieldValueConverter());
         archiveItemLockService =
                 new ArchiveItemLockService(
-                        archiveMapper,
-                        archiveItemRoutingService,
-                        permissionService,
-                        auditRepository);
+                        archiveMapper, archiveItemReadService, permissionService, auditRepository);
     }
 
     @Test

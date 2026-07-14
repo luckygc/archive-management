@@ -39,7 +39,7 @@ class ArchiveVolumePermissionTests {
     private ArchiveMapper archiveMapper;
     private ArchiveMetadataService archiveMetadataService;
     private ArchiveGovernanceService governanceService;
-    private ArchiveItemRoutingService archiveItemRoutingService;
+    private ArchiveItemReadService archiveItemRoutingService;
     private AuthorizationPermissionService permissionService;
     private ArchiveDataScopeService dataScopeService;
     private ArchiveVolumeService archiveVolumeService;
@@ -49,7 +49,7 @@ class ArchiveVolumePermissionTests {
         archiveMapper = mock(ArchiveMapper.class);
         archiveMetadataService = mock(ArchiveMetadataService.class);
         governanceService = mock(ArchiveGovernanceService.class);
-        archiveItemRoutingService = mock(ArchiveItemRoutingService.class);
+        archiveItemRoutingService = mock(ArchiveItemReadService.class);
         permissionService = mock(AuthorizationPermissionService.class);
         dataScopeService = mock(ArchiveDataScopeService.class);
         when(dataScopeService.buildItemFilter(anyLong(), anyLong(), anyString()))

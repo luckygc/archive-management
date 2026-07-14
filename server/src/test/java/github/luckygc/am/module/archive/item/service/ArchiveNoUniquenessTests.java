@@ -28,8 +28,8 @@ import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeSe
 import github.luckygc.am.module.archive.governance.ArchiveGovernanceSchemeVersion;
 import github.luckygc.am.module.archive.governance.service.ArchiveGovernanceService;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemAuditDataRepository;
-import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.CreateArchiveItemRequest;
-import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.UpdateArchiveItemRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemCommandService.CreateArchiveItemRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemCommandService.UpdateArchiveItemRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveVolumeService.CreateArchiveVolumeRequest;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.metadata.ArchiveManagementMode;
@@ -45,7 +45,7 @@ class ArchiveNoUniquenessTests {
     private ArchiveMapper archiveMapper;
     private ArchiveMetadataService archiveMetadataService;
     private ArchiveGovernanceService governanceService;
-    private ArchiveItemRoutingService archiveItemRoutingService;
+    private ArchiveItemCommandService archiveItemRoutingService;
     private ArchiveVolumeService archiveVolumeService;
 
     @BeforeEach
@@ -64,21 +64,26 @@ class ArchiveNoUniquenessTests {
         when(permissionService.hasPermission(anyLong(), anyString())).thenReturn(true);
         when(governanceService.requireDefaultVersionForNewArchive(anyString(), anyString()))
                 .thenReturn(governanceVersion());
+        ArchiveItemReadService archiveItemReadService =
+                new ArchiveItemReadService(
+                        archiveMetadataService, archiveMapper, dataScopeService, permissionService);
         archiveItemRoutingService =
-                new ArchiveItemRoutingService(
+                new ArchiveItemCommandService(
                         archiveMetadataService,
                         governanceService,
                         archiveMapper,
                         searchProjectionService,
                         dataScopeService,
                         permissionService,
-                        auditRepository);
+                        auditRepository,
+                        archiveItemReadService,
+                        new ArchiveItemFieldValueConverter());
         archiveVolumeService =
                 new ArchiveVolumeService(
                         archiveMapper,
                         archiveMetadataService,
                         governanceService,
-                        archiveItemRoutingService,
+                        archiveItemReadService,
                         permissionService,
                         dataScopeService);
     }

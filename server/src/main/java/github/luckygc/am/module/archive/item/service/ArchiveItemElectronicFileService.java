@@ -44,7 +44,7 @@ public class ArchiveItemElectronicFileService {
     private final ArchiveItemDataRepository archiveItemRepository;
     private final ArchiveItemAuditDataRepository archiveItemAuditRepository;
     private final AuthorizationPermissionService permissionService;
-    private final ArchiveItemRoutingService archiveItemRoutingService;
+    private final ArchiveItemReadService archiveItemRoutingService;
 
     public ArchiveItemElectronicFileService(
             ArchiveMapper archiveMapper,
@@ -52,7 +52,7 @@ public class ArchiveItemElectronicFileService {
             ArchiveItemDataRepository archiveItemRepository,
             ArchiveItemAuditDataRepository archiveItemAuditRepository,
             AuthorizationPermissionService permissionService,
-            ArchiveItemRoutingService archiveItemRoutingService) {
+            ArchiveItemReadService archiveItemRoutingService) {
         this.archiveMapper = archiveMapper;
         this.storageObjectService = storageObjectService;
         this.archiveItemRepository = archiveItemRepository;

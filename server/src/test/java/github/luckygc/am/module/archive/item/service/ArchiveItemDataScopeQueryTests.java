@@ -32,9 +32,9 @@ import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeSe
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService.ResolvedArchiveDataScope;
 import github.luckygc.am.module.archive.governance.service.ArchiveGovernanceService;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemAuditDataRepository;
+import github.luckygc.am.module.archive.item.service.ArchiveItemCommandService.CreateArchiveItemRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService.SearchArchiveItemsRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRelationService.ArchiveItemRelationRequest;
-import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.CreateArchiveItemRequest;
 import github.luckygc.am.module.archive.mapper.ArchiveDataScopeSqlGroup;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.metadata.ArchiveManagementMode;
@@ -51,8 +51,9 @@ class ArchiveItemDataScopeQueryTests {
     private ArchiveGovernanceService governanceService;
     private ArchiveDataScopeService dataScopeService;
     private AuthorizationPermissionService permissionService;
-    private ArchiveItemRoutingService archiveItemRoutingService;
+    private ArchiveItemCommandService archiveItemRoutingService;
     private ArchiveItemQueryService archiveItemQueryService;
+    private ArchiveItemReadService archiveItemReadService;
     private ArchiveItemRelationService archiveItemRelationService;
 
     @BeforeEach
@@ -66,15 +67,20 @@ class ArchiveItemDataScopeQueryTests {
         permissionService = mock(AuthorizationPermissionService.class);
         ArchiveItemAuditDataRepository auditRepository = mock(ArchiveItemAuditDataRepository.class);
         when(permissionService.hasPermission(anyLong(), anyString())).thenReturn(true);
+        archiveItemReadService =
+                new ArchiveItemReadService(
+                        archiveMetadataService, archiveMapper, dataScopeService, permissionService);
         archiveItemRoutingService =
-                new ArchiveItemRoutingService(
+                new ArchiveItemCommandService(
                         archiveMetadataService,
                         governanceService,
                         archiveMapper,
                         searchProjectionService,
                         dataScopeService,
                         permissionService,
-                        auditRepository);
+                        auditRepository,
+                        archiveItemReadService,
+                        new ArchiveItemFieldValueConverter());
         archiveItemQueryService =
                 new ArchiveItemQueryService(
                         archiveMetadataService,
@@ -86,7 +92,7 @@ class ArchiveItemDataScopeQueryTests {
                         new ArchiveItemCursorPageAssembler(archiveMapper));
         archiveItemRelationService =
                 new ArchiveItemRelationService(
-                        archiveMapper, archiveItemRoutingService, permissionService);
+                        archiveMapper, archiveItemReadService, permissionService);
     }
 
     @Test
@@ -261,7 +267,7 @@ class ArchiveItemDataScopeQueryTests {
         when(dataScopeService.buildItemFilter(9L, 1L, "F001"))
                 .thenReturn(ArchiveDataScopeFilter.none());
 
-        assertThatThrownBy(() -> archiveItemRoutingService.getItemDetail(10L, 9L, null))
+        assertThatThrownBy(() -> archiveItemReadService.getItemDetail(10L, 9L, null))
                 .isInstanceOfSatisfying(
                         ResponseStatusException.class,
                         exception ->

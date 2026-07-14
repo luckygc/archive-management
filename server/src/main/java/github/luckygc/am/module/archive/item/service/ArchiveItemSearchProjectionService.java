@@ -13,6 +13,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.jspecify.annotations.Nullable;
 import org.springframework.jdbc.support.JdbcUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
@@ -54,6 +55,28 @@ public class ArchiveItemSearchProjectionService {
                 archiveMapper.markSearchOutboxFailed(outboxId, exception.getMessage());
             }
         }
+    }
+
+    @Transactional
+    public SearchProjectionRebuildResult rebuild(Long categoryId) {
+        ArchiveCategoryDto category = archiveMetadataService.getCategory(categoryId);
+        ArchiveLevel archiveLevel = ArchiveLevel.ITEM;
+        if (!isDynamicTableBuilt(category, archiveLevel)) {
+            return new SearchProjectionRebuildResult(categoryId, 0);
+        }
+        List<ArchiveFieldDto> fields =
+                archiveMetadataService.listEnabledFields(categoryId, archiveLevel);
+        if (fields.isEmpty()) {
+            return new SearchProjectionRebuildResult(categoryId, 0);
+        }
+        String tableName = ArchiveDynamicTableNames.tableName(category, archiveLevel);
+        List<Map<String, @Nullable Object>> rows =
+                archiveMapper.listItemsForSearchRebuild(tableName, "", archiveLevel.value());
+        for (Map<String, @Nullable Object> row : rows) {
+            enqueueUpsert(number(row, "id").longValue());
+        }
+        drainOutbox();
+        return new SearchProjectionRebuildResult(categoryId, rows.size());
     }
 
     void refreshFromDynamicRecord(
@@ -249,4 +272,6 @@ public class ArchiveItemSearchProjectionService {
         }
         return row.get(JdbcUtils.convertPropertyNameToUnderscoreName(key));
     }
+
+    public record SearchProjectionRebuildResult(Long categoryId, int rebuiltCount) {}
 }

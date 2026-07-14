@@ -22,7 +22,7 @@ import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService.ResolvedArchiveDataScope;
-import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService;
+import github.luckygc.am.module.archive.item.service.ArchiveItemReadService;
 import github.luckygc.am.module.archive.item.service.ArchiveVolumeService;
 import github.luckygc.am.module.archive.mapper.ArchiveRuleMapper;
 import github.luckygc.am.module.archive.ontology.repository.ArchiveOntologyAttributeTypeDataRepository;
@@ -48,7 +48,7 @@ class ArchiveLocalRuleServiceTests {
     private ArchiveRuleMapper ruleMapper;
     private ArchiveOntologyAttributeTypeDataRepository attributeTypeRepository;
     private ArchiveDataScopeService dataScopeService;
-    private ArchiveItemRoutingService archiveItemRoutingService;
+    private ArchiveItemReadService archiveItemRoutingService;
     private ArchiveVolumeService archiveVolumeService;
     private ArchiveLocalRuleService service;
 
@@ -60,7 +60,7 @@ class ArchiveLocalRuleServiceTests {
         ruleMapper = mock(ArchiveRuleMapper.class);
         attributeTypeRepository = mock(ArchiveOntologyAttributeTypeDataRepository.class);
         dataScopeService = mock(ArchiveDataScopeService.class);
-        archiveItemRoutingService = mock(ArchiveItemRoutingService.class);
+        archiveItemRoutingService = mock(ArchiveItemReadService.class);
         archiveVolumeService = mock(ArchiveVolumeService.class);
         service =
                 new ArchiveLocalRuleService(

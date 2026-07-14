@@ -26,14 +26,14 @@ public class ArchiveItemElectronicFileLinkService implements FileLinkTargetResol
 
     private final ArchiveMapper archiveMapper;
     private final AuthorizationPermissionService permissionService;
-    private final ArchiveItemRoutingService archiveItemRoutingService;
+    private final ArchiveItemReadService archiveItemRoutingService;
     private final FileLinkService fileLinkService;
     private final ArchiveItemElectronicFileService electronicFileService;
 
     public ArchiveItemElectronicFileLinkService(
             ArchiveMapper archiveMapper,
             AuthorizationPermissionService permissionService,
-            ArchiveItemRoutingService archiveItemRoutingService,
+            ArchiveItemReadService archiveItemRoutingService,
             FileLinkService fileLinkService,
             ArchiveItemElectronicFileService electronicFileService) {
         this.archiveMapper = archiveMapper;
