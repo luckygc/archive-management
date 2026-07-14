@@ -67,7 +67,6 @@ class ArchiveGovernanceServiceTests {
         verify(schemeRepository).insert(captor.capture());
         assertThat(captor.getValue().getSchemeCode()).isEqualTo("default_governance");
         assertThat(captor.getValue().getSchemeName()).isEqualTo("默认方案");
-        assertThat(captor.getValue().getCreatedBy()).isEqualTo(7L);
 
         when(schemeRepository.findBySchemeCode("default_governance"))
                 .thenReturn(new ArchiveGovernanceScheme());

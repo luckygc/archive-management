@@ -60,8 +60,7 @@ public class ArchiveFieldLayoutService {
             Long categoryId,
             ArchiveLayoutSurface surface,
             List<ArchiveFieldDto> enabledFields,
-            @Nullable ArchiveFieldLayoutRequest request,
-            Long userId) {
+            @Nullable ArchiveFieldLayoutRequest request) {
         List<@Nullable ArchiveFieldLayoutItemRequest> items =
                 request == null || request.items() == null ? List.of() : request.items();
         Map<Long, ArchiveFieldDto> fieldsById =
@@ -72,7 +71,6 @@ public class ArchiveFieldLayoutService {
                 .filter(layout -> fieldsById.containsKey(layout.getFieldId()))
                 .forEach(
                         layout -> {
-                            layout.setUpdatedBy(userId);
                             fieldLayoutRepository.update(layout);
                             fieldLayoutRepository.delete(layout);
                         });
@@ -95,8 +93,6 @@ public class ArchiveFieldLayoutService {
             layout.setColSpan(fieldDefinitionService.normalizeColSpan(item.colSpan()));
             layout.setRowOrder(item.rowOrder() == null ? 0 : item.rowOrder());
             layout.setColOrder(item.colOrder() == null ? 0 : item.colOrder());
-            layout.setCreatedBy(userId);
-            layout.setUpdatedBy(userId);
             fieldLayoutRepository.insert(layout);
         }
     }

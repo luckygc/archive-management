@@ -93,7 +93,7 @@ public class ArchiveOntologyService {
         List<ArchiveOntologyObjectType> missing =
                 java.util.Arrays.stream(ArchiveOntologyObjectTypeCode.values())
                         .filter(code -> objectTypeRepository.findByTypeCode(code.name()) == null)
-                        .map(code -> builtInObjectType(code, userId))
+                        .map(this::builtInObjectType)
                         .toList();
         return missing.isEmpty()
                 ? List.of()
@@ -116,8 +116,6 @@ public class ArchiveOntologyService {
         objectType.setDescription(StringUtils.trimToNull(request.description()));
         objectType.setBuiltinFlag(false);
         objectType.setEnabled(request.enabled() == null || request.enabled());
-        objectType.setCreatedBy(userId);
-        objectType.setUpdatedBy(userId);
         return toObjectTypeResponse(objectTypeRepository.insert(objectType));
     }
 
@@ -136,7 +134,6 @@ public class ArchiveOntologyService {
         objectType.setTypeName(name);
         objectType.setDescription(StringUtils.trimToNull(request.description()));
         objectType.setEnabled(request.enabled() == null || request.enabled());
-        objectType.setUpdatedBy(userId);
         return toObjectTypeResponse(objectTypeRepository.update(objectType));
     }
 
@@ -153,7 +150,6 @@ public class ArchiveOntologyService {
             throw new BadRequestException("对象类型已被引用");
         }
         protectOntologyReference(objectTypeId);
-        objectType.setUpdatedBy(userId);
         objectTypeRepository.update(objectType);
         objectTypeRepository.delete(objectType);
     }
@@ -179,8 +175,6 @@ public class ArchiveOntologyService {
         requireEnabledObjectType(objectType);
         ArchiveOntologyAttributeType attribute = new ArchiveOntologyAttributeType();
         applyAttributeFields(attribute, request, code, name);
-        attribute.setCreatedBy(userId);
-        attribute.setUpdatedBy(userId);
         return toAttributeTypeResponse(attributeTypeRepository.insert(attribute));
     }
 
@@ -197,7 +191,6 @@ public class ArchiveOntologyService {
         }
         requireEnabledObjectType(loadObjectType(request.objectTypeId()));
         applyAttributeFields(attribute, request, code, name);
-        attribute.setUpdatedBy(userId);
         return toAttributeTypeResponse(attributeTypeRepository.update(attribute));
     }
 
@@ -217,7 +210,6 @@ public class ArchiveOntologyService {
             throw new BadRequestException("属性类型已被映射引用");
         }
         protectOntologyReference(attributeTypeId);
-        attribute.setUpdatedBy(userId);
         attributeTypeRepository.update(attribute);
         attributeTypeRepository.delete(attribute);
     }
@@ -240,8 +232,6 @@ public class ArchiveOntologyService {
         mapping.setComponentFieldCode(StringUtils.trimToNull(request.componentFieldCode()));
         mapping.setProcessFieldCode(StringUtils.trimToNull(request.processFieldCode()));
         validateMapping(mapping, attribute, objectType);
-        mapping.setCreatedBy(userId);
-        mapping.setUpdatedBy(userId);
         return toAttributeMappingResponse(mappingRepository.insert(mapping));
     }
 
@@ -249,7 +239,6 @@ public class ArchiveOntologyService {
     public void deleteAttributeMapping(Long mappingId, Long userId) {
         ArchiveOntologyAttributeMapping mapping =
                 mappingRepository.findById(mappingId).orElseThrow(() -> notFound("属性映射不存在"));
-        mapping.setUpdatedBy(userId);
         mappingRepository.update(mapping);
         mappingRepository.delete(mapping);
     }
@@ -281,8 +270,6 @@ public class ArchiveOntologyService {
                         : request.cardinality());
         relation.setDescription(StringUtils.trimToNull(request.description()));
         relation.setEnabled(request.enabled() == null || request.enabled());
-        relation.setCreatedBy(userId);
-        relation.setUpdatedBy(userId);
         return toRelationTypeResponse(relationTypeRepository.insert(relation));
     }
 
@@ -313,7 +300,6 @@ public class ArchiveOntologyService {
                         : request.cardinality());
         relation.setDescription(StringUtils.trimToNull(request.description()));
         relation.setEnabled(request.enabled() == null || request.enabled());
-        relation.setUpdatedBy(userId);
         return toRelationTypeResponse(relationTypeRepository.update(relation));
     }
 
@@ -324,7 +310,6 @@ public class ArchiveOntologyService {
                         .findById(relationTypeId)
                         .orElseThrow(() -> notFound("关系类型不存在"));
         protectOntologyReference(relationTypeId);
-        relation.setUpdatedBy(userId);
         relationTypeRepository.update(relation);
         relationTypeRepository.delete(relation);
     }
@@ -345,7 +330,7 @@ public class ArchiveOntologyService {
         List<ArchiveOntologyEventType> missing =
                 BUILTIN_EVENTS.stream()
                         .filter(event -> eventTypeRepository.findByEventCode(event.code()) == null)
-                        .map(event -> builtInEventType(event, objectType.getId(), userId))
+                        .map(event -> builtInEventType(event, objectType.getId()))
                         .toList();
         return missing.isEmpty()
                 ? List.of()
@@ -369,8 +354,6 @@ public class ArchiveOntologyService {
         eventType.setObjectTypeId(request.objectTypeId());
         eventType.setDescription(StringUtils.trimToNull(request.description()));
         eventType.setEnabled(request.enabled() == null || request.enabled());
-        eventType.setCreatedBy(userId);
-        eventType.setUpdatedBy(userId);
         return toEventTypeResponse(eventTypeRepository.insert(eventType));
     }
 
@@ -392,7 +375,6 @@ public class ArchiveOntologyService {
         eventType.setObjectTypeId(request.objectTypeId());
         eventType.setDescription(StringUtils.trimToNull(request.description()));
         eventType.setEnabled(request.enabled() == null || request.enabled());
-        eventType.setUpdatedBy(userId);
         return toEventTypeResponse(eventTypeRepository.update(eventType));
     }
 
@@ -404,32 +386,25 @@ public class ArchiveOntologyService {
             throw new BadRequestException("事件类型已被规则引用");
         }
         protectOntologyReference(eventTypeId);
-        eventType.setUpdatedBy(userId);
         eventTypeRepository.update(eventType);
         eventTypeRepository.delete(eventType);
     }
 
-    private ArchiveOntologyObjectType builtInObjectType(
-            ArchiveOntologyObjectTypeCode code, Long userId) {
+    private ArchiveOntologyObjectType builtInObjectType(ArchiveOntologyObjectTypeCode code) {
         ArchiveOntologyObjectType objectType = new ArchiveOntologyObjectType();
         objectType.setTypeCode(code.name());
         objectType.setTypeName(code.name());
         objectType.setBuiltinFlag(true);
         objectType.setEnabled(true);
-        objectType.setCreatedBy(userId);
-        objectType.setUpdatedBy(userId);
         return objectType;
     }
 
-    private ArchiveOntologyEventType builtInEventType(
-            BuiltinEventType event, Long objectTypeId, Long userId) {
+    private ArchiveOntologyEventType builtInEventType(BuiltinEventType event, Long objectTypeId) {
         ArchiveOntologyEventType eventType = new ArchiveOntologyEventType();
         eventType.setEventCode(event.code());
         eventType.setEventName(event.name());
         eventType.setObjectTypeId(objectTypeId);
         eventType.setEnabled(true);
-        eventType.setCreatedBy(userId);
-        eventType.setUpdatedBy(userId);
         return eventType;
     }
 

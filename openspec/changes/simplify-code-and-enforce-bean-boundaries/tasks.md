@@ -20,9 +20,9 @@
 
 ## 4. 审计字段唯一来源
 
-- [ ] 4.1 强化无状态 Repository insert/update 用户审计集成测试并验证测试有效性
-- [ ] 4.2 删除被拦截器覆盖的固定实体手工 createdBy/updatedBy 赋值
-- [ ] 4.3 保留并记录 MyBatis、业务操作人和非拦截器路径的显式审计例外
+- [x] 4.1 强化无状态 Repository insert/update 用户审计集成测试并验证测试有效性
+- [x] 4.2 删除被拦截器覆盖的固定实体手工 createdBy/updatedBy 赋值
+- [x] 4.3 保留并记录 MyBatis、业务操作人和非拦截器路径的显式审计例外
 
 ## 5. 前端共享代码精简
 

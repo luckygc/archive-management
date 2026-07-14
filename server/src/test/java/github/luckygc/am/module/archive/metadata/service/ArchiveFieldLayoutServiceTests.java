@@ -57,8 +57,7 @@ class ArchiveFieldLayoutServiceTests {
                                                         new ArchiveFieldLayoutItemRequest(
                                                                 2L, true, 120, 1, 0, 0),
                                                         new ArchiveFieldLayoutItemRequest(
-                                                                2L, true, 130, 1, 1, 0))),
-                                        9L))
+                                                                2L, true, 130, 1, 1, 0)))))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("布局字段不能重复");
     }

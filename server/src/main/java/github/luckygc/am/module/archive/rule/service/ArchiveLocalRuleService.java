@@ -119,10 +119,8 @@ public class ArchiveLocalRuleService {
         ArchiveRuleDefinition rule = new ArchiveRuleDefinition();
         applyRuleFields(rule, request, ruleCode, ruleName, triggerCode);
         rule.setStatus(ArchiveRuleStatus.DRAFT);
-        rule.setCreatedBy(userId);
-        rule.setUpdatedBy(userId);
         ArchiveRuleDefinition saved = ruleRepository.insert(rule);
-        List<ArchiveRuleEffect> effects = insertEffects(saved.getId(), request.effects(), userId);
+        List<ArchiveRuleEffect> effects = insertEffects(saved.getId(), request.effects());
         return toRuleResponse(saved, effects);
     }
 
@@ -140,7 +138,6 @@ public class ArchiveLocalRuleService {
         rule.setStatus(ArchiveRuleStatus.PUBLISHED);
         rule.setPublishedBy(userId);
         rule.setPublishedAt(LocalDateTime.now());
-        rule.setUpdatedBy(userId);
         return toRuleResponse(ruleRepository.update(rule), effects);
     }
 
@@ -148,7 +145,6 @@ public class ArchiveLocalRuleService {
     public ArchiveRuleResponse updateRuleEnabled(Long ruleId, boolean enabled, Long userId) {
         ArchiveRuleDefinition rule = loadRule(ruleId);
         rule.setEnabled(enabled);
-        rule.setUpdatedBy(userId);
         return toRuleResponse(ruleRepository.update(rule), effectRepository.findByRuleId(ruleId));
     }
 
@@ -159,11 +155,9 @@ public class ArchiveLocalRuleService {
             throw new BadRequestException("已发布规则不能删除，请先停用");
         }
         for (ArchiveRuleEffect effect : effectRepository.findByRuleId(ruleId)) {
-            effect.setUpdatedBy(userId);
             effectRepository.update(effect);
             effectRepository.delete(effect);
         }
-        rule.setUpdatedBy(userId);
         ruleRepository.update(rule);
         ruleRepository.delete(rule);
     }
@@ -410,21 +404,18 @@ public class ArchiveLocalRuleService {
     }
 
     private List<ArchiveRuleEffect> insertEffects(
-            Long ruleId, List<CreateArchiveRuleEffectRequest> requests, Long userId) {
+            Long ruleId, List<CreateArchiveRuleEffectRequest> requests) {
         List<ArchiveRuleEffect> effects =
-                requests.stream().map(request -> toEffect(ruleId, request, userId)).toList();
+                requests.stream().map(request -> toEffect(ruleId, request)).toList();
         return effectRepository.insertAll(effects);
     }
 
-    private ArchiveRuleEffect toEffect(
-            Long ruleId, CreateArchiveRuleEffectRequest request, Long userId) {
+    private ArchiveRuleEffect toEffect(Long ruleId, CreateArchiveRuleEffectRequest request) {
         ArchiveRuleEffect effect = new ArchiveRuleEffect();
         effect.setRuleId(ruleId);
         effect.setEffectType(request.effectType());
         effect.setEffectOrder(request.effectOrder() == null ? 0 : request.effectOrder());
         effect.setEffectParams(request.effectParams() == null ? Map.of() : request.effectParams());
-        effect.setCreatedBy(userId);
-        effect.setUpdatedBy(userId);
         return effect;
     }
 

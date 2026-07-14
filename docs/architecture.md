@@ -53,6 +53,8 @@ Spring Bean 的 public 方法表示可由 Controller、事件监听器或其他 
 | --- | --- |
 | 固定 CRUD 表 | Jakarta Data Repository |
 | 动态表、复杂 SQL、批处理、报表、认证适配查询 | MyBatis |
+
+固定实体的 `created_by`、`updated_by` 由无状态 Hibernate 会话上的安全审计拦截器统一维护，Service 不再重复赋值。MyBatis 写入不会经过该拦截器，仍须在 SQL 或调用条件中显式维护审计字段。`ArchiveRuleTrace.createdBy` 表示规则执行请求中的业务操作人，`StorageObject.createdBy` 与 `FileLink.createdBy` 同时参与文件所有权和链接归属判断，因此保留显式赋值；这些字段不是固定实体通用审计的第二套来源。
 | 文件内容 | `FileStorageService`，统一使用 S3 兼容对象存储 |
 
 约束：

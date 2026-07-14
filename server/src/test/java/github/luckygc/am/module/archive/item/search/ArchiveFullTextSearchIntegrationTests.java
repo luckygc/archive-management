@@ -8,6 +8,7 @@ import java.util.Base64;
 import java.util.List;
 
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -52,6 +53,11 @@ class ArchiveFullTextSearchIntegrationTests {
     @Autowired private ArchiveItemRoutingService archiveItemRoutingService;
 
     @Autowired private JdbcTemplate jdbcTemplate;
+
+    @BeforeEach
+    void grantQueryUserPermissions() {
+        grantSuperAdminRole(1L);
+    }
 
     @DynamicPropertySource
     static void registerPostgreSqlProperties(DynamicPropertyRegistry registry) {

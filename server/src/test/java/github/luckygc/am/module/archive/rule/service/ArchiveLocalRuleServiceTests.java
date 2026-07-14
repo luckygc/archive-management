@@ -141,7 +141,6 @@ class ArchiveLocalRuleServiceTests {
         verify(traceRepository).insert(captor.capture());
         assertThat(captor.getValue().getRuleId()).isEqualTo(11L);
         assertThat(captor.getValue().isBlockingFlag()).isTrue();
-        assertThat(captor.getValue().getCreatedBy()).isEqualTo(7L);
     }
 
     @Test

@@ -126,8 +126,6 @@ public class ArchiveMetadataService {
         fonds.setFondsName(request.fondsName().trim());
         fonds.setEnabled(request.enabled() == null || request.enabled());
         fonds.setSortOrder(request.sortOrder() == null ? 0 : request.sortOrder());
-        fonds.setCreatedBy(userId);
-        fonds.setUpdatedBy(userId);
         return mapFonds(fondsRepository.insert(fonds));
     }
 
@@ -141,7 +139,6 @@ public class ArchiveMetadataService {
         fonds.setFondsName(request.fondsName().trim());
         fonds.setEnabled(request.enabled() == null || request.enabled());
         fonds.setSortOrder(request.sortOrder() == null ? 0 : request.sortOrder());
-        fonds.setUpdatedBy(userId);
         return mapFonds(fondsRepository.update(fonds));
     }
 
@@ -149,7 +146,6 @@ public class ArchiveMetadataService {
     public void deleteFonds(Long id, Long userId) {
         requireId(id);
         ArchiveFonds fonds = fondsRepository.findById(id).orElseThrow(() -> notFound("全宗不存在"));
-        fonds.setUpdatedBy(userId);
         fondsRepository.update(fonds);
         fondsRepository.delete(fonds);
     }
@@ -194,8 +190,6 @@ public class ArchiveMetadataService {
         ensureSchemeCodeAvailable(values.schemeCode(), null);
         ArchiveClassificationScheme scheme = new ArchiveClassificationScheme();
         applyClassificationSchemeValues(scheme, values);
-        scheme.setCreatedBy(userId);
-        scheme.setUpdatedBy(userId);
         return mapClassificationScheme(classificationSchemeRepository.insert(scheme));
     }
 
@@ -208,7 +202,6 @@ public class ArchiveMetadataService {
         ArchiveClassificationScheme scheme =
                 classificationSchemeRepository.findById(id).orElseThrow(() -> notFound("分类方案不存在"));
         applyClassificationSchemeValues(scheme, values);
-        scheme.setUpdatedBy(userId);
         return mapClassificationScheme(classificationSchemeRepository.update(scheme));
     }
 
@@ -296,8 +289,6 @@ public class ArchiveMetadataService {
         category.setManagementMode(normalizeManagementMode(request.managementMode()));
         category.setEnabled(request.enabled() == null || request.enabled());
         category.setSortOrder(request.sortOrder() == null ? 0 : request.sortOrder());
-        category.setCreatedBy(userId);
-        category.setUpdatedBy(userId);
         return mapCategory(categoryRepository.insert(category));
     }
 
@@ -317,7 +308,6 @@ public class ArchiveMetadataService {
         category.setManagementMode(normalizeManagementMode(request.managementMode()));
         category.setEnabled(request.enabled() == null || request.enabled());
         category.setSortOrder(request.sortOrder() == null ? 0 : request.sortOrder());
-        category.setUpdatedBy(userId);
         return mapCategory(categoryRepository.update(category));
     }
 
@@ -329,7 +319,6 @@ public class ArchiveMetadataService {
         }
         ArchiveCategory category =
                 categoryRepository.findById(id).orElseThrow(() -> notFound("档案分类不存在"));
-        category.setUpdatedBy(userId);
         categoryRepository.update(category);
         categoryRepository.delete(category);
     }
@@ -378,8 +367,6 @@ public class ArchiveMetadataService {
             scope.setCategoryId(category.getId());
             scope.setDefaultFlag(Boolean.TRUE.equals(request.defaultFlag()));
             scope.setSortOrder(request.sortOrder() == null ? 0 : request.sortOrder());
-            scope.setCreatedBy(userId);
-            scope.setUpdatedBy(userId);
             scopes.add(scope);
         }
         return fondsCategoryScopeRepository.insertAll(scopes).stream()
@@ -538,8 +525,7 @@ public class ArchiveMetadataService {
                 categoryId,
                 surface,
                 listEnabledFieldsInternal(categoryId, normalizedLevel, normalizedScope),
-                request,
-                userId);
+                request);
         return getFieldLayoutInternal(categoryId, normalizedLevel, normalizedScope, surface);
     }
 
@@ -552,8 +538,6 @@ public class ArchiveMetadataService {
         fieldDefinitionService.ensureArchiveLevelAllowed(category, values.archiveLevel());
         ArchiveField field = new ArchiveField();
         fieldDefinitionService.applyValues(field, categoryId, values);
-        field.setCreatedBy(userId);
-        field.setUpdatedBy(userId);
         return mapField(fieldRepository.insert(field));
     }
 
@@ -580,7 +564,6 @@ public class ArchiveMetadataService {
         ArchiveField field =
                 fieldRepository.findById(fieldId).orElseThrow(() -> notFound("字段定义不存在"));
         fieldDefinitionService.applyValues(field, categoryId, values);
-        field.setUpdatedBy(userId);
         ArchiveFieldDto updatedField = mapField(fieldRepository.update(field));
         dynamicTableService.syncDynamicColumnAfterFieldUpdate(category, current, updatedField);
         return updatedField;
@@ -595,7 +578,6 @@ public class ArchiveMetadataService {
         if (!field.getCategoryId().equals(categoryId)) {
             throw notFound("字段定义不存在");
         }
-        field.setUpdatedBy(userId);
         fieldRepository.update(field);
         fieldRepository.delete(field);
     }

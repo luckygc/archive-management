@@ -89,7 +89,6 @@ class ArchiveOntologyServiceTests {
                 ArgumentCaptor.forClass(ArchiveOntologyObjectType.class);
         verify(objectTypeRepository).insert(captor.capture());
         assertThat(captor.getValue().getTypeCode()).isEqualTo("case_file");
-        assertThat(captor.getValue().getCreatedBy()).isEqualTo(6L);
     }
 
     @Test

@@ -72,8 +72,6 @@ public class ArchiveGovernanceService {
         scheme.setDescription(StringUtils.trimToNull(request.description()));
         scheme.setEnabled(request.enabled() == null || request.enabled());
         scheme.setSortOrder(request.sortOrder() == null ? 0 : request.sortOrder());
-        scheme.setCreatedBy(userId);
-        scheme.setUpdatedBy(userId);
         return toSchemeResponse(schemeRepository.insert(scheme));
     }
 
@@ -92,7 +90,6 @@ public class ArchiveGovernanceService {
         scheme.setDescription(StringUtils.trimToNull(request.description()));
         scheme.setEnabled(request.enabled() == null || request.enabled());
         scheme.setSortOrder(request.sortOrder() == null ? 0 : request.sortOrder());
-        scheme.setUpdatedBy(userId);
         return toSchemeResponse(schemeRepository.update(scheme));
     }
 
@@ -103,7 +100,6 @@ public class ArchiveGovernanceService {
         if (!versions.isEmpty()) {
             throw new BadRequestException("治理方案存在版本，不能删除");
         }
-        scheme.setUpdatedBy(userId);
         schemeRepository.update(scheme);
         schemeRepository.delete(scheme);
     }
@@ -129,8 +125,6 @@ public class ArchiveGovernanceService {
         version.setVersionCode(versionCode);
         version.setVersionDescription(StringUtils.trimToNull(request.versionDescription()));
         version.setStatus(ArchiveGovernanceSchemeVersionStatus.DRAFT);
-        version.setCreatedBy(userId);
-        version.setUpdatedBy(userId);
         return toVersionResponse(versionRepository.insert(version));
     }
 
@@ -147,7 +141,6 @@ public class ArchiveGovernanceService {
         }
         version.setVersionCode(versionCode);
         version.setVersionDescription(StringUtils.trimToNull(request.versionDescription()));
-        version.setUpdatedBy(userId);
         return toVersionResponse(versionRepository.update(version));
     }
 
@@ -161,7 +154,6 @@ public class ArchiveGovernanceService {
         version.setStatus(ArchiveGovernanceSchemeVersionStatus.PUBLISHED);
         version.setPublishedBy(userId);
         version.setPublishedAt(LocalDateTime.now());
-        version.setUpdatedBy(userId);
         return toVersionResponse(versionRepository.update(version));
     }
 
@@ -174,7 +166,6 @@ public class ArchiveGovernanceService {
         version.setStatus(ArchiveGovernanceSchemeVersionStatus.FROZEN);
         version.setFrozenBy(userId);
         version.setFrozenAt(LocalDateTime.now());
-        version.setUpdatedBy(userId);
         return toVersionResponse(versionRepository.update(version));
     }
 
@@ -187,7 +178,6 @@ public class ArchiveGovernanceService {
         version.setStatus(ArchiveGovernanceSchemeVersionStatus.RETIRED);
         version.setRetiredBy(userId);
         version.setRetiredAt(LocalDateTime.now());
-        version.setUpdatedBy(userId);
         return toVersionResponse(versionRepository.update(version));
     }
 
@@ -236,7 +226,7 @@ public class ArchiveGovernanceService {
             scopeRepository.deleteAll(existing);
         }
         List<ArchiveGovernanceScope> scopes =
-                requests.stream().map(request -> toScope(versionId, request, userId)).toList();
+                requests.stream().map(request -> toScope(versionId, request)).toList();
         return scopeRepository.insertAll(scopes).stream().map(this::toScopeResponse).toList();
     }
 
@@ -252,7 +242,7 @@ public class ArchiveGovernanceService {
         }
         List<ArchiveGovernanceBinding> bindings =
                 requests.stream()
-                        .map(request -> toBinding(versionId, request, userId))
+                        .map(request -> toBinding(versionId, request))
                         .sorted(Comparator.comparingInt(ArchiveGovernanceBinding::getBindingOrder))
                         .toList();
         return bindingRepository.insertAll(bindings).stream().map(this::toBindingResponse).toList();
@@ -323,7 +313,7 @@ public class ArchiveGovernanceService {
     }
 
     private ArchiveGovernanceScope toScope(
-            Long versionId, CreateArchiveGovernanceScopeRequest request, Long userId) {
+            Long versionId, CreateArchiveGovernanceScopeRequest request) {
         ArchiveGovernanceScopeType scopeType =
                 request.scopeType() == null
                         ? ArchiveGovernanceScopeType.GLOBAL
@@ -353,13 +343,11 @@ public class ArchiveGovernanceService {
         scope.setFondsCode(fondsCode);
         scope.setCategoryCode(categoryCode);
         scope.setDefaultFlag(request.defaultFlag() == null || request.defaultFlag());
-        scope.setCreatedBy(userId);
-        scope.setUpdatedBy(userId);
         return scope;
     }
 
     private ArchiveGovernanceBinding toBinding(
-            Long versionId, CreateArchiveGovernanceBindingRequest request, Long userId) {
+            Long versionId, CreateArchiveGovernanceBindingRequest request) {
         if (request.bindingType() == null) {
             throw new BadRequestException("治理方案绑定类型不能为空", "bindingType", "治理方案绑定类型不能为空");
         }
@@ -370,8 +358,6 @@ public class ArchiveGovernanceService {
         binding.setTargetId(request.targetId());
         binding.setTargetCode(StringUtils.trimToNull(request.targetCode()));
         binding.setBindingOrder(request.bindingOrder() == null ? 0 : request.bindingOrder());
-        binding.setCreatedBy(userId);
-        binding.setUpdatedBy(userId);
         return binding;
     }
 
