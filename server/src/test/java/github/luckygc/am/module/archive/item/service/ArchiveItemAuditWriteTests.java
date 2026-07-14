@@ -25,9 +25,9 @@ import github.luckygc.am.module.archive.governance.ArchiveGovernanceSchemeVersio
 import github.luckygc.am.module.archive.governance.service.ArchiveGovernanceService;
 import github.luckygc.am.module.archive.item.ArchiveItemAudit;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemAuditDataRepository;
+import github.luckygc.am.module.archive.item.service.ArchiveItemLockService.LockItemRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.CreateArchiveItemRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.DeleteItemRequest;
-import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.LockItemRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.UpdateArchiveItemRequest;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.metadata.ArchiveManagementMode;
@@ -46,6 +46,7 @@ class ArchiveItemAuditWriteTests {
     private ArchiveItemSearchProjectionService searchProjectionService;
     private ArchiveItemAuditDataRepository auditRepository;
     private ArchiveItemRoutingService archiveItemRoutingService;
+    private ArchiveItemLockService archiveItemLockService;
 
     @BeforeEach
     void setUp() {
@@ -69,6 +70,12 @@ class ArchiveItemAuditWriteTests {
                         archiveMapper,
                         searchProjectionService,
                         dataScopeService,
+                        permissionService,
+                        auditRepository);
+        archiveItemLockService =
+                new ArchiveItemLockService(
+                        archiveMapper,
+                        archiveItemRoutingService,
                         permissionService,
                         auditRepository);
     }
@@ -158,7 +165,7 @@ class ArchiveItemAuditWriteTests {
         when(archiveMapper.getArchiveItem(10L)).thenReturn(itemRow(true));
         when(archiveMetadataService.listCategories(null)).thenReturn(List.of(category()));
 
-        archiveItemRoutingService.lockItem(10L, 9L, new LockItemRequest(" 借阅冻结 "));
+        archiveItemLockService.lockItem(10L, 9L, new LockItemRequest(" 借阅冻结 "));
 
         verifyAudit("LOCK", "借阅冻结");
     }
@@ -170,7 +177,7 @@ class ArchiveItemAuditWriteTests {
         when(archiveMapper.getArchiveItem(10L)).thenReturn(itemRow(false));
         when(archiveMetadataService.listCategories(null)).thenReturn(List.of(category()));
 
-        archiveItemRoutingService.unlockItem(10L, 9L);
+        archiveItemLockService.unlockItem(10L, 9L);
 
         verifyAudit("UNLOCK", null);
     }

@@ -19,6 +19,7 @@ import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldScope;
 import github.luckygc.am.module.archive.metadata.ArchiveLayoutSurface;
+import github.luckygc.am.module.archive.metadata.service.ArchiveFondsService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryRequest;
@@ -45,28 +46,31 @@ import github.luckygc.am.module.authorization.service.AuthorizationPermissionSer
 public class ArchiveMetadataController {
 
     private final ArchiveMetadataService archiveMetadataService;
+    private final ArchiveFondsService archiveFondsService;
     private final ArchiveItemRoutingService archiveItemRoutingService;
     private final AuthorizationPermissionService permissionService;
 
     public ArchiveMetadataController(
             ArchiveMetadataService archiveMetadataService,
+            ArchiveFondsService archiveFondsService,
             ArchiveItemRoutingService archiveItemRoutingService,
             AuthorizationPermissionService permissionService) {
         this.archiveMetadataService = archiveMetadataService;
+        this.archiveFondsService = archiveFondsService;
         this.archiveItemRoutingService = archiveItemRoutingService;
         this.permissionService = permissionService;
     }
 
     @GetMapping("/api/v1/archive-fonds")
     public CollectionResponse<ArchiveFondsDto> listFonds(Boolean enabled) {
-        return CollectionResponse.of(archiveMetadataService.listFonds(enabled));
+        return CollectionResponse.of(archiveFondsService.listFonds(enabled));
     }
 
     @PostMapping("/api/v1/archive-fonds")
     @ResponseStatus(HttpStatus.CREATED)
     public ArchiveFondsDto createFonds(
             @RequestBody ArchiveFondsRequest request, Authentication authentication) {
-        return archiveMetadataService.createFonds(request, requireMetadataManage(authentication));
+        return archiveFondsService.createFonds(request, requireMetadataManage(authentication));
     }
 
     @PatchMapping("/api/v1/archive-fonds/{id}")
@@ -74,14 +78,13 @@ public class ArchiveMetadataController {
             @PathVariable Long id,
             @RequestBody ArchiveFondsRequest request,
             Authentication authentication) {
-        return archiveMetadataService.updateFonds(
-                id, request, requireMetadataManage(authentication));
+        return archiveFondsService.updateFonds(id, request, requireMetadataManage(authentication));
     }
 
     @DeleteMapping("/api/v1/archive-fonds/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteFonds(@PathVariable Long id, Authentication authentication) {
-        archiveMetadataService.deleteFonds(id, requireMetadataManage(authentication));
+        archiveFondsService.deleteFonds(id, requireMetadataManage(authentication));
     }
 
     @GetMapping("/api/v1/archive-fonds/{fondsCode}/category-scopes")

@@ -15,6 +15,8 @@ import org.springframework.security.core.Authentication;
 import github.luckygc.am.common.api.CursorPageTokenCodec;
 import github.luckygc.am.common.api.CursorPageTokenContext;
 import github.luckygc.am.common.security.AuthenticatedUser;
+import github.luckygc.am.module.archive.item.service.ArchiveItemLockService;
+import github.luckygc.am.module.archive.item.service.ArchiveItemRelationService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.SearchArchiveItemsRequest;
 
@@ -23,8 +25,13 @@ class ArchiveItemControllerTests {
 
     private final ArchiveItemRoutingService archiveItemRoutingService =
             mock(ArchiveItemRoutingService.class);
+    private final ArchiveItemRelationService archiveItemRelationService =
+            mock(ArchiveItemRelationService.class);
+    private final ArchiveItemLockService archiveItemLockService =
+            mock(ArchiveItemLockService.class);
     private final ArchiveItemController controller =
-            new ArchiveItemController(archiveItemRoutingService);
+            new ArchiveItemController(
+                    archiveItemRoutingService, archiveItemRelationService, archiveItemLockService);
 
     @Test
     @DisplayName("搜索接口从 URL 查询参数接收 cursor 分页控制")

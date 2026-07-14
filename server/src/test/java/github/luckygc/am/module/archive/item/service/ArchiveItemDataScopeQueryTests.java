@@ -32,7 +32,7 @@ import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeSe
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService.ResolvedArchiveDataScope;
 import github.luckygc.am.module.archive.governance.service.ArchiveGovernanceService;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemAuditDataRepository;
-import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveItemRelationRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemRelationService.ArchiveItemRelationRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.CreateArchiveItemRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.SearchArchiveItemsRequest;
 import github.luckygc.am.module.archive.mapper.ArchiveDataScopeSqlGroup;
@@ -52,6 +52,7 @@ class ArchiveItemDataScopeQueryTests {
     private ArchiveDataScopeService dataScopeService;
     private AuthorizationPermissionService permissionService;
     private ArchiveItemRoutingService archiveItemRoutingService;
+    private ArchiveItemRelationService archiveItemRelationService;
 
     @BeforeEach
     void setUp() {
@@ -73,6 +74,9 @@ class ArchiveItemDataScopeQueryTests {
                         dataScopeService,
                         permissionService,
                         auditRepository);
+        archiveItemRelationService =
+                new ArchiveItemRelationService(
+                        archiveMapper, archiveItemRoutingService, permissionService);
     }
 
     @Test
@@ -260,7 +264,7 @@ class ArchiveItemDataScopeQueryTests {
     void listRelationsShouldRequireReadPermissionAndSourceDataScope() {
         when(permissionService.hasPermission(9L, "archive:item:read")).thenReturn(false);
 
-        assertThatThrownBy(() -> archiveItemRoutingService.listRelations(10L, 1, 9L))
+        assertThatThrownBy(() -> archiveItemRelationService.listRelations(10L, 1, 9L))
                 .isInstanceOfSatisfying(
                         ResponseStatusException.class,
                         exception ->
@@ -283,7 +287,7 @@ class ArchiveItemDataScopeQueryTests {
 
         assertThatThrownBy(
                         () ->
-                                archiveItemRoutingService.createRelation(
+                                archiveItemRelationService.createRelation(
                                         10L, new ArchiveItemRelationRequest(11L), 9L))
                 .isInstanceOfSatisfying(
                         ResponseStatusException.class,

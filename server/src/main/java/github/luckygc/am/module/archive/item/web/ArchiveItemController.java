@@ -17,16 +17,18 @@ import org.springframework.web.bind.annotation.RestController;
 import github.luckygc.am.common.api.CollectionResponse;
 import github.luckygc.am.common.api.RawRequestStrings;
 import github.luckygc.am.common.security.AuthenticatedUsers;
+import github.luckygc.am.module.archive.item.service.ArchiveItemLockService;
+import github.luckygc.am.module.archive.item.service.ArchiveItemLockService.LockItemRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemRelationService;
+import github.luckygc.am.module.archive.item.service.ArchiveItemRelationService.ArchiveItemRelationDto;
+import github.luckygc.am.module.archive.item.service.ArchiveItemRelationService.ArchiveItemRelationRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveItemDetailDto;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveItemDto;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveItemListDto;
-import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveItemRelationDto;
-import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveItemRelationRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveRelatedFilterCategoryDto;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.CreateArchiveItemRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.DeleteItemRequest;
-import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.LockItemRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.SearchArchiveItemsRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.UpdateArchiveItemRequest;
 import github.luckygc.am.module.archive.metadata.ArchiveLayoutSurface;
@@ -35,9 +37,16 @@ import github.luckygc.am.module.archive.metadata.ArchiveLayoutSurface;
 public class ArchiveItemController {
 
     private final ArchiveItemRoutingService archiveItemRoutingService;
+    private final ArchiveItemRelationService archiveItemRelationService;
+    private final ArchiveItemLockService archiveItemLockService;
 
-    public ArchiveItemController(ArchiveItemRoutingService archiveItemRoutingService) {
+    public ArchiveItemController(
+            ArchiveItemRoutingService archiveItemRoutingService,
+            ArchiveItemRelationService archiveItemRelationService,
+            ArchiveItemLockService archiveItemLockService) {
         this.archiveItemRoutingService = archiveItemRoutingService;
+        this.archiveItemRelationService = archiveItemRelationService;
+        this.archiveItemLockService = archiveItemLockService;
     }
 
     @GetMapping("/api/v1/archive-items")
@@ -144,7 +153,7 @@ public class ArchiveItemController {
             @PathVariable Long id,
             @RequestBody(required = false) LockItemRequest request,
             Authentication authentication) {
-        return archiveItemRoutingService.lockItem(
+        return archiveItemLockService.lockItem(
                 id,
                 AuthenticatedUsers.requireUserId(
                         authentication == null ? null : authentication.getPrincipal()),
@@ -153,7 +162,7 @@ public class ArchiveItemController {
 
     @PostMapping("/api/v1/archive-items/{id}:unlock")
     public ArchiveItemDto unlockItem(@PathVariable Long id, Authentication authentication) {
-        return archiveItemRoutingService.unlockItem(
+        return archiveItemLockService.unlockItem(
                 id,
                 AuthenticatedUsers.requireUserId(
                         authentication == null ? null : authentication.getPrincipal()));
@@ -165,7 +174,7 @@ public class ArchiveItemController {
             @RequestParam(defaultValue = "1") Integer depth,
             Authentication authentication) {
         return CollectionResponse.of(
-                archiveItemRoutingService.listRelations(
+                archiveItemRelationService.listRelations(
                         id,
                         depth,
                         AuthenticatedUsers.requireUserId(
@@ -178,7 +187,7 @@ public class ArchiveItemController {
             @PathVariable Long id,
             @RequestBody ArchiveItemRelationRequest request,
             Authentication authentication) {
-        return archiveItemRoutingService.createRelation(
+        return archiveItemRelationService.createRelation(
                 id,
                 request,
                 AuthenticatedUsers.requireUserId(
@@ -189,7 +198,7 @@ public class ArchiveItemController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteRelation(
             @PathVariable Long id, @PathVariable Long relationId, Authentication authentication) {
-        archiveItemRoutingService.deleteRelation(
+        archiveItemRelationService.deleteRelation(
                 id,
                 relationId,
                 AuthenticatedUsers.requireUserId(

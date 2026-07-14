@@ -111,43 +111,8 @@ public class ArchiveMetadataService {
         this.uniqueConstraintService = uniqueConstraintService;
     }
 
-    public List<ArchiveFondsDto> listFonds(@Nullable Boolean enabled) {
-        List<ArchiveFonds> fonds =
-                enabled == null ? fondsRepository.list() : fondsRepository.list(enabled);
-        return fonds.stream().map(this::mapFonds).toList();
-    }
-
-    @Transactional
-    public ArchiveFondsDto createFonds(ArchiveFondsRequest request, Long userId) {
-        validateRequired(request.fondsCode(), "全宗编码不能为空");
-        validateRequired(request.fondsName(), "全宗名称不能为空");
-        ArchiveFonds fonds = new ArchiveFonds();
-        fonds.setFondsCode(request.fondsCode().trim());
-        fonds.setFondsName(request.fondsName().trim());
-        fonds.setEnabled(request.enabled() == null || request.enabled());
-        fonds.setSortOrder(request.sortOrder() == null ? 0 : request.sortOrder());
-        return mapFonds(fondsRepository.insert(fonds));
-    }
-
-    @Transactional
-    public ArchiveFondsDto updateFonds(Long id, ArchiveFondsRequest request, Long userId) {
-        requireId(id);
-        validateRequired(request.fondsCode(), "全宗编码不能为空");
-        validateRequired(request.fondsName(), "全宗名称不能为空");
-        ArchiveFonds fonds = fondsRepository.findById(id).orElseThrow(() -> notFound("全宗不存在"));
-        fonds.setFondsCode(request.fondsCode().trim());
-        fonds.setFondsName(request.fondsName().trim());
-        fonds.setEnabled(request.enabled() == null || request.enabled());
-        fonds.setSortOrder(request.sortOrder() == null ? 0 : request.sortOrder());
-        return mapFonds(fondsRepository.update(fonds));
-    }
-
-    @Transactional
-    public void deleteFonds(Long id, Long userId) {
-        requireId(id);
-        ArchiveFonds fonds = fondsRepository.findById(id).orElseThrow(() -> notFound("全宗不存在"));
-        fondsRepository.update(fonds);
-        fondsRepository.delete(fonds);
+    public ArchiveFondsDto getFondsByCode(String fondsCode) {
+        return mapFonds(loadFondsByCode(fondsCode));
     }
 
     public ArchiveFondsDto getFonds(Long id) {
@@ -156,10 +121,6 @@ public class ArchiveMetadataService {
                 .findById(id)
                 .map(this::mapFonds)
                 .orElseThrow(() -> notFound("全宗不存在"));
-    }
-
-    public ArchiveFondsDto getFondsByCode(String fondsCode) {
-        return mapFonds(loadFondsByCode(fondsCode));
     }
 
     public ArchiveFondsDto getEnabledFondsByCode(String fondsCode) {
@@ -895,17 +856,6 @@ public class ArchiveMetadataService {
 
     private ResponseStatusException badRequest(String message) {
         return new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
-    }
-
-    private ArchiveFondsDto mapFonds(Map<String, Object> row) {
-        return new ArchiveFondsDto(
-                number(row, "id").longValue(),
-                string(row, "fondsCode"),
-                string(row, "fondsName"),
-                bool(row, "enabled"),
-                number(row, "sortOrder").intValue(),
-                dateTime(row, "createdAt"),
-                dateTime(row, "updatedAt"));
     }
 
     private ArchiveFondsDto mapFonds(ArchiveFonds fonds) {
