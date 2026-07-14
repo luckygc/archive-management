@@ -28,17 +28,18 @@
 
 ## 5. 开发案卷管理 PC 页面
 
-- [ ] 5.1 编写并运行案卷 Controller/Service/Mapper 与前端客户端定向失败测试，确认因案卷游标分页、`volumeId` 筛选或 `:addItem` 精确合同缺失而失败
-- [ ] 5.2 将 `GET /api/v1/archive-volumes` 改为 `CursorPageResponse<ArchiveVolumeResponse>`，在 Controller/Service/MyBatis 中实现 URL query 分页、筛选摘要和 `createdAt DESC, id DESC` 稳定排序
+- [ ] 5.1 编写并运行 `ArchiveVolumeDataRepository`、案卷 Service/Controller、档案 `volumeId` Mapper 与前端客户端定向失败测试，确认因案卷游标分页、`volumeId` 筛选或 `:addItem` 精确合同缺失而失败
+- [ ] 5.2 为固定实体 `ArchiveVolume` 新增 `ArchiveVolumeDataRepository`，使用 `Restriction<ArchiveVolume>`、`PageRequest`、稳定 `Order(createdAt DESC, id DESC)` 和 `CursoredPage<ArchiveVolume>` 完成列表查询；Service 在事务内转换为项目 `CursorPageResponse<ArchiveVolumeResponse>`，不暴露 provider 页类型，并补齐 Repository、Service、Controller 与 ArchUnit 验证。仅迁移案卷列表，创建、详情和唯一性查询保留现有 MyBatis，不修改 `ArchiveMapper.xml` 中的案卷列表 SQL
 - [ ] 5.3 给 `SearchArchiveItemsRequest`、查询 Service 与 MyBatis criteria/XML 增加可空 `volumeId`，纳入业务筛选和 cursor 查询摘要并补齐 Controller/Service/Mapper 测试
 - [ ] 5.4 实现案卷前端类型与客户端：列表使用 cursor 合同，`:addItem` 提交 `{ itemId, displayOrder? }` 并以 `Promise<void>` 处理 `204 No Content`
-- [ ] 5.5 新增案卷管理页面与编辑/卷内档案 Drawer，支持按全宗和分类筛选、创建、查看、游标翻页和加入档案
-- [ ] 5.6 添加 `/archive/volumes` 路由和 `archive:item:read` 权限元数据，运行案卷后端、客户端、页面和路由测试
+- [ ] 5.5 编写案卷页面和路由定向测试并立即运行，确认因页面、Drawer、游标交互或 `/archive/volumes` 权限路由尚未实现而失败
+- [ ] 5.6 最小实现案卷管理页面、编辑/卷内档案 Drawer 和 `/archive/volumes` 路由，支持按全宗和分类筛选、创建、查看、游标翻页、加入档案及 `archive:item:read` 权限元数据
+- [ ] 5.7 重新运行案卷 Repository、Service、Controller、ArchUnit、客户端、页面和路由测试，确认全部转绿
 
 ## 6. 开发档案关系维护
 
 - [ ] 6.1 编写并运行关系 Controller/Service/Mapper、前端客户端和关系 Drawer 定向失败测试，确认因关系列表游标分页或维护行为缺失而失败
-- [ ] 6.2 将 `GET /api/v1/archive-items/{archiveItem}/relations` 改为 `CursorPageResponse<ArchiveItemRelationResponse>`，在 Controller/Service/MyBatis 中实现 URL query 分页、`depth` 查询摘要和 `id ASC` 稳定排序
+- [ ] 6.2 将 `GET /api/v1/archive-items/{archiveItem}/relations` 改为 `CursorPageResponse<ArchiveItemRelationResponse>`；扩展现有 MyBatis Mapper，在同一分页 SQL 中连接目标档案摘要、应用 `ArchiveDataScopeFilter` SQL 分组和 `id ASC` cursor 边界，`depth` 进入查询摘要。禁止分页后由 Repository/Service 逐行过滤，不新增平行 Repository、adapter 或分页状态源
 - [ ] 6.3 接通关系前端 cursor 客户端，并用分类、关键字和游标搜索选择目标档案，禁止手工输入 ID 和选择当前档案
 - [ ] 6.4 在档案资源 Drawer 增加关系页签与现有 cursor 组件，读取使用 `archive:item:read`，创建与删除使用 `archive:item:update`
 - [ ] 6.5 运行关系后端和前端定向测试，验证自关联、重复或越权冲突，成功后只刷新关系页签

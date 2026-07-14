@@ -4,7 +4,7 @@
 
 **Goal:** 关闭档案搜索、档案管理、案卷、关系、明细行、权限和工作台从后端到 PC 的 MVP 使用缺口。
 
-**Architecture:** 保持 Vue PC → Spring Boot 模块化单体 → PostgreSQL/S3 的既有架构。已有后端能力优先直接接入 PC；档案查询需增加 `volumeId` 固定筛选，案卷和关系列表需从无界集合改为项目统一游标分页，明细行数据和真实工作台摘要需在 archive/item 子域内补齐 Service、Controller 和 MyBatis SQL。所有敏感操作继续由服务端权限与数据范围守护。
+**Architecture:** 保持 Vue PC → Spring Boot 模块化单体 → PostgreSQL/S3 的既有架构。已有后端能力优先直接接入 PC；档案查询需增加 `volumeId` 固定筛选，案卷和关系列表需从无界集合改为项目统一游标分页。案卷固定实体列表使用 Jakarta Data，关系复杂连接、动态明细行和真实工作台摘要使用 MyBatis。所有敏感操作继续由服务端权限与数据范围守护。
 
 **Tech Stack:** Vue 3、TypeScript、Element Plus、Pinia、Vite+ Test、Spring Boot、Jakarta Data、MyBatis、PostgreSQL、JUnit 5、Mockito、Testcontainers、OpenSpec。
 
@@ -13,7 +13,7 @@
 - 依赖版本只允许升级，不因 Beta、Milestone、RC 或预发布标签降级、替换或回退依赖。
 - 不新增通用 CRUD 框架、第二套组件体系、前端权限真相源或项目级基础设施适配层。
 - HTTP 请求 DTO 使用动作明确的 `Request`，响应使用视图明确的 `Response`；分页使用现有游标合同。
-- 固定表继续使用 Jakarta Data，动态明细表和统计继续使用 MyBatis。
+- 固定实体的普通 CRUD 和固定字段普通分页优先使用 Jakarta Data；动态表、统计、复杂连接及需要在分页 SQL 内应用数据范围的查询使用 MyBatis。
 - Java 变更经 Spotless AOSP 格式化；字符串判空使用 `StringUtils`；新增可空类型使用 JSpecify。
 - 每项行为变更必须先观察定向测试按预期失败，再写最小实现并观察测试通过。
 - 前端不启动开发服务器；使用 `pnpm check`、`pnpm test` 和生产构建验证。
@@ -360,17 +360,21 @@ git commit -m "feat: 完整维护档案固定参考与物理字段"
 ### Task 5: 开发案卷管理 PC 页面
 
 **Files:**
+- Reuse: `server/src/main/java/github/luckygc/am/module/archive/item/ArchiveVolume.java`
+- Create: `server/src/main/java/github/luckygc/am/module/archive/item/repository/ArchiveVolumeDataRepository.java`
 - Modify: `server/src/main/java/github/luckygc/am/module/archive/item/web/ArchiveVolumeController.java`
 - Modify: `server/src/main/java/github/luckygc/am/module/archive/item/service/ArchiveVolumeService.java`
 - Modify: `server/src/main/java/github/luckygc/am/module/archive/item/web/ArchiveItemController.java`
 - Modify: `server/src/main/java/github/luckygc/am/module/archive/item/service/ArchiveItemQueryService.java`
-- Modify: `server/src/main/java/github/luckygc/am/module/archive/mapper/ArchiveMapper.java`
-- Modify: `server/src/main/resources/mapper/archive/ArchiveMapper.xml`
+- Modify: `server/src/main/java/github/luckygc/am/module/archive/mapper/ArchiveMapper.java`（仅增加档案搜索的 `volumeId` 条件，不承载案卷列表）
+- Modify: `server/src/main/resources/mapper/archive/ArchiveMapper.xml`（仅增加档案搜索的 `volumeId` 条件，不修改 `listArchiveVolumes`）
+- Create: `server/src/test/java/github/luckygc/am/module/archive/item/repository/ArchiveVolumeDataRepositoryTests.java`
 - Create: `server/src/test/java/github/luckygc/am/module/archive/item/web/ArchiveVolumeControllerTests.java`
 - Modify: `server/src/test/java/github/luckygc/am/module/archive/item/service/ArchiveVolumePermissionTests.java`
 - Modify: `server/src/test/java/github/luckygc/am/module/archive/item/web/ArchiveItemControllerTests.java`
 - Modify: `server/src/test/java/github/luckygc/am/module/archive/item/service/ArchiveItemQueryServiceBoundaryTests.java`
 - Modify: `server/src/test/java/github/luckygc/am/module/archive/item/service/ArchiveMapperXmlContractTests.java`
+- Verify: `server/src/test/java/github/luckygc/am/architecture/ArchitectureRulesTest.java`
 - Create: `web/src/shared/types/archive-volumes.ts`
 - Create: `web/src/shared/api/archive-volumes.ts`
 - Create: `web/src/shared/api/archive-volumes.test.ts`
@@ -383,14 +387,15 @@ git commit -m "feat: 完整维护档案固定参考与物理字段"
 
 **Interfaces:**
 - Produces: `GET /api/v1/archive-volumes?fondsCode=&categoryCode=&limit=&cursor=` → `CursorPageResponse<ArchiveVolumeResponse>`，默认排序 `createdAt DESC, id DESC`。
+- Internal: `ArchiveVolumeDataRepository.find(Restriction<ArchiveVolume>, PageRequest, Order<ArchiveVolume>)` → `CursoredPage<ArchiveVolume>`；provider 页只在 Service 事务内消费并转换，不能进入 Web 合同。
 - Produces: `SearchArchiveItemsRequest.volumeId?: number`，作为业务筛选进入 cursor 查询摘要；`limit/cursor/requestTotal` 继续位于 URL query 且不进入摘要。
 - Consumes: `POST /api/v1/archive-volumes`、`GET /api/v1/archive-volumes/{id}`、`POST /api/v1/archive-volumes/{id}:addItem`。
 - `AddArchiveItemToVolumeRequest`: `{ itemId: number; displayOrder?: number }`；成功返回 `204 No Content`，前端客户端返回 `Promise<void>`。
 - Produces: 案卷路由 `/archive/volumes`，复用现有 `CursorPagination`。
 
-- [ ] **Step 1: 写后端游标分页和 `volumeId` 失败测试**
+- [ ] **Step 1: 写 Repository、Service、Controller 和 `volumeId` Mapper 失败测试**
 
-为 Controller、Service 和 Mapper 编写测试，确认筛选在数据库分页前应用、cursor 绑定筛选和稳定排序、卷内档案查询传递 `volumeId`：
+先为 `ArchiveVolumeDataRepository`、Service、Controller 和档案搜索 Mapper 编写测试。Repository 测试使用 `createdAt` 相同而 `id` 不同的数据验证稳定顺序和前后 cursor；Service 测试验证数据范围与请求筛选先收敛为 `Restriction<ArchiveVolume>`，并传入 `Order.by(_ArchiveVolume.createdAt.desc(), _ArchiveVolume.id.desc())`；Controller 测试验证只返回项目 `CursorPageResponse`；档案搜索测试验证 `volumeId` 传入现有 MyBatis criteria：
 
 ```java
 @Test
@@ -402,15 +407,21 @@ void listVolumesUsesCursorPageAndBindsFilters() throws Exception {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.items").isArray())
             .andExpect(jsonPath("$.next").value("next-volume"));
-    verify(service).listVolumes(
-            argThat(criteria -> criteria.fondsCode().equals("F001")
-                    && criteria.categoryCode().equals("ACCOUNTING")),
-            any(PageRequest.class),
-            eq(8L));
+    verify(service).listVolumes("F001", "ACCOUNTING", any(PageRequest.class), eq(8L));
 }
 
 @Test
-void searchItemsPassesVolumeIdIntoDatabaseCriteria() {
+void listVolumesUsesRestrictionAndStableOrder() {
+    service.listVolumes("F001", "ACCOUNTING", PageRequest.ofSize(100), 8L);
+
+    verify(volumeRepository).find(
+            any(Restriction.class),
+            any(PageRequest.class),
+            eq(Order.by(_ArchiveVolume.createdAt.desc(), _ArchiveVolume.id.desc())));
+}
+
+@Test
+void searchItemsPassesVolumeIdIntoMyBatisCriteria() {
     service.searchItems(
             searchRequest(7L, 12L), 8L, PageRequest.ofSize(100));
     verify(archiveMapper).searchDynamicItems(
@@ -421,14 +432,28 @@ void searchItemsPassesVolumeIdIntoDatabaseCriteria() {
 - [ ] **Step 2: 运行后端测试并确认按预期失败**
 
 ```bash
-cd server && mise exec -- mvn -q -Dtest=ArchiveVolumeControllerTests,ArchiveVolumePermissionTests,ArchiveItemControllerTests,ArchiveItemQueryServiceBoundaryTests,ArchiveMapperXmlContractTests test
+cd server && mise exec -- mvn -q -Dtest=ArchiveVolumeDataRepositoryTests,ArchiveVolumeControllerTests,ArchiveVolumePermissionTests,ArchiveItemControllerTests,ArchiveItemQueryServiceBoundaryTests,ArchiveMapperXmlContractTests,ArchitectureRulesTest test
 ```
 
-Expected: FAIL，当前案卷 Controller 返回 `CollectionResponse`，Service/Mapper 无游标参数，`SearchArchiveItemsRequest` 无 `volumeId`。
+Expected: FAIL，新 Repository 和测试尚不存在；当前案卷 Controller 返回 `CollectionResponse`，Service 仍逐行过滤 MyBatis 全量结果，`SearchArchiveItemsRequest` 也没有 `volumeId`。
 
-- [ ] **Step 3: 实现后端案卷分页与卷内筛选**
+- [ ] **Step 3: 最小实现 Jakarta Data 案卷列表与 MyBatis 卷内筛选**
 
-`ArchiveVolumeController` 使用项目现有 `PageRequest` 参数解析和 `CursorPageResponse`；`ArchiveVolumeService` 将权限/数据范围编译进 Mapper 条件，不能全量加载后内存过滤。MyBatis 使用全宗、分类、数据范围和 cursor 边界查询，默认 `created_at DESC, id DESC`。`SearchArchiveItemsRequest`、查询 Service、criteria 和 XML 同步增加可空 `volumeId`，由通用 cursor 组件校验查询摘要。
+复用现有固定实体 `ArchiveVolume`，新增 Repository：
+
+```java
+@Repository
+public interface ArchiveVolumeDataRepository extends DataRepository<ArchiveVolume, Long> {
+    @Transactional(readOnly = true)
+    @Find
+    CursoredPage<ArchiveVolume> find(
+            Restriction<ArchiveVolume> restriction,
+            PageRequest pageRequest,
+            Order<ArchiveVolume> order);
+}
+```
+
+`ArchiveVolumeController` 使用项目现有 `PageRequest` 参数解析和 `CursorPageResponse`。`ArchiveVolumeService` 在只读事务内完成权限校验，将请求的全宗/分类和用户可见的全宗分类范围组合为 `Restriction<ArchiveVolume>`，调用 Repository 时固定传入 `Order.by(_ArchiveVolume.createdAt.desc(), _ArchiveVolume.id.desc())`，再用 `CursorPageResponse.from(page, pageRequest, this::toResponse)` 转换；不得向 Controller 暴露 `CursoredPage`，也不得分页后逐行过滤。只迁移列表查询：创建、详情和档号唯一性继续调用现有 MyBatis，`ArchiveMapper.xml` 的 `listArchiveVolumes` 不在本任务修改范围内。`SearchArchiveItemsRequest`、查询 Service、criteria 和 XML 只为卷内档案搜索增加可空 `volumeId`，由通用 cursor 组件校验查询摘要。
 
 - [ ] **Step 4: 写前端 API 失败测试**
 
@@ -478,7 +503,7 @@ export function addArchiveItemToVolume(
 }
 ```
 
-- [ ] **Step 7: 写页面失败测试并实现工作流**
+- [ ] **Step 7: 只编写页面与路由失败测试**
 
 ```ts
 it("按全宗和分类筛选、翻页并打开案卷档案", async () => {
@@ -496,9 +521,19 @@ it("按全宗和分类筛选、翻页并打开案卷档案", async () => {
 });
 ```
 
-页面使用现有 `am-page`、`el-form`、`el-table`、`CursorPagination` 和 Drawer；创建后刷新当前已提交筛选。案卷内档案通过档案查询的 `volumeId` 筛选。
+同时在 `routes.test.ts` 断言 `/archive/volumes`、懒加载页面和 `archive:item:read` 权限元数据。此步骤不创建页面、Drawer 或路由实现。
 
-- [ ] **Step 8: 添加路由并验证**
+- [ ] **Step 8: 运行页面与路由测试并确认 RED**
+
+```bash
+pnpm --filter @archive-management/web test -- ArchiveVolumesPage.test.ts routes.test.ts
+```
+
+Expected: FAIL，案卷页面、Drawer 和 `/archive/volumes` 路由尚不存在。
+
+- [ ] **Step 9: 最小实现页面、Drawer 与路由**
+
+页面使用现有 `am-page`、`el-form`、`el-table`、`CursorPagination` 和 Drawer；创建后刷新当前已提交筛选。案卷内档案通过档案查询的 `volumeId` 筛选。
 
 ```ts
 route(
@@ -511,12 +546,14 @@ route(
 )
 ```
 
+- [ ] **Step 10: 运行后端、前端与架构测试并确认 GREEN**
+
 ```bash
 pnpm --filter @archive-management/web test -- archive-volumes.test.ts ArchiveVolumesPage.test.ts routes.test.ts
-cd server && mise exec -- mvn -q -Dtest=ArchiveVolumeControllerTests,ArchiveVolumePermissionTests,ArchiveItemControllerTests,ArchiveItemQueryServiceBoundaryTests,ArchiveMapperXmlContractTests test
+cd server && mise exec -- mvn -q -Dtest=ArchiveVolumeDataRepositoryTests,ArchiveVolumeControllerTests,ArchiveVolumePermissionTests,ArchiveItemControllerTests,ArchiveItemQueryServiceBoundaryTests,ArchiveMapperXmlContractTests,ArchitectureRulesTest test
 ```
 
-- [ ] **Step 9: 提交案卷页面与后端合同**
+- [ ] **Step 11: 提交案卷页面与后端合同**
 
 ```bash
 git add server/src web/src/shared web/src/pages/archive-volumes web/src/app
@@ -545,6 +582,7 @@ git commit -m "feat: 开发案卷管理工作台"
 **Interfaces:**
 - Consumes: `GET/POST /api/v1/archive-items/{id}/relations` 和 `DELETE /api/v1/archive-items/{id}/relations/{relationId}`。
 - Produces: `GET /api/v1/archive-items/{id}/relations?depth=&limit=&cursor=` → `CursorPageResponse<ArchiveItemRelationResponse>`，固定按 `id ASC` 排序，`depth` 进入 cursor 查询摘要。
+- Internal: 扩展现有 `ArchiveMapper.listItemRelations`，接收由 `ArchiveDataScopeFilter` 编译的 SQL groups 和 cursor 边界，在同一 SQL 中连接目标档案摘要并过滤目标档案；不新增 Repository 或 adapter。
 - Produces: `listArchiveItemRelations`、`createArchiveItemRelation`、`deleteArchiveItemRelation`，前端列表复用现有 `CursorPagination`。
 
 - [ ] **Step 1: 写后端关系游标分页失败测试**
@@ -560,6 +598,18 @@ void listRelationsUsesCursorPageAndBindsDepth() throws Exception {
             .andExpect(jsonPath("$.next").value("next-relation"));
     verify(service).listRelations(eq(1L), eq(1), any(PageRequest.class), eq(8L));
 }
+
+@Test
+void listRelationsFiltersTargetsInsidePagedMapperQuery() {
+    when(dataScopeService.buildItemFilter(8L, 7L, "F001")).thenReturn(targetFilter());
+
+    service.listRelations(1L, 1, PageRequest.ofSize(100), 8L);
+
+    verify(archiveMapper).listItemRelations(
+            eq(1L), argThat(criteria -> criteria.dataScopeGroups().equals(targetGroups())),
+            any(PageRequest.class));
+    verify(archiveItemService, never()).assertItemInDataScope(eq(2L), eq(8L));
+}
 ```
 
 - [ ] **Step 2: 运行后端测试并确认按预期失败**
@@ -568,11 +618,11 @@ void listRelationsUsesCursorPageAndBindsDepth() throws Exception {
 cd server && mise exec -- mvn -q -Dtest=ArchiveItemRelationServiceTests,ArchiveItemControllerTests,ArchiveMapperXmlContractTests test
 ```
 
-Expected: FAIL，当前 Controller 返回 `CollectionResponse`，Service/Mapper 不接受 cursor 边界。
+Expected: FAIL，当前 Controller 返回 `CollectionResponse`，Service/Mapper 不接受 cursor 边界，而且 Service 仍在 Mapper 返回后逐行检查目标档案数据范围。
 
 - [ ] **Step 3: 实现关系游标分页**
 
-Controller 继续显式声明完整 URL，以项目 `PageRequest` 接收 `limit/cursor`；Service 在查询前完成权限和数据范围约束；Mapper 按 `id ASC` 应用 cursor 边界并返回 `CursorPageResponse`。`depth` 保留为业务查询参数并进入 cursor 查询摘要，不新增关系专用分页框架。
+Controller 继续显式声明完整 URL，以项目 `PageRequest` 接收 `limit/cursor`。Service 先校验源档案权限和数据范围，再为目标分类构建 `ArchiveDataScopeFilter` 并沿用现有编译逻辑生成 `ArchiveDataScopeSqlGroup`；扩展同一个 `ArchiveMapper.listItemRelations`，在 SQL 中连接目标档案摘要、应用目标档案数据范围分组，再应用 `rel.id ASC` cursor 边界。Mapper 查询完成后直接组装项目 `CursorPageResponse`，不得再由 Service/Repository 逐行过滤，否则会破坏页容量和 `next` 完整性。`depth` 保留为业务查询参数并进入 cursor 查询摘要；不新增关系 Repository、adapter 或第二份分页状态。
 
 - [ ] **Step 4: 写关系 API 和 Drawer 失败测试**
 
