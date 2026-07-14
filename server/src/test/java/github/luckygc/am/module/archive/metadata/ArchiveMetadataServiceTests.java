@@ -33,12 +33,14 @@ import github.luckygc.am.module.archive.metadata.service.ArchiveCategoryService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveDynamicTableService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveFieldDefinitionService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveFieldLayoutService;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataReferenceService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveClassificationSchemeDto;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveClassificationSchemeRequest;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFondsCategoryScopeRequest;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveUniqueConstraintDto;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveUniqueConstraintRequest;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveClassificationSchemeDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveClassificationSchemeRequest;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFondsCategoryScopeRequest;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveUniqueConstraintDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveUniqueConstraintRequest;
 import github.luckygc.am.module.archive.metadata.service.ArchiveUniqueConstraintService;
 
 @DisplayName("档案元数据服务")
@@ -52,6 +54,7 @@ class ArchiveMetadataServiceTests {
     private ArchiveFieldDataRepository fieldRepository;
     private ArchiveMetadataService service;
     private ArchiveCategoryService categoryService;
+    private ArchiveMetadataReferenceService referenceService;
 
     @BeforeEach
     void setUp() {
@@ -82,16 +85,16 @@ class ArchiveMetadataServiceTests {
                         classificationSchemeRepository,
                         fondsCategoryScopeRepository,
                         categoryRepository);
+        referenceService =
+                new ArchiveMetadataReferenceService(
+                        fondsRepository,
+                        classificationSchemeRepository,
+                        securityLevelRepository,
+                        retentionPeriodRepository);
         service =
                 new ArchiveMetadataService(
                         archiveMapper,
-                        fondsRepository,
-                        classificationSchemeRepository,
-                        fondsCategoryScopeRepository,
-                        categoryRepository,
                         fieldRepository,
-                        securityLevelRepository,
-                        retentionPeriodRepository,
                         fieldDefinitionService,
                         dynamicTableService,
                         fieldLayoutService,
@@ -109,7 +112,7 @@ class ArchiveMetadataServiceTests {
                 .thenAnswer(invocation -> withSchemeId(invocation.getArgument(0), 5L));
 
         ArchiveClassificationSchemeDto response =
-                service.createClassificationScheme(
+                referenceService.createClassificationScheme(
                         new ArchiveClassificationSchemeRequest(
                                 " enterprise_project ", " 企业项目档案分类 ", " 项目制度 ", true, 3),
                         9L);
@@ -127,9 +130,9 @@ class ArchiveMetadataServiceTests {
         when(categoryRepository.insert(org.mockito.ArgumentMatchers.any(ArchiveCategory.class)))
                 .thenAnswer(invocation -> withCategoryId(invocation.getArgument(0), 12L));
 
-        ArchiveMetadataService.ArchiveCategoryDto response =
+        ArchiveMetadataTypes.ArchiveCategoryDto response =
                 categoryService.createCategory(
-                        new ArchiveMetadataService.ArchiveCategoryRequest(
+                        new ArchiveMetadataTypes.ArchiveCategoryRequest(
                                 8L,
                                 "contract",
                                 "合同档案",
@@ -155,7 +158,7 @@ class ArchiveMetadataServiceTests {
         assertThatThrownBy(
                         () ->
                                 categoryService.createCategory(
-                                        new ArchiveMetadataService.ArchiveCategoryRequest(
+                                        new ArchiveMetadataTypes.ArchiveCategoryRequest(
                                                 8L,
                                                 "contract",
                                                 "合同档案",
@@ -186,7 +189,7 @@ class ArchiveMetadataServiceTests {
         when(fondsCategoryScopeRepository.findByFondsCode("F001")).thenReturn(List.of(scope));
         when(categoryRepository.findById(12L)).thenReturn(Optional.of(category));
 
-        List<ArchiveMetadataService.ArchiveCategoryDto> categories =
+        List<ArchiveMetadataTypes.ArchiveCategoryDto> categories =
                 categoryService.listCategoriesForFonds(" F001 ", true);
 
         assertThat(categories).extracting("id").containsExactly(12L);
@@ -211,7 +214,7 @@ class ArchiveMetadataServiceTests {
         when(fondsCategoryScopeRepository.insertAll(org.mockito.ArgumentMatchers.anyList()))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        List<ArchiveMetadataService.ArchiveFondsCategoryScopeDto> result =
+        List<ArchiveMetadataTypes.ArchiveFondsCategoryScopeDto> result =
                 categoryService.saveFondsCategoryScopes(
                         " F001 ", List.of(new ArchiveFondsCategoryScopeRequest(12L, true, 1)), 9L);
 
@@ -230,7 +233,7 @@ class ArchiveMetadataServiceTests {
         fonds.setEnabled(false);
         when(fondsRepository.find("F001")).thenReturn(Optional.of(fonds));
 
-        assertThatThrownBy(() -> service.getEnabledFondsByCode(" F001 "))
+        assertThatThrownBy(() -> referenceService.getEnabledFondsByCode(" F001 "))
                 .isInstanceOf(github.luckygc.am.common.exception.BadRequestException.class)
                 .hasMessageContaining("全宗不可用");
     }
@@ -240,7 +243,7 @@ class ArchiveMetadataServiceTests {
     void getEnabledFondsByCodeShouldRejectMissingFonds() {
         when(fondsRepository.find("F001")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.getEnabledFondsByCode("F001"))
+        assertThatThrownBy(() -> referenceService.getEnabledFondsByCode("F001"))
                 .isInstanceOf(github.luckygc.am.common.exception.BadRequestException.class)
                 .hasMessageContaining("全宗不可用");
     }

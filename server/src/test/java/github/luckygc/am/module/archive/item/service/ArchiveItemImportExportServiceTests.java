@@ -25,8 +25,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.module.archive.ArchiveLevel;
+import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeResolutionTypes.ArchiveDataScopeFilter;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
-import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService.ArchiveDataScopeFilter;
 import github.luckygc.am.module.archive.item.ArchiveItem;
 import github.luckygc.am.module.archive.item.ArchiveItemAudit;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemAuditDataRepository;
@@ -41,16 +41,18 @@ import github.luckygc.am.module.archive.metadata.ArchiveFieldType;
 import github.luckygc.am.module.archive.metadata.ArchiveManagementMode;
 import github.luckygc.am.module.archive.metadata.ArchiveTableStatus;
 import github.luckygc.am.module.archive.metadata.service.ArchiveCategoryService;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataReferenceService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryDto;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFieldDto;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFondsDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveCategoryDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFieldDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFondsDto;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
 
 @DisplayName("档案 Excel 导入导出")
 class ArchiveItemImportExportServiceTests {
 
     private ArchiveMetadataService archiveMetadataService;
+    private ArchiveMetadataReferenceService archiveMetadataReferenceService;
     private ArchiveCategoryService archiveCategoryService;
     private ArchiveItemCommandService archiveItemRoutingService;
     private ArchiveItemQueryService archiveItemQueryService;
@@ -63,6 +65,7 @@ class ArchiveItemImportExportServiceTests {
     @BeforeEach
     void setUp() {
         archiveMetadataService = mock(ArchiveMetadataService.class);
+        archiveMetadataReferenceService = mock(ArchiveMetadataReferenceService.class);
         archiveCategoryService = mock(ArchiveCategoryService.class);
         archiveItemRoutingService = mock(ArchiveItemCommandService.class);
         archiveItemQueryService = mock(ArchiveItemQueryService.class);
@@ -73,6 +76,7 @@ class ArchiveItemImportExportServiceTests {
         importExportService =
                 new ArchiveItemImportExportService(
                         archiveMetadataService,
+                        archiveMetadataReferenceService,
                         archiveCategoryService,
                         archiveItemRoutingService,
                         archiveItemQueryService,
@@ -113,7 +117,7 @@ class ArchiveItemImportExportServiceTests {
         when(archiveCategoryService.getCategory(1L)).thenReturn(category());
         when(archiveMetadataService.listEnabledFields(1L, ArchiveLevel.ITEM))
                 .thenReturn(List.of(textField()));
-        when(archiveMetadataService.getEnabledFondsByCode("F001")).thenReturn(fonds());
+        when(archiveMetadataReferenceService.getEnabledFondsByCode("F001")).thenReturn(fonds());
         when(archiveItemRepository.findByArchiveNo("contract", "A-002")).thenReturn(existingItem());
 
         ArchiveImportResult result =
@@ -144,7 +148,7 @@ class ArchiveItemImportExportServiceTests {
         when(archiveCategoryService.getCategory(1L)).thenReturn(category());
         when(archiveMetadataService.listEnabledFields(1L, ArchiveLevel.ITEM))
                 .thenReturn(List.of(textField()));
-        when(archiveMetadataService.getEnabledFondsByCode("F001")).thenReturn(fonds());
+        when(archiveMetadataReferenceService.getEnabledFondsByCode("F001")).thenReturn(fonds());
 
         ArchiveImportResult result =
                 importExportService.importItems(

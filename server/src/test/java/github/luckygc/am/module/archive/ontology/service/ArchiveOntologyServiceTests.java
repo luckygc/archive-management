@@ -59,6 +59,13 @@ class ArchiveOntologyServiceTests {
         ruleRepository = mock(ArchiveRuleDefinitionDataRepository.class);
         fieldRepository = mock(ArchiveFieldDataRepository.class);
         governanceService = mock(ArchiveGovernanceService.class);
+        ArchiveOntologyRelationService relationService =
+                new ArchiveOntologyRelationService(
+                        objectTypeRepository,
+                        relationTypeRepository,
+                        eventTypeRepository,
+                        ruleRepository,
+                        governanceService);
         service =
                 new ArchiveOntologyService(
                         objectTypeRepository,
@@ -68,7 +75,8 @@ class ArchiveOntologyServiceTests {
                         eventTypeRepository,
                         ruleRepository,
                         fieldRepository,
-                        governanceService);
+                        governanceService,
+                        relationService);
     }
 
     @Test
@@ -78,9 +86,9 @@ class ArchiveOntologyServiceTests {
         when(objectTypeRepository.insert(any(ArchiveOntologyObjectType.class)))
                 .thenAnswer(invocation -> withId(invocation.getArgument(0), 7L));
 
-        ArchiveOntologyService.ArchiveOntologyObjectTypeResponse response =
+        ArchiveOntologyTypes.ArchiveOntologyObjectTypeResponse response =
                 service.createObjectType(
-                        new ArchiveOntologyService.CreateArchiveOntologyObjectTypeRequest(
+                        new ArchiveOntologyTypes.CreateArchiveOntologyObjectTypeRequest(
                                 "case_file", "案件文件", "本地案件对象", true),
                         6L);
 
@@ -168,7 +176,7 @@ class ArchiveOntologyServiceTests {
         mapping.setFixedFieldCode("archive_no");
         when(mappingRepository.findByAttributeTypeId(2L)).thenReturn(List.of(mapping));
 
-        List<ArchiveOntologyService.ArchiveOntologyAttributeMappingResponse> mappings =
+        List<ArchiveOntologyTypes.ArchiveOntologyAttributeMappingResponse> mappings =
                 service.listAttributeMappings(2L);
 
         assertThat(mappings)

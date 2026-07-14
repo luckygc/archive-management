@@ -20,8 +20,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.archive.ArchiveLevel;
+import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeResolutionTypes.ResolvedArchiveDataScope;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
-import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService.ResolvedArchiveDataScope;
 import github.luckygc.am.module.archive.item.service.ArchiveItemReadService;
 import github.luckygc.am.module.archive.item.service.ArchiveVolumeService;
 import github.luckygc.am.module.archive.mapper.ArchiveRuleMapper;
@@ -62,16 +62,20 @@ class ArchiveLocalRuleServiceTests {
         dataScopeService = mock(ArchiveDataScopeService.class);
         archiveItemRoutingService = mock(ArchiveItemReadService.class);
         archiveVolumeService = mock(ArchiveVolumeService.class);
+        ArchiveRuleTraceService traceService =
+                new ArchiveRuleTraceService(
+                        traceRepository,
+                        ruleMapper,
+                        dataScopeService,
+                        archiveItemRoutingService,
+                        archiveVolumeService);
         service =
                 new ArchiveLocalRuleService(
                         ruleRepository,
                         effectRepository,
-                        traceRepository,
                         ruleMapper,
                         attributeTypeRepository,
-                        dataScopeService,
-                        archiveItemRoutingService,
-                        archiveVolumeService,
+                        traceService,
                         JsonMapper.builder().build());
     }
 

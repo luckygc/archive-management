@@ -12,24 +12,16 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.exception.BadRequestException;
-import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.governance.ArchiveGovernanceBindingType;
 import github.luckygc.am.module.archive.governance.service.ArchiveGovernanceService;
 import github.luckygc.am.module.archive.metadata.ArchiveField;
-import github.luckygc.am.module.archive.metadata.ArchiveFieldScope;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveFieldDataRepository;
-import github.luckygc.am.module.archive.ontology.ArchiveOntologyAttributeDataType;
 import github.luckygc.am.module.archive.ontology.ArchiveOntologyAttributeMapping;
 import github.luckygc.am.module.archive.ontology.ArchiveOntologyAttributeMappingKind;
 import github.luckygc.am.module.archive.ontology.ArchiveOntologyAttributeType;
 import github.luckygc.am.module.archive.ontology.ArchiveOntologyCardinality;
-import github.luckygc.am.module.archive.ontology.ArchiveOntologyEventType;
-import github.luckygc.am.module.archive.ontology.ArchiveOntologyMetadataDomain;
 import github.luckygc.am.module.archive.ontology.ArchiveOntologyObjectType;
 import github.luckygc.am.module.archive.ontology.ArchiveOntologyObjectTypeCode;
-import github.luckygc.am.module.archive.ontology.ArchiveOntologyRelationCardinality;
-import github.luckygc.am.module.archive.ontology.ArchiveOntologyRelationDirection;
-import github.luckygc.am.module.archive.ontology.ArchiveOntologyRelationType;
 import github.luckygc.am.module.archive.ontology.repository.ArchiveOntologyAttributeMappingDataRepository;
 import github.luckygc.am.module.archive.ontology.repository.ArchiveOntologyAttributeTypeDataRepository;
 import github.luckygc.am.module.archive.ontology.repository.ArchiveOntologyEventTypeDataRepository;
@@ -38,21 +30,9 @@ import github.luckygc.am.module.archive.ontology.repository.ArchiveOntologyRelat
 import github.luckygc.am.module.archive.rule.repository.ArchiveRuleDefinitionDataRepository;
 
 @Service
-public class ArchiveOntologyService {
+public class ArchiveOntologyService extends ArchiveOntologyTypes {
 
     private static final Pattern CODE_PATTERN = Pattern.compile("[a-zA-Z][a-zA-Z0-9_-]*");
-    private static final List<BuiltinEventType> BUILTIN_EVENTS =
-            List.of(
-                    new BuiltinEventType("CREATED", "创建"),
-                    new BuiltinEventType("UPDATED", "更新"),
-                    new BuiltinEventType("FILED", "归档"),
-                    new BuiltinEventType("TRANSFERRED", "移交"),
-                    new BuiltinEventType("ACCESSED", "利用"),
-                    new BuiltinEventType("DOWNLOADED", "下载"),
-                    new BuiltinEventType("EXPORTED", "导出"),
-                    new BuiltinEventType("CHECKED", "检测"),
-                    new BuiltinEventType("APPRAISED", "鉴定"),
-                    new BuiltinEventType("DISPOSED", "处置"));
 
     private final ArchiveOntologyObjectTypeDataRepository objectTypeRepository;
     private final ArchiveOntologyAttributeTypeDataRepository attributeTypeRepository;
@@ -62,6 +42,7 @@ public class ArchiveOntologyService {
     private final ArchiveRuleDefinitionDataRepository ruleRepository;
     private final ArchiveFieldDataRepository fieldRepository;
     private final ArchiveGovernanceService governanceService;
+    private final ArchiveOntologyRelationService relationService;
 
     public ArchiveOntologyService(
             ArchiveOntologyObjectTypeDataRepository objectTypeRepository,
@@ -71,7 +52,8 @@ public class ArchiveOntologyService {
             ArchiveOntologyEventTypeDataRepository eventTypeRepository,
             ArchiveRuleDefinitionDataRepository ruleRepository,
             ArchiveFieldDataRepository fieldRepository,
-            ArchiveGovernanceService governanceService) {
+            ArchiveGovernanceService governanceService,
+            ArchiveOntologyRelationService relationService) {
         this.objectTypeRepository = objectTypeRepository;
         this.attributeTypeRepository = attributeTypeRepository;
         this.mappingRepository = mappingRepository;
@@ -80,6 +62,7 @@ public class ArchiveOntologyService {
         this.ruleRepository = ruleRepository;
         this.fieldRepository = fieldRepository;
         this.governanceService = governanceService;
+        this.relationService = relationService;
     }
 
     @Transactional(readOnly = true)
@@ -245,149 +228,51 @@ public class ArchiveOntologyService {
 
     @Transactional(readOnly = true)
     public List<ArchiveOntologyRelationTypeResponse> listRelationTypes() {
-        return relationTypeRepository.list().stream().map(this::toRelationTypeResponse).toList();
+        return relationService.listRelationTypes();
     }
 
     @Transactional
     public ArchiveOntologyRelationTypeResponse createRelationType(
             CreateArchiveOntologyRelationTypeRequest request, Long userId) {
-        String code = normalizeCode(request.relationCode(), "relationCode", "关系编码不能为空");
-        String name = requiredText(request.relationName(), "relationName", "关系名称不能为空");
-        if (relationTypeRepository.findByRelationCode(code) != null) {
-            throw new BadRequestException("关系编码已存在", "relationCode", "关系编码已存在");
-        }
-        requireEnabledObjectType(loadObjectType(request.sourceObjectTypeId()));
-        requireEnabledObjectType(loadObjectType(request.targetObjectTypeId()));
-        ArchiveOntologyRelationType relation = new ArchiveOntologyRelationType();
-        relation.setRelationCode(code);
-        relation.setRelationName(name);
-        relation.setSourceObjectTypeId(request.sourceObjectTypeId());
-        relation.setTargetObjectTypeId(request.targetObjectTypeId());
-        relation.setRelationDirection(requireRelationDirection(request.relationDirection()));
-        relation.setCardinality(
-                request.cardinality() == null
-                        ? ArchiveOntologyRelationCardinality.MANY_TO_MANY
-                        : request.cardinality());
-        relation.setDescription(StringUtils.trimToNull(request.description()));
-        relation.setEnabled(request.enabled() == null || request.enabled());
-        return toRelationTypeResponse(relationTypeRepository.insert(relation));
+        return relationService.createRelationType(request, userId);
     }
 
     @Transactional
     public ArchiveOntologyRelationTypeResponse updateRelationType(
             Long relationTypeId, UpdateArchiveOntologyRelationTypeRequest request, Long userId) {
-        ArchiveOntologyRelationType relation =
-                relationTypeRepository
-                        .findById(relationTypeId)
-                        .orElseThrow(() -> notFound("关系类型不存在"));
-        protectOntologyReference(relationTypeId);
-        String code = normalizeCode(request.relationCode(), "relationCode", "关系编码不能为空");
-        String name = requiredText(request.relationName(), "relationName", "关系名称不能为空");
-        ArchiveOntologyRelationType existing = relationTypeRepository.findByRelationCode(code);
-        if (existing != null && !Objects.equals(existing.getId(), relationTypeId)) {
-            throw new BadRequestException("关系编码已存在", "relationCode", "关系编码已存在");
-        }
-        requireEnabledObjectType(loadObjectType(request.sourceObjectTypeId()));
-        requireEnabledObjectType(loadObjectType(request.targetObjectTypeId()));
-        relation.setRelationCode(code);
-        relation.setRelationName(name);
-        relation.setSourceObjectTypeId(request.sourceObjectTypeId());
-        relation.setTargetObjectTypeId(request.targetObjectTypeId());
-        relation.setRelationDirection(requireRelationDirection(request.relationDirection()));
-        relation.setCardinality(
-                request.cardinality() == null
-                        ? ArchiveOntologyRelationCardinality.MANY_TO_MANY
-                        : request.cardinality());
-        relation.setDescription(StringUtils.trimToNull(request.description()));
-        relation.setEnabled(request.enabled() == null || request.enabled());
-        return toRelationTypeResponse(relationTypeRepository.update(relation));
+        return relationService.updateRelationType(relationTypeId, request, userId);
     }
 
     @Transactional
     public void deleteRelationType(Long relationTypeId, Long userId) {
-        ArchiveOntologyRelationType relation =
-                relationTypeRepository
-                        .findById(relationTypeId)
-                        .orElseThrow(() -> notFound("关系类型不存在"));
-        protectOntologyReference(relationTypeId);
-        relationTypeRepository.update(relation);
-        relationTypeRepository.delete(relation);
+        relationService.deleteRelationType(relationTypeId, userId);
     }
 
     @Transactional(readOnly = true)
     public List<ArchiveOntologyEventTypeResponse> listEventTypes() {
-        return eventTypeRepository.list().stream().map(this::toEventTypeResponse).toList();
+        return relationService.listEventTypes();
     }
 
     @Transactional
     public List<ArchiveOntologyEventTypeResponse> initializeBuiltInEventTypes(Long userId) {
-        ArchiveOntologyObjectType objectType =
-                objectTypeRepository.findByTypeCode(
-                        ArchiveOntologyObjectTypeCode.ARCHIVE_ITEM.name());
-        if (objectType == null) {
-            throw new BadRequestException("初始化事件类型前必须先初始化档案条目对象类型");
-        }
-        List<ArchiveOntologyEventType> missing =
-                BUILTIN_EVENTS.stream()
-                        .filter(event -> eventTypeRepository.findByEventCode(event.code()) == null)
-                        .map(event -> builtInEventType(event, objectType.getId()))
-                        .toList();
-        return missing.isEmpty()
-                ? List.of()
-                : eventTypeRepository.insertAll(missing).stream()
-                        .map(this::toEventTypeResponse)
-                        .toList();
+        return relationService.initializeBuiltInEventTypes(userId);
     }
 
     @Transactional
     public ArchiveOntologyEventTypeResponse createEventType(
             CreateArchiveOntologyEventTypeRequest request, Long userId) {
-        String code = normalizeCode(request.eventCode(), "eventCode", "事件编码不能为空");
-        String name = requiredText(request.eventName(), "eventName", "事件名称不能为空");
-        if (eventTypeRepository.findByEventCode(code) != null) {
-            throw new BadRequestException("事件编码已存在", "eventCode", "事件编码已存在");
-        }
-        requireEnabledObjectType(loadObjectType(request.objectTypeId()));
-        ArchiveOntologyEventType eventType = new ArchiveOntologyEventType();
-        eventType.setEventCode(code);
-        eventType.setEventName(name);
-        eventType.setObjectTypeId(request.objectTypeId());
-        eventType.setDescription(StringUtils.trimToNull(request.description()));
-        eventType.setEnabled(request.enabled() == null || request.enabled());
-        return toEventTypeResponse(eventTypeRepository.insert(eventType));
+        return relationService.createEventType(request, userId);
     }
 
     @Transactional
     public ArchiveOntologyEventTypeResponse updateEventType(
             Long eventTypeId, UpdateArchiveOntologyEventTypeRequest request, Long userId) {
-        ArchiveOntologyEventType eventType =
-                eventTypeRepository.findById(eventTypeId).orElseThrow(() -> notFound("事件类型不存在"));
-        protectOntologyReference(eventTypeId);
-        String code = normalizeCode(request.eventCode(), "eventCode", "事件编码不能为空");
-        String name = requiredText(request.eventName(), "eventName", "事件名称不能为空");
-        ArchiveOntologyEventType existing = eventTypeRepository.findByEventCode(code);
-        if (existing != null && !Objects.equals(existing.getId(), eventTypeId)) {
-            throw new BadRequestException("事件编码已存在", "eventCode", "事件编码已存在");
-        }
-        requireEnabledObjectType(loadObjectType(request.objectTypeId()));
-        eventType.setEventCode(code);
-        eventType.setEventName(name);
-        eventType.setObjectTypeId(request.objectTypeId());
-        eventType.setDescription(StringUtils.trimToNull(request.description()));
-        eventType.setEnabled(request.enabled() == null || request.enabled());
-        return toEventTypeResponse(eventTypeRepository.update(eventType));
+        return relationService.updateEventType(eventTypeId, request, userId);
     }
 
     @Transactional
     public void deleteEventType(Long eventTypeId, Long userId) {
-        ArchiveOntologyEventType eventType =
-                eventTypeRepository.findById(eventTypeId).orElseThrow(() -> notFound("事件类型不存在"));
-        if (ruleRepository.countByScopeEventTypeId(eventTypeId) > 0) {
-            throw new BadRequestException("事件类型已被规则引用");
-        }
-        protectOntologyReference(eventTypeId);
-        eventTypeRepository.update(eventType);
-        eventTypeRepository.delete(eventType);
+        relationService.deleteEventType(eventTypeId, userId);
     }
 
     private ArchiveOntologyObjectType builtInObjectType(ArchiveOntologyObjectTypeCode code) {
@@ -397,15 +282,6 @@ public class ArchiveOntologyService {
         objectType.setBuiltinFlag(true);
         objectType.setEnabled(true);
         return objectType;
-    }
-
-    private ArchiveOntologyEventType builtInEventType(BuiltinEventType event, Long objectTypeId) {
-        ArchiveOntologyEventType eventType = new ArchiveOntologyEventType();
-        eventType.setEventCode(event.code());
-        eventType.setEventName(event.name());
-        eventType.setObjectTypeId(objectTypeId);
-        eventType.setEnabled(true);
-        return eventType;
     }
 
     private void applyAttributeFields(
@@ -522,14 +398,6 @@ public class ArchiveOntologyService {
         return mappingKind;
     }
 
-    private ArchiveOntologyRelationDirection requireRelationDirection(
-            @Nullable ArchiveOntologyRelationDirection direction) {
-        if (direction == null) {
-            throw new BadRequestException("关系方向不能为空", "relationDirection", "关系方向不能为空");
-        }
-        return direction;
-    }
-
     private String normalizeCode(@Nullable String value, String field, String message) {
         String code = StringUtils.trimToNull(value);
         if (code == null) {
@@ -599,207 +467,4 @@ public class ArchiveOntologyService {
                 mapping.getComponentFieldCode(),
                 mapping.getProcessFieldCode());
     }
-
-    private ArchiveOntologyRelationTypeResponse toRelationTypeResponse(
-            ArchiveOntologyRelationType relation) {
-        return new ArchiveOntologyRelationTypeResponse(
-                relation.getId(),
-                relation.getRelationCode(),
-                relation.getRelationName(),
-                relation.getSourceObjectTypeId(),
-                relation.getTargetObjectTypeId(),
-                relation.getRelationDirection(),
-                relation.getCardinality(),
-                relation.getDescription(),
-                relation.isEnabled());
-    }
-
-    private ArchiveOntologyEventTypeResponse toEventTypeResponse(
-            ArchiveOntologyEventType eventType) {
-        return new ArchiveOntologyEventTypeResponse(
-                eventType.getId(),
-                eventType.getEventCode(),
-                eventType.getEventName(),
-                eventType.getObjectTypeId(),
-                eventType.getDescription(),
-                eventType.isEnabled());
-    }
-
-    public interface AttributeTypeRequest {
-        String attributeCode();
-
-        String attributeName();
-
-        Long objectTypeId();
-
-        ArchiveOntologyAttributeDataType dataType();
-
-        ArchiveOntologyMetadataDomain metadataDomain();
-
-        @Nullable ArchiveOntologyCardinality cardinality();
-
-        @Nullable Boolean exactSearchable();
-
-        @Nullable Boolean sortable();
-
-        @Nullable Boolean descriptionParticipating();
-
-        @Nullable Boolean referenceCodeParticipating();
-
-        @Nullable Boolean ruleFactVisible();
-
-        @Nullable String description();
-
-        @Nullable Boolean enabled();
-    }
-
-    public record CreateArchiveOntologyObjectTypeRequest(
-            String typeCode,
-            String typeName,
-            @Nullable String description,
-            @Nullable Boolean enabled) {}
-
-    public record UpdateArchiveOntologyObjectTypeRequest(
-            String typeCode,
-            String typeName,
-            @Nullable String description,
-            @Nullable Boolean enabled) {}
-
-    public record ArchiveOntologyObjectTypeResponse(
-            Long id,
-            String typeCode,
-            String typeName,
-            @Nullable String description,
-            boolean builtin,
-            boolean enabled) {}
-
-    public record CreateArchiveOntologyAttributeTypeRequest(
-            String attributeCode,
-            String attributeName,
-            Long objectTypeId,
-            ArchiveOntologyAttributeDataType dataType,
-            ArchiveOntologyMetadataDomain metadataDomain,
-            @Nullable ArchiveOntologyCardinality cardinality,
-            @Nullable Boolean exactSearchable,
-            @Nullable Boolean sortable,
-            @Nullable Boolean descriptionParticipating,
-            @Nullable Boolean referenceCodeParticipating,
-            @Nullable Boolean ruleFactVisible,
-            @Nullable String description,
-            @Nullable Boolean enabled)
-            implements AttributeTypeRequest {}
-
-    public record UpdateArchiveOntologyAttributeTypeRequest(
-            String attributeCode,
-            String attributeName,
-            Long objectTypeId,
-            ArchiveOntologyAttributeDataType dataType,
-            ArchiveOntologyMetadataDomain metadataDomain,
-            @Nullable ArchiveOntologyCardinality cardinality,
-            @Nullable Boolean exactSearchable,
-            @Nullable Boolean sortable,
-            @Nullable Boolean descriptionParticipating,
-            @Nullable Boolean referenceCodeParticipating,
-            @Nullable Boolean ruleFactVisible,
-            @Nullable String description,
-            @Nullable Boolean enabled)
-            implements AttributeTypeRequest {}
-
-    public record ArchiveOntologyAttributeTypeResponse(
-            Long id,
-            String attributeCode,
-            String attributeName,
-            Long objectTypeId,
-            ArchiveOntologyAttributeDataType dataType,
-            ArchiveOntologyMetadataDomain metadataDomain,
-            ArchiveOntologyCardinality cardinality,
-            boolean exactSearchable,
-            boolean sortable,
-            boolean descriptionParticipating,
-            boolean referenceCodeParticipating,
-            boolean ruleFactVisible,
-            @Nullable String description,
-            boolean enabled) {}
-
-    public record CreateArchiveOntologyAttributeMappingRequest(
-            Long attributeTypeId,
-            ArchiveOntologyAttributeMappingKind mappingKind,
-            @Nullable String fixedFieldCode,
-            @Nullable Long categoryId,
-            @Nullable ArchiveLevel archiveLevel,
-            @Nullable ArchiveFieldScope fieldScope,
-            @Nullable Long dynamicFieldId,
-            @Nullable Long lineTableId,
-            @Nullable Long lineFieldId,
-            @Nullable String componentFieldCode,
-            @Nullable String processFieldCode) {}
-
-    public record ArchiveOntologyAttributeMappingResponse(
-            Long id,
-            Long attributeTypeId,
-            ArchiveOntologyAttributeMappingKind mappingKind,
-            @Nullable String fixedFieldCode,
-            @Nullable Long categoryId,
-            @Nullable ArchiveLevel archiveLevel,
-            @Nullable ArchiveFieldScope fieldScope,
-            @Nullable Long dynamicFieldId,
-            @Nullable Long lineTableId,
-            @Nullable Long lineFieldId,
-            @Nullable String componentFieldCode,
-            @Nullable String processFieldCode) {}
-
-    public record CreateArchiveOntologyRelationTypeRequest(
-            String relationCode,
-            String relationName,
-            Long sourceObjectTypeId,
-            Long targetObjectTypeId,
-            ArchiveOntologyRelationDirection relationDirection,
-            @Nullable ArchiveOntologyRelationCardinality cardinality,
-            @Nullable String description,
-            @Nullable Boolean enabled) {}
-
-    public record UpdateArchiveOntologyRelationTypeRequest(
-            String relationCode,
-            String relationName,
-            Long sourceObjectTypeId,
-            Long targetObjectTypeId,
-            ArchiveOntologyRelationDirection relationDirection,
-            @Nullable ArchiveOntologyRelationCardinality cardinality,
-            @Nullable String description,
-            @Nullable Boolean enabled) {}
-
-    public record ArchiveOntologyRelationTypeResponse(
-            Long id,
-            String relationCode,
-            String relationName,
-            Long sourceObjectTypeId,
-            Long targetObjectTypeId,
-            ArchiveOntologyRelationDirection relationDirection,
-            ArchiveOntologyRelationCardinality cardinality,
-            @Nullable String description,
-            boolean enabled) {}
-
-    public record CreateArchiveOntologyEventTypeRequest(
-            String eventCode,
-            String eventName,
-            Long objectTypeId,
-            @Nullable String description,
-            @Nullable Boolean enabled) {}
-
-    public record UpdateArchiveOntologyEventTypeRequest(
-            String eventCode,
-            String eventName,
-            Long objectTypeId,
-            @Nullable String description,
-            @Nullable Boolean enabled) {}
-
-    public record ArchiveOntologyEventTypeResponse(
-            Long id,
-            String eventCode,
-            String eventName,
-            Long objectTypeId,
-            @Nullable String description,
-            boolean enabled) {}
-
-    private record BuiltinEventType(String code, String name) {}
 }

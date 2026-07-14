@@ -27,10 +27,10 @@ import github.luckygc.am.module.archive.metadata.repository.ArchiveCategoryDataR
 import github.luckygc.am.module.archive.metadata.repository.ArchiveClassificationSchemeDataRepository;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveFondsCategoryScopeDataRepository;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveFondsDataRepository;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryDto;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryRequest;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFondsCategoryScopeDto;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFondsCategoryScopeRequest;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveCategoryDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveCategoryRequest;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFondsCategoryScopeDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFondsCategoryScopeRequest;
 
 @Service
 public class ArchiveCategoryService {

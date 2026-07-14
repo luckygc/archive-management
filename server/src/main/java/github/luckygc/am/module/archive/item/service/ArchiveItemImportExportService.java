@@ -30,16 +30,17 @@ import github.luckygc.am.common.api.CursorPageTokenContext;
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.archive.ArchiveLevel;
+import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeResolutionTypes.ArchiveDataScopeFilter;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
-import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService.ArchiveDataScopeFilter;
 import github.luckygc.am.module.archive.item.ArchiveItem;
 import github.luckygc.am.module.archive.item.ArchiveItemAudit;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemAuditDataRepository;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemDataRepository;
 import github.luckygc.am.module.archive.metadata.service.ArchiveCategoryService;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataReferenceService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryDto;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFieldDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveCategoryDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFieldDto;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionCode;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
 
@@ -54,6 +55,7 @@ public class ArchiveItemImportExportService {
     private static final int EXPORT_MAX_ROWS = 5000;
 
     private final ArchiveMetadataService archiveMetadataService;
+    private final ArchiveMetadataReferenceService archiveMetadataReferenceService;
     private final ArchiveCategoryService archiveCategoryService;
     private final ArchiveItemCommandService archiveItemRoutingService;
     private final ArchiveItemQueryService archiveItemQueryService;
@@ -64,6 +66,7 @@ public class ArchiveItemImportExportService {
 
     public ArchiveItemImportExportService(
             ArchiveMetadataService archiveMetadataService,
+            ArchiveMetadataReferenceService archiveMetadataReferenceService,
             ArchiveCategoryService archiveCategoryService,
             ArchiveItemCommandService archiveItemRoutingService,
             ArchiveItemQueryService archiveItemQueryService,
@@ -72,6 +75,7 @@ public class ArchiveItemImportExportService {
             ArchiveItemDataRepository archiveItemRepository,
             ArchiveItemAuditDataRepository auditRepository) {
         this.archiveMetadataService = archiveMetadataService;
+        this.archiveMetadataReferenceService = archiveMetadataReferenceService;
         this.archiveCategoryService = archiveCategoryService;
         this.archiveItemRoutingService = archiveItemRoutingService;
         this.archiveItemQueryService = archiveItemQueryService;
@@ -342,7 +346,7 @@ public class ArchiveItemImportExportService {
             errors.add(new ArchiveImportRowError(row.rowNumber(), HEADER_FONDS_CODE, "全宗不能为空"));
         } else {
             try {
-                archiveMetadataService.getEnabledFondsByCode(request.fondsCode());
+                archiveMetadataReferenceService.getEnabledFondsByCode(request.fondsCode());
             } catch (RuntimeException exception) {
                 errors.add(
                         new ArchiveImportRowError(row.rowNumber(), HEADER_FONDS_CODE, "全宗不存在或已停用"));

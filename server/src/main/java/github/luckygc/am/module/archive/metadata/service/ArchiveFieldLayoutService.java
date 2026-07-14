@@ -17,10 +17,10 @@ import github.luckygc.am.module.archive.metadata.ArchiveFieldLayout;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldScope;
 import github.luckygc.am.module.archive.metadata.ArchiveLayoutSurface;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveFieldLayoutDataRepository;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFieldDto;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFieldLayoutItemDto;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFieldLayoutItemRequest;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFieldLayoutRequest;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFieldDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFieldLayoutItemDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFieldLayoutItemRequest;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFieldLayoutRequest;
 
 @Service
 public class ArchiveFieldLayoutService {

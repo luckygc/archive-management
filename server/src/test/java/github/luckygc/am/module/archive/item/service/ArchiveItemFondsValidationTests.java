@@ -22,8 +22,8 @@ import org.junit.jupiter.api.Test;
 
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.archive.ArchiveLevel;
+import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeResolutionTypes.ArchiveDataScopeFilter;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
-import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService.ArchiveDataScopeFilter;
 import github.luckygc.am.module.archive.governance.service.ArchiveGovernanceService;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemAuditDataRepository;
 import github.luckygc.am.module.archive.item.service.ArchiveItemCommandService.CreateArchiveItemRequest;
@@ -33,8 +33,9 @@ import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.metadata.ArchiveManagementMode;
 import github.luckygc.am.module.archive.metadata.ArchiveTableStatus;
 import github.luckygc.am.module.archive.metadata.service.ArchiveCategoryService;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataReferenceService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveCategoryDto;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
 
 @DisplayName("档案写入全宗校验")
@@ -42,6 +43,7 @@ class ArchiveItemFondsValidationTests {
 
     private ArchiveMapper archiveMapper;
     private ArchiveMetadataService archiveMetadataService;
+    private ArchiveMetadataReferenceService archiveMetadataReferenceService;
     private ArchiveCategoryService archiveCategoryService;
     private ArchiveGovernanceService governanceService;
     private ArchiveItemCommandService archiveItemRoutingService;
@@ -51,6 +53,7 @@ class ArchiveItemFondsValidationTests {
     void setUp() {
         archiveMapper = mock(ArchiveMapper.class);
         archiveMetadataService = mock(ArchiveMetadataService.class);
+        archiveMetadataReferenceService = mock(ArchiveMetadataReferenceService.class);
         archiveCategoryService = mock(ArchiveCategoryService.class);
         governanceService = mock(ArchiveGovernanceService.class);
         ArchiveItemSearchProjectionService searchProjectionService =
@@ -72,6 +75,7 @@ class ArchiveItemFondsValidationTests {
         archiveItemRoutingService =
                 new ArchiveItemCommandService(
                         archiveMetadataService,
+                        archiveMetadataReferenceService,
                         archiveCategoryService,
                         governanceService,
                         archiveMapper,
@@ -85,6 +89,7 @@ class ArchiveItemFondsValidationTests {
                 new ArchiveVolumeService(
                         archiveMapper,
                         archiveMetadataService,
+                        archiveMetadataReferenceService,
                         archiveCategoryService,
                         governanceService,
                         archiveItemReadService,
@@ -98,7 +103,7 @@ class ArchiveItemFondsValidationTests {
         ArchiveCategoryDto category = itemCategory();
         when(archiveCategoryService.getCategory(1L)).thenReturn(category);
         when(archiveMapper.tableExists("am_archive_item_contract")).thenReturn(1);
-        when(archiveMetadataService.getEnabledFondsByCode("F001"))
+        when(archiveMetadataReferenceService.getEnabledFondsByCode("F001"))
                 .thenThrow(new BadRequestException("全宗不可用"));
 
         assertThatThrownBy(
@@ -126,8 +131,8 @@ class ArchiveItemFondsValidationTests {
                         anyInt(),
                         any(),
                         any());
-        verify(archiveMetadataService).getEnabledFondsByCode("F001");
-        verify(archiveMetadataService, never()).getFondsByCode("F001");
+        verify(archiveMetadataReferenceService).getEnabledFondsByCode("F001");
+        verify(archiveMetadataReferenceService, never()).getFondsByCode("F001");
     }
 
     @Test
@@ -141,7 +146,7 @@ class ArchiveItemFondsValidationTests {
                 .thenReturn(List.of());
         when(archiveMapper.loadDynamicRecord(anyString(), eq(10L))).thenReturn(Map.of());
         when(archiveMapper.tableExists("am_archive_item_contract")).thenReturn(1);
-        when(archiveMetadataService.getEnabledFondsByCode("F001"))
+        when(archiveMetadataReferenceService.getEnabledFondsByCode("F001"))
                 .thenThrow(new BadRequestException("全宗不可用"));
 
         assertThatThrownBy(
@@ -167,15 +172,15 @@ class ArchiveItemFondsValidationTests {
                         any(),
                         anyInt(),
                         any());
-        verify(archiveMetadataService).getEnabledFondsByCode("F001");
-        verify(archiveMetadataService, never()).getFondsByCode("F001");
+        verify(archiveMetadataReferenceService).getEnabledFondsByCode("F001");
+        verify(archiveMetadataReferenceService, never()).getFondsByCode("F001");
     }
 
     @Test
     @DisplayName("创建案卷时拒绝停用全宗")
     void createVolumeShouldRejectDisabledFonds() {
         when(archiveCategoryService.getCategory(1L)).thenReturn(volumeCategory());
-        when(archiveMetadataService.getEnabledFondsByCode("F001"))
+        when(archiveMetadataReferenceService.getEnabledFondsByCode("F001"))
                 .thenThrow(new BadRequestException("全宗不可用"));
 
         assertThatThrownBy(
@@ -198,8 +203,8 @@ class ArchiveItemFondsValidationTests {
                         anyInt(),
                         any(),
                         any());
-        verify(archiveMetadataService).getEnabledFondsByCode("F001");
-        verify(archiveMetadataService, never()).getFondsByCode("F001");
+        verify(archiveMetadataReferenceService).getEnabledFondsByCode("F001");
+        verify(archiveMetadataReferenceService, never()).getFondsByCode("F001");
     }
 
     private ArchiveCategoryDto itemCategory() {

@@ -11,8 +11,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.module.archive.metadata.ArchiveFonds;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveFondsDataRepository;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFondsDto;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFondsRequest;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFondsDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFondsRequest;
 
 @Service
 public class ArchiveFondsService {

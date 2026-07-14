@@ -39,9 +39,10 @@ import github.luckygc.am.module.archive.metadata.ArchiveFieldType;
 import github.luckygc.am.module.archive.metadata.ArchiveManagementMode;
 import github.luckygc.am.module.archive.metadata.ArchiveTableStatus;
 import github.luckygc.am.module.archive.metadata.service.ArchiveCategoryService;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataReferenceService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryDto;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFieldDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveCategoryDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFieldDto;
 import github.luckygc.am.module.authentication.AuthenticationUser;
 import github.luckygc.am.module.authentication.repository.AuthenticationUserDataRepository;
 import github.luckygc.am.module.authorization.AuthorizationRole;
@@ -63,6 +64,7 @@ class ArchiveDataScopeServiceTests {
     private AuthenticationUserDataRepository authenticationUserRepository;
     private OrganizationDepartmentService departmentService;
     private ArchiveMetadataService archiveMetadataService;
+    private ArchiveMetadataReferenceService archiveMetadataReferenceService;
     private ArchiveCategoryService archiveCategoryService;
     private ArchiveDataScopeService dataScopeService;
 
@@ -76,9 +78,10 @@ class ArchiveDataScopeServiceTests {
         authenticationUserRepository = mock(AuthenticationUserDataRepository.class);
         departmentService = mock(OrganizationDepartmentService.class);
         archiveMetadataService = mock(ArchiveMetadataService.class);
+        archiveMetadataReferenceService = mock(ArchiveMetadataReferenceService.class);
         archiveCategoryService = mock(ArchiveCategoryService.class);
-        dataScopeService =
-                new ArchiveDataScopeService(
+        ArchiveDataScopeResolver dataScopeResolver =
+                new ArchiveDataScopeResolver(
                         dataScopeRepository,
                         dimensionRepository,
                         subjectRelationRepository,
@@ -88,6 +91,18 @@ class ArchiveDataScopeServiceTests {
                         departmentService,
                         archiveMetadataService,
                         archiveCategoryService);
+        dataScopeService =
+                new ArchiveDataScopeService(
+                        dataScopeRepository,
+                        dimensionRepository,
+                        subjectRelationRepository,
+                        roleRepository,
+                        authenticationUserRepository,
+                        departmentService,
+                        archiveMetadataService,
+                        archiveMetadataReferenceService,
+                        archiveCategoryService,
+                        dataScopeResolver);
     }
 
     @Test
@@ -152,7 +167,7 @@ class ArchiveDataScopeServiceTests {
         when(dataScopeRepository.findById(100L))
                 .thenReturn(Optional.of(scope(100L, ArchiveDataScopeType.ALL, true)));
 
-        ArchiveDataScopeService.ResolvedArchiveDataScope resolved =
+        ArchiveDataScopeResolutionTypes.ResolvedArchiveDataScope resolved =
                 dataScopeService.resolveUserDataScope(7L);
 
         assertThat(resolved.allData()).isTrue();
@@ -167,7 +182,7 @@ class ArchiveDataScopeServiceTests {
         when(userRoleRelationRepository.findByUserId(7L)).thenReturn(List.of(userRole(7L, 1L)));
         when(roleRepository.findById(1L)).thenReturn(Optional.of(role));
 
-        ArchiveDataScopeService.ResolvedArchiveDataScope resolved =
+        ArchiveDataScopeResolutionTypes.ResolvedArchiveDataScope resolved =
                 dataScopeService.resolveUserDataScope(7L);
 
         assertThat(resolved.allData()).isTrue();
@@ -188,7 +203,7 @@ class ArchiveDataScopeServiceTests {
         when(dimensionRepository.findByScopeId(100L)).thenReturn(List.of(dimension));
         when(userRoleRelationRepository.findByUserId(7L)).thenReturn(List.of());
 
-        ArchiveDataScopeService.ResolvedArchiveDataScope resolved =
+        ArchiveDataScopeResolutionTypes.ResolvedArchiveDataScope resolved =
                 dataScopeService.resolveUserDataScope(7L);
 
         assertThat(resolved.empty()).isFalse();
@@ -219,7 +234,7 @@ class ArchiveDataScopeServiceTests {
         when(dimensionRepository.findByScopeId(100L)).thenReturn(List.of(dimension));
         when(userRoleRelationRepository.findByUserId(7L)).thenReturn(List.of());
 
-        ArchiveDataScopeService.ResolvedArchiveDataScope resolved =
+        ArchiveDataScopeResolutionTypes.ResolvedArchiveDataScope resolved =
                 dataScopeService.resolveUserDataScope(7L);
 
         assertThat(resolved.empty()).isFalse();
@@ -239,7 +254,7 @@ class ArchiveDataScopeServiceTests {
         when(departmentService.getDepartment(3L)).thenReturn(department(3L, false));
         when(userRoleRelationRepository.findByUserId(7L)).thenReturn(List.of());
 
-        ArchiveDataScopeService.ResolvedArchiveDataScope resolved =
+        ArchiveDataScopeResolutionTypes.ResolvedArchiveDataScope resolved =
                 dataScopeService.resolveUserDataScope(7L);
 
         assertThat(resolved.empty()).isTrue();
@@ -261,7 +276,7 @@ class ArchiveDataScopeServiceTests {
         when(dataScopeRepository.findById(100L))
                 .thenReturn(Optional.of(scope(100L, ArchiveDataScopeType.CONDITIONAL, false)));
 
-        ArchiveDataScopeService.ResolvedArchiveDataScope resolved =
+        ArchiveDataScopeResolutionTypes.ResolvedArchiveDataScope resolved =
                 dataScopeService.resolveUserDataScope(7L);
 
         assertThat(resolved.empty()).isTrue();
@@ -288,7 +303,7 @@ class ArchiveDataScopeServiceTests {
         when(dataScopeRepository.findById(100L)).thenReturn(Optional.of(scope));
         when(dimensionRepository.findByScopeId(100L)).thenReturn(List.of(dimension));
 
-        ArchiveDataScopeService.ResolvedArchiveDataScope resolved =
+        ArchiveDataScopeResolutionTypes.ResolvedArchiveDataScope resolved =
                 dataScopeService.resolveUserDataScope(7L);
 
         assertThat(resolved.empty()).isFalse();
@@ -315,7 +330,7 @@ class ArchiveDataScopeServiceTests {
                 .thenReturn(List.of(category(10L, null), category(11L, 10L)));
         when(archiveMetadataService.listFields(11L)).thenReturn(List.of());
 
-        ArchiveDataScopeService.ArchiveDataScopeFilter filter =
+        ArchiveDataScopeResolutionTypes.ArchiveDataScopeFilter filter =
                 dataScopeService.buildItemFilter(7L, 11L, null);
 
         assertThat(filter.empty()).isFalse();
@@ -336,7 +351,7 @@ class ArchiveDataScopeServiceTests {
         when(archiveCategoryService.listCategories(true)).thenReturn(List.of(category(11L, null)));
         when(archiveMetadataService.listFields(11L)).thenReturn(List.of());
 
-        ArchiveDataScopeService.ArchiveDataScopeFilter filter =
+        ArchiveDataScopeResolutionTypes.ArchiveDataScopeFilter filter =
                 dataScopeService.buildItemFilter(7L, 11L, null);
 
         assertThat(filter.empty()).isFalse();
@@ -361,7 +376,7 @@ class ArchiveDataScopeServiceTests {
         when(archiveMetadataService.listFields(11L))
                 .thenReturn(List.of(field(20L, 11L, "department", true)));
 
-        ArchiveDataScopeService.ArchiveDataScopeFilter filter =
+        ArchiveDataScopeResolutionTypes.ArchiveDataScopeFilter filter =
                 dataScopeService.buildItemFilter(7L, 11L, null);
 
         assertThat(filter.empty()).isFalse();
@@ -393,7 +408,7 @@ class ArchiveDataScopeServiceTests {
                 .thenReturn(List.of(category(10L, null), category(11L, 10L)));
         when(archiveMetadataService.listFields(11L)).thenReturn(List.of());
 
-        ArchiveDataScopeService.ArchiveDataScopeFilter filter =
+        ArchiveDataScopeResolutionTypes.ArchiveDataScopeFilter filter =
                 dataScopeService.buildItemFilter(7L, 11L, null);
 
         assertThat(filter.empty()).isTrue();

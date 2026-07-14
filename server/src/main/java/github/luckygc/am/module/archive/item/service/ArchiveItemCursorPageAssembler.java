@@ -31,7 +31,7 @@ import github.luckygc.am.module.archive.mapper.ArchiveSqlCondition;
 import github.luckygc.am.module.archive.mapper.ArchiveSqlOrder;
 import github.luckygc.am.module.archive.mapper.ArchiveSqlOrder.Direction;
 import github.luckygc.am.module.archive.mapper.ArchiveSqlRelatedGroup;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFieldDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFieldDto;
 
 @Service
 class ArchiveItemCursorPageAssembler {

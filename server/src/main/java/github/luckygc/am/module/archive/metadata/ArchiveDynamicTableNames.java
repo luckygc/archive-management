@@ -7,7 +7,7 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import github.luckygc.am.module.archive.ArchiveLevel;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveCategoryDto;
 
 /** 动态档案表命名规则。 */
 public final class ArchiveDynamicTableNames {

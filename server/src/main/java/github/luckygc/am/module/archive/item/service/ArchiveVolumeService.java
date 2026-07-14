@@ -16,16 +16,17 @@ import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.common.security.AuthenticatedUsers;
+import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeResolutionTypes.ArchiveDataScopeFilter;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
-import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService.ArchiveDataScopeFilter;
 import github.luckygc.am.module.archive.governance.service.ArchiveGovernanceService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemReadService.ArchiveItemDto;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.metadata.ArchiveManagementMode;
 import github.luckygc.am.module.archive.metadata.service.ArchiveCategoryService;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataReferenceService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryDto;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFondsDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveCategoryDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFondsDto;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
 
 @Service
@@ -37,6 +38,7 @@ public class ArchiveVolumeService {
 
     private final ArchiveMapper archiveMapper;
     private final ArchiveMetadataService archiveMetadataService;
+    private final ArchiveMetadataReferenceService archiveMetadataReferenceService;
     private final ArchiveCategoryService archiveCategoryService;
     private final ArchiveGovernanceService governanceService;
     private final ArchiveItemReadService archiveItemRoutingService;
@@ -46,6 +48,7 @@ public class ArchiveVolumeService {
     public ArchiveVolumeService(
             ArchiveMapper archiveMapper,
             ArchiveMetadataService archiveMetadataService,
+            ArchiveMetadataReferenceService archiveMetadataReferenceService,
             ArchiveCategoryService archiveCategoryService,
             ArchiveGovernanceService governanceService,
             ArchiveItemReadService archiveItemRoutingService,
@@ -53,6 +56,7 @@ public class ArchiveVolumeService {
             ArchiveDataScopeService dataScopeService) {
         this.archiveMapper = archiveMapper;
         this.archiveMetadataService = archiveMetadataService;
+        this.archiveMetadataReferenceService = archiveMetadataReferenceService;
         this.archiveCategoryService = archiveCategoryService;
         this.governanceService = governanceService;
         this.archiveItemRoutingService = archiveItemRoutingService;
@@ -107,7 +111,8 @@ public class ArchiveVolumeService {
         if (category.managementMode() != ArchiveManagementMode.VOLUME_ITEM) {
             throw new BadRequestException("该分类未启用案卷管理");
         }
-        ArchiveFondsDto fonds = archiveMetadataService.getEnabledFondsByCode(request.fondsCode());
+        ArchiveFondsDto fonds =
+                archiveMetadataReferenceService.getEnabledFondsByCode(request.fondsCode());
         assertProposedVolumeInDataScope(userId, category, fonds.fondsCode());
         int archiveYear =
                 request.archiveYear() == null ? Year.now().getValue() : request.archiveYear();

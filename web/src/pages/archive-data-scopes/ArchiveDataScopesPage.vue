@@ -1,159 +1,33 @@
 <script setup lang="ts">
-import { ElMessage } from "element-plus";
-import type { FormInstance, FormRules } from "element-plus";
-import { computed, onMounted, reactive, ref, watch } from "vue";
-
 import {
-    createArchiveDataScope,
-    getCurrentUserPermissions,
-    listArchiveDataScopeFields,
-    listArchiveDataScopes,
-    updateArchiveDataScope,
-} from "@/shared/api/authorization";
-import {
-    listArchiveCategories,
-    listArchiveFonds,
-    listArchiveRetentionPeriods,
-    listArchiveSecurityLevels,
-} from "@/shared/api/archive-metadata";
-import type {
-    ArchiveCategoryDto,
-    ArchiveFieldDto,
-    ArchiveFondsDto,
-    ArchiveRetentionPeriodDto,
-    ArchiveSecurityLevelDto,
-} from "@/shared/types/archive-metadata";
-import type {
-    ArchiveDataScopeDto,
-    ArchiveDataScopeDynamicFieldCondition,
-    ArchiveDataScopeRequest,
-} from "@/shared/types/authorization";
+    archiveDataScopeConditionText as conditionText,
+    archiveDataScopeFieldOptions as fieldOptions,
+} from "./archiveDataScopeForm";
+import { useArchiveDataScopes } from "./useArchiveDataScopes";
 
-type DynamicFieldForm = Partial<ArchiveDataScopeDynamicFieldCondition> & { values: string[] };
-type ScopeFormValues = Omit<ArchiveDataScopeRequest, "dynamicCondition"> & {
-    fondsCodes: string[];
-    categoryIds: number[];
-    securityLevelIds: number[];
-    retentionPeriodIds: number[];
-    includeCategoryDescendants: boolean;
-    dynamicFields: DynamicFieldForm[];
-};
-
-const scopes = ref<ArchiveDataScopeDto[]>([]);
-const fonds = ref<ArchiveFondsDto[]>([]);
-const categories = ref<ArchiveCategoryDto[]>([]);
-const securityLevels = ref<ArchiveSecurityLevelDto[]>([]);
-const retentionPeriods = ref<ArchiveRetentionPeriodDto[]>([]);
-const fieldsByCategory = reactive(new Map<number, ArchiveFieldDto[]>());
-const loadingFieldIds = reactive(new Set<number>());
-const canManageDataScopes = ref(false);
-const loading = ref(false);
-const saving = ref(false);
-const open = ref(false);
-const editing = ref<ArchiveDataScopeDto>();
-const formRef = ref<FormInstance>();
-const form = reactive<ScopeFormValues>(emptyForm());
-const rules: FormRules<ScopeFormValues> = {
-    scopeCode: [{ required: true, message: "请输入范围编码", trigger: "blur" }],
-    scopeName: [{ required: true, message: "请输入范围名称", trigger: "blur" }],
-    scopeType: [{ required: true, message: "请选择范围类型", trigger: "change" }],
-};
-const conditional = computed(() => form.scopeType !== "ALL");
-
-async function loadPage() {
-    loading.value = true;
-    const results = await Promise.allSettled([
-        listArchiveDataScopes(false),
-        getCurrentUserPermissions(),
-        listArchiveFonds(true),
-        listArchiveCategories(true),
-        listArchiveSecurityLevels(true),
-        listArchiveRetentionPeriods(true),
-    ]);
-    const [
-        scopeResult,
-        permissionResult,
-        fondsResult,
-        categoryResult,
-        securityResult,
-        retentionResult,
-    ] = results;
-    if (scopeResult?.status === "fulfilled") scopes.value = scopeResult.value.items;
-    else ElMessage.error("数据范围加载失败");
-    if (permissionResult?.status === "fulfilled") {
-        canManageDataScopes.value = permissionResult.value.permissionCodes.includes(
-            "archive:data-scope:manage",
-        );
-    }
-    if (fondsResult?.status === "fulfilled") fonds.value = fondsResult.value.items;
-    if (categoryResult?.status === "fulfilled") categories.value = categoryResult.value.items;
-    if (securityResult?.status === "fulfilled") securityLevels.value = securityResult.value.items;
-    if (retentionResult?.status === "fulfilled")
-        retentionPeriods.value = retentionResult.value.items;
-    loading.value = false;
-}
-
-async function loadFields(categoryId?: number) {
-    if (!categoryId || fieldsByCategory.has(categoryId) || loadingFieldIds.has(categoryId)) return;
-    loadingFieldIds.add(categoryId);
-    try {
-        fieldsByCategory.set(categoryId, (await listArchiveDataScopeFields(categoryId)).items);
-    } catch (error) {
-        ElMessage.error(error instanceof Error ? error.message : "字段加载失败");
-    } finally {
-        loadingFieldIds.delete(categoryId);
-    }
-}
-
-function createScope() {
-    editing.value = undefined;
-    Object.assign(form, emptyForm());
-    formRef.value?.clearValidate();
-    open.value = true;
-}
-
-function editScope(value: unknown) {
-    const row = value as ArchiveDataScopeDto;
-    editing.value = row;
-    Object.assign(form, toFormValues(row));
-    for (const item of form.dynamicFields) void loadFields(item.categoryId);
-    formRef.value?.clearValidate();
-    open.value = true;
-}
-
-function closeDrawer() {
-    open.value = false;
-    editing.value = undefined;
-    Object.assign(form, emptyForm());
-    formRef.value?.resetFields();
-}
-
-function addDynamicField() {
-    form.dynamicFields.push({ operator: "EQ", values: [] });
-}
-
-async function submit() {
-    if (!(await formRef.value?.validate().catch(() => false))) return;
-    saving.value = true;
-    try {
-        const request = toRequest(form);
-        if (editing.value) await updateArchiveDataScope(editing.value.id, request);
-        else await createArchiveDataScope(request);
-        ElMessage.success("数据范围已保存");
-        closeDrawer();
-        scopes.value = (await listArchiveDataScopes(false)).items;
-    } catch (error) {
-        ElMessage.error(error instanceof Error ? error.message : "保存失败");
-    } finally {
-        saving.value = false;
-    }
-}
-
-watch(
-    () => form.dynamicFields.map((item) => item.categoryId),
-    (categoryIds) => categoryIds.forEach((categoryId) => void loadFields(categoryId)),
-);
-onMounted(loadPage);
+const {
+    addDynamicField,
+    canManageDataScopes,
+    categories,
+    closeDrawer,
+    conditional,
+    createScope,
+    editScope,
+    editing,
+    fieldsByCategory,
+    fonds,
+    form,
+    formRef,
+    loading,
+    loadingFieldIds,
+    open,
+    retentionPeriods,
+    rules,
+    saving,
+    scopes,
+    securityLevels,
+    submit,
+} = useArchiveDataScopes();
 </script>
 
 <template>
@@ -347,123 +221,6 @@ onMounted(loadPage);
         </el-drawer>
     </section>
 </template>
-
-<script lang="ts">
-type ScopeHelperValues = Omit<ArchiveDataScopeRequest, "dynamicCondition"> & {
-    fondsCodes: string[];
-    categoryIds: number[];
-    securityLevelIds: number[];
-    retentionPeriodIds: number[];
-    includeCategoryDescendants: boolean;
-    dynamicFields: Array<Partial<ArchiveDataScopeDynamicFieldCondition> & { values: string[] }>;
-};
-
-function emptyForm(): ScopeHelperValues {
-    return {
-        scopeCode: "",
-        scopeName: "",
-        scopeType: "CONDITIONAL",
-        dimensions: [],
-        enabled: true,
-        fondsCodes: [],
-        categoryIds: [],
-        securityLevelIds: [],
-        retentionPeriodIds: [],
-        includeCategoryDescendants: false,
-        dynamicFields: [],
-    };
-}
-
-function fieldOptions(fields?: ArchiveFieldDto[]) {
-    return (fields ?? [])
-        .filter((field) => field.fieldSource !== "BUILTIN")
-        .map((field) => ({ label: field.fieldName, value: field.fieldCode }));
-}
-
-function toRequest(values: ScopeHelperValues): ArchiveDataScopeRequest {
-    if (values.scopeType === "ALL") {
-        return {
-            scopeCode: values.scopeCode,
-            scopeName: values.scopeName,
-            scopeType: values.scopeType,
-            dimensions: [],
-            dynamicCondition: undefined,
-            enabled: values.enabled,
-            description: values.description,
-        };
-    }
-    return {
-        scopeCode: values.scopeCode,
-        scopeName: values.scopeName,
-        scopeType: values.scopeType,
-        dimensions: [
-            ...values.fondsCodes.map((targetCode) => ({
-                dimensionType: "FONDS" as const,
-                targetCode,
-                includeDescendants: false,
-            })),
-            ...values.categoryIds.map((targetId) => ({
-                dimensionType: "CATEGORY" as const,
-                targetId,
-                includeDescendants: values.includeCategoryDescendants,
-            })),
-            ...values.securityLevelIds.map((targetId) => ({
-                dimensionType: "SECURITY_LEVEL" as const,
-                targetId,
-                includeDescendants: false,
-            })),
-            ...values.retentionPeriodIds.map((targetId) => ({
-                dimensionType: "RETENTION_PERIOD" as const,
-                targetId,
-                includeDescendants: false,
-            })),
-        ],
-        dynamicCondition:
-            values.dynamicFields.length > 0
-                ? { dynamicFields: values.dynamicFields as ArchiveDataScopeDynamicFieldCondition[] }
-                : undefined,
-        enabled: values.enabled,
-        description: values.description,
-    };
-}
-
-function toFormValues(row: ArchiveDataScopeDto): ScopeHelperValues {
-    return {
-        scopeCode: row.scopeCode,
-        scopeName: row.scopeName,
-        scopeType: row.scopeType,
-        enabled: row.enabled,
-        description: row.description,
-        dimensions: row.dimensions,
-        fondsCodes: row.dimensions
-            .filter((item) => item.dimensionType === "FONDS")
-            .flatMap((item) => (item.targetCode ? [item.targetCode] : [])),
-        categoryIds: row.dimensions
-            .filter((item) => item.dimensionType === "CATEGORY")
-            .flatMap((item) => (typeof item.targetId === "number" ? [item.targetId] : [])),
-        securityLevelIds: row.dimensions
-            .filter((item) => item.dimensionType === "SECURITY_LEVEL")
-            .flatMap((item) => (typeof item.targetId === "number" ? [item.targetId] : [])),
-        retentionPeriodIds: row.dimensions
-            .filter((item) => item.dimensionType === "RETENTION_PERIOD")
-            .flatMap((item) => (typeof item.targetId === "number" ? [item.targetId] : [])),
-        includeCategoryDescendants: row.dimensions.some(
-            (item) => item.dimensionType === "CATEGORY" && item.includeDescendants,
-        ),
-        dynamicFields: row.dynamicCondition?.dynamicFields.map((item) => ({ ...item })) ?? [],
-    };
-}
-
-function conditionText(value: unknown) {
-    const row = value as ArchiveDataScopeDto;
-    if (row.scopeType === "ALL") return "*";
-    const dimensions = row.dimensions.map((item) => item.dimensionType).join("、");
-    const dynamicCount = row.dynamicCondition?.dynamicFields.length ?? 0;
-    return [dimensions, dynamicCount > 0 ? `动态字段 ${dynamicCount} 条` : undefined]
-        .filter(Boolean)
-        .join("；");
-}
-</script>
 
 <style scoped>
 .scope-field {

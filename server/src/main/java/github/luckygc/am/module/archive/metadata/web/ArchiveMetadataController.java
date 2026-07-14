@@ -22,25 +22,26 @@ import github.luckygc.am.module.archive.metadata.ArchiveFieldScope;
 import github.luckygc.am.module.archive.metadata.ArchiveLayoutSurface;
 import github.luckygc.am.module.archive.metadata.service.ArchiveCategoryService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveFondsService;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataReferenceService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryDto;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryRequest;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveClassificationSchemeDto;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveClassificationSchemeRequest;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFieldDto;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFieldLayoutDto;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFieldLayoutRequest;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFieldRequest;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFondsCategoryScopeDto;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFondsCategoryScopeRequest;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFondsDto;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFondsRequest;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveRetentionPeriodDto;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveSecurityLevelDto;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveUniqueConstraintDto;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveUniqueConstraintRequest;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.UpdateArchiveRetentionPeriodRequest;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.UpdateArchiveSecurityLevelRequest;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveCategoryDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveCategoryRequest;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveClassificationSchemeDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveClassificationSchemeRequest;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFieldDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFieldLayoutDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFieldLayoutRequest;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFieldRequest;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFondsCategoryScopeDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFondsCategoryScopeRequest;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFondsDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFondsRequest;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveRetentionPeriodDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveSecurityLevelDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveUniqueConstraintDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveUniqueConstraintRequest;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.UpdateArchiveRetentionPeriodRequest;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.UpdateArchiveSecurityLevelRequest;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionCode;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
 
@@ -48,6 +49,7 @@ import github.luckygc.am.module.authorization.service.AuthorizationPermissionSer
 public class ArchiveMetadataController {
 
     private final ArchiveMetadataService archiveMetadataService;
+    private final ArchiveMetadataReferenceService archiveMetadataReferenceService;
     private final ArchiveCategoryService archiveCategoryService;
     private final ArchiveFondsService archiveFondsService;
     private final ArchiveItemSearchProjectionService searchProjectionService;
@@ -55,11 +57,13 @@ public class ArchiveMetadataController {
 
     public ArchiveMetadataController(
             ArchiveMetadataService archiveMetadataService,
+            ArchiveMetadataReferenceService archiveMetadataReferenceService,
             ArchiveCategoryService archiveCategoryService,
             ArchiveFondsService archiveFondsService,
             ArchiveItemSearchProjectionService searchProjectionService,
             AuthorizationPermissionService permissionService) {
         this.archiveMetadataService = archiveMetadataService;
+        this.archiveMetadataReferenceService = archiveMetadataReferenceService;
         this.archiveCategoryService = archiveCategoryService;
         this.archiveFondsService = archiveFondsService;
         this.searchProjectionService = searchProjectionService;
@@ -118,7 +122,8 @@ public class ArchiveMetadataController {
     @GetMapping("/api/v1/archive-classification-schemes")
     public CollectionResponse<ArchiveClassificationSchemeDto> listClassificationSchemes(
             Boolean enabled) {
-        return CollectionResponse.of(archiveMetadataService.listClassificationSchemes(enabled));
+        return CollectionResponse.of(
+                archiveMetadataReferenceService.listClassificationSchemes(enabled));
     }
 
     @PostMapping("/api/v1/archive-classification-schemes")
@@ -126,7 +131,7 @@ public class ArchiveMetadataController {
     public ArchiveClassificationSchemeDto createClassificationScheme(
             @RequestBody ArchiveClassificationSchemeRequest request,
             Authentication authentication) {
-        return archiveMetadataService.createClassificationScheme(
+        return archiveMetadataReferenceService.createClassificationScheme(
                 request, requireMetadataManage(authentication));
     }
 
@@ -135,13 +140,13 @@ public class ArchiveMetadataController {
             @PathVariable Long id,
             @RequestBody ArchiveClassificationSchemeRequest request,
             Authentication authentication) {
-        return archiveMetadataService.updateClassificationScheme(
+        return archiveMetadataReferenceService.updateClassificationScheme(
                 id, request, requireMetadataManage(authentication));
     }
 
     @GetMapping("/api/v1/archive-security-levels")
     public CollectionResponse<ArchiveSecurityLevelDto> listSecurityLevels(Boolean enabled) {
-        return CollectionResponse.of(archiveMetadataService.listSecurityLevels(enabled));
+        return CollectionResponse.of(archiveMetadataReferenceService.listSecurityLevels(enabled));
     }
 
     @PatchMapping("/api/v1/archive-security-levels/{id}")
@@ -150,12 +155,12 @@ public class ArchiveMetadataController {
             @RequestBody UpdateArchiveSecurityLevelRequest request,
             Authentication authentication) {
         requireMetadataManage(authentication);
-        return archiveMetadataService.updateSecurityLevel(id, request);
+        return archiveMetadataReferenceService.updateSecurityLevel(id, request);
     }
 
     @GetMapping("/api/v1/archive-retention-periods")
     public CollectionResponse<ArchiveRetentionPeriodDto> listRetentionPeriods(Boolean enabled) {
-        return CollectionResponse.of(archiveMetadataService.listRetentionPeriods(enabled));
+        return CollectionResponse.of(archiveMetadataReferenceService.listRetentionPeriods(enabled));
     }
 
     @PatchMapping("/api/v1/archive-retention-periods/{id}")
@@ -164,7 +169,7 @@ public class ArchiveMetadataController {
             @RequestBody UpdateArchiveRetentionPeriodRequest request,
             Authentication authentication) {
         requireMetadataManage(authentication);
-        return archiveMetadataService.updateRetentionPeriod(id, request);
+        return archiveMetadataReferenceService.updateRetentionPeriod(id, request);
     }
 
     @GetMapping("/api/v1/archive-categories")

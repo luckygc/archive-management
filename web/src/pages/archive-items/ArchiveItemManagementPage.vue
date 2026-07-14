@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Download, Plus, Refresh, Upload } from "@element-plus/icons-vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { computed, reactive, ref } from "vue";
 
@@ -24,8 +23,10 @@ import { toSearchQuery } from "@/pages/archive-library/archiveQuery";
 import ArchiveResultTable from "@/pages/archive-library/ArchiveResultTable.vue";
 import { normalizeArchiveRecordFormValues } from "@/pages/archive-library/DynamicArchiveFields.vue";
 import { useArchiveItemResources } from "./useArchiveItemResources";
+import ArchiveItemActions from "./ArchiveItemActions.vue";
 import ArchiveItemResourcesDrawer from "./ArchiveItemResourcesDrawer.vue";
 import ArchiveItemEditorDrawer from "./ArchiveItemEditorDrawer.vue";
+import { downloadFromLink } from "./downloadFromLink";
 import { useArchiveItemSearch } from "./useArchiveItemSearch";
 
 const permissionStore = usePermissionStore();
@@ -60,7 +61,6 @@ const editorForm = reactive({
     electronicStatus: "DRAFT" as ArchiveElectronicStatus,
     dynamicFields: {} as Record<string, unknown>,
 });
-const importInput = ref<HTMLInputElement>();
 const downloadingTemplate = ref(false);
 const importing = ref(false);
 const exporting = ref(false);
@@ -84,30 +84,23 @@ const {
     unbindFile,
     uploading,
     uploadElectronicFile,
-} = useArchiveItemResources(openLink);
+} = useArchiveItemResources(downloadFromLink);
 
 const editorFields = computed(() =>
     editorState.value?.mode === "create" ? fields.value : (editorDetail.value?.fields ?? []),
 );
-function openLink(href: string) {
-    const anchor = document.createElement("a");
-    anchor.href = href;
-    anchor.click();
-}
 async function downloadTemplate() {
     if (!queryForm.categoryId) return ElMessage.warning("请先选择档案分类");
     downloadingTemplate.value = true;
     try {
-        openLink((await downloadArchiveImportTemplate(queryForm.categoryId)).href);
+        downloadFromLink((await downloadArchiveImportTemplate(queryForm.categoryId)).href);
     } catch (error) {
         ElMessage.error(error instanceof Error ? error.message : "下载模板失败");
     } finally {
         downloadingTemplate.value = false;
     }
 }
-async function importFile(event: Event) {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
+async function importFile(file: File) {
     if (!file || !queryForm.categoryId) return;
     importing.value = true;
     try {
@@ -128,14 +121,13 @@ async function importFile(event: Event) {
         ElMessage.error(errorMessage(error, "导入档案失败"));
     } finally {
         importing.value = false;
-        input.value = "";
     }
 }
 async function exportCurrent() {
     const query = committedQuery.value ?? { ...toSearchQuery(queryForm), keyword: undefined };
     exporting.value = true;
     try {
-        openLink(
+        downloadFromLink(
             (
                 await exportArchiveRecords({
                     ...query,
@@ -225,40 +217,20 @@ async function saveRecord() {
     <section class="am-page">
         <div class="am-page__header">
             <h1>档案管理</h1>
-            <div>
-                <el-button :icon="Refresh" @click="refresh">刷新</el-button
-                ><el-button
-                    :disabled="!queryForm.categoryId || !canImport || downloadingTemplate"
-                    :loading="downloadingTemplate"
-                    :icon="Download"
-                    @click="downloadTemplate"
-                    >导入模板</el-button
-                ><el-button
-                    :disabled="!queryForm.categoryId || !canImport || importing"
-                    :loading="importing"
-                    :icon="Upload"
-                    @click="importInput?.click()"
-                    >导入</el-button
-                ><input
-                    ref="importInput"
-                    hidden
-                    type="file"
-                    accept=".xlsx"
-                    @change="importFile"
-                /><el-button
-                    :disabled="!canExport || exporting"
-                    :loading="exporting"
-                    :icon="Download"
-                    @click="exportCurrent"
-                    >导出</el-button
-                ><el-button
-                    :disabled="!canCreate || !queryForm.categoryId"
-                    :icon="Plus"
-                    type="primary"
-                    @click="openCreateEditor"
-                    >新建档案</el-button
-                >
-            </div>
+            <ArchiveItemActions
+                :category-selected="Boolean(queryForm.categoryId)"
+                :can-import="canImport"
+                :can-export="canExport"
+                :can-create="canCreate"
+                :downloading-template="downloadingTemplate"
+                :importing="importing"
+                :exporting="exporting"
+                @refresh="refresh"
+                @download-template="downloadTemplate"
+                @import-file="importFile"
+                @export="exportCurrent"
+                @create="openCreateEditor"
+            />
         </div>
         <el-collapse class="am-page__filter" :model-value="['query']"
             ><el-collapse-item title="高级筛选条件" name="query"

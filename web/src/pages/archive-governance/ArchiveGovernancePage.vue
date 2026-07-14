@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ElMessage, ElMessageBox, type FormInstance } from "element-plus";
+import { ElMessage, ElMessageBox } from "element-plus";
 import { computed, onMounted, ref, watch } from "vue";
 
 import {
@@ -14,31 +14,18 @@ import {
     updateArchiveGovernanceScheme,
 } from "@/shared/api/archive-governance";
 import type {
-    ArchiveGovernanceBindingType,
     ArchiveGovernanceSchemeDto,
     ArchiveGovernanceSchemeVersionDto,
     ArchiveGovernanceSchemeVersionStatus,
-    ArchiveGovernanceScopeType,
 } from "@/shared/types/archive-governance";
-import { useArchiveGovernanceWorkbench } from "./useArchiveGovernanceWorkbench";
+import ArchiveGovernanceDialogs from "./ArchiveGovernanceDialogs.vue";
+import ArchiveGovernanceWorkbench from "./ArchiveGovernanceWorkbench.vue";
 
 const statusLabels: Record<ArchiveGovernanceSchemeVersionStatus, string> = {
     DRAFT: "草稿",
     PUBLISHED: "已发布",
     FROZEN: "已冻结",
     RETIRED: "已退役",
-};
-const scopeTypeLabels: Record<ArchiveGovernanceScopeType, string> = {
-    GLOBAL: "全局默认",
-    FONDS: "全宗",
-    CATEGORY: "分类",
-};
-const bindingTypeLabels: Record<ArchiveGovernanceBindingType, string> = {
-    ONTOLOGY: "本体",
-    RULE_SET: "规则集",
-    CLASSIFICATION_SCHEME: "分类方案",
-    DESCRIPTION_PROFILE: "著录方案",
-    REFERENCE_CODE_RULE: "档号规则",
 };
 const schemes = ref<ArchiveGovernanceSchemeDto[]>([]);
 const versions = ref<ArchiveGovernanceSchemeVersionDto[]>([]);
@@ -50,8 +37,6 @@ const schemeModalOpen = ref(false);
 const versionModalOpen = ref(false);
 const submitting = ref(false);
 const editingScheme = ref<ArchiveGovernanceSchemeDto>();
-const schemeFormRef = ref<FormInstance>();
-const versionFormRef = ref<FormInstance>();
 const schemeForm = ref({
     schemeCode: "",
     schemeName: "",
@@ -60,32 +45,18 @@ const schemeForm = ref({
     sortOrder: 0,
 });
 const versionForm = ref({ versionCode: "v1", versionDescription: "" });
-const {
-    bindingDrafts,
-    changeScopeType,
-    nextDraftKey,
-    resolvedVersion,
-    resolveDefault,
-    resolveForm,
-    resolving,
-    saveBindings,
-    saveScopes,
-    savingBindings,
-    savingScopes,
-    scopeDrafts,
-    workbenchLoading,
-} = useArchiveGovernanceWorkbench(selectedVersionId);
 const selectedVersion = computed(() =>
     versions.value.find((item) => item.id === selectedVersionId.value),
 );
-const selectedVersionReadonly = computed(() => selectedVersion.value?.status !== "DRAFT");
 
 async function loadSchemes(preferredId?: number) {
     schemesLoading.value = true;
     try {
         schemes.value = (await listArchiveGovernanceSchemes()).items;
-        const validPreferred = preferredId && schemes.value.some((item) => item.id === preferredId);
-        selectedSchemeId.value = validPreferred ? preferredId : schemes.value[0]?.id;
+        selectedSchemeId.value =
+            preferredId && schemes.value.some((item) => item.id === preferredId)
+                ? preferredId
+                : schemes.value[0]?.id;
     } catch (error) {
         ElMessage.error((error as Error).message);
     } finally {
@@ -111,13 +82,6 @@ async function loadVersions(preferredId?: number) {
         versionsLoading.value = false;
     }
 }
-watch(selectedSchemeId, () => {
-    selectedVersionId.value = undefined;
-    resolvedVersion.value = undefined;
-    void loadVersions();
-});
-onMounted(() => void loadSchemes());
-
 function openCreateScheme() {
     editingScheme.value = undefined;
     schemeForm.value = {
@@ -142,7 +106,6 @@ function openEditScheme(value: unknown) {
     schemeModalOpen.value = true;
 }
 async function submitScheme() {
-    if (!(await schemeFormRef.value?.validate().catch(() => false))) return;
     submitting.value = true;
     try {
         const payload = {
@@ -173,8 +136,7 @@ async function removeScheme(value: unknown) {
     }
 }
 async function submitVersion() {
-    if (!selectedSchemeId.value || !(await versionFormRef.value?.validate().catch(() => false)))
-        return;
+    if (!selectedSchemeId.value) return;
     submitting.value = true;
     try {
         const created = await createArchiveGovernanceSchemeVersion(selectedSchemeId.value, {
@@ -208,6 +170,11 @@ function trimToUndefined(value?: string) {
 function statusLabel(status: unknown) {
     return statusLabels[status as ArchiveGovernanceSchemeVersionStatus];
 }
+watch(selectedSchemeId, () => {
+    selectedVersionId.value = undefined;
+    void loadVersions();
+});
+onMounted(() => void loadSchemes());
 </script>
 
 <template>
@@ -215,8 +182,8 @@ function statusLabel(status: unknown) {
         <div class="am-page__header">
             <h1>治理方案</h1>
             <div class="am-page__actions">
-                <el-button type="primary" @click="openCreateScheme">新建方案</el-button
-                ><el-button
+                <el-button type="primary" @click="openCreateScheme">新建方案</el-button>
+                <el-button
                     :disabled="!selectedSchemeId"
                     @click="
                         versionForm = { versionCode: 'v1', versionDescription: '' };
@@ -306,278 +273,26 @@ function statusLabel(status: unknown) {
                 ></el-col
             >
             <el-col :span="24" class="workbench"
-                ><el-card v-loading="workbenchLoading" header="版本工作台" shadow="never"
-                    ><el-empty v-if="!selectedVersion" description="请选择治理方案版本" /><template
-                        v-else
-                    >
-                        <el-descriptions :column="3" border size="small"
-                            ><el-descriptions-item label="版本号">{{
-                                selectedVersion.versionCode
-                            }}</el-descriptions-item
-                            ><el-descriptions-item label="状态"
-                                ><el-tag
-                                    :type="
-                                        selectedVersion.status === 'PUBLISHED' ? 'primary' : 'info'
-                                    "
-                                    >{{ statusLabels[selectedVersion.status] }}</el-tag
-                                ></el-descriptions-item
-                            ><el-descriptions-item label="版本说明">{{
-                                selectedVersion.versionDescription ?? "-"
-                            }}</el-descriptions-item
-                            ><el-descriptions-item label="发布时间">{{
-                                selectedVersion.publishedAt ?? "-"
-                            }}</el-descriptions-item
-                            ><el-descriptions-item label="冻结时间">{{
-                                selectedVersion.frozenAt ?? "-"
-                            }}</el-descriptions-item
-                            ><el-descriptions-item label="退役时间">{{
-                                selectedVersion.retiredAt ?? "-"
-                            }}</el-descriptions-item></el-descriptions
-                        >
-                        <el-divider content-position="left">适用范围</el-divider>
-                        <div class="am-table-toolbar">
-                            <el-button
-                                :disabled="selectedVersionReadonly"
-                                @click="
-                                    scopeDrafts.push({
-                                        draftKey: nextDraftKey(),
-                                        scopeType: 'GLOBAL',
-                                        defaultFlag: true,
-                                    })
-                                "
-                                >新增范围</el-button
-                            ><el-button
-                                type="primary"
-                                :disabled="selectedVersionReadonly"
-                                :loading="savingScopes"
-                                @click="saveScopes"
-                                >保存范围</el-button
-                            >
-                        </div>
-                        <el-table :data="scopeDrafts" row-key="draftKey" size="small"
-                            ><el-table-column label="范围类型" width="150"
-                                ><template #default="{ row }"
-                                    ><el-select
-                                        v-model="row.scopeType"
-                                        :disabled="selectedVersionReadonly"
-                                        @change="changeScopeType(row)"
-                                        ><el-option
-                                            v-for="(label, value) in scopeTypeLabels"
-                                            :key="value"
-                                            :label="label"
-                                            :value="
-                                                value
-                                            " /></el-select></template></el-table-column
-                            ><el-table-column label="全宗编码"
-                                ><template #default="{ row }"
-                                    ><el-input
-                                        v-model="row.fondsCode"
-                                        :disabled="
-                                            selectedVersionReadonly || row.scopeType !== 'FONDS'
-                                        " /></template></el-table-column
-                            ><el-table-column label="分类编码"
-                                ><template #default="{ row }"
-                                    ><el-input
-                                        v-model="row.categoryCode"
-                                        :disabled="
-                                            selectedVersionReadonly || row.scopeType !== 'CATEGORY'
-                                        " /></template></el-table-column
-                            ><el-table-column label="默认" width="90"
-                                ><template #default="{ row }"
-                                    ><el-switch
-                                        v-model="row.defaultFlag"
-                                        :disabled="
-                                            selectedVersionReadonly
-                                        " /></template></el-table-column
-                            ><el-table-column label="操作" width="90"
-                                ><template #default="{ row }"
-                                    ><el-button
-                                        link
-                                        type="danger"
-                                        :disabled="selectedVersionReadonly"
-                                        @click="
-                                            scopeDrafts = scopeDrafts.filter(
-                                                (item) => item.draftKey !== row.draftKey,
-                                            )
-                                        "
-                                        >删除</el-button
-                                    ></template
-                                ></el-table-column
-                            ></el-table
-                        >
-                        <el-divider content-position="left">装配绑定</el-divider>
-                        <div class="am-table-toolbar">
-                            <el-button
-                                :disabled="selectedVersionReadonly"
-                                @click="
-                                    bindingDrafts.push({
-                                        draftKey: nextDraftKey(),
-                                        bindingType: 'ONTOLOGY',
-                                        bindingOrder: 0,
-                                    })
-                                "
-                                >新增绑定</el-button
-                            ><el-button
-                                type="primary"
-                                :disabled="selectedVersionReadonly"
-                                :loading="savingBindings"
-                                @click="saveBindings"
-                                >保存绑定</el-button
-                            >
-                        </div>
-                        <el-table :data="bindingDrafts" row-key="draftKey" size="small"
-                            ><el-table-column label="绑定类型" width="160"
-                                ><template #default="{ row }"
-                                    ><el-select
-                                        v-model="row.bindingType"
-                                        :disabled="selectedVersionReadonly"
-                                        ><el-option
-                                            v-for="(label, value) in bindingTypeLabels"
-                                            :key="value"
-                                            :label="label"
-                                            :value="
-                                                value
-                                            " /></el-select></template></el-table-column
-                            ><el-table-column label="目标类型" width="150"
-                                ><template #default="{ row }"
-                                    ><el-input
-                                        v-model="row.targetType"
-                                        :disabled="
-                                            selectedVersionReadonly
-                                        " /></template></el-table-column
-                            ><el-table-column label="目标 ID" width="130"
-                                ><template #default="{ row }"
-                                    ><el-input-number
-                                        v-model="row.targetId"
-                                        :min="0"
-                                        :disabled="
-                                            selectedVersionReadonly
-                                        " /></template></el-table-column
-                            ><el-table-column label="目标编码"
-                                ><template #default="{ row }"
-                                    ><el-input
-                                        v-model="row.targetCode"
-                                        :disabled="
-                                            selectedVersionReadonly
-                                        " /></template></el-table-column
-                            ><el-table-column label="排序" width="110"
-                                ><template #default="{ row }"
-                                    ><el-input-number
-                                        v-model="row.bindingOrder"
-                                        :disabled="
-                                            selectedVersionReadonly
-                                        " /></template></el-table-column
-                            ><el-table-column label="操作" width="90"
-                                ><template #default="{ row }"
-                                    ><el-button
-                                        link
-                                        type="danger"
-                                        :disabled="selectedVersionReadonly"
-                                        @click="
-                                            bindingDrafts = bindingDrafts.filter(
-                                                (item) => item.draftKey !== row.draftKey,
-                                            )
-                                        "
-                                        >删除</el-button
-                                    ></template
-                                ></el-table-column
-                            ></el-table
-                        >
-                        <el-divider content-position="left">默认解析试算</el-divider
-                        ><el-form :model="resolveForm" inline
-                            ><el-form-item label="全宗编码"
-                                ><el-input
-                                    v-model="resolveForm.fondsCode"
-                                    placeholder="F001" /></el-form-item
-                            ><el-form-item label="分类编码"
-                                ><el-input
-                                    v-model="resolveForm.categoryCode"
-                                    placeholder="case_file" /></el-form-item
-                            ><el-form-item
-                                ><el-button
-                                    type="primary"
-                                    :loading="resolving"
-                                    @click="resolveDefault"
-                                    >解析默认版本</el-button
-                                ></el-form-item
-                            ></el-form
-                        ><el-descriptions v-if="resolvedVersion" :column="3" border size="small"
-                            ><el-descriptions-item label="命中版本">{{
-                                resolvedVersion.versionCode
-                            }}</el-descriptions-item
-                            ><el-descriptions-item label="状态">{{
-                                statusLabels[resolvedVersion.status]
-                            }}</el-descriptions-item
-                            ><el-descriptions-item label="说明">{{
-                                resolvedVersion.versionDescription ?? "-"
-                            }}</el-descriptions-item></el-descriptions
-                        >
-                    </template></el-card
-                ></el-col
-            >
+                ><ArchiveGovernanceWorkbench :selected-version="selectedVersion"
+            /></el-col>
         </el-row>
-        <el-dialog
-            v-model="schemeModalOpen"
-            :title="editingScheme ? '编辑治理方案' : '新建治理方案'"
-            destroy-on-close
-            ><el-form ref="schemeFormRef" :model="schemeForm" label-position="top"
-                ><el-form-item
-                    label="编码"
-                    prop="schemeCode"
-                    :rules="[{ required: true, message: '请输入编码' }]"
-                    ><el-input
-                        v-model="schemeForm.schemeCode"
-                        placeholder="default_governance" /></el-form-item
-                ><el-form-item
-                    label="名称"
-                    prop="schemeName"
-                    :rules="[{ required: true, message: '请输入名称' }]"
-                    ><el-input v-model="schemeForm.schemeName" /></el-form-item
-                ><el-form-item label="说明"
-                    ><el-input
-                        v-model="schemeForm.description"
-                        type="textarea"
-                        :rows="3" /></el-form-item
-                ><el-form-item label="排序"
-                    ><el-input-number v-model="schemeForm.sortOrder" :min="0" /></el-form-item
-                ><el-form-item label="启用"
-                    ><el-switch v-model="schemeForm.enabled" /></el-form-item></el-form
-            ><template #footer
-                ><el-button @click="schemeModalOpen = false">取消</el-button
-                ><el-button type="primary" :loading="submitting" @click="submitScheme"
-                    >确定</el-button
-                ></template
-            ></el-dialog
-        >
-        <el-dialog v-model="versionModalOpen" title="新建治理方案版本" destroy-on-close
-            ><el-form ref="versionFormRef" :model="versionForm" label-position="top"
-                ><el-form-item
-                    label="版本号"
-                    prop="versionCode"
-                    :rules="[{ required: true, message: '请输入版本号' }]"
-                    ><el-input v-model="versionForm.versionCode" placeholder="v1" /></el-form-item
-                ><el-form-item label="版本说明"
-                    ><el-input
-                        v-model="versionForm.versionDescription"
-                        type="textarea"
-                        :rows="3" /></el-form-item></el-form
-            ><template #footer
-                ><el-button @click="versionModalOpen = false">取消</el-button
-                ><el-button type="primary" :loading="submitting" @click="submitVersion"
-                    >确定</el-button
-                ></template
-            ></el-dialog
-        >
+        <ArchiveGovernanceDialogs
+            :scheme-open="schemeModalOpen"
+            :version-open="versionModalOpen"
+            :editing-scheme="editingScheme"
+            :scheme-form="schemeForm"
+            :version-form="versionForm"
+            :submitting="submitting"
+            @close-scheme="schemeModalOpen = false"
+            @close-version="versionModalOpen = false"
+            @submit-scheme="submitScheme"
+            @submit-version="submitVersion"
+        />
     </section>
 </template>
 
 <style scoped>
 .workbench {
     margin-top: 16px;
-}
-.am-table-toolbar {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 12px;
 }
 </style>

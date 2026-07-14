@@ -19,8 +19,8 @@ import org.springframework.web.server.ResponseStatusException;
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.archive.ArchiveLevel;
+import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeResolutionTypes.ArchiveDataScopeFilter;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
-import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService.ArchiveDataScopeFilter;
 import github.luckygc.am.module.archive.governance.service.ArchiveGovernanceService;
 import github.luckygc.am.module.archive.item.ArchiveItemAudit;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemAuditDataRepository;
@@ -32,10 +32,11 @@ import github.luckygc.am.module.archive.metadata.ArchiveDynamicTableNames;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldScope;
 import github.luckygc.am.module.archive.metadata.ArchiveLayoutSurface;
 import github.luckygc.am.module.archive.metadata.service.ArchiveCategoryService;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataReferenceService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryDto;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFieldDto;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFondsDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveCategoryDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFieldDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFondsDto;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
 
 @Service
@@ -49,6 +50,7 @@ public class ArchiveItemCommandService {
     private static final int DEFAULT_PAGE_LIMIT = 100;
     private static final int MAX_PAGE_LIMIT = 1000;
     private final ArchiveMetadataService archiveMetadataService;
+    private final ArchiveMetadataReferenceService archiveMetadataReferenceService;
     private final ArchiveCategoryService archiveCategoryService;
     private final ArchiveGovernanceService governanceService;
     private final ArchiveMapper archiveMapper;
@@ -61,6 +63,7 @@ public class ArchiveItemCommandService {
 
     public ArchiveItemCommandService(
             ArchiveMetadataService archiveMetadataService,
+            ArchiveMetadataReferenceService archiveMetadataReferenceService,
             ArchiveCategoryService archiveCategoryService,
             ArchiveGovernanceService governanceService,
             ArchiveMapper archiveMapper,
@@ -71,6 +74,7 @@ public class ArchiveItemCommandService {
             ArchiveItemReadService archiveItemReadService,
             ArchiveItemFieldValueConverter fieldValueConverter) {
         this.archiveMetadataService = archiveMetadataService;
+        this.archiveMetadataReferenceService = archiveMetadataReferenceService;
         this.archiveCategoryService = archiveCategoryService;
         this.governanceService = governanceService;
         this.archiveMapper = archiveMapper;
@@ -101,7 +105,8 @@ public class ArchiveItemCommandService {
         if (StringUtils.isBlank(request.fondsCode())) {
             throw badRequest("全宗不能为空", "fondsCode", "全宗不能为空");
         }
-        ArchiveFondsDto fonds = archiveMetadataService.getEnabledFondsByCode(request.fondsCode());
+        ArchiveFondsDto fonds =
+                archiveMetadataReferenceService.getEnabledFondsByCode(request.fondsCode());
         Long volumeId =
                 validateParentForWrite(
                         archiveLevel,
@@ -196,7 +201,8 @@ public class ArchiveItemCommandService {
         if (StringUtils.isBlank(request.fondsCode())) {
             throw badRequest("全宗不能为空", "fondsCode", "全宗不能为空");
         }
-        ArchiveFondsDto fonds = archiveMetadataService.getEnabledFondsByCode(request.fondsCode());
+        ArchiveFondsDto fonds =
+                archiveMetadataReferenceService.getEnabledFondsByCode(request.fondsCode());
         Long volumeId =
                 validateParentForWrite(
                         ArchiveLevel.ITEM,

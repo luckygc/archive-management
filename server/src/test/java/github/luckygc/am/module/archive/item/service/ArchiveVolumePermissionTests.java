@@ -20,8 +20,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
+import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeResolutionTypes.ArchiveDataScopeFilter;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
-import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService.ArchiveDataScopeFilter;
 import github.luckygc.am.module.archive.governance.ArchiveGovernanceSchemeVersion;
 import github.luckygc.am.module.archive.governance.service.ArchiveGovernanceService;
 import github.luckygc.am.module.archive.item.service.ArchiveVolumeService.CreateArchiveVolumeRequest;
@@ -29,9 +29,10 @@ import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.metadata.ArchiveManagementMode;
 import github.luckygc.am.module.archive.metadata.ArchiveTableStatus;
 import github.luckygc.am.module.archive.metadata.service.ArchiveCategoryService;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataReferenceService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryDto;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFondsDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveCategoryDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFondsDto;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
 
 @DisplayName("案卷权限")
@@ -39,6 +40,7 @@ class ArchiveVolumePermissionTests {
 
     private ArchiveMapper archiveMapper;
     private ArchiveMetadataService archiveMetadataService;
+    private ArchiveMetadataReferenceService archiveMetadataReferenceService;
     private ArchiveCategoryService archiveCategoryService;
     private ArchiveGovernanceService governanceService;
     private ArchiveItemReadService archiveItemRoutingService;
@@ -50,6 +52,7 @@ class ArchiveVolumePermissionTests {
     void setUp() {
         archiveMapper = mock(ArchiveMapper.class);
         archiveMetadataService = mock(ArchiveMetadataService.class);
+        archiveMetadataReferenceService = mock(ArchiveMetadataReferenceService.class);
         archiveCategoryService = mock(ArchiveCategoryService.class);
         governanceService = mock(ArchiveGovernanceService.class);
         archiveItemRoutingService = mock(ArchiveItemReadService.class);
@@ -63,6 +66,7 @@ class ArchiveVolumePermissionTests {
                 new ArchiveVolumeService(
                         archiveMapper,
                         archiveMetadataService,
+                        archiveMetadataReferenceService,
                         archiveCategoryService,
                         governanceService,
                         archiveItemRoutingService,
@@ -92,7 +96,8 @@ class ArchiveVolumePermissionTests {
         when(archiveCategoryService.getCategory(1L)).thenReturn(volumeCategory());
         when(archiveCategoryService.listCategories(null))
                 .thenReturn(java.util.List.of(volumeCategory()));
-        when(archiveMetadataService.getEnabledFondsByCode("F001")).thenReturn(activeFonds());
+        when(archiveMetadataReferenceService.getEnabledFondsByCode("F001"))
+                .thenReturn(activeFonds());
         when(archiveMapper.countArchiveVolumesByArchiveNo("contract", "V-001", null)).thenReturn(0);
         when(dataScopeService.buildItemFilter(9L, 1L, "F001"))
                 .thenReturn(ArchiveDataScopeFilter.none());
@@ -129,7 +134,8 @@ class ArchiveVolumePermissionTests {
         when(archiveCategoryService.getCategory(1L)).thenReturn(volumeCategory());
         when(archiveCategoryService.listCategories(null))
                 .thenReturn(java.util.List.of(volumeCategory()));
-        when(archiveMetadataService.getEnabledFondsByCode("F001")).thenReturn(activeFonds());
+        when(archiveMetadataReferenceService.getEnabledFondsByCode("F001"))
+                .thenReturn(activeFonds());
         when(archiveMapper.countArchiveVolumesByArchiveNo("contract", "V-001", null)).thenReturn(0);
         when(dataScopeService.buildItemFilter(9L, 1L, "F001"))
                 .thenReturn(ArchiveDataScopeFilter.all());
