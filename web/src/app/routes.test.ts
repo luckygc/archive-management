@@ -164,8 +164,12 @@ describe("workspaceRoutes", () => {
     it("权限尚未初始化时等待加载而不提前判定无权", async () => {
         const { permissionStore } = authenticate({ initializedPermissions: false });
         permissionStore.fetchSummary = async () => {
-            permissionStore.permissionCodes = ["archive:item:read"];
-            permissionStore.initialized = true;
+            permissionStore.snapshot = {
+                initialized: true,
+                permissionCodes: ["archive:item:read"],
+                revision: permissionStore.snapshot.revision + 1,
+                superAdmin: false,
+            };
         };
 
         await expect(navigationGuard(router.resolve("/archive/items"))).resolves.toBe(true);
@@ -192,7 +196,11 @@ describe("workspaceRoutes", () => {
 
     it("仅数据范围权限可直接进入授权管理", async () => {
         const { permissionStore } = authenticate({ initializedPermissions: true });
-        permissionStore.permissionCodes = ["archive:data-scope:manage"];
+        permissionStore.snapshot = {
+            ...permissionStore.snapshot,
+            permissionCodes: ["archive:data-scope:manage"],
+            revision: permissionStore.snapshot.revision + 1,
+        };
 
         await expect(navigationGuard(router.resolve("/system/authorization"))).resolves.toBe(true);
     });
@@ -215,8 +223,11 @@ function authenticate({ initializedPermissions }: { initializedPermissions: bool
         roles: [],
     };
     const permissionStore = usePermissionStore();
-    permissionStore.initialized = initializedPermissions;
-    permissionStore.permissionCodes = [];
-    permissionStore.superAdmin = false;
+    permissionStore.snapshot = {
+        initialized: initializedPermissions,
+        permissionCodes: [],
+        revision: permissionStore.snapshot.revision + 1,
+        superAdmin: false,
+    };
     return { permissionStore, sessionStore };
 }

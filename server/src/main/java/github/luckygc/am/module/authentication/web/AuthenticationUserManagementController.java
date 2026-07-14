@@ -22,6 +22,7 @@ import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.authentication.service.AuthenticationUserManagementService;
 import github.luckygc.am.module.authentication.service.AuthenticationUserManagementService.AuthenticationUserDetailDto;
 import github.luckygc.am.module.authentication.service.AuthenticationUserManagementService.AuthenticationUserDto;
+import github.luckygc.am.module.authentication.service.AuthenticationUserManagementService.AuthenticationUserOptionResponse;
 import github.luckygc.am.module.authentication.service.AuthenticationUserManagementService.CreateAuthenticationUserRequest;
 import github.luckygc.am.module.authentication.service.AuthenticationUserManagementService.ResetPasswordRequest;
 import github.luckygc.am.module.authentication.service.AuthenticationUserManagementService.RoleSummary;
@@ -46,6 +47,15 @@ public class AuthenticationUserManagementController {
             @Nullable Authentication authentication) {
         return userService.listUsers(
                 keyword,
+                page,
+                AuthenticatedUsers.requireUserId(
+                        authentication == null ? null : authentication.getPrincipal()));
+    }
+
+    @GetMapping("/api/v1/authentication-user-options")
+    public CursorPageResponse<AuthenticationUserOptionResponse> listUserOptions(
+            PageRequest page, @Nullable Authentication authentication) {
+        return userService.listUserOptions(
                 page,
                 AuthenticatedUsers.requireUserId(
                         authentication == null ? null : authentication.getPrincipal()));

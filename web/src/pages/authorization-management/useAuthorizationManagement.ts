@@ -1,7 +1,7 @@
 import { ElMessage } from "element-plus";
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 
-import { listAuthenticationUsers } from "@/shared/api/authentication";
+import { listAuthenticationUserOptions } from "@/shared/api/authentication";
 import {
     getDepartmentArchiveDataScopes,
     getRoleArchiveDataScopes,
@@ -16,14 +16,14 @@ import {
     saveUserArchiveDataScopes,
 } from "@/shared/api/authorization";
 import { listOrganizationDepartments } from "@/shared/api/organization";
-import type { AuthenticationUserDto } from "@/shared/types/authentication";
+import type { AuthenticationUserOptionDto } from "@/shared/types/authentication";
 import type {
     ArchiveDataScopeDto,
     AuthorizationPermissionDto,
     AuthorizationRoleDto,
 } from "@/shared/types/authorization";
 import type { OrganizationDepartmentDto } from "@/shared/types/organization";
-import { usePermissionStore } from "@/stores/permissionStore";
+import { type PermissionSnapshot, usePermissionStore } from "@/stores/permissionStore";
 
 type SubjectType = "role" | "user" | "department";
 
@@ -38,7 +38,7 @@ export function useAuthorizationManagement() {
     const selectedUserId = ref<number>();
     const selectedDepartmentId = ref<number>();
     const roles = ref<AuthorizationRoleDto[]>([]);
-    const users = ref<AuthenticationUserDto[]>([]);
+    const users = ref<AuthenticationUserOptionDto[]>([]);
     const departments = ref<OrganizationDepartmentDto[]>([]);
     const allPermissions = ref<AuthorizationPermissionDto[]>([]);
     const allScopes = ref<ArchiveDataScopeDto[]>([]);
@@ -52,6 +52,17 @@ export function useAuthorizationManagement() {
     const editingPermissionCodes = ref<string[]>([]);
     const editingScopeIds = ref<number[]>([]);
     let detailRequestVersion = 0;
+    let permissionCapabilityVersion = 0;
+    let dataScopeCapabilityVersion = 0;
+    let catalogLoadRequested = false;
+    let catalogRunner: Promise<void> | undefined;
+    const loadedCatalogs = {
+        roles: false,
+        users: false,
+        departments: false,
+        permissions: false,
+        scopes: false,
+    };
     const selectedSubjectId = computed(() =>
         subjectType.value === "role"
             ? selectedRoleId.value
@@ -87,34 +98,86 @@ export function useAuthorizationManagement() {
             : []),
     ]);
 
-    async function loadCatalogs() {
+    function requestCatalogLoad() {
+        catalogLoadRequested = true;
+        if (catalogRunner) return;
+        catalogRunner = runCatalogLoads().finally(() => {
+            catalogRunner = undefined;
+            if (catalogLoadRequested) requestCatalogLoad();
+        });
+    }
+    async function runCatalogLoads() {
         catalogLoading.value = true;
-        const results = await Promise.allSettled([
-            listAuthorizationRoles(true, 1000),
-            canManageDataScopes.value
-                ? listAuthenticationUsers(undefined, 1000)
-                : Promise.resolve(undefined),
-            canManageDataScopes.value
-                ? listOrganizationDepartments(true)
-                : Promise.resolve(undefined),
-            canManagePermissions.value
-                ? listAuthorizationPermissions()
-                : Promise.resolve(undefined),
-            canManageDataScopes.value ? listArchiveDataScopes(false) : Promise.resolve(undefined),
-        ]);
-        const [roleResult, userResult, departmentResult, permissionResult, scopeResult] = results;
-        if (roleResult?.status === "fulfilled") roles.value = roleResult.value.items;
-        if (userResult?.status === "fulfilled" && userResult.value)
-            users.value = userResult.value.items;
-        if (departmentResult?.status === "fulfilled" && departmentResult.value)
-            departments.value = departmentResult.value.items;
-        if (permissionResult?.status === "fulfilled" && permissionResult.value)
-            allPermissions.value = permissionResult.value.items;
-        if (scopeResult?.status === "fulfilled" && scopeResult.value)
-            allScopes.value = scopeResult.value.items;
-        if (results.some((result) => result.status === "rejected"))
-            ElMessage.error("部分授权目录加载失败，请稍后重试");
-        catalogLoading.value = false;
+        try {
+            while (catalogLoadRequested) {
+                catalogLoadRequested = false;
+                await loadMissingCatalogs();
+            }
+        } finally {
+            catalogLoading.value = false;
+        }
+    }
+    async function loadMissingCatalogs() {
+        const tasks: CatalogTask[] = [];
+        if (!loadedCatalogs.roles && (canManagePermissions.value || canManageDataScopes.value)) {
+            tasks.push({
+                current: () => canManagePermissions.value || canManageDataScopes.value,
+                request: listAuthorizationRoles(true, 1000).then((response) => () => {
+                    roles.value = response.items;
+                    loadedCatalogs.roles = true;
+                }),
+            });
+        }
+        if (canManagePermissions.value && !loadedCatalogs.permissions) {
+            const version = permissionCapabilityVersion;
+            tasks.push({
+                current: () =>
+                    canManagePermissions.value && version === permissionCapabilityVersion,
+                request: listAuthorizationPermissions().then((response) => () => {
+                    allPermissions.value = response.items;
+                    loadedCatalogs.permissions = true;
+                }),
+            });
+        }
+        if (canManageDataScopes.value) addDataScopeCatalogTasks(tasks);
+        if (tasks.length === 0) return;
+        const results = await Promise.allSettled(tasks.map((task) => task.request));
+        let currentFailure = false;
+        results.forEach((result, index) => {
+            const task = tasks[index];
+            if (!task?.current()) return;
+            if (result.status === "fulfilled") result.value();
+            else currentFailure = true;
+        });
+        if (currentFailure) ElMessage.error("部分授权目录加载失败，请稍后重试");
+    }
+    function addDataScopeCatalogTasks(tasks: CatalogTask[]) {
+        const version = dataScopeCapabilityVersion;
+        const current = () => canManageDataScopes.value && version === dataScopeCapabilityVersion;
+        if (!loadedCatalogs.users)
+            tasks.push({
+                current,
+                request: listAuthenticationUserOptions(1000).then((response) => () => {
+                    users.value = response.items;
+                    loadedCatalogs.users = true;
+                }),
+            });
+        if (!loadedCatalogs.departments)
+            tasks.push({
+                current,
+                request: listOrganizationDepartments(true).then((response) => () => {
+                    departments.value = response.items;
+                    loadedCatalogs.departments = true;
+                }),
+            });
+        if (!loadedCatalogs.scopes)
+            tasks.push({
+                current,
+                request: listArchiveDataScopes(false).then((response) => () => {
+                    allScopes.value = response.items;
+                    loadedCatalogs.scopes = true;
+                }),
+            });
     }
     function changeSubjectType(value: string | number | boolean) {
         subjectType.value = value as SubjectType;
@@ -217,8 +280,63 @@ export function useAuthorizationManagement() {
             saving.value = false;
         }
     }
-    watch([subjectType, selectedRoleId, selectedUserId, selectedDepartmentId], loadSubjectDetail);
-    onMounted(loadCatalogs);
+    watch(
+        () => permissionStore.snapshot,
+        (snapshot, previousSnapshot) => {
+            const canManagePermission = snapshotHas(snapshot, "authorization:permission:manage");
+            const canManageDataScope = snapshotHas(snapshot, "archive:data-scope:manage");
+            const previousPermission = previousSnapshot
+                ? snapshotHas(previousSnapshot, "authorization:permission:manage")
+                : undefined;
+            const previousDataScope = previousSnapshot
+                ? snapshotHas(previousSnapshot, "archive:data-scope:manage")
+                : undefined;
+            const permissionChanged = canManagePermission !== previousPermission;
+            const dataScopeChanged = canManageDataScope !== previousDataScope;
+            if (!permissionChanged && !dataScopeChanged) return;
+            if (permissionChanged) permissionCapabilityVersion += 1;
+            if (dataScopeChanged) dataScopeCapabilityVersion += 1;
+            detailRequestVersion += 1;
+            detailLoading.value = false;
+            if (!canManagePermission) {
+                loadedCatalogs.permissions = false;
+                allPermissions.value = [];
+                displayPermissionCodes.value = [];
+                editingPermissionCodes.value = [];
+                permissionModalOpen.value = false;
+            }
+            if (!canManageDataScope) {
+                loadedCatalogs.users = false;
+                loadedCatalogs.departments = false;
+                loadedCatalogs.scopes = false;
+                users.value = [];
+                departments.value = [];
+                allScopes.value = [];
+                displayScopeIds.value = [];
+                editingScopeIds.value = [];
+                scopeModalOpen.value = false;
+                if (subjectType.value !== "role") {
+                    subjectType.value = "role";
+                    selectedRoleId.value = undefined;
+                    selectedUserId.value = undefined;
+                    selectedDepartmentId.value = undefined;
+                }
+            }
+            requestCatalogLoad();
+        },
+        { flush: "sync", immediate: true },
+    );
+    watch(
+        [
+            subjectType,
+            selectedRoleId,
+            selectedUserId,
+            selectedDepartmentId,
+            canManagePermissions,
+            canManageDataScopes,
+        ],
+        loadSubjectDetail,
+    );
     return {
         allPermissions,
         allScopes,
@@ -253,4 +371,13 @@ export function useAuthorizationManagement() {
         subjectOptions,
         users,
     };
+}
+
+interface CatalogTask {
+    current: () => boolean;
+    request: Promise<() => void>;
+}
+
+function snapshotHas(snapshot: PermissionSnapshot, permissionCode: string) {
+    return snapshot.superAdmin || snapshot.permissionCodes.includes(permissionCode);
 }

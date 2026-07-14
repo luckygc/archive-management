@@ -20,8 +20,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.server.ResponseStatusException;
 
+import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.authentication.AuthenticationUser;
 import github.luckygc.am.module.authentication.repository.AuthenticationUserDataRepository;
@@ -484,34 +484,83 @@ class AuthenticationUserManagementServiceTests {
     // ── 权限校验 ──
 
     @Test
-    @DisplayName("用户和数据范围管理员可读取用户目录")
-    void listUsersShouldAllowRequiredDirectoryPermissions() {
+    @DisplayName("用户管理目录仅要求 authentication:user:manage")
+    void listUsersShouldRequireUserManagePermission() {
         @SuppressWarnings("unchecked")
         CursoredPage<AuthenticationUser> page = mock(CursoredPage.class);
         when(page.content()).thenReturn(List.of());
         when(page.numberOfElements()).thenReturn(0);
         when(page.hasTotals()).thenReturn(false);
         when(userRepository.filterBy(any(), any())).thenReturn(page);
-        doThrowPermissionDenied();
-        for (AuthorizationPermissionCode permissionCode :
-                List.of(
-                        AuthorizationPermissionCode.AUTHENTICATION_USER_MANAGE,
-                        AuthorizationPermissionCode.ARCHIVE_DATA_SCOPE_MANAGE)) {
-            when(permissionService.hasPermission(OPERATOR_ID, permissionCode.code()))
-                    .thenReturn(true);
 
-            userService.listUsers(null, PageRequest.ofSize(100), OPERATOR_ID);
+        userService.listUsers(null, PageRequest.ofSize(100), OPERATOR_ID);
 
-            when(permissionService.hasPermission(OPERATOR_ID, permissionCode.code()))
-                    .thenReturn(false);
-        }
+        verify(permissionService)
+                .requirePermission(
+                        OPERATOR_ID, AuthorizationPermissionCode.AUTHENTICATION_USER_MANAGE);
     }
 
     @Test
-    @DisplayName("没有相关管理权限时拒绝读取用户目录")
-    void listUsersShouldRejectWithoutRequiredDirectoryPermission() {
+    @DisplayName("仅有数据范围管理权限仍不可读取用户管理目录")
+    void listUsersShouldRejectDataScopeManager() {
+        doThrowPermissionDenied();
+        when(permissionService.hasPermission(
+                        OPERATOR_ID, AuthorizationPermissionCode.ARCHIVE_DATA_SCOPE_MANAGE.code()))
+                .thenReturn(true);
+
         assertThatThrownBy(() -> userService.listUsers(null, PageRequest.ofSize(100), OPERATOR_ID))
-                .isInstanceOf(ResponseStatusException.class)
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("权限不足");
+
+        verify(userRepository, never()).filterBy(any(), any());
+    }
+
+    @Test
+    @DisplayName("数据范围授权用户选项目录只返回必要身份字段")
+    void listUserOptionsShouldReturnMinimalIdentityFields() {
+        AuthenticationUser user = userEntity(10L, "zhangsan");
+        user.setDisplayName("张三");
+        user.setEmail("zhangsan@example.com");
+        user.setMobilePhone("13800138000");
+        user.setDepartmentId(3L);
+        @SuppressWarnings("unchecked")
+        CursoredPage<AuthenticationUser> page = mock(CursoredPage.class);
+        when(page.content()).thenReturn(List.of(user));
+        when(page.numberOfElements()).thenReturn(1);
+        when(page.cursor(0)).thenReturn(PageRequest.Cursor.forKey(10L));
+        when(page.hasPrevious()).thenReturn(false);
+        when(page.hasNext()).thenReturn(false);
+        when(page.hasTotals()).thenReturn(false);
+        when(userRepository.filterBy(any(), any())).thenReturn(page);
+
+        CursorPageResponse<?> result =
+                userService.listUserOptions(PageRequest.ofSize(100), OPERATOR_ID);
+
+        assertThat(result.items())
+                .singleElement()
+                .satisfies(
+                        item -> {
+                            assertThat(item.getClass().getRecordComponents())
+                                    .extracting(component -> component.getName())
+                                    .containsExactly("id", "username", "displayName");
+                            assertThat(item.toString()).contains("10", "zhangsan", "张三");
+                        });
+        verify(permissionService)
+                .requirePermission(
+                        OPERATOR_ID, AuthorizationPermissionCode.ARCHIVE_DATA_SCOPE_MANAGE);
+        verify(departmentService, never()).getDepartment(any());
+    }
+
+    @Test
+    @DisplayName("用户选项目录仅接受 archive:data-scope:manage")
+    void listUserOptionsShouldRequireDataScopeManagePermission() {
+        doThrow(new BadRequestException("权限不足", null, "权限不足"))
+                .when(permissionService)
+                .requirePermission(
+                        OPERATOR_ID, AuthorizationPermissionCode.ARCHIVE_DATA_SCOPE_MANAGE);
+
+        assertThatThrownBy(() -> userService.listUserOptions(PageRequest.ofSize(100), OPERATOR_ID))
+                .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("权限不足");
 
         verify(userRepository, never()).filterBy(any(), any());

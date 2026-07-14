@@ -2,6 +2,7 @@ import { httpClient } from "@archive-management/frontend-core/api";
 import type {
     AuthenticationUserDetailDto,
     AuthenticationUserDto,
+    AuthenticationUserOptionDto,
     CreateAuthenticationUserRequest,
     ResetPasswordRequest,
     RoleSummaryDto,
@@ -21,6 +22,16 @@ export function listAuthenticationUsers(keyword?: string, limit = 100, cursor?: 
     }
     return httpClient.get<CursorPageResponse<AuthenticationUserDto>>(
         `/api/v1/authentication-users?${params.toString()}`,
+    );
+}
+
+export function listAuthenticationUserOptions(limit = 100, cursor?: string) {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (cursor) {
+        params.set("cursor", cursor);
+    }
+    return httpClient.get<CursorPageResponse<AuthenticationUserOptionDto>>(
+        `/api/v1/authentication-user-options?${params.toString()}`,
     );
 }
 

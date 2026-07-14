@@ -112,13 +112,7 @@ const {
                 </el-card>
                 <el-card v-if="selectedUser" class="subject-summary" shadow="never">
                     <strong>{{ selectedUser.displayName }}</strong>
-                    <span
-                        >{{ selectedUser.username
-                        }}{{ selectedUser.email ? ` · ${selectedUser.email}` : "" }}</span
-                    >
-                    <el-tag :type="selectedUser.enabled ? 'success' : 'info'">
-                        {{ selectedUser.enabled ? "启用" : "停用" }}
-                    </el-tag>
+                    <span>{{ selectedUser.username }}</span>
                 </el-card>
                 <el-card v-if="selectedDepartment" class="subject-summary" shadow="never">
                     <strong>{{ selectedDepartment.departmentName }}</strong>

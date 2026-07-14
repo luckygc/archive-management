@@ -981,11 +981,20 @@ git commit -m "feat: 统一前端功能权限体验"
 
 - [x] **Step 6: 修复独立审查发现的动态权限与授权页能力边界**
 
-权限摘要刷新后清理无权页签与 `KeepAlive` 缓存，当前路由无权时跳转 403；显式 `children: []` 且无组件的路由保持分组语义。授权管理路由使用功能权限管理或数据范围管理任一能力，页面只请求当前能力所需接口。后端仅放宽角色、用户目录读取的明确 OR 权限，详情和写入权限不变。
+权限摘要刷新后清理无权页签与 `KeepAlive` 缓存，当前路由无权时跳转 403；显式 `children: []` 且无组件的路由保持分组语义。授权管理路由使用功能权限管理或数据范围管理任一能力，页面只请求当前能力所需接口。角色目录使用明确的相关管理权限读取，详情和写入权限不变。
 
 ```bash
 pnpm --filter @archive-management/web exec vp test run src/layout/AppShell.test.ts src/app/routes.test.ts src/layout/RouteMenuItem.test.ts src/pages/authorization-management/AuthorizationManagementPage.test.ts src/pages/authentication-users/AuthenticationUsersPage.test.ts
 cd server && mise exec -- mvn -q -Dtest=AuthorizationRoleManagementServiceTests,AuthenticationUserManagementServiceTests test
+```
+
+- [x] **Step 7: 修复权限刷新竞态并最小化授权用户目录**
+
+权限 Store 使用单一带版本快照，最新请求成功才原子提交；刷新失败保留旧版本，重置使在途响应失效。AppShell 先隐藏当前无权缓存并清理其他无权页签，只在最新 403 导航成功后删除当前页签，导航取消或拒绝时显示内联 403。新增仅限 `archive:data-scope:manage` 的 `/api/v1/authentication-user-options` 游标资源，只返回 `id`、`username`、`displayName`；`/api/v1/authentication-users` 恢复仅限用户管理员。授权页串行补载新增能力目录，撤权清理主体与编辑状态，并按能力版本丢弃旧响应。
+
+```bash
+pnpm --filter @archive-management/web exec vp test run src/stores/permissionStore.test.ts src/layout/AppShell.test.ts src/pages/authorization-management/AuthorizationManagementPage.test.ts src/shared/api/authentication.test.ts
+cd server && mise exec -- mvn -q -Dtest=AuthenticationUserManagementServiceTests,AuthenticationUserManagementControllerTests test
 ```
 
 ### Task 10: 用数据范围内真实统计替换工作台假数据

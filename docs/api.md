@@ -120,6 +120,7 @@ DELETE /api/v1/login-sessions/{session}
 | `POST` | `/api/v1/login-failure-limits/{username}:reset` | 重置登录失败限制 |
 | `GET` | `/api/v1/authentication-events` | 认证审计 |
 | `GET` | `/api/v1/authentication-users` | 用户列表 |
+| `GET` | `/api/v1/authentication-user-options` | 数据范围授权用户选项游标列表，仅返回 ID、用户名和显示名 |
 | `POST` | `/api/v1/authentication-users` | 创建用户 |
 | `GET` | `/api/v1/authentication-users/{id}` | 用户详情 |
 | `PATCH` | `/api/v1/authentication-users/{id}` | 更新用户 |
@@ -323,4 +324,3 @@ POST /api/v1/archive-rules:execute
 | `POST` | `/v1/preview:convert` | multipart 同步预览转换 |
 
 详见 `../preview/README.md`。
-

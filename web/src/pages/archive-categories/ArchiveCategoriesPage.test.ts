@@ -124,6 +124,12 @@ describe("ArchiveCategoriesPage", () => {
 function renderPage(permissionCodes: string[] = ["archive:metadata:manage"]) {
     const pinia = createPinia();
     setActivePinia(pinia);
-    usePermissionStore().permissionCodes = permissionCodes;
+    const permissionStore = usePermissionStore();
+    permissionStore.snapshot = {
+        initialized: true,
+        permissionCodes,
+        revision: permissionStore.snapshot.revision + 1,
+        superAdmin: false,
+    };
     return render(ArchiveCategoriesPage, { global: { plugins: [ElementPlus, pinia] } });
 }

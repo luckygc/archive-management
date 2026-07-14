@@ -11,6 +11,12 @@ export interface AuthenticationUserDto {
     createdAt: string;
 }
 
+export interface AuthenticationUserOptionDto {
+    id: number;
+    username: string;
+    displayName: string;
+}
+
 export interface AuthenticationUserDetailDto extends AuthenticationUserDto {
     roles: RoleSummaryDto[];
 }

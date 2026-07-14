@@ -3,35 +3,50 @@ import { defineStore } from "pinia";
 
 import { getCurrentUserPermissions } from "@/shared/api/authorization";
 
+export interface PermissionSnapshot {
+    initialized: boolean;
+    permissionCodes: string[];
+    revision: number;
+    superAdmin: boolean;
+}
+
+function emptySnapshot(revision: number): PermissionSnapshot {
+    return {
+        initialized: false,
+        permissionCodes: [],
+        revision,
+        superAdmin: false,
+    };
+}
+
 export const usePermissionStore = defineStore("permission-summary", () => {
-    const initialized = ref(false);
-    const permissionCodes = ref<string[]>([]);
-    const superAdmin = ref(false);
-    const permissionCodeSet = computed(() => new Set(permissionCodes.value));
+    const snapshot = ref<PermissionSnapshot>(emptySnapshot(0));
+    const initialized = computed(() => snapshot.value.initialized);
+    const permissionCodes = computed(() => snapshot.value.permissionCodes);
+    const superAdmin = computed(() => snapshot.value.superAdmin);
+    const permissionCodeSet = computed(() => new Set(snapshot.value.permissionCodes));
+    let requestSequence = 0;
 
     async function fetchSummary() {
-        try {
-            const response = await getCurrentUserPermissions();
-            permissionCodes.value = response.permissionCodes;
-            superAdmin.value = response.superAdmin;
-            initialized.value = true;
-        } catch (error) {
-            permissionCodes.value = [];
-            superAdmin.value = false;
-            initialized.value = false;
-            throw error;
-        }
+        const requestId = ++requestSequence;
+        const response = await getCurrentUserPermissions();
+        if (requestId !== requestSequence) return;
+        snapshot.value = {
+            initialized: true,
+            permissionCodes: [...response.permissionCodes],
+            revision: snapshot.value.revision + 1,
+            superAdmin: response.superAdmin,
+        };
     }
 
     function has(code: string) {
-        return superAdmin.value || permissionCodeSet.value.has(code);
+        return snapshot.value.superAdmin || permissionCodeSet.value.has(code);
     }
 
     function reset() {
-        initialized.value = false;
-        permissionCodes.value = [];
-        superAdmin.value = false;
+        requestSequence += 1;
+        snapshot.value = emptySnapshot(snapshot.value.revision + 1);
     }
 
-    return { initialized, permissionCodes, superAdmin, fetchSummary, has, reset };
+    return { snapshot, initialized, permissionCodes, superAdmin, fetchSummary, has, reset };
 });

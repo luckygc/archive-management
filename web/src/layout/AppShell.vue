@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed, watch } from "vue";
-import { useRouter } from "vue-router";
+import { isNavigationFailure, useRouter } from "vue-router";
 import type { TabsPaneContext, TabPaneName } from "element-plus";
 import { Collection, Refresh, User } from "@element-plus/icons-vue";
 
 import { canAccessRoute, hasRoutePermission, workspaceRoutes } from "@/app/routes";
 import RouteMenuItem from "@/layout/RouteMenuItem.vue";
+import ForbiddenPage from "@/pages/forbidden/ForbiddenPage.vue";
 import PageTabRouterView from "@/shared/tabs/PageTabRouterView.vue";
 import { usePageTabsStore } from "@/stores/pageTabsStore";
 import { usePermissionStore } from "@/stores/permissionStore";
@@ -27,24 +28,62 @@ const breadcrumbs = computed(() =>
         .filter((item) => item.meta.title && !item.meta.public)
         .map((item) => ({ title: item.meta.title!, path: item.path })),
 );
+const showInlineForbidden = computed(
+    () =>
+        permissionStore.initialized &&
+        currentRoute.value.name !== "forbidden" &&
+        !hasRoutePermission(currentRoute.value.meta, permissionStore),
+);
+let permissionEffectSequence = 0;
 
 watch(
-    () => [
-        permissionStore.initialized,
-        permissionStore.superAdmin,
-        ...permissionStore.permissionCodes,
-    ],
-    ([initialized]) => {
-        if (!initialized) return;
+    () => permissionStore.snapshot,
+    (snapshot) => {
+        const effectId = ++permissionEffectSequence;
+        if (!snapshot.initialized) return;
+        const deniedFullPath = currentRoute.value.fullPath;
         const currentAllowed = hasRoutePermission(currentRoute.value.meta, permissionStore);
+        tabsStore.removeInaccessible(
+            (fullPath) => hasRoutePermission(router.resolve(fullPath).meta, permissionStore),
+            currentAllowed ? undefined : deniedFullPath,
+        );
+        if (!currentAllowed && currentRoute.value.name !== "forbidden")
+            void redirectDeniedRoute(effectId, snapshot.revision, deniedFullPath);
+    },
+    { immediate: true },
+);
+
+async function redirectDeniedRoute(effectId: number, revision: number, deniedFullPath: string) {
+    try {
+        const failure = await router.replace({ name: "forbidden" });
+        if (
+            effectId !== permissionEffectSequence ||
+            revision !== permissionStore.snapshot.revision
+        ) {
+            await restoreStaleNavigation(deniedFullPath);
+            return;
+        }
+        if (isNavigationFailure(failure)) return;
         tabsStore.removeInaccessible((fullPath) =>
             hasRoutePermission(router.resolve(fullPath).meta, permissionStore),
         );
-        if (!currentAllowed && currentRoute.value.name !== "forbidden")
-            void router.replace({ name: "forbidden" });
-    },
-    { flush: "sync", immediate: true },
-);
+    } catch {
+        // 导航失败时保留当前页签，由内联 403 提供稳定的无权限状态。
+    }
+}
+
+async function restoreStaleNavigation(fullPath: string) {
+    if (
+        currentRoute.value.name !== "forbidden" ||
+        !hasRoutePermission(router.resolve(fullPath).meta, permissionStore)
+    )
+        return;
+    try {
+        await router.replace(fullPath);
+    } catch {
+        // 恢复导航失败时保持当前路由，下一次权限或用户导航会重新收敛状态。
+    }
+}
 
 async function selectTab(tab: TabsPaneContext) {
     await router.push(String(tab.paneName));
@@ -141,7 +180,10 @@ async function logout() {
                     <ElButton size="small" text @click="closeAll">关闭全部</ElButton>
                 </div>
             </div>
-            <ElMain class="am-shell__content"><PageTabRouterView /></ElMain>
+            <ElMain class="am-shell__content">
+                <ForbiddenPage v-if="showInlineForbidden" embedded />
+                <PageTabRouterView v-else />
+            </ElMain>
         </ElContainer>
     </ElContainer>
 </template>

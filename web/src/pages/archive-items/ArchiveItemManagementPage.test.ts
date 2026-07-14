@@ -569,8 +569,13 @@ describe("ArchiveItemManagementPage", () => {
 function renderPage(permissionCodes: string[], superAdmin = false) {
     const pinia = createPinia();
     setActivePinia(pinia);
-    usePermissionStore().permissionCodes = permissionCodes;
-    usePermissionStore().superAdmin = superAdmin;
+    const permissionStore = usePermissionStore();
+    permissionStore.snapshot = {
+        initialized: true,
+        permissionCodes,
+        revision: permissionStore.snapshot.revision + 1,
+        superAdmin,
+    };
     return render(ArchiveItemManagementPage, { global: { plugins: [ElementPlus, pinia] } });
 }
 

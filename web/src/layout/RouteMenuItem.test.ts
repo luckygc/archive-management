@@ -46,7 +46,13 @@ describe("RouteMenuItem", () => {
     });
 
     it("只渲染有权叶子并隐藏没有可访问子项的分组", () => {
-        usePermissionStore().permissionCodes = ["archive:item:read"];
+        const permissionStore = usePermissionStore();
+        permissionStore.snapshot = {
+            initialized: true,
+            permissionCodes: ["archive:item:read"],
+            revision: permissionStore.snapshot.revision + 1,
+            superAdmin: false,
+        };
         const routeRecord: RouteRecordRaw = {
             path: "root",
             meta: { title: "根菜单", menu: true },

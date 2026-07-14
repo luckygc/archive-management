@@ -36,7 +36,13 @@ vi.mock("@/shared/api/archive-records", () => ({
 
 beforeEach(() => {
     setActivePinia(createPinia());
-    usePermissionStore().permissionCodes = ["archive:item:read", "archive:item:create"];
+    const permissionStore = usePermissionStore();
+    permissionStore.snapshot = {
+        initialized: true,
+        permissionCodes: ["archive:item:read", "archive:item:create"],
+        revision: permissionStore.snapshot.revision + 1,
+        superAdmin: false,
+    };
     mocks.listArchiveFonds.mockResolvedValue({
         items: [
             {
