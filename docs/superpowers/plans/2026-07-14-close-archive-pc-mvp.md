@@ -4,7 +4,7 @@
 
 **Goal:** 关闭档案搜索、档案管理、案卷、关系、明细行、权限和工作台从后端到 PC 的 MVP 使用缺口。
 
-**Architecture:** 保持 Vue PC → Spring Boot 模块化单体 → PostgreSQL/S3 的既有架构。已有后端合同直接接入 PC；只有明细行数据和真实工作台摘要缺少后端合同，需要在 archive/item 子域内补齐 Service、Controller 和 MyBatis SQL。所有敏感操作继续由服务端权限与数据范围守护。
+**Architecture:** 保持 Vue PC → Spring Boot 模块化单体 → PostgreSQL/S3 的既有架构。已有后端能力优先直接接入 PC；档案查询需增加 `volumeId` 固定筛选，案卷和关系列表需从无界集合改为项目统一游标分页，明细行数据和真实工作台摘要需在 archive/item 子域内补齐 Service、Controller 和 MyBatis SQL。所有敏感操作继续由服务端权限与数据范围守护。
 
 **Tech Stack:** Vue 3、TypeScript、Element Plus、Pinia、Vite+ Test、Spring Boot、Jakarta Data、MyBatis、PostgreSQL、JUnit 5、Mockito、Testcontainers、OpenSpec。
 
@@ -27,6 +27,7 @@
 - Create: `openspec/changes/close-archive-pc-mvp/proposal.md`
 - Create: `openspec/changes/close-archive-pc-mvp/design.md`
 - Create: `openspec/changes/close-archive-pc-mvp/specs/archive-pc-mvp/spec.md`
+- Create: `openspec/changes/close-archive-pc-mvp/specs/archive-record-search/spec.md`
 - Create: `openspec/changes/close-archive-pc-mvp/tasks.md`
 - Reference: `docs/superpowers/specs/2026-07-14-archive-management-full-closure-design.md`
 
@@ -46,7 +47,7 @@ Expected: 新变更存在，proposal 制品状态为 ready。
 
 - [ ] **Step 2: 按指令写入 proposal、design、spec 和 tasks**
 
-规格必须显式包含以下可验证场景：超过 100 条游标翻页、查询条件变更清游标、锁定解锁删除、物理字段与参考数据编辑、案卷管理、关系维护、明细表定义与行数据、权限菜单与直接访问、真实工作台摘要、原位错误重试。
+规格必须显式包含以下可验证场景：超过 100 条游标翻页、查询条件变更清游标、锁定解锁删除、物理字段与参考数据编辑、案卷管理、关系维护、明细表定义与行数据、权限菜单与直接访问、真实工作台摘要、原位错误重试。`archive-record-search` delta 必须完整修改高级查询 Requirement，增加 `volumeId` 固定筛选及其 cursor 查询摘要语义；案卷和关系列表必须使用统一游标合同。
 
 - [ ] **Step 3: 运行严格校验**
 
@@ -359,6 +360,17 @@ git commit -m "feat: 完整维护档案固定参考与物理字段"
 ### Task 5: 开发案卷管理 PC 页面
 
 **Files:**
+- Modify: `server/src/main/java/github/luckygc/am/module/archive/item/web/ArchiveVolumeController.java`
+- Modify: `server/src/main/java/github/luckygc/am/module/archive/item/service/ArchiveVolumeService.java`
+- Modify: `server/src/main/java/github/luckygc/am/module/archive/item/web/ArchiveItemController.java`
+- Modify: `server/src/main/java/github/luckygc/am/module/archive/item/service/ArchiveItemQueryService.java`
+- Modify: `server/src/main/java/github/luckygc/am/module/archive/mapper/ArchiveMapper.java`
+- Modify: `server/src/main/resources/mapper/archive/ArchiveMapper.xml`
+- Create: `server/src/test/java/github/luckygc/am/module/archive/item/web/ArchiveVolumeControllerTests.java`
+- Modify: `server/src/test/java/github/luckygc/am/module/archive/item/service/ArchiveVolumePermissionTests.java`
+- Modify: `server/src/test/java/github/luckygc/am/module/archive/item/web/ArchiveItemControllerTests.java`
+- Modify: `server/src/test/java/github/luckygc/am/module/archive/item/service/ArchiveItemQueryServiceBoundaryTests.java`
+- Modify: `server/src/test/java/github/luckygc/am/module/archive/item/service/ArchiveMapperXmlContractTests.java`
 - Create: `web/src/shared/types/archive-volumes.ts`
 - Create: `web/src/shared/api/archive-volumes.ts`
 - Create: `web/src/shared/api/archive-volumes.test.ts`
@@ -370,54 +382,123 @@ git commit -m "feat: 完整维护档案固定参考与物理字段"
 - Modify: `web/src/app/routes.test.ts`
 
 **Interfaces:**
-- Consumes: `GET/POST /api/v1/archive-volumes`、`GET /api/v1/archive-volumes/{id}`、`POST /api/v1/archive-volumes/{id}:addItem`。
-- Produces: `ArchiveVolumeResponse`、`CreateArchiveVolumeRequest`、`AddArchiveItemToVolumeRequest` 前端类型和案卷路由 `/archive/volumes`。
+- Produces: `GET /api/v1/archive-volumes?fondsCode=&categoryCode=&limit=&cursor=` → `CursorPageResponse<ArchiveVolumeResponse>`，默认排序 `createdAt DESC, id DESC`。
+- Produces: `SearchArchiveItemsRequest.volumeId?: number`，作为业务筛选进入 cursor 查询摘要；`limit/cursor/requestTotal` 继续位于 URL query 且不进入摘要。
+- Consumes: `POST /api/v1/archive-volumes`、`GET /api/v1/archive-volumes/{id}`、`POST /api/v1/archive-volumes/{id}:addItem`。
+- `AddArchiveItemToVolumeRequest`: `{ itemId: number; displayOrder?: number }`；成功返回 `204 No Content`，前端客户端返回 `Promise<void>`。
+- Produces: 案卷路由 `/archive/volumes`，复用现有 `CursorPagination`。
 
-- [ ] **Step 1: 写 API 失败测试**
+- [ ] **Step 1: 写后端游标分页和 `volumeId` 失败测试**
+
+为 Controller、Service 和 Mapper 编写测试，确认筛选在数据库分页前应用、cursor 绑定筛选和稳定排序、卷内档案查询传递 `volumeId`：
+
+```java
+@Test
+void listVolumesUsesCursorPageAndBindsFilters() throws Exception {
+    mockMvc.perform(get("/api/v1/archive-volumes")
+                    .param("fondsCode", "F001")
+                    .param("categoryCode", "ACCOUNTING")
+                    .param("limit", "100"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items").isArray())
+            .andExpect(jsonPath("$.next").value("next-volume"));
+    verify(service).listVolumes(
+            argThat(criteria -> criteria.fondsCode().equals("F001")
+                    && criteria.categoryCode().equals("ACCOUNTING")),
+            any(PageRequest.class),
+            eq(8L));
+}
+
+@Test
+void searchItemsPassesVolumeIdIntoDatabaseCriteria() {
+    service.searchItems(
+            searchRequest(7L, 12L), 8L, PageRequest.ofSize(100));
+    verify(archiveMapper).searchDynamicItems(
+            any(), argThat(criteria -> criteria.volumeId().equals(12L)), any());
+}
+```
+
+- [ ] **Step 2: 运行后端测试并确认按预期失败**
+
+```bash
+cd server && mise exec -- mvn -q -Dtest=ArchiveVolumeControllerTests,ArchiveVolumePermissionTests,ArchiveItemControllerTests,ArchiveItemQueryServiceBoundaryTests,ArchiveMapperXmlContractTests test
+```
+
+Expected: FAIL，当前案卷 Controller 返回 `CollectionResponse`，Service/Mapper 无游标参数，`SearchArchiveItemsRequest` 无 `volumeId`。
+
+- [ ] **Step 3: 实现后端案卷分页与卷内筛选**
+
+`ArchiveVolumeController` 使用项目现有 `PageRequest` 参数解析和 `CursorPageResponse`；`ArchiveVolumeService` 将权限/数据范围编译进 Mapper 条件，不能全量加载后内存过滤。MyBatis 使用全宗、分类、数据范围和 cursor 边界查询，默认 `created_at DESC, id DESC`。`SearchArchiveItemsRequest`、查询 Service、criteria 和 XML 同步增加可空 `volumeId`，由通用 cursor 组件校验查询摘要。
+
+- [ ] **Step 4: 写前端 API 失败测试**
 
 ```ts
-it("将档案加入指定案卷", async () => {
-    await addArchiveItemToVolume(12, 91);
+it("案卷列表使用 URL query 游标参数", async () => {
+    await listArchiveVolumes({ fondsCode: "F001", limit: 100, cursor: "next-volume" });
+    expect(httpClient.get).toHaveBeenCalledWith(
+        "/api/v1/archive-volumes?fondsCode=F001&limit=100&cursor=next-volume",
+    );
+});
+
+it("将档案加入指定案卷并按 204 处理", async () => {
+    await addArchiveItemToVolume(12, 91, 3);
     expect(httpClient.post).toHaveBeenCalledWith("/api/v1/archive-volumes/12:addItem", {
-        archiveItemId: 91,
+        itemId: 91,
+        displayOrder: 3,
     });
 });
 ```
 
-- [ ] **Step 2: 运行并确认 API 缺失**
+- [ ] **Step 5: 运行前端 API 测试并确认按预期失败**
 
 ```bash
 pnpm --filter @archive-management/web test -- archive-volumes.test.ts
 ```
 
-Expected: FAIL，`addArchiveItemToVolume` 尚未导出。
+Expected: FAIL，案卷 cursor 类型/客户端尚不存在或 `:addItem` 仍尝试解析资源响应。
 
-- [ ] **Step 3: 实现薄 API 客户端和语义类型**
+- [ ] **Step 6: 实现薄 API 客户端和语义类型**
 
 ```ts
-export function addArchiveItemToVolume(volumeId: number, archiveItemId: number) {
-    return httpClient.post<ArchiveVolumeResponse>(
-        `/api/v1/archive-volumes/${volumeId}:addItem`,
-        { archiveItemId },
+export function listArchiveVolumes(query: ListArchiveVolumesQuery) {
+    return httpClient.get<CursorPageResponse<ArchiveVolumeResponse>>(
+        `/api/v1/archive-volumes${queryString(query)}`,
     );
+}
+
+export function addArchiveItemToVolume(
+    volumeId: number,
+    itemId: number,
+    displayOrder?: number,
+): Promise<void> {
+    return httpClient.post<void>(`/api/v1/archive-volumes/${volumeId}:addItem`, {
+        itemId,
+        ...(displayOrder === undefined ? {} : { displayOrder }),
+    });
 }
 ```
 
-- [ ] **Step 4: 写页面失败测试并实现工作流**
+- [ ] **Step 7: 写页面失败测试并实现工作流**
 
 ```ts
-it("按全宗和分类筛选、创建案卷并打开案卷档案", async () => {
+it("按全宗和分类筛选、翻页并打开案卷档案", async () => {
     renderPage();
     await user.selectOptions(screen.getByLabelText("全宗"), "F001");
     await user.click(screen.getByRole("button", { name: "查询" }));
-    expect(mocks.listArchiveVolumes).toHaveBeenCalledWith({ fondsCode: "F001" });
+    expect(mocks.listArchiveVolumes).toHaveBeenCalledWith({ fondsCode: "F001", limit: 100 });
+    await user.click(screen.getByRole("button", { name: "下一页" }));
+    expect(mocks.listArchiveVolumes).toHaveBeenLastCalledWith({
+        fondsCode: "F001",
+        limit: 100,
+        cursor: "next-volume",
+    });
     expect(await screen.findByText("V-2026-001")).toBeInTheDocument();
 });
 ```
 
-页面使用现有 `am-page`、`el-form`、`el-table` 和 Drawer 模式；创建后刷新当前筛选。案卷内档案通过现有档案查询按 `volumeId` 筛选；若现有搜索合同不支持 `volumeId`，在本任务同步给 `SearchArchiveItemsRequest` 增加该业务筛选并补 Controller/Service/Mapper 测试。
+页面使用现有 `am-page`、`el-form`、`el-table`、`CursorPagination` 和 Drawer；创建后刷新当前已提交筛选。案卷内档案通过档案查询的 `volumeId` 筛选。
 
-- [ ] **Step 5: 添加路由并验证**
+- [ ] **Step 8: 添加路由并验证**
 
 ```ts
 route(
@@ -432,18 +513,26 @@ route(
 
 ```bash
 pnpm --filter @archive-management/web test -- archive-volumes.test.ts ArchiveVolumesPage.test.ts routes.test.ts
+cd server && mise exec -- mvn -q -Dtest=ArchiveVolumeControllerTests,ArchiveVolumePermissionTests,ArchiveItemControllerTests,ArchiveItemQueryServiceBoundaryTests,ArchiveMapperXmlContractTests test
 ```
 
-- [ ] **Step 6: 提交案卷页面**
+- [ ] **Step 9: 提交案卷页面与后端合同**
 
 ```bash
-git add web/src/shared web/src/pages/archive-volumes web/src/app
+git add server/src web/src/shared web/src/pages/archive-volumes web/src/app
 git commit -m "feat: 开发案卷管理工作台"
 ```
 
 ### Task 6: 开发档案关系维护
 
 **Files:**
+- Modify: `server/src/main/java/github/luckygc/am/module/archive/item/web/ArchiveItemController.java`
+- Modify: `server/src/main/java/github/luckygc/am/module/archive/item/service/ArchiveItemRelationService.java`
+- Modify: `server/src/main/java/github/luckygc/am/module/archive/mapper/ArchiveMapper.java`
+- Modify: `server/src/main/resources/mapper/archive/ArchiveMapper.xml`
+- Create: `server/src/test/java/github/luckygc/am/module/archive/item/service/ArchiveItemRelationServiceTests.java`
+- Modify: `server/src/test/java/github/luckygc/am/module/archive/item/web/ArchiveItemControllerTests.java`
+- Modify: `server/src/test/java/github/luckygc/am/module/archive/item/service/ArchiveMapperXmlContractTests.java`
 - Modify: `web/src/shared/types/archive-records.ts`
 - Modify: `web/src/shared/api/archive-records.ts`
 - Modify: `web/src/shared/api/archive.test.ts`
@@ -455,11 +544,46 @@ git commit -m "feat: 开发案卷管理工作台"
 
 **Interfaces:**
 - Consumes: `GET/POST /api/v1/archive-items/{id}/relations` 和 `DELETE /api/v1/archive-items/{id}/relations/{relationId}`。
-- Produces: `ArchiveItemRelationResponse`、`listArchiveItemRelations`、`createArchiveItemRelation`、`deleteArchiveItemRelation`。
+- Produces: `GET /api/v1/archive-items/{id}/relations?depth=&limit=&cursor=` → `CursorPageResponse<ArchiveItemRelationResponse>`，固定按 `id ASC` 排序，`depth` 进入 cursor 查询摘要。
+- Produces: `listArchiveItemRelations`、`createArchiveItemRelation`、`deleteArchiveItemRelation`，前端列表复用现有 `CursorPagination`。
 
-- [ ] **Step 1: 写关系 API 和 Drawer 失败测试**
+- [ ] **Step 1: 写后端关系游标分页失败测试**
+
+```java
+@Test
+void listRelationsUsesCursorPageAndBindsDepth() throws Exception {
+    mockMvc.perform(get("/api/v1/archive-items/1/relations")
+                    .param("depth", "1")
+                    .param("limit", "100"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items").isArray())
+            .andExpect(jsonPath("$.next").value("next-relation"));
+    verify(service).listRelations(eq(1L), eq(1), any(PageRequest.class), eq(8L));
+}
+```
+
+- [ ] **Step 2: 运行后端测试并确认按预期失败**
+
+```bash
+cd server && mise exec -- mvn -q -Dtest=ArchiveItemRelationServiceTests,ArchiveItemControllerTests,ArchiveMapperXmlContractTests test
+```
+
+Expected: FAIL，当前 Controller 返回 `CollectionResponse`，Service/Mapper 不接受 cursor 边界。
+
+- [ ] **Step 3: 实现关系游标分页**
+
+Controller 继续显式声明完整 URL，以项目 `PageRequest` 接收 `limit/cursor`；Service 在查询前完成权限和数据范围约束；Mapper 按 `id ASC` 应用 cursor 边界并返回 `CursorPageResponse`。`depth` 保留为业务查询参数并进入 cursor 查询摘要，不新增关系专用分页框架。
+
+- [ ] **Step 4: 写关系 API 和 Drawer 失败测试**
 
 ```ts
+it("使用游标读取档案关系", async () => {
+    await listArchiveItemRelations(1, { depth: 1, limit: 100, cursor: "next-relation" });
+    expect(httpClient.get).toHaveBeenCalledWith(
+        "/api/v1/archive-items/1/relations?depth=1&limit=100&cursor=next-relation",
+    );
+});
+
 it("创建关系后重新读取关系列表", async () => {
     await createArchiveItemRelation(1, 2);
     expect(httpClient.post).toHaveBeenCalledWith("/api/v1/archive-items/1/relations", {
@@ -476,17 +600,25 @@ it("从搜索结果选择目标档案建立关系", async () => {
 });
 ```
 
-- [ ] **Step 2: 观察缺失行为失败**
+- [ ] **Step 5: 运行前端测试并确认按预期失败**
 
 ```bash
 pnpm --filter @archive-management/web test -- archive.test.ts ArchiveItemRelationsDrawer.test.ts
 ```
 
-- [ ] **Step 3: 实现关系 API 与选择界面**
+Expected: FAIL，关系列表 cursor 类型、客户端参数或 Drawer 分页行为尚不存在。
+
+- [ ] **Step 6: 实现关系 API 与选择界面**
 
 目标选择使用分类、关键字和现有游标搜索结果，不要求用户手输数据库 ID；当前档案不能被选择，后端冲突错误原样展示。
 
 ```ts
+export function listArchiveItemRelations(id: number, query: ListArchiveItemRelationsQuery) {
+    return httpClient.get<CursorPageResponse<ArchiveItemRelationResponse>>(
+        `/api/v1/archive-items/${id}/relations${queryString(query)}`,
+    );
+}
+
 export function createArchiveItemRelation(id: number, targetItemId: number) {
     return httpClient.post<ArchiveItemRelationResponse>(`/api/v1/archive-items/${id}/relations`, {
         targetItemId,
@@ -494,18 +626,19 @@ export function createArchiveItemRelation(id: number, targetItemId: number) {
 }
 ```
 
-- [ ] **Step 4: 接入资源 Drawer 并验证权限**
+- [ ] **Step 7: 接入资源 Drawer 并验证权限**
 
-查看关系使用 `archive:item:read`，新增和删除关系使用 `archive:item:update`；成功后只刷新关系页签。
+查看关系使用 `archive:item:read`，新增和删除关系使用 `archive:item:update`；Drawer 使用现有 `CursorPagination`，成功后只刷新关系页签。
 
 ```bash
 pnpm --filter @archive-management/web test -- ArchiveItemRelationsDrawer.test.ts ArchiveItemManagementPage.test.ts
+cd server && mise exec -- mvn -q -Dtest=ArchiveItemRelationServiceTests,ArchiveItemControllerTests,ArchiveMapperXmlContractTests test
 ```
 
-- [ ] **Step 5: 提交关系维护**
+- [ ] **Step 8: 提交关系维护**
 
 ```bash
-git add web/src/shared web/src/pages/archive-items
+git add server/src web/src/shared web/src/pages/archive-items
 git commit -m "feat: 开发档案关系维护"
 ```
 
@@ -587,7 +720,10 @@ git commit -m "feat: 开发档案明细表配置"
 
 **Interfaces:**
 - Produces: `GET/POST /api/v1/archive-items/{archiveItem}/line-tables/{lineTable}/rows` 和 `PATCH/DELETE .../rows/{row}`。
-- Request: `CreateArchiveItemLineRowRequest(int lineOrder, Map<String, @Nullable Object> values)`。
+- List: `CursorPageResponse<ArchiveItemLineRowResponse>`，URL query 使用 `limit/cursor`，固定按 `lineOrder ASC, id ASC` 排序。
+- Create request: `CreateArchiveItemLineRowRequest(int lineOrder, Map<String, @Nullable Object> values)`。
+- Patch request: `PatchArchiveItemLineRowRequest(boolean lineOrderPresent, @Nullable Integer lineOrder, Map<String, @Nullable Object> values)`；由 Controller 的 Jackson `JsonNode` 边界或等价出现性表示构造。
+- Patch semantics: `values` 缺失键不修改、显式 null 清空；`lineOrder` 缺失不修改、显式 null 返回 `INVALID_ARGUMENT`。
 - Response: `ArchiveItemLineRowResponse(Long id, Long archiveItemId, Long lineTableId, int lineOrder, Map<String, @Nullable Object> values)`。
 
 - [ ] **Step 1: 写 Service 失败测试**
@@ -605,6 +741,23 @@ void createRowValidatesItemScopeAndConfiguredFields() {
     verify(archiveMapper).insertItemLineRow(
             eq("am_archive_item_line_contract"), eq(3L), eq(0),
             argThat(values -> values.size() == 1 && values.getFirst().columnName().equals("f_amount")));
+}
+
+@Test
+void patchRowPreservesMissingValuesAndClearsExplicitNull() {
+    Map<String, @Nullable Object> values = new LinkedHashMap<>();
+    values.put("amount", "12.50");
+    values.put("remark", null);
+    PatchArchiveItemLineRowRequest request =
+            new PatchArchiveItemLineRowRequest(false, null, values);
+
+    service.patchRow(3L, 4L, 9L, request, 8L);
+
+    verify(archiveMapper).updateItemLineRow(
+            eq("am_archive_item_line_contract"), eq(3L), eq(9L),
+            argThat(values -> values.stream().anyMatch(value -> value.fieldCode().equals("remark")
+                    && value.value() == null)),
+            eq(false), isNull());
 }
 ```
 
@@ -634,7 +787,7 @@ public ArchiveItemLineRowResponse createRow(
 }
 ```
 
-`${tableName}`、列名和赋值表达式只能来自已校验的明细定义；请求键不得直接拼接 SQL。更新使用白名单 assignments，删除更新 `deleted_flag/deleted_at/deleted_by`。
+`${tableName}`、列名和赋值表达式只能来自已校验的明细定义；请求键不得直接拼接 SQL。列表固定按 `line_order ASC, id ASC`。PATCH 只为 `values` 中出现的键生成白名单 assignments，显式 null 使用参数绑定写入 SQL NULL；`lineOrderPresent=false` 不更新行顺序。删除更新 `deleted_flag/deleted_at/deleted_by`。
 
 - [ ] **Step 4: 暴露完整资源 URL 并验证 ProblemDetail**
 
@@ -648,7 +801,22 @@ public ArchiveItemLineRowResponse createRow(
         Authentication authentication) {
     return service.createRow(archiveItem, lineTable, request, AuthenticatedUsers.requireUserId(authentication.getPrincipal()));
 }
+
+@PatchMapping("/api/v1/archive-items/{archiveItem}/line-tables/{lineTable}/rows/{row}")
+public ArchiveItemLineRowResponse patchRow(
+        @PathVariable Long archiveItem,
+        @PathVariable Long lineTable,
+        @PathVariable Long row,
+        @RequestBody JsonNode body,
+        Authentication authentication) {
+    PatchArchiveItemLineRowRequest request = patchRequestParser.parse(body);
+    return service.patchRow(
+            archiveItem, lineTable, row, request,
+            AuthenticatedUsers.requireUserId(authentication.getPrincipal()));
+}
 ```
+
+`patchRequestParser` 可作为 Controller 的 private 方法或同包窄作用辅助类；不得为字段出现性新增 nullable 依赖。它必须区分 `lineOrder` 缺失和显式 null，并在显式 null 时返回 `INVALID_ARGUMENT` ProblemDetail。
 
 ```bash
 cd server && mise exec -- mvn -q -Dtest=ArchiveItemLineRowServiceTests,ArchiveItemLineRowControllerTests test
@@ -666,6 +834,16 @@ it("新增明细行时按字段定义提交 values", async () => {
         lineOrder: 0,
         values: { amount: "12.50" },
     });
+});
+
+it("PATCH 只提交变化字段并允许显式清空", async () => {
+    await patchArchiveItemLineRow(3, 4, 9, {
+        values: { remark: null },
+    });
+    expect(httpClient.patch).toHaveBeenCalledWith(
+        "/api/v1/archive-items/3/line-tables/4/rows/9",
+        { values: { remark: null } },
+    );
 });
 ```
 

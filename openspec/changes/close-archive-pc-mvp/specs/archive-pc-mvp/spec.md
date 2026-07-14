@@ -93,10 +93,15 @@
 
 系统 SHALL 提供案卷 PC 页面，使用户可以在权限和数据范围内筛选、创建、查看案卷并维护卷内档案。
 
-#### Scenario: 筛选并查看案卷
+#### Scenario: 分页筛选并查看案卷
 
 - **WHEN** 用户按全宗和档案分类提交案卷筛选
-- **THEN** 页面 SHALL 展示当前用户数据范围内匹配的案卷
+- **THEN** `GET /api/v1/archive-volumes` SHALL 返回 `CursorPageResponse<ArchiveVolumeResponse>`
+- **AND** `limit` 和 `cursor` SHALL 通过 URL query 参数提交
+- **AND** 全宗、分类筛选和有效排序 SHALL 进入 cursor 查询摘要
+- **AND** 案卷列表 SHALL 默认按 `createdAt DESC, id DESC` 稳定排序
+- **AND** 带 cursor 的请求 SHALL 重复提交与首次请求相同的全宗、分类筛选和排序
+- **AND** 页面 SHALL 使用现有 cursor 组件展示当前用户数据范围内匹配的案卷
 - **AND** 用户 SHALL 能打开案卷详情并查看其中的档案
 - **AND** 卷内档案查询 SHALL 复用档案列表合同并按 `volumeId` 限定
 
@@ -110,8 +115,10 @@
 #### Scenario: 将档案加入案卷
 
 - **WHEN** 用户为案卷选择一条允许归入的档案并确认
-- **THEN** 页面 SHALL 调用案卷 `:addItem` 动作
+- **THEN** 页面 SHALL 使用 `{ itemId, displayOrder? }` 请求体调用案卷 `:addItem` 动作
 - **AND** 服务端 SHALL 校验用户权限、案卷与档案数据范围、分类兼容性和当前状态
+- **AND** 操作成功 SHALL 返回 `204 No Content`
+- **AND** Web 客户端 SHALL 返回 `Promise<void>` 且 SHALL NOT 解析 `ArchiveVolumeResponse`
 - **AND** 成功后页面 SHALL 刷新当前案卷内档案
 
 ### Requirement: 档案关系维护
@@ -121,7 +128,12 @@
 #### Scenario: 查看档案关系
 
 - **WHEN** 具备档案读取权限的用户打开档案关系页签
-- **THEN** 页面 SHALL 展示当前档案可见的来源、目标和关联档案摘要
+- **THEN** `GET /api/v1/archive-items/{archiveItem}/relations` SHALL 返回 `CursorPageResponse<ArchiveItemRelationResponse>`
+- **AND** `limit` 和 `cursor` SHALL 通过 URL query 参数提交
+- **AND** 关系列表 SHALL 固定按 `id ASC` 稳定排序
+- **AND** 如果请求保留 `depth` 参数，`depth` SHALL 进入 cursor 查询摘要
+- **AND** 带 cursor 的请求 SHALL 重复提交与首次请求相同的 `depth`
+- **AND** 页面 SHALL 使用现有 cursor 组件展示当前档案可见的来源、目标和关联档案摘要
 - **AND** 服务端 SHALL 过滤当前用户无权读取的关联档案
 
 #### Scenario: 从搜索结果创建关系
@@ -173,7 +185,7 @@
 - **THEN** 服务端 SHALL 校验档案读取权限、数据范围、分类与明细表归属关系
 - **AND** 响应 SHALL 使用统一 `CursorPageResponse<ArchiveItemLineRowResponse>`
 - **AND** `limit` 和 `cursor` SHALL 通过 URL query 参数提交
-- **AND** 排序 SHALL 先应用 `lineOrder ASC`，再追加稳定唯一兜底排序
+- **AND** 排序 SHALL 固定为 `lineOrder ASC, id ASC`
 
 #### Scenario: 新增明细行
 
@@ -186,8 +198,12 @@
 
 #### Scenario: 修改明细行
 
-- **WHEN** 具备档案更新权限的用户修改未锁定档案中的已有明细行
+- **WHEN** 具备档案更新权限的用户提交 `PatchArchiveItemLineRowRequest` 修改未锁定档案中的已有明细行
 - **THEN** 服务端 SHALL 校验行属于路径中的档案和明细表
+- **AND** `values` 中缺失的字段键 SHALL 保持原值不变
+- **AND** `values` 中显式为 `null` 的字段键 SHALL 清空对应动态字段
+- **AND** 缺失的 `lineOrder` SHALL 保持原行顺序不变
+- **AND** 显式为 `null` 的 `lineOrder` SHALL 返回 `INVALID_ARGUMENT` ProblemDetail
 - **AND** 服务端 SHALL 只更新请求中出现且存在于字段定义中的值与行顺序
 - **AND** 页面 SHALL 在保存成功后刷新对应明细行列表
 
