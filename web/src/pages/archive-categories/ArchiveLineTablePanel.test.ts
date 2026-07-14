@@ -1,6 +1,8 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/vue";
-import ElementPlus from "element-plus";
+import ElementPlus, { ElMessage } from "element-plus";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { HttpClientError } from "@archive-management/frontend-core/api";
 
 import ArchiveLineTablePanel from "./ArchiveLineTablePanel.vue";
 
@@ -35,6 +37,7 @@ describe("ArchiveLineTablePanel", () => {
         mocks.createArchiveLineTable.mockReturnValueOnce(createTableRequest.promise);
         renderPanel(7);
         expect(await screen.findByText("合同方")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "配置合同方字段" })).toBeVisible();
 
         await fireEvent.click(screen.getByRole("button", { name: "新增明细表" }));
         await fireEvent.update(screen.getByLabelText("明细表编码"), "participant");
@@ -144,13 +147,137 @@ describe("ArchiveLineTablePanel", () => {
 
         await fireEvent.click(screen.getByRole("button", { name: "构建数据表" }));
         await waitFor(() => expect(mocks.buildArchiveLineTable).toHaveBeenCalledWith(12));
-        await fireEvent.click(screen.getAllByRole("button", { name: "配置字段" })[1]!);
+        await fireEvent.click(screen.getByRole("button", { name: "配置参与方字段" }));
 
         expect(await screen.findByText("联系人")).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "构建数据表" })).toBeEnabled();
         oldBuild.resolve(lineTable());
         await oldBuild.promise;
         expect(screen.getByText("参与方字段")).toBeInTheDocument();
+    });
+
+    it("切换明细表后丢弃旧字段列表响应", async () => {
+        mocks.listArchiveLineTables.mockResolvedValue({
+            items: [lineTable(), lineTable(13, "participant", "参与方")],
+        });
+        const oldFields = deferred<{ items: ReturnType<typeof lineField>[] }>();
+        mocks.listArchiveLineFields.mockReturnValueOnce(oldFields.promise).mockResolvedValueOnce({
+            items: [lineField(22, 13, "contact_name", "联系人", "f_contact_name")],
+        });
+        renderPanel(7);
+        await waitFor(() => expect(mocks.listArchiveLineFields).toHaveBeenCalledWith(12));
+
+        await screen.findByText("参与方");
+        await fireEvent.click(await screen.findByRole("button", { name: "配置参与方字段" }));
+        expect(await screen.findByText("联系人")).toBeInTheDocument();
+        oldFields.resolve({ items: [lineField()] });
+        await oldFields.promise;
+
+        await waitFor(() => expect(screen.queryByText("单位名称")).not.toBeInTheDocument());
+        expect(screen.getByText("联系人")).toBeInTheDocument();
+    });
+
+    it("创建明细表期间切换分类时不提示成功也不污染新分类", async () => {
+        const success = vi.spyOn(ElMessage, "success");
+        const request = deferred<ReturnType<typeof lineTable>>();
+        mocks.createArchiveLineTable.mockReturnValueOnce(request.promise);
+        const view = renderPanel(7);
+        expect(await screen.findByText("合同方")).toBeInTheDocument();
+        await fireEvent.click(screen.getByRole("button", { name: "新增明细表" }));
+        await fireEvent.update(screen.getByLabelText("明细表编码"), "stale_table");
+        await fireEvent.update(screen.getByLabelText("明细表名称"), "旧分类明细");
+        await fireEvent.click(screen.getByRole("button", { name: "保存明细表" }));
+        await waitFor(() => expect(mocks.createArchiveLineTable).toHaveBeenCalledTimes(1));
+
+        mocks.listArchiveLineTables.mockResolvedValueOnce({
+            items: [lineTable(18, "invoice", "发票明细")],
+        });
+        await view.rerender({ categoryId: 8 });
+        request.resolve(lineTable(19, "stale_table", "旧分类明细"));
+        await request.promise;
+
+        expect(await screen.findByText("发票明细")).toBeInTheDocument();
+        expect(screen.queryByText("旧分类明细")).not.toBeInTheDocument();
+        expect(success).not.toHaveBeenCalledWith("明细表已创建");
+    });
+
+    it("创建字段期间切换明细表或卸载时不提示成功也不污染当前状态", async () => {
+        const success = vi.spyOn(ElMessage, "success");
+        mocks.listArchiveLineTables.mockResolvedValue({
+            items: [lineTable(), lineTable(13, "participant", "参与方")],
+        });
+        const request = deferred<ReturnType<typeof lineField>>();
+        mocks.createArchiveLineField.mockReturnValueOnce(request.promise);
+        const view = renderPanel(7);
+        expect(await screen.findByText("单位名称")).toBeInTheDocument();
+        await fireEvent.click(screen.getByRole("button", { name: "新增字段" }));
+        await fillFieldForm("stale_field", "旧字段", "f_stale_field");
+        await fireEvent.click(screen.getByRole("button", { name: "保存字段" }));
+        await waitFor(() => expect(mocks.createArchiveLineField).toHaveBeenCalledTimes(1));
+
+        await fireEvent.click(screen.getByRole("button", { name: "配置参与方字段" }));
+        request.resolve(lineField(23, 12, "stale_field", "旧字段", "f_stale_field"));
+        await request.promise;
+
+        expect(screen.queryByText("旧字段")).not.toBeInTheDocument();
+        expect(success).not.toHaveBeenCalledWith("明细字段已创建");
+        view.unmount();
+    });
+
+    it("创建明细表期间卸载时丢弃响应且不提示成功", async () => {
+        const success = vi.spyOn(ElMessage, "success");
+        const request = deferred<ReturnType<typeof lineTable>>();
+        mocks.createArchiveLineTable.mockReturnValueOnce(request.promise);
+        const view = renderPanel(7);
+        expect(await screen.findByText("合同方")).toBeInTheDocument();
+        await fireEvent.click(screen.getByRole("button", { name: "新增明细表" }));
+        await fireEvent.update(screen.getByLabelText("明细表编码"), "stale_table");
+        await fireEvent.update(screen.getByLabelText("明细表名称"), "已卸载明细");
+        await fireEvent.click(screen.getByRole("button", { name: "保存明细表" }));
+        await waitFor(() => expect(mocks.createArchiveLineTable).toHaveBeenCalledTimes(1));
+
+        view.unmount();
+        request.resolve(lineTable(19, "stale_table", "已卸载明细"));
+        await request.promise;
+
+        expect(success).not.toHaveBeenCalledWith("明细表已创建");
+    });
+
+    it("创建字段期间卸载时丢弃响应且不提示成功", async () => {
+        const success = vi.spyOn(ElMessage, "success");
+        const request = deferred<ReturnType<typeof lineField>>();
+        mocks.createArchiveLineField.mockReturnValueOnce(request.promise);
+        const view = renderPanel(7);
+        expect(await screen.findByText("单位名称")).toBeInTheDocument();
+        await fireEvent.click(screen.getByRole("button", { name: "新增字段" }));
+        await fillFieldForm("stale_field", "已卸载字段", "f_stale_field");
+        await fireEvent.click(screen.getByRole("button", { name: "保存字段" }));
+        await waitFor(() => expect(mocks.createArchiveLineField).toHaveBeenCalledTimes(1));
+
+        view.unmount();
+        request.resolve(lineField(23, 12, "stale_field", "已卸载字段", "f_stale_field"));
+        await request.promise;
+
+        expect(success).not.toHaveBeenCalledWith("明细字段已创建");
+    });
+
+    it("字段校验错误回填物理列名和精确检索并保留输入", async () => {
+        mocks.createArchiveLineField.mockRejectedValueOnce(
+            new HttpClientError("字段校验失败", 400, "INVALID_ARGUMENT", [
+                { field: "columnName", message: "物理列名已存在" },
+                { field: "exactSearchable", message: "当前类型不支持精确检索" },
+            ]),
+        );
+        renderPanel(7);
+        expect(await screen.findByText("单位名称")).toBeInTheDocument();
+        await fireEvent.click(screen.getByRole("button", { name: "新增字段" }));
+        await fillFieldForm("contact_name", "联系人", "f_contact_name");
+        await fireEvent.click(screen.getByRole("checkbox", { name: "精确检索" }));
+        await fireEvent.click(screen.getByRole("button", { name: "保存字段" }));
+
+        expect(await screen.findByText("物理列名已存在")).toBeInTheDocument();
+        expect(await screen.findByText("当前类型不支持精确检索")).toBeInTheDocument();
+        expect(screen.getByLabelText("物理列名")).toHaveValue("f_contact_name");
     });
 });
 
@@ -202,4 +329,10 @@ function deferred<T>() {
         reject = rejectPromise;
     });
     return { promise, resolve, reject };
+}
+
+async function fillFieldForm(fieldCode: string, fieldName: string, columnName: string) {
+    await fireEvent.update(screen.getByLabelText("明细字段编码"), fieldCode);
+    await fireEvent.update(screen.getByLabelText("明细字段名称"), fieldName);
+    await fireEvent.update(screen.getByLabelText("物理列名"), columnName);
 }

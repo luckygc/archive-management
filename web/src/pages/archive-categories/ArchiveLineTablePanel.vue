@@ -79,7 +79,12 @@ const {
             <el-table-column label="排序" prop="sortOrder" width="72" />
             <el-table-column label="操作" width="96">
                 <template #default="{ row }">
-                    <el-button link type="primary" @click.stop="selectTable(row)">
+                    <el-button
+                        link
+                        type="primary"
+                        :aria-label="`配置${row.tableName}字段`"
+                        @click.stop="selectTable(row)"
+                    >
                         配置字段
                     </el-button>
                 </template>
@@ -231,7 +236,11 @@ const {
                     </el-form-item>
                 </el-col>
                 <el-col :xs="24" :sm="12">
-                    <el-form-item label="检索">
+                    <el-form-item
+                        label="检索"
+                        prop="exactSearchable"
+                        :error="lineFieldErrors.exactSearchable"
+                    >
                         <el-checkbox v-model="fieldForm.exactSearchable">精确检索</el-checkbox>
                     </el-form-item>
                 </el-col>

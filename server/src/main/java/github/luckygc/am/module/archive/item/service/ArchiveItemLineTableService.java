@@ -154,6 +154,9 @@ public class ArchiveItemLineTableService {
             throw new BadRequestException("明细表没有可建表字段");
         }
         validateIdentifier(table.physicalTableName(), "动态明细表名非法");
+        for (ArchiveItemLineFieldDto field : table.fields()) {
+            validateIdentifier(field.columnName(), "字段列名非法");
+        }
         if (archiveMapper.tableExists(table.physicalTableName()) == 0) {
             String columns =
                     table.fields().stream()
@@ -180,6 +183,18 @@ public class ArchiveItemLineTableService {
                                     ArchiveDynamicTableNames.stableIdentifier(
                                             "idx_am_archive_item_line_", table.physicalTableName()),
                                     table.physicalTableName()));
+        } else {
+            for (ArchiveItemLineFieldDto field : table.fields()) {
+                if (archiveMapper.columnExists(table.physicalTableName(), field.columnName())
+                        == 0) {
+                    archiveMapper.executeSql(
+                            "alter table %s add column %s %s"
+                                    .formatted(
+                                            table.physicalTableName(),
+                                            field.columnName(),
+                                            sqlType(field.fieldType())));
+                }
+            }
         }
         archiveMapper.updateItemLineTablePhysicalName(
                 lineTableId, table.physicalTableName(), userId);
