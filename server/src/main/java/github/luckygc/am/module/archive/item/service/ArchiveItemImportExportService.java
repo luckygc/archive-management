@@ -54,6 +54,7 @@ public class ArchiveItemImportExportService {
 
     private final ArchiveMetadataService archiveMetadataService;
     private final ArchiveItemRoutingService archiveItemRoutingService;
+    private final ArchiveItemQueryService archiveItemQueryService;
     private final AuthorizationPermissionService permissionService;
     private final ArchiveDataScopeService dataScopeService;
     private final ArchiveItemDataRepository archiveItemRepository;
@@ -62,12 +63,14 @@ public class ArchiveItemImportExportService {
     public ArchiveItemImportExportService(
             ArchiveMetadataService archiveMetadataService,
             ArchiveItemRoutingService archiveItemRoutingService,
+            ArchiveItemQueryService archiveItemQueryService,
             AuthorizationPermissionService permissionService,
             ArchiveDataScopeService dataScopeService,
             ArchiveItemDataRepository archiveItemRepository,
             ArchiveItemAuditDataRepository auditRepository) {
         this.archiveMetadataService = archiveMetadataService;
         this.archiveItemRoutingService = archiveItemRoutingService;
+        this.archiveItemQueryService = archiveItemQueryService;
         this.permissionService = permissionService;
         this.dataScopeService = dataScopeService;
         this.archiveItemRepository = archiveItemRepository;
@@ -118,19 +121,19 @@ public class ArchiveItemImportExportService {
 
     @Transactional(readOnly = true)
     public ArchiveExcelFile exportItems(
-            ArchiveItemRoutingService.@Nullable SearchArchiveItemsRequest request, Long userId) {
+            ArchiveItemQueryService.@Nullable SearchArchiveItemsRequest request, Long userId) {
         requirePermission(userId, AuthorizationPermissionCode.ARCHIVE_EXPORT);
-        ArchiveItemRoutingService.SearchArchiveItemsRequest base =
+        ArchiveItemQueryService.SearchArchiveItemsRequest base =
                 request == null
-                        ? new ArchiveItemRoutingService.SearchArchiveItemsRequest(
+                        ? new ArchiveItemQueryService.SearchArchiveItemsRequest(
                                 null, null, null, null, null, EXPORT_BATCH_LIMIT, null, null)
                         : request;
         List<ArchiveFieldDto> fields = List.of();
         List<Map<String, @Nullable Object>> exportedRows = new ArrayList<>();
         @Nullable String cursor = null;
         do {
-            ArchiveItemRoutingService.SearchArchiveItemsRequest pageRequest =
-                    new ArchiveItemRoutingService.SearchArchiveItemsRequest(
+            ArchiveItemQueryService.SearchArchiveItemsRequest pageRequest =
+                    new ArchiveItemQueryService.SearchArchiveItemsRequest(
                             base.categoryId(),
                             base.fondsCode(),
                             base.keyword(),
@@ -139,9 +142,9 @@ public class ArchiveItemImportExportService {
                             EXPORT_BATCH_LIMIT,
                             cursor,
                             base.orderBy());
-            ArchiveItemRoutingService.ArchiveItemListDto page =
-                    archiveItemRoutingService.searchItems(pageRequest, userId);
-            ArchiveItemRoutingService.ArchiveItemListDto encodedPage =
+            ArchiveItemQueryService.ArchiveItemListDto page =
+                    archiveItemQueryService.searchItems(pageRequest, userId);
+            ArchiveItemQueryService.ArchiveItemListDto encodedPage =
                     page.encodeCursorTokens(new CursorPageTokenContext(""));
             fields = page.fields();
             exportedRows.addAll(page.items());
@@ -455,9 +458,7 @@ public class ArchiveItemImportExportService {
     }
 
     private void writeExportAudit(
-            ArchiveItemRoutingService.SearchArchiveItemsRequest request,
-            Long userId,
-            int rowCount) {
+            ArchiveItemQueryService.SearchArchiveItemsRequest request, Long userId, int rowCount) {
         ArchiveItemAudit audit = new ArchiveItemAudit();
         audit.setSourceTableName("am_archive_item");
         audit.setSourceRecordId(0L);

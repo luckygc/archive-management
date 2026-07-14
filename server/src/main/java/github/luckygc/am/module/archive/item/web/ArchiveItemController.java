@@ -19,17 +19,18 @@ import github.luckygc.am.common.api.RawRequestStrings;
 import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.archive.item.service.ArchiveItemLockService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemLockService.LockItemRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService;
+import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService.ArchiveItemListDto;
+import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService.ArchiveRelatedFilterCategoryDto;
+import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService.SearchArchiveItemsRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRelationService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRelationService.ArchiveItemRelationDto;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRelationService.ArchiveItemRelationRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveItemDetailDto;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveItemDto;
-import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveItemListDto;
-import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveRelatedFilterCategoryDto;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.CreateArchiveItemRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.DeleteItemRequest;
-import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.SearchArchiveItemsRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.UpdateArchiveItemRequest;
 import github.luckygc.am.module.archive.metadata.ArchiveLayoutSurface;
 
@@ -37,14 +38,17 @@ import github.luckygc.am.module.archive.metadata.ArchiveLayoutSurface;
 public class ArchiveItemController {
 
     private final ArchiveItemRoutingService archiveItemRoutingService;
+    private final ArchiveItemQueryService archiveItemQueryService;
     private final ArchiveItemRelationService archiveItemRelationService;
     private final ArchiveItemLockService archiveItemLockService;
 
     public ArchiveItemController(
             ArchiveItemRoutingService archiveItemRoutingService,
+            ArchiveItemQueryService archiveItemQueryService,
             ArchiveItemRelationService archiveItemRelationService,
             ArchiveItemLockService archiveItemLockService) {
         this.archiveItemRoutingService = archiveItemRoutingService;
+        this.archiveItemQueryService = archiveItemQueryService;
         this.archiveItemRelationService = archiveItemRelationService;
         this.archiveItemLockService = archiveItemLockService;
     }
@@ -52,7 +56,7 @@ public class ArchiveItemController {
     @GetMapping("/api/v1/archive-items")
     public ArchiveItemListDto listItems(
             Long categoryId, String fondsCode, Authentication authentication) {
-        return archiveItemRoutingService.listItems(
+        return archiveItemQueryService.listItems(
                 categoryId,
                 fondsCode,
                 AuthenticatedUsers.requireUserId(
@@ -64,7 +68,7 @@ public class ArchiveItemController {
             @RawRequestStrings @RequestBody SearchArchiveItemsRequest request,
             PageRequest page,
             Authentication authentication) {
-        return archiveItemRoutingService.searchItems(
+        return archiveItemQueryService.searchItems(
                 request,
                 AuthenticatedUsers.requireUserId(
                         authentication == null ? null : authentication.getPrincipal()),
@@ -76,7 +80,7 @@ public class ArchiveItemController {
             @RawRequestStrings @RequestBody SearchArchiveItemsRequest request,
             PageRequest page,
             Authentication authentication) {
-        return archiveItemRoutingService.discoverItems(
+        return archiveItemQueryService.discoverItems(
                 request,
                 AuthenticatedUsers.requireUserId(
                         authentication == null ? null : authentication.getPrincipal()),
@@ -88,7 +92,7 @@ public class ArchiveItemController {
             @RawRequestStrings @RequestBody SearchArchiveItemsRequest request,
             PageRequest page,
             Authentication authentication) {
-        return archiveItemRoutingService.searchDeletedItems(
+        return archiveItemQueryService.searchDeletedItems(
                 request,
                 AuthenticatedUsers.requireUserId(
                         authentication == null ? null : authentication.getPrincipal()),
@@ -98,7 +102,7 @@ public class ArchiveItemController {
     @GetMapping("/api/v1/archive-categories/{id}/related-filter-categories")
     public CollectionResponse<ArchiveRelatedFilterCategoryDto> listRelatedFilterCategories(
             @PathVariable Long id) {
-        return CollectionResponse.of(archiveItemRoutingService.listRelatedFilterCategories(id));
+        return CollectionResponse.of(archiveItemQueryService.listRelatedFilterCategories(id));
     }
 
     @PostMapping("/api/v1/archive-items")

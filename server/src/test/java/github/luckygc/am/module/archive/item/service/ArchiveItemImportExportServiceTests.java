@@ -33,8 +33,8 @@ import github.luckygc.am.module.archive.item.repository.ArchiveItemAuditDataRepo
 import github.luckygc.am.module.archive.item.repository.ArchiveItemDataRepository;
 import github.luckygc.am.module.archive.item.service.ArchiveItemImportExportService.ArchiveExcelFile;
 import github.luckygc.am.module.archive.item.service.ArchiveItemImportExportService.ArchiveImportResult;
-import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveItemListDto;
-import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.SearchArchiveItemsRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService.ArchiveItemListDto;
+import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService.SearchArchiveItemsRequest;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldControl;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldScope;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldType;
@@ -51,6 +51,7 @@ class ArchiveItemImportExportServiceTests {
 
     private ArchiveMetadataService archiveMetadataService;
     private ArchiveItemRoutingService archiveItemRoutingService;
+    private ArchiveItemQueryService archiveItemQueryService;
     private AuthorizationPermissionService permissionService;
     private ArchiveDataScopeService dataScopeService;
     private ArchiveItemDataRepository archiveItemRepository;
@@ -61,6 +62,7 @@ class ArchiveItemImportExportServiceTests {
     void setUp() {
         archiveMetadataService = mock(ArchiveMetadataService.class);
         archiveItemRoutingService = mock(ArchiveItemRoutingService.class);
+        archiveItemQueryService = mock(ArchiveItemQueryService.class);
         permissionService = mock(AuthorizationPermissionService.class);
         dataScopeService = mock(ArchiveDataScopeService.class);
         archiveItemRepository = mock(ArchiveItemDataRepository.class);
@@ -69,6 +71,7 @@ class ArchiveItemImportExportServiceTests {
                 new ArchiveItemImportExportService(
                         archiveMetadataService,
                         archiveItemRoutingService,
+                        archiveItemQueryService,
                         permissionService,
                         dataScopeService,
                         archiveItemRepository,
@@ -159,7 +162,7 @@ class ArchiveItemImportExportServiceTests {
         when(permissionService.hasPermission(9L, "archive:export")).thenReturn(true);
         SearchArchiveItemsRequest request =
                 new SearchArchiveItemsRequest(1L, "F001", null, null, null, 100, null, null);
-        when(archiveItemRoutingService.searchItems(any(), eq(9L)))
+        when(archiveItemQueryService.searchItems(any(), eq(9L)))
                 .thenReturn(
                         new ArchiveItemListDto(
                                 category(),
@@ -194,7 +197,7 @@ class ArchiveItemImportExportServiceTests {
     @DisplayName("导出沿用查询结果，范围外空结果不会额外读取数据")
     void exportItemsShouldReturnEmptyWorkbookWhenSearchResultIsEmpty() {
         when(permissionService.hasPermission(9L, "archive:export")).thenReturn(true);
-        when(archiveItemRoutingService.searchItems(any(), eq(9L)))
+        when(archiveItemQueryService.searchItems(any(), eq(9L)))
                 .thenReturn(
                         new ArchiveItemListDto(
                                 category(),
@@ -210,7 +213,7 @@ class ArchiveItemImportExportServiceTests {
                         9L);
 
         assertThat(file.bytes()).isNotEmpty();
-        verify(archiveItemRoutingService).searchItems(any(), eq(9L));
+        verify(archiveItemQueryService).searchItems(any(), eq(9L));
         verify(auditRepository).insert(any(ArchiveItemAudit.class));
     }
 

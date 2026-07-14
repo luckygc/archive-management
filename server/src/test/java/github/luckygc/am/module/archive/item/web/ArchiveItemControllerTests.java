@@ -16,22 +16,28 @@ import github.luckygc.am.common.api.CursorPageTokenCodec;
 import github.luckygc.am.common.api.CursorPageTokenContext;
 import github.luckygc.am.common.security.AuthenticatedUser;
 import github.luckygc.am.module.archive.item.service.ArchiveItemLockService;
+import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService;
+import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService.SearchArchiveItemsRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRelationService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService;
-import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.SearchArchiveItemsRequest;
 
 @DisplayName("档案条目 HTTP 入口")
 class ArchiveItemControllerTests {
 
     private final ArchiveItemRoutingService archiveItemRoutingService =
             mock(ArchiveItemRoutingService.class);
+    private final ArchiveItemQueryService archiveItemQueryService =
+            mock(ArchiveItemQueryService.class);
     private final ArchiveItemRelationService archiveItemRelationService =
             mock(ArchiveItemRelationService.class);
     private final ArchiveItemLockService archiveItemLockService =
             mock(ArchiveItemLockService.class);
     private final ArchiveItemController controller =
             new ArchiveItemController(
-                    archiveItemRoutingService, archiveItemRelationService, archiveItemLockService);
+                    archiveItemRoutingService,
+                    archiveItemQueryService,
+                    archiveItemRelationService,
+                    archiveItemLockService);
 
     @Test
     @DisplayName("搜索接口从 URL 查询参数接收 cursor 分页控制")
@@ -45,7 +51,7 @@ class ArchiveItemControllerTests {
 
         controller.searchItems(body, page, authentication);
 
-        verify(archiveItemRoutingService).searchItems(body, 9L, page);
+        verify(archiveItemQueryService).searchItems(body, 9L, page);
     }
 
     private Authentication authentication(Long userId) {

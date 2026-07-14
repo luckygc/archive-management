@@ -32,9 +32,9 @@ import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeSe
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService.ResolvedArchiveDataScope;
 import github.luckygc.am.module.archive.governance.service.ArchiveGovernanceService;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemAuditDataRepository;
+import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService.SearchArchiveItemsRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRelationService.ArchiveItemRelationRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.CreateArchiveItemRequest;
-import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.SearchArchiveItemsRequest;
 import github.luckygc.am.module.archive.mapper.ArchiveDataScopeSqlGroup;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.metadata.ArchiveManagementMode;
@@ -52,6 +52,7 @@ class ArchiveItemDataScopeQueryTests {
     private ArchiveDataScopeService dataScopeService;
     private AuthorizationPermissionService permissionService;
     private ArchiveItemRoutingService archiveItemRoutingService;
+    private ArchiveItemQueryService archiveItemQueryService;
     private ArchiveItemRelationService archiveItemRelationService;
 
     @BeforeEach
@@ -74,6 +75,15 @@ class ArchiveItemDataScopeQueryTests {
                         dataScopeService,
                         permissionService,
                         auditRepository);
+        archiveItemQueryService =
+                new ArchiveItemQueryService(
+                        archiveMetadataService,
+                        archiveMapper,
+                        dataScopeService,
+                        permissionService,
+                        new ArchiveItemSearchCriteriaCompiler(
+                                archiveMetadataService, archiveMapper),
+                        new ArchiveItemCursorPageAssembler(archiveMapper));
         archiveItemRelationService =
                 new ArchiveItemRelationService(
                         archiveMapper, archiveItemRoutingService, permissionService);
@@ -86,7 +96,7 @@ class ArchiveItemDataScopeQueryTests {
 
         assertThatThrownBy(
                         () ->
-                                archiveItemRoutingService.searchItems(
+                                archiveItemQueryService.searchItems(
                                         new SearchArchiveItemsRequest(
                                                 1L, null, null, null, null, null, null, null),
                                         9L))
@@ -102,7 +112,7 @@ class ArchiveItemDataScopeQueryTests {
     void listItemsShouldRejectOverviewWhenDataScopeIsNotAll() {
         when(dataScopeService.resolveUserDataScope(9L)).thenReturn(ResolvedArchiveDataScope.none());
 
-        archiveItemRoutingService.listItems(null, null, 9L);
+        archiveItemQueryService.listItems(null, null, 9L);
 
         verify(archiveMapper, org.mockito.Mockito.never()).listItemOverview();
     }
@@ -120,7 +130,7 @@ class ArchiveItemDataScopeQueryTests {
                 .thenReturn(ArchiveDataScopeFilter.fondsCodes(List.of("F001")));
         when(archiveMapper.listDynamicItems(any(), any(), any(), any())).thenReturn(List.of());
 
-        archiveItemRoutingService.searchItems(
+        archiveItemQueryService.searchItems(
                 new SearchArchiveItemsRequest(1L, null, null, null, null, null, null, null), 9L);
 
         verify(archiveMapper)
@@ -150,7 +160,7 @@ class ArchiveItemDataScopeQueryTests {
     @DisplayName("动态分页复用 Jakarta Data 游标值对象")
     void dynamicPaginationShouldReuseJakartaDataCursorValueObject() {
         assertThat(
-                        Arrays.stream(ArchiveItemRoutingService.class.getDeclaredClasses())
+                        Arrays.stream(ArchiveItemQueryService.class.getDeclaredClasses())
                                 .map(Class::getSimpleName))
                 .doesNotContain("Cursor");
     }
@@ -176,8 +186,8 @@ class ArchiveItemDataScopeQueryTests {
                                         LocalDateTime.of(2026, 7, 1, 10, 0))));
         when(archiveMapper.countDynamicItems(any(), any())).thenReturn(3);
 
-        ArchiveItemRoutingService.ArchiveItemListDto page =
-                archiveItemRoutingService.searchItems(
+        ArchiveItemQueryService.ArchiveItemListDto page =
+                archiveItemQueryService.searchItems(
                         new SearchArchiveItemsRequest(1L, null, null, null, null, null, null, null),
                         9L,
                         PageRequest.ofSize(100).withTotal());
@@ -209,7 +219,7 @@ class ArchiveItemDataScopeQueryTests {
 
         assertThatThrownBy(
                         () ->
-                                archiveItemRoutingService.searchItems(
+                                archiveItemQueryService.searchItems(
                                         new SearchArchiveItemsRequest(
                                                 1L, null, null, null, null, null, null, null),
                                         9L))
@@ -236,7 +246,7 @@ class ArchiveItemDataScopeQueryTests {
         when(dataScopeService.buildItemFilter(9L, 1L, null))
                 .thenReturn(ArchiveDataScopeFilter.none());
 
-        archiveItemRoutingService.searchItems(
+        archiveItemQueryService.searchItems(
                 new SearchArchiveItemsRequest(1L, null, null, null, null, null, null, null), 9L);
 
         verify(archiveMapper, org.mockito.Mockito.never())

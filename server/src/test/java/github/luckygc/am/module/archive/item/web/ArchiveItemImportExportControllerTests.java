@@ -16,7 +16,7 @@ import org.springframework.security.core.Authentication;
 import github.luckygc.am.common.security.AuthenticatedUser;
 import github.luckygc.am.module.archive.item.service.ArchiveItemImportExportService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemImportExportService.ArchiveExcelFile;
-import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.SearchArchiveItemsRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService.SearchArchiveItemsRequest;
 
 import tools.jackson.databind.json.JsonMapper;
 

@@ -26,7 +26,7 @@ import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.archive.item.service.ArchiveItemImportExportService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemImportExportService.ArchiveExcelFile;
 import github.luckygc.am.module.archive.item.service.ArchiveItemImportExportService.ArchiveImportResult;
-import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.SearchArchiveItemsRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService.SearchArchiveItemsRequest;
 
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.json.JsonMapper;

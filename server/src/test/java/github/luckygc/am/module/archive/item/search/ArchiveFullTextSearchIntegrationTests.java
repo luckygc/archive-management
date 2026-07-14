@@ -22,10 +22,11 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import github.luckygc.am.app.ArchiveManagementApplication;
 import github.luckygc.am.common.api.CursorPageTokenContext;
+import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService;
+import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService.ArchiveItemListDto;
+import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService.ArchiveItemOrderBy;
+import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService.SearchArchiveItemsRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService;
-import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveItemListDto;
-import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.ArchiveItemOrderBy;
-import github.luckygc.am.module.archive.item.service.ArchiveItemRoutingService.SearchArchiveItemsRequest;
 
 @Testcontainers(disabledWithoutDocker = true)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
@@ -52,6 +53,8 @@ class ArchiveFullTextSearchIntegrationTests {
 
     @Autowired private ArchiveItemRoutingService archiveItemRoutingService;
 
+    @Autowired private ArchiveItemQueryService archiveItemQueryService;
+
     @Autowired private JdbcTemplate jdbcTemplate;
 
     @BeforeEach
@@ -76,7 +79,7 @@ class ArchiveFullTextSearchIntegrationTests {
                         Long.class);
 
         var result =
-                archiveItemRoutingService.discoverItems(
+                archiveItemQueryService.discoverItems(
                         new SearchArchiveItemsRequest(
                                 categoryId, "Z001", "档案管理系统", null, null, 50, null, null),
                         1L);
@@ -95,7 +98,7 @@ class ArchiveFullTextSearchIntegrationTests {
                         Long.class);
 
         var firstPage =
-                archiveItemRoutingService.searchItems(
+                archiveItemQueryService.searchItems(
                         new SearchArchiveItemsRequest(
                                 categoryId,
                                 null,
@@ -114,7 +117,7 @@ class ArchiveFullTextSearchIntegrationTests {
         assertThat(firstPage.next()).isNotBlank();
 
         var secondPage =
-                archiveItemRoutingService.searchItems(
+                archiveItemQueryService.searchItems(
                         new SearchArchiveItemsRequest(
                                 categoryId,
                                 null,
@@ -133,7 +136,7 @@ class ArchiveFullTextSearchIntegrationTests {
         assertThat(secondPage.prev()).isNotBlank();
 
         var previousPage =
-                archiveItemRoutingService.searchItems(
+                archiveItemQueryService.searchItems(
                         new SearchArchiveItemsRequest(
                                 categoryId,
                                 null,
@@ -171,7 +174,7 @@ class ArchiveFullTextSearchIntegrationTests {
                 """);
 
         var firstPage =
-                archiveItemRoutingService.searchItems(
+                archiveItemQueryService.searchItems(
                         new SearchArchiveItemsRequest(
                                 categoryId, null, null, null, null, 1, null, null),
                         1L);
@@ -184,7 +187,7 @@ class ArchiveFullTextSearchIntegrationTests {
                 .contains("v4|next|1|test-query|T:2026-06-29T10:00:00.123456", "|L:");
 
         var secondPage =
-                archiveItemRoutingService.searchItems(
+                archiveItemQueryService.searchItems(
                         new SearchArchiveItemsRequest(
                                 categoryId, null, null, null, null, 1, firstPage.next(), null),
                         1L);
@@ -203,7 +206,7 @@ class ArchiveFullTextSearchIntegrationTests {
                         Long.class);
 
         var firstPage =
-                archiveItemRoutingService.searchItems(
+                archiveItemQueryService.searchItems(
                         new SearchArchiveItemsRequest(
                                 categoryId,
                                 null,
@@ -222,7 +225,7 @@ class ArchiveFullTextSearchIntegrationTests {
         assertThat(firstPage.next()).isNotBlank();
 
         var secondPage =
-                archiveItemRoutingService.searchItems(
+                archiveItemQueryService.searchItems(
                         new SearchArchiveItemsRequest(
                                 categoryId,
                                 null,
@@ -319,7 +322,7 @@ class ArchiveFullTextSearchIntegrationTests {
         insertDeletedItem(itemTableName, "GW-TRASH-002", "2099-06-29 11:00:00.123455");
 
         var firstPage =
-                archiveItemRoutingService.searchDeletedItems(
+                archiveItemQueryService.searchDeletedItems(
                         new SearchArchiveItemsRequest(
                                 categoryId, null, null, null, null, 1, null, null),
                         1L);
@@ -332,7 +335,7 @@ class ArchiveFullTextSearchIntegrationTests {
                 .contains("v4|next|1|test-query|T:2099-06-29T11:00:00.123456", "|L:");
 
         var secondPage =
-                archiveItemRoutingService.searchDeletedItems(
+                archiveItemQueryService.searchDeletedItems(
                         new SearchArchiveItemsRequest(
                                 categoryId, null, null, null, null, 1, firstPage.next(), null),
                         1L);

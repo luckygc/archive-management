@@ -12,11 +12,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-
-import jakarta.data.page.CursoredPage;
-import jakarta.data.page.PageRequest;
-import jakarta.data.page.PageRequest.Cursor;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jspecify.annotations.Nullable;
@@ -28,13 +23,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonProperty;
-
-import github.luckygc.am.common.api.CursorPageResponse;
-import github.luckygc.am.common.api.CursorPageTokenCodec;
-import github.luckygc.am.common.api.CursorPageTokenContext;
-import github.luckygc.am.common.api.KeysetCursoredPageRecord;
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.archive.ArchiveLevel;
@@ -42,32 +30,16 @@ import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeSe
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService.ArchiveDataScopeFilter;
 import github.luckygc.am.module.archive.governance.service.ArchiveGovernanceService;
 import github.luckygc.am.module.archive.item.ArchiveItemAudit;
-import github.luckygc.am.module.archive.item.ArchiveItemQueryOperator;
-import github.luckygc.am.module.archive.item.ArchiveItemRelationDirection;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemAuditDataRepository;
-import github.luckygc.am.module.archive.mapper.ArchiveDataScopeSqlGroup;
-import github.luckygc.am.module.archive.mapper.ArchiveDynamicItemCriteria;
-import github.luckygc.am.module.archive.mapper.ArchiveDynamicItemPageWindow;
-import github.luckygc.am.module.archive.mapper.ArchiveDynamicItemPageWindow.CursorComparison;
-import github.luckygc.am.module.archive.mapper.ArchiveDynamicItemPageWindow.CursorPredicate;
-import github.luckygc.am.module.archive.mapper.ArchiveDynamicItemProjection;
-import github.luckygc.am.module.archive.mapper.ArchiveDynamicItemSource;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.mapper.ArchiveSqlAssignment;
-import github.luckygc.am.module.archive.mapper.ArchiveSqlCondition;
-import github.luckygc.am.module.archive.mapper.ArchiveSqlOrder;
-import github.luckygc.am.module.archive.mapper.ArchiveSqlOrder.Direction;
-import github.luckygc.am.module.archive.mapper.ArchiveSqlRelatedGroup;
 import github.luckygc.am.module.archive.metadata.ArchiveDynamicTableNames;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldScope;
-import github.luckygc.am.module.archive.metadata.ArchiveFieldType;
 import github.luckygc.am.module.archive.metadata.ArchiveLayoutSurface;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFieldDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFondsDto;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveUniqueConstraintDto;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveUniqueConstraintFieldDto;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
 
 @Service
@@ -103,413 +75,6 @@ public class ArchiveItemRoutingService {
         this.dataScopeService = dataScopeService;
         this.permissionService = permissionService;
         this.auditRepository = auditRepository;
-    }
-
-    public ArchiveItemListDto listItems(
-            @Nullable Long categoryId, @Nullable String fondsCode, Long userId) {
-        SearchArchiveItemsRequest request =
-                new SearchArchiveItemsRequest(
-                        categoryId, fondsCode, null, null, null, null, null, null);
-        return queryItems(request, userId, false, false, pageRequest(request));
-    }
-
-    public ArchiveItemListDto searchItems(
-            @Nullable SearchArchiveItemsRequest request, Long userId) {
-        return queryItems(request, userId, false, false, pageRequest(request));
-    }
-
-    public ArchiveItemListDto searchItems(
-            @Nullable SearchArchiveItemsRequest request, Long userId, PageRequest pageRequest) {
-        return queryItems(request, userId, false, false, pageRequest);
-    }
-
-    public ArchiveItemListDto discoverItems(
-            @Nullable SearchArchiveItemsRequest request, Long userId) {
-        return queryItems(request, userId, true, false, pageRequest(request));
-    }
-
-    public ArchiveItemListDto discoverItems(
-            @Nullable SearchArchiveItemsRequest request, Long userId, PageRequest pageRequest) {
-        return queryItems(request, userId, true, false, pageRequest);
-    }
-
-    public ArchiveItemListDto searchDeletedItems(
-            @Nullable SearchArchiveItemsRequest request, Long userId) {
-        return queryItems(request, userId, false, true, pageRequest(request));
-    }
-
-    public ArchiveItemListDto searchDeletedItems(
-            @Nullable SearchArchiveItemsRequest request, Long userId, PageRequest pageRequest) {
-        return queryItems(request, userId, false, true, pageRequest);
-    }
-
-    public List<ArchiveRelatedFilterCategoryDto> listRelatedFilterCategories(Long categoryId) {
-        archiveMetadataService.getCategory(categoryId);
-        return archiveMapper.listRelatedFilterCategories(categoryId).stream()
-                .map(
-                        row ->
-                                new ArchiveRelatedFilterCategoryDto(
-                                        number(row, "relatedCategoryId").longValue(),
-                                        string(row, "relatedCategoryCode"),
-                                        string(row, "relatedCategoryName"),
-                                        ArchiveItemRelationDirection.fromValue(
-                                                string(row, "direction"))))
-                .toList();
-    }
-
-    private ArchiveItemListDto queryItems(
-            @Nullable SearchArchiveItemsRequest request,
-            Long userId,
-            boolean allowKeyword,
-            boolean deleted,
-            PageRequest pageRequest) {
-        requirePermission(userId, "archive:item:read");
-        String keyword = StringUtils.trimToNull(request == null ? null : request.keyword());
-        if (StringUtils.isNotBlank(keyword) && !allowKeyword) {
-            throw badRequest(
-                    "档案管理列表不支持全文关键词检索", "keyword", "档案管理列表只支持数据库字段筛选；全文检索用于查档、借阅等普通用户业务入口");
-        }
-        if (request == null || request.categoryId() == null) {
-            if (StringUtils.isNotBlank(keyword)) {
-                throw badRequest("全文检索必须选择档案分类", "categoryId", "全文检索必须选择档案分类");
-            }
-            if (!dataScopeService.resolveUserDataScope(userId).allData()) {
-                return itemList(null, List.of(), emptyPage(pageRequest, 0L));
-            }
-            int limit = pageRequest.size();
-            List<Map<String, @Nullable Object>> rows =
-                    archiveMapper.listItemOverview().stream().limit(limit).toList();
-            return itemList(null, List.of(), rows);
-        }
-
-        ArchiveCategoryDto category = archiveMetadataService.getCategory(request.categoryId());
-        ArchiveLevel archiveLevel = ArchiveLevel.ITEM;
-        ensureArchiveLevelAllowed(category, archiveLevel);
-        String tableName = dynamicTableName(category, archiveLevel);
-        List<ArchiveFieldDto> fields =
-                archiveMetadataService.listEffectiveFields(
-                        request.categoryId(), archiveLevel, ArchiveLayoutSurface.TABLE, userId);
-        List<ArchiveFieldDto> visibleFields =
-                fields.stream()
-                        .filter(ArchiveFieldDto::listVisible)
-                        .sorted(
-                                java.util.Comparator.comparingInt(ArchiveFieldDto::listSortOrder)
-                                        .thenComparing(ArchiveFieldDto::id))
-                        .toList();
-        if (!isDynamicTableBuilt(category, archiveLevel)) {
-            throw new ResponseStatusException(HttpStatus.PRECONDITION_FAILED, "档案分类动态表未创建");
-        }
-        List<String> indexedFieldCodes = indexedFieldCodes(request.categoryId(), archiveLevel);
-        List<ArchiveSqlOrder> orderBy =
-                deleted ? deletedOrderBy() : orderBy(request.orderBy(), fields, indexedFieldCodes);
-        Cursor cursor = cursor(pageRequest);
-        List<ArchiveSqlCondition> conditions =
-                buildSearchConditions(request.categoryId(), archiveLevel, fields, request.where());
-        List<ArchiveSqlRelatedGroup> relatedGroups =
-                buildRelatedGroups(request.relatedGroups(), userId);
-        String requestedFondsCode = StringUtils.trimToNull(request.fondsCode());
-        ArchiveDataScopeFilter dataScopeFilter =
-                dataScopeService.buildItemFilter(userId, request.categoryId(), requestedFondsCode);
-        if (dataScopeFilter.empty()) {
-            return itemList(category, fields, emptyPage(pageRequest, 0L));
-        }
-        CursoredPage<Map<String, @Nullable Object>> itemPage =
-                queryDynamicItemPage(
-                        pageRequest,
-                        tableName,
-                        visibleFields,
-                        deleted,
-                        requestedFondsCode,
-                        dataScopeFilter.allData() ? List.of() : dataScopeFilter.groups(),
-                        conditions,
-                        relatedGroups,
-                        keyword,
-                        orderBy,
-                        cursor);
-        CursorPageResponse<Map<String, @Nullable Object>> page =
-                CursorPageResponse.from(itemPage, pageRequest, item -> item);
-        return itemList(category, fields, page);
-    }
-
-    private CursoredPage<Map<String, @Nullable Object>> queryDynamicItemPage(
-            PageRequest pageRequest,
-            String tableName,
-            List<ArchiveFieldDto> visibleFields,
-            boolean deleted,
-            @Nullable String requestedFondsCode,
-            List<ArchiveDataScopeSqlGroup> dataScopeGroups,
-            List<ArchiveSqlCondition> conditions,
-            List<ArchiveSqlRelatedGroup> relatedGroups,
-            @Nullable String keyword,
-            List<ArchiveSqlOrder> orderBy,
-            @Nullable Cursor cursor) {
-        int limit = pageRequest.size();
-        List<ArchiveSqlOrder> queryOrderBy =
-                isPreviousCursor(pageRequest) ? invert(orderBy) : orderBy;
-        ArchiveDynamicItemSource source = new ArchiveDynamicItemSource(tableName, deleted);
-        ArchiveDynamicItemProjection projection =
-                new ArchiveDynamicItemProjection(projectionFields(visibleFields));
-        ArchiveDynamicItemCriteria criteria =
-                new ArchiveDynamicItemCriteria(
-                        requestedFondsCode, dataScopeGroups, conditions, relatedGroups, keyword);
-        ArchiveDynamicItemPageWindow pageWindow =
-                new ArchiveDynamicItemPageWindow(
-                        queryOrderBy, cursorPredicates(queryOrderBy, cursor), limit + 1);
-        List<Map<String, @Nullable Object>> rows =
-                archiveMapper.listDynamicItems(source, projection, criteria, pageWindow);
-        boolean hasMore = rows.size() > limit;
-        List<Map<String, @Nullable Object>> rawPageItems = hasMore ? rows.subList(0, limit) : rows;
-        if (isPreviousCursor(pageRequest)) {
-            rawPageItems = rawPageItems.reversed();
-        }
-        List<Map<String, @Nullable Object>> pageItems =
-                normalizeDynamicFieldValues(rawPageItems, visibleFields);
-        List<PageRequest.Cursor> cursors =
-                rawPageItems.stream().map(row -> rowCursor(orderBy, row)).toList();
-        Long total =
-                pageRequest.requestTotal()
-                        ? (long) archiveMapper.countDynamicItems(source, criteria)
-                        : null;
-        return new KeysetCursoredPageRecord<>(
-                pageRequest,
-                pageItems,
-                cursors,
-                cursor != null && !rawPageItems.isEmpty(),
-                hasMore && !rawPageItems.isEmpty(),
-                total);
-    }
-
-    private PageRequest pageRequest(@Nullable SearchArchiveItemsRequest request) {
-        return CursorPageTokenCodec.pageRequest(
-                pageLimit(request == null ? null : request.limit()),
-                request == null ? null : request.cursor(),
-                false);
-    }
-
-    private ArchiveItemListDto itemList(
-            @Nullable ArchiveCategoryDto category,
-            List<ArchiveFieldDto> fields,
-            List<Map<String, @Nullable Object>> items) {
-        return itemList(
-                category,
-                fields,
-                CursorPageResponse.withCursorValues(items, 0, null, null, null, null, null));
-    }
-
-    private ArchiveItemListDto itemList(
-            @Nullable ArchiveCategoryDto category,
-            List<ArchiveFieldDto> fields,
-            CursorPageResponse<Map<String, @Nullable Object>> page) {
-        return new ArchiveItemListDto(category, fields, page);
-    }
-
-    private CursorPageResponse<Map<String, @Nullable Object>> emptyPage(
-            PageRequest pageRequest, @Nullable Long total) {
-        Long responseTotal = pageRequest.requestTotal() ? total : null;
-        return CursorPageResponse.<Map<String, @Nullable Object>>withCursorValues(
-                List.of(), pageRequest.size(), null, null, null, null, responseTotal);
-    }
-
-    private int pageLimit(@Nullable Integer limit) {
-        if (limit == null) {
-            return DEFAULT_PAGE_LIMIT;
-        }
-        if (limit < 1 || limit > MAX_PAGE_LIMIT) {
-            throw badRequest("分页大小必须在 1 到 " + MAX_PAGE_LIMIT + " 之间", "limit", "分页大小超出范围");
-        }
-        return limit;
-    }
-
-    private List<ArchiveSqlOrder> orderBy(
-            @Nullable List<@Nullable ArchiveItemOrderBy> requestOrderBy,
-            List<ArchiveFieldDto> fields,
-            List<String> indexedFieldCodes) {
-        List<ArchiveSqlOrder> orders = new ArrayList<>();
-        if (requestOrderBy != null) {
-            Map<String, ArchiveFieldDto> fieldsByCode =
-                    fields.stream()
-                            .collect(
-                                    java.util.stream.Collectors.toMap(
-                                            ArchiveFieldDto::fieldCode, field -> field));
-            for (ArchiveItemOrderBy order : requestOrderBy) {
-                orders.add(toSqlOrder(order, fieldsByCode, indexedFieldCodes));
-            }
-        }
-        appendFallbackOrder(orders, new ArchiveSqlOrder("i.created_at", Direction.DESC));
-        appendFallbackOrder(orders, new ArchiveSqlOrder("i.id", Direction.DESC));
-        return orders;
-    }
-
-    private List<ArchiveSqlOrder> deletedOrderBy() {
-        return List.of(
-                new ArchiveSqlOrder("i.deleted_at", Direction.DESC),
-                new ArchiveSqlOrder("i.id", Direction.DESC));
-    }
-
-    private void appendFallbackOrder(List<ArchiveSqlOrder> orders, ArchiveSqlOrder fallback) {
-        boolean alreadyOrdered =
-                orders.stream()
-                        .anyMatch(
-                                order -> Objects.equals(order.expression(), fallback.expression()));
-        if (!alreadyOrdered) {
-            orders.add(fallback);
-        }
-    }
-
-    private ArchiveSqlOrder toSqlOrder(
-            @Nullable ArchiveItemOrderBy order,
-            Map<String, ArchiveFieldDto> fieldsByCode,
-            List<String> indexedFieldCodes) {
-        String field = order == null ? null : StringUtils.trimToNull(order.field());
-        if (field == null) {
-            throw badRequest("排序字段不能为空", "orderBy.field", "排序字段不能为空");
-        }
-        Direction direction =
-                "ASC".equalsIgnoreCase(order.direction()) ? Direction.ASC : Direction.DESC;
-        return new ArchiveSqlOrder(
-                sortExpression(field, fieldsByCode, indexedFieldCodes), direction);
-    }
-
-    private String sortExpression(
-            String field,
-            Map<String, ArchiveFieldDto> fieldsByCode,
-            List<String> indexedFieldCodes) {
-        String fixedExpression =
-                switch (field) {
-                    case "createdAt" -> "i.created_at";
-                    case "archiveNo" -> "i.archive_no";
-                    case "archiveYear" -> "i.archive_year";
-                    case "fondsCode" -> "i.fonds_code";
-                    case "categoryCode" -> "i.category_code";
-                    case "electronicStatus" -> "i.electronic_status";
-                    case "id" -> "i.id";
-                    default -> null;
-                };
-        if (fixedExpression != null) {
-            return fixedExpression;
-        }
-        ArchiveFieldDto dynamicField = fieldsByCode.get(field);
-        if (dynamicField != null
-                && (dynamicField.exactSearchable()
-                        || indexedFieldCodes.contains(dynamicField.fieldCode()))) {
-            return "d." + dynamicField.columnName();
-        }
-        throw badRequest("不支持的排序字段", "orderBy.field", "不支持的排序字段：" + field);
-    }
-
-    private List<String> indexedFieldCodes(Long categoryId, ArchiveLevel archiveLevel) {
-        return archiveMetadataService.listUniqueConstraints(categoryId).stream()
-                .filter(ArchiveUniqueConstraintDto::enabled)
-                .filter(constraint -> constraint.archiveLevel() == archiveLevel)
-                .flatMap(constraint -> constraint.fields().stream())
-                .map(ArchiveUniqueConstraintFieldDto::fieldCode)
-                .distinct()
-                .toList();
-    }
-
-    private List<ArchiveSqlOrder> invert(List<ArchiveSqlOrder> orders) {
-        return orders.stream()
-                .map(
-                        order ->
-                                new ArchiveSqlOrder(
-                                        order.expression(),
-                                        order.direction() == Direction.ASC
-                                                ? Direction.DESC
-                                                : Direction.ASC))
-                .toList();
-    }
-
-    private List<CursorPredicate> cursorPredicates(
-            List<ArchiveSqlOrder> orders, @Nullable Cursor cursor) {
-        if (cursor == null) {
-            return List.of();
-        }
-        List<?> values = cursor.elements();
-        List<CursorPredicate> predicates = new ArrayList<>();
-        for (int i = 0; i < orders.size(); i++) {
-            List<CursorComparison> equalsComparisons = new ArrayList<>();
-            for (int j = 0; j < i; j++) {
-                equalsComparisons.add(
-                        new CursorComparison(
-                                orders.get(j).expression(),
-                                orders.get(j).direction(),
-                                values.get(j)));
-            }
-            predicates.add(
-                    new CursorPredicate(
-                            equalsComparisons,
-                            new CursorComparison(
-                                    orders.get(i).expression(),
-                                    orders.get(i).direction(),
-                                    values.get(i))));
-        }
-        return predicates;
-    }
-
-    private @Nullable Cursor cursor(PageRequest pageRequest) {
-        return switch (pageRequest.mode()) {
-            case CURSOR_NEXT, CURSOR_PREVIOUS -> pageRequest.cursor().orElseThrow();
-            case OFFSET -> null;
-        };
-    }
-
-    private boolean isPreviousCursor(PageRequest pageRequest) {
-        return switch (pageRequest.mode()) {
-            case CURSOR_PREVIOUS -> true;
-            case CURSOR_NEXT, OFFSET -> false;
-        };
-    }
-
-    private PageRequest.Cursor rowCursor(
-            List<ArchiveSqlOrder> orders, Map<String, @Nullable Object> row) {
-        return PageRequest.Cursor.forKey(cursorRowValues(orders, row).toArray(Object[]::new));
-    }
-
-    private List<Object> cursorRowValues(
-            List<ArchiveSqlOrder> orders, Map<String, @Nullable Object> row) {
-        List<Object> values = new ArrayList<>();
-        for (ArchiveSqlOrder order : orders) {
-            values.add(cursorRowValue(row, order.expression()));
-        }
-        return values;
-    }
-
-    private @Nullable Object cursorRowValue(Map<String, @Nullable Object> row, String expression) {
-        return switch (expression) {
-            case "i.created_at" -> value(row, "createdAt");
-            case "i.deleted_at" -> value(row, "deletedAt");
-            case "i.id" -> longCursorValue(row, "id");
-            case "i.archive_no" -> value(row, "archiveNo");
-            case "i.archive_year" -> integerCursorValue(row, "archiveYear");
-            case "i.fonds_code" -> value(row, "fondsCode");
-            case "i.category_code" -> value(row, "categoryCode");
-            case "i.electronic_status" -> value(row, "electronicStatus");
-            default -> dynamicCursorRowValue(row, expression);
-        };
-    }
-
-    private @Nullable Object dynamicCursorRowValue(
-            Map<String, @Nullable Object> row, String expression) {
-        if (!expression.startsWith("d.")) {
-            throw new IllegalStateException("不支持的 cursor 排序字段：" + expression);
-        }
-        return value(row, expression.substring(2));
-    }
-
-    private Long longCursorValue(Map<String, @Nullable Object> row, String key) {
-        Object value = value(row, key);
-        if (value instanceof Number number) {
-            return number.longValue();
-        }
-        return Long.valueOf(value.toString());
-    }
-
-    private Integer integerCursorValue(Map<String, @Nullable Object> row, String key) {
-        Object value = value(row, key);
-        if (value instanceof Number number) {
-            return number.intValue();
-        }
-        return Integer.valueOf(value.toString());
     }
 
     @Transactional
@@ -892,6 +457,34 @@ public class ArchiveItemRoutingService {
         return dynamicFields;
     }
 
+    private @Nullable Object normalizeDynamicFieldValue(
+            ArchiveFieldDto field, @Nullable Object value) {
+        if (value == null) {
+            return null;
+        }
+        return switch (field.fieldType()) {
+            case DATE -> {
+                if (value instanceof Date date) {
+                    yield date.toLocalDate().toString();
+                }
+                if (value instanceof LocalDate localDate) {
+                    yield localDate.toString();
+                }
+                yield value;
+            }
+            case DATETIME -> {
+                if (value instanceof Timestamp timestamp) {
+                    yield timestamp.toLocalDateTime().format(DATE_TIME_FORMATTER);
+                }
+                if (value instanceof LocalDateTime localDateTime) {
+                    yield localDateTime.format(DATE_TIME_FORMATTER);
+                }
+                yield value;
+            }
+            default -> value;
+        };
+    }
+
     private String dynamicTableName(ArchiveCategoryDto category, ArchiveLevel archiveLevel) {
         return dynamicTableName(category, archiveLevel, ArchiveFieldScope.METADATA);
     }
@@ -952,206 +545,6 @@ public class ArchiveItemRoutingService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "档案分类不存在"));
     }
 
-    private List<ArchiveSqlCondition> buildSearchConditions(
-            Long categoryId,
-            ArchiveLevel archiveLevel,
-            List<ArchiveFieldDto> fields,
-            @Nullable ArchiveItemWhere where) {
-        Map<String, ArchiveFieldDto> fieldsByCode =
-                fields.stream()
-                        .collect(
-                                java.util.stream.Collectors.toMap(
-                                        ArchiveFieldDto::fieldCode, field -> field));
-        List<String> uniqueFieldCodes =
-                archiveMetadataService.listUniqueConstraints(categoryId).stream()
-                        .filter(ArchiveUniqueConstraintDto::enabled)
-                        .filter(constraint -> constraint.archiveLevel() == archiveLevel)
-                        .flatMap(constraint -> constraint.fields().stream())
-                        .map(ArchiveUniqueConstraintFieldDto::fieldCode)
-                        .distinct()
-                        .toList();
-        List<ArchiveSqlCondition> conditions = new ArrayList<>();
-        conditions.addAll(
-                buildWhereConditions(fieldsByCode, uniqueFieldCodes, where, "where.conditions"));
-        return conditions;
-    }
-
-    private List<ArchiveSqlCondition> buildWhereConditions(
-            Map<String, ArchiveFieldDto> fieldsByCode,
-            List<String> uniqueFieldCodes,
-            @Nullable ArchiveItemWhere where,
-            String fieldPath) {
-        if (where == null || where.conditions() == null || where.conditions().isEmpty()) {
-            return List.of();
-        }
-        List<ArchiveSqlCondition> conditions = new ArrayList<>();
-        for (ArchiveItemQueryCondition condition : where.conditions()) {
-            String fieldCode =
-                    condition == null ? null : StringUtils.trimToNull(condition.fieldCode());
-            if (fieldCode == null) {
-                continue;
-            }
-            ArchiveFieldDto field = fieldsByCode.get(fieldCode);
-            validateSearchableField(field, fieldCode, uniqueFieldCodes);
-            ArchiveSqlCondition sqlCondition = toSqlCondition(field, condition, fieldPath);
-            if (sqlCondition.value() != null
-                    || sqlCondition.endValue() != null
-                    || sqlCondition.operator() == ArchiveItemQueryOperator.IS_EMPTY
-                    || sqlCondition.operator() == ArchiveItemQueryOperator.IS_NOT_EMPTY) {
-                conditions.add(sqlCondition);
-            }
-        }
-        return conditions;
-    }
-
-    private void validateSearchableField(
-            @Nullable ArchiveFieldDto field, String fieldCode, List<String> uniqueFieldCodes) {
-        if (field == null
-                || (!field.exactSearchable() && !uniqueFieldCodes.contains(field.fieldCode()))) {
-            throw badRequest("字段不允许作为筛选条件：" + fieldCode);
-        }
-    }
-
-    private ArchiveSqlCondition toSqlCondition(
-            ArchiveFieldDto field, ArchiveItemQueryCondition condition, String fieldPath) {
-        ArchiveItemQueryOperator operator =
-                condition.op() == null ? ArchiveItemQueryOperator.EQ : condition.op();
-        return switch (operator) {
-            case EQ ->
-                    new ArchiveSqlCondition(
-                            field.columnName(),
-                            ArchiveItemQueryOperator.EQ,
-                            convertValue(field, condition.value()));
-            case CONTAINS -> {
-                ensureTextOperator(field, operator, fieldPath);
-                String value = convertSearchTextValue(field, condition.value());
-                yield new ArchiveSqlCondition(
-                        field.columnName(),
-                        ArchiveItemQueryOperator.CONTAINS,
-                        value == null ? null : "%" + escapeLike(value) + "%");
-            }
-            case STARTS_WITH -> {
-                ensureTextOperator(field, operator, fieldPath);
-                String value = convertSearchTextValue(field, condition.value());
-                yield new ArchiveSqlCondition(
-                        field.columnName(),
-                        ArchiveItemQueryOperator.STARTS_WITH,
-                        value == null ? null : escapeLike(value) + "%");
-            }
-            case GTE ->
-                    new ArchiveSqlCondition(
-                            field.columnName(),
-                            ArchiveItemQueryOperator.GTE,
-                            convertValue(field, condition.value()));
-            case LTE ->
-                    new ArchiveSqlCondition(
-                            field.columnName(),
-                            ArchiveItemQueryOperator.LTE,
-                            convertValue(field, condition.value()));
-            case BETWEEN ->
-                    new ArchiveSqlCondition(
-                            field.columnName(),
-                            ArchiveItemQueryOperator.BETWEEN,
-                            convertValue(field, condition.startValue()),
-                            convertValue(field, condition.endValue()));
-            case IS_EMPTY -> {
-                ensureTextOperator(field, operator, fieldPath);
-                yield new ArchiveSqlCondition(
-                        field.columnName(), ArchiveItemQueryOperator.IS_EMPTY, null);
-            }
-            case IS_NOT_EMPTY -> {
-                ensureTextOperator(field, operator, fieldPath);
-                yield new ArchiveSqlCondition(
-                        field.columnName(), ArchiveItemQueryOperator.IS_NOT_EMPTY, null);
-            }
-            case IN, IS_NULL, IS_NOT_NULL ->
-                    throw badRequest("不支持的筛选操作符", fieldPath + ".op", "不支持的筛选操作符");
-        };
-    }
-
-    private List<ArchiveSqlRelatedGroup> buildRelatedGroups(
-            @Nullable List<@Nullable ArchiveItemRelatedGroup> relatedGroups, Long userId) {
-        if (relatedGroups == null || relatedGroups.isEmpty()) {
-            return List.of();
-        }
-        List<ArchiveSqlRelatedGroup> compiled = new ArrayList<>();
-        for (ArchiveItemRelatedGroup group : relatedGroups) {
-            if (group == null) {
-                continue;
-            }
-            if (group.categoryId() == null) {
-                throw badRequest("关联分类不能为空", "relatedGroups.categoryId", "关联分类不能为空");
-            }
-            ArchiveCategoryDto category = archiveMetadataService.getCategory(group.categoryId());
-            ArchiveLevel archiveLevel = ArchiveLevel.ITEM;
-            ensureArchiveLevelAllowed(category, archiveLevel);
-            if (!isDynamicTableBuilt(category, archiveLevel)) {
-                throw badRequest("关联分类尚未建表", "relatedGroups.categoryId", "关联分类尚未建表");
-            }
-            List<ArchiveFieldDto> fields =
-                    archiveMetadataService.listEffectiveFields(
-                            group.categoryId(), archiveLevel, ArchiveLayoutSurface.TABLE, userId);
-            Map<String, ArchiveFieldDto> fieldsByCode =
-                    fields.stream()
-                            .collect(
-                                    java.util.stream.Collectors.toMap(
-                                            ArchiveFieldDto::fieldCode, field -> field));
-            List<String> uniqueFieldCodes =
-                    archiveMetadataService.listUniqueConstraints(group.categoryId()).stream()
-                            .filter(ArchiveUniqueConstraintDto::enabled)
-                            .filter(constraint -> constraint.archiveLevel() == archiveLevel)
-                            .flatMap(constraint -> constraint.fields().stream())
-                            .map(ArchiveUniqueConstraintFieldDto::fieldCode)
-                            .distinct()
-                            .toList();
-            compiled.add(
-                    new ArchiveSqlRelatedGroup(
-                            dynamicTableName(category, archiveLevel),
-                            category.categoryCode(),
-                            normalizeRelationDirection(group.direction()),
-                            buildWhereConditions(
-                                    fieldsByCode,
-                                    uniqueFieldCodes,
-                                    group.where(),
-                                    "relatedGroups.where")));
-        }
-        return compiled;
-    }
-
-    private ArchiveItemRelationDirection normalizeRelationDirection(
-            @Nullable ArchiveItemRelationDirection direction) {
-        return direction == null ? ArchiveItemRelationDirection.OUTGOING : direction;
-    }
-
-    private void ensureTextOperator(
-            ArchiveFieldDto field, ArchiveItemQueryOperator operator, String fieldPath) {
-        if (field.fieldType() != ArchiveFieldType.TEXT) {
-            throw badRequest(
-                    field.fieldName() + "不支持操作符：" + operator,
-                    fieldPath + ".op",
-                    field.fieldName() + "不支持操作符：" + operator);
-        }
-    }
-
-    private @Nullable String convertSearchTextValue(ArchiveFieldDto field, @Nullable Object value) {
-        if (value == null) {
-            return null;
-        }
-        String text = StringUtils.trimToNull(value.toString());
-        if (text == null) {
-            return null;
-        }
-        return convertTextValue(field, text);
-    }
-
-    private String escapeLike(String value) {
-        return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
-    }
-
-    private List<String> projectionFields(List<ArchiveFieldDto> fields) {
-        return fields.stream().map(ArchiveFieldDto::columnName).toList();
-    }
-
     private String selectColumns(List<ArchiveFieldDto> fields) {
         if (fields.isEmpty()) {
             return "";
@@ -1161,53 +554,6 @@ public class ArchiveItemRoutingService {
             columns.append(", d.").append(field.columnName());
         }
         return columns.toString();
-    }
-
-    private List<Map<String, @Nullable Object>> normalizeDynamicFieldValues(
-            List<Map<String, @Nullable Object>> rows, List<ArchiveFieldDto> fields) {
-        if (rows.isEmpty()) {
-            return rows;
-        }
-        return rows.stream()
-                .map(
-                        row -> {
-                            Map<String, @Nullable Object> normalized = new LinkedHashMap<>(row);
-                            for (ArchiveFieldDto field : fields) {
-                                normalized.compute(
-                                        field.columnName(),
-                                        (_, value) -> normalizeDynamicFieldValue(field, value));
-                            }
-                            return normalized;
-                        })
-                .toList();
-    }
-
-    private @Nullable Object normalizeDynamicFieldValue(
-            ArchiveFieldDto field, @Nullable Object value) {
-        if (value == null) {
-            return null;
-        }
-        return switch (field.fieldType()) {
-            case DATE -> {
-                if (value instanceof Date date) {
-                    yield date.toLocalDate().toString();
-                }
-                if (value instanceof LocalDate localDate) {
-                    yield localDate.toString();
-                }
-                yield value;
-            }
-            case DATETIME -> {
-                if (value instanceof Timestamp timestamp) {
-                    yield timestamp.toLocalDateTime().format(DATE_TIME_FORMATTER);
-                }
-                if (value instanceof LocalDateTime localDateTime) {
-                    yield localDateTime.format(DATE_TIME_FORMATTER);
-                }
-                yield value;
-            }
-            default -> value;
-        };
     }
 
     private void insertDynamicRecord(
@@ -1441,46 +787,6 @@ public class ArchiveItemRoutingService {
         return row.get(JdbcUtils.convertPropertyNameToUnderscoreName(key));
     }
 
-    public record SearchArchiveItemsRequest(
-            @Nullable Long categoryId,
-            @Nullable String fondsCode,
-            @Nullable String keyword,
-            @Nullable ArchiveItemWhere where,
-            @Nullable List<@Nullable ArchiveItemRelatedGroup> relatedGroups,
-            @Nullable Integer limit,
-            @Nullable String cursor,
-            @Nullable List<@Nullable ArchiveItemOrderBy> orderBy) {
-
-        public SearchArchiveItemsRequest withPage(
-                @Nullable Integer limit, @Nullable String cursor) {
-            return new SearchArchiveItemsRequest(
-                    categoryId, fondsCode, keyword, where, relatedGroups, limit, cursor, orderBy);
-        }
-    }
-
-    public record ArchiveItemOrderBy(@Nullable String field, @Nullable String direction) {}
-
-    public record ArchiveItemWhere(
-            @Nullable List<@Nullable ArchiveItemQueryCondition> conditions) {}
-
-    public record ArchiveItemQueryCondition(
-            @Nullable String fieldCode,
-            @Nullable ArchiveItemQueryOperator op,
-            @Nullable Object value,
-            @Nullable Object startValue,
-            @Nullable Object endValue) {}
-
-    public record ArchiveItemRelatedGroup(
-            @Nullable Long categoryId,
-            @Nullable ArchiveItemRelationDirection direction,
-            @Nullable ArchiveItemWhere where) {}
-
-    public record ArchiveRelatedFilterCategoryDto(
-            Long categoryId,
-            String categoryCode,
-            String categoryName,
-            ArchiveItemRelationDirection direction) {}
-
     public record CreateArchiveItemRequest(
             @Nullable Long categoryId,
             @Nullable Long volumeId,
@@ -1522,54 +828,6 @@ public class ArchiveItemRoutingService {
             @Nullable String lockReason,
             @Nullable Long lockedBy,
             @Nullable LocalDateTime lockedAt) {}
-
-    public record ArchiveItemListDto(
-            @Nullable ArchiveCategoryDto category,
-            List<ArchiveFieldDto> fields,
-            @JsonIgnore CursorPageResponse<Map<String, @Nullable Object>> page)
-            implements CursorPageResponse<Map<String, @Nullable Object>> {
-
-        @Override
-        @JsonProperty("items")
-        public List<Map<String, @Nullable Object>> items() {
-            return page.items();
-        }
-
-        @Override
-        @JsonProperty("self")
-        public @Nullable String self() {
-            return page.self();
-        }
-
-        @Override
-        @JsonProperty("prev")
-        public @Nullable String prev() {
-            return page.prev();
-        }
-
-        @Override
-        @JsonProperty("next")
-        public @Nullable String next() {
-            return page.next();
-        }
-
-        @Override
-        @JsonProperty("first")
-        public @Nullable String first() {
-            return page.first();
-        }
-
-        @Override
-        @JsonProperty("total")
-        public @Nullable Long total() {
-            return page.total();
-        }
-
-        @Override
-        public ArchiveItemListDto encodeCursorTokens(CursorPageTokenContext context) {
-            return new ArchiveItemListDto(category, fields, page.encodeCursorTokens(context));
-        }
-    }
 
     public record ArchiveItemDetailDto(
             ArchiveItemDto item,
