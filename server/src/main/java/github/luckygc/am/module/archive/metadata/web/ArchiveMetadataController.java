@@ -20,6 +20,7 @@ import github.luckygc.am.module.archive.item.service.ArchiveItemSearchProjection
 import github.luckygc.am.module.archive.item.service.ArchiveItemSearchProjectionService.SearchProjectionRebuildResult;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldScope;
 import github.luckygc.am.module.archive.metadata.ArchiveLayoutSurface;
+import github.luckygc.am.module.archive.metadata.service.ArchiveCategoryService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveFondsService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryDto;
@@ -47,16 +48,19 @@ import github.luckygc.am.module.authorization.service.AuthorizationPermissionSer
 public class ArchiveMetadataController {
 
     private final ArchiveMetadataService archiveMetadataService;
+    private final ArchiveCategoryService archiveCategoryService;
     private final ArchiveFondsService archiveFondsService;
     private final ArchiveItemSearchProjectionService searchProjectionService;
     private final AuthorizationPermissionService permissionService;
 
     public ArchiveMetadataController(
             ArchiveMetadataService archiveMetadataService,
+            ArchiveCategoryService archiveCategoryService,
             ArchiveFondsService archiveFondsService,
             ArchiveItemSearchProjectionService searchProjectionService,
             AuthorizationPermissionService permissionService) {
         this.archiveMetadataService = archiveMetadataService;
+        this.archiveCategoryService = archiveCategoryService;
         this.archiveFondsService = archiveFondsService;
         this.searchProjectionService = searchProjectionService;
         this.permissionService = permissionService;
@@ -91,7 +95,7 @@ public class ArchiveMetadataController {
     @GetMapping("/api/v1/archive-fonds/{fondsCode}/category-scopes")
     public CollectionResponse<ArchiveFondsCategoryScopeDto> listFondsCategoryScopes(
             @PathVariable String fondsCode) {
-        return CollectionResponse.of(archiveMetadataService.listFondsCategoryScopes(fondsCode));
+        return CollectionResponse.of(archiveCategoryService.listFondsCategoryScopes(fondsCode));
     }
 
     @PutMapping("/api/v1/archive-fonds/{fondsCode}/category-scopes")
@@ -100,7 +104,7 @@ public class ArchiveMetadataController {
             @RequestBody java.util.List<ArchiveFondsCategoryScopeRequest> requests,
             Authentication authentication) {
         return CollectionResponse.of(
-                archiveMetadataService.saveFondsCategoryScopes(
+                archiveCategoryService.saveFondsCategoryScopes(
                         fondsCode, requests, requireMetadataManage(authentication)));
     }
 
@@ -108,7 +112,7 @@ public class ArchiveMetadataController {
     public CollectionResponse<ArchiveCategoryDto> listCategoriesForFonds(
             @PathVariable String fondsCode, Boolean enabled) {
         return CollectionResponse.of(
-                archiveMetadataService.listCategoriesForFonds(fondsCode, enabled));
+                archiveCategoryService.listCategoriesForFonds(fondsCode, enabled));
     }
 
     @GetMapping("/api/v1/archive-classification-schemes")
@@ -165,14 +169,14 @@ public class ArchiveMetadataController {
 
     @GetMapping("/api/v1/archive-categories")
     public CollectionResponse<ArchiveCategoryDto> listCategories(Boolean enabled) {
-        return CollectionResponse.of(archiveMetadataService.listCategories(enabled));
+        return CollectionResponse.of(archiveCategoryService.listCategories(enabled));
     }
 
     @PostMapping("/api/v1/archive-categories")
     @ResponseStatus(HttpStatus.CREATED)
     public ArchiveCategoryDto createCategory(
             @RequestBody ArchiveCategoryRequest request, Authentication authentication) {
-        return archiveMetadataService.createCategory(
+        return archiveCategoryService.createCategory(
                 request, requireMetadataManage(authentication));
     }
 
@@ -181,14 +185,14 @@ public class ArchiveMetadataController {
             @PathVariable Long id,
             @RequestBody ArchiveCategoryRequest request,
             Authentication authentication) {
-        return archiveMetadataService.updateCategory(
+        return archiveCategoryService.updateCategory(
                 id, request, requireMetadataManage(authentication));
     }
 
     @DeleteMapping("/api/v1/archive-categories/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteCategory(@PathVariable Long id, Authentication authentication) {
-        archiveMetadataService.deleteCategory(id, requireMetadataManage(authentication));
+        archiveCategoryService.deleteCategory(id, requireMetadataManage(authentication));
     }
 
     @GetMapping("/api/v1/archive-categories/{categoryId}/fields")

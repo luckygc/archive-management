@@ -32,6 +32,7 @@ import github.luckygc.am.module.archive.item.service.ArchiveItemLockService.Lock
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.metadata.ArchiveManagementMode;
 import github.luckygc.am.module.archive.metadata.ArchiveTableStatus;
+import github.luckygc.am.module.archive.metadata.service.ArchiveCategoryService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFondsDto;
@@ -42,6 +43,7 @@ class ArchiveItemAuditWriteTests {
 
     private ArchiveMapper archiveMapper;
     private ArchiveMetadataService archiveMetadataService;
+    private ArchiveCategoryService archiveCategoryService;
     private ArchiveGovernanceService governanceService;
     private ArchiveItemSearchProjectionService searchProjectionService;
     private ArchiveItemAuditDataRepository auditRepository;
@@ -52,6 +54,7 @@ class ArchiveItemAuditWriteTests {
     void setUp() {
         archiveMapper = mock(ArchiveMapper.class);
         archiveMetadataService = mock(ArchiveMetadataService.class);
+        archiveCategoryService = mock(ArchiveCategoryService.class);
         governanceService = mock(ArchiveGovernanceService.class);
         searchProjectionService = mock(ArchiveItemSearchProjectionService.class);
         auditRepository = mock(ArchiveItemAuditDataRepository.class);
@@ -65,10 +68,15 @@ class ArchiveItemAuditWriteTests {
                 .thenReturn(governanceVersion());
         ArchiveItemReadService archiveItemReadService =
                 new ArchiveItemReadService(
-                        archiveMetadataService, archiveMapper, dataScopeService, permissionService);
+                        archiveMetadataService,
+                        archiveCategoryService,
+                        archiveMapper,
+                        dataScopeService,
+                        permissionService);
         archiveItemRoutingService =
                 new ArchiveItemCommandService(
                         archiveMetadataService,
+                        archiveCategoryService,
                         governanceService,
                         archiveMapper,
                         searchProjectionService,
@@ -85,7 +93,7 @@ class ArchiveItemAuditWriteTests {
     @Test
     @DisplayName("创建档案条目后写入创建审计")
     void createItemShouldWriteAudit() {
-        when(archiveMetadataService.getCategory(1L)).thenReturn(category());
+        when(archiveCategoryService.getCategory(1L)).thenReturn(category());
         when(archiveMapper.tableExists("am_archive_item_contract")).thenReturn(1);
         when(archiveMetadataService.getEnabledFondsByCode("F001")).thenReturn(activeFonds());
         when(archiveMapper.countArchiveItemsByArchiveNo("contract", "A-001", null)).thenReturn(0);
@@ -151,7 +159,7 @@ class ArchiveItemAuditWriteTests {
     @DisplayName("删除档案条目前写入删除审计")
     void deleteItemShouldWriteAudit() {
         when(archiveMapper.getArchiveItem(10L)).thenReturn(itemRow(false));
-        when(archiveMetadataService.listCategories(null)).thenReturn(List.of(category()));
+        when(archiveCategoryService.listCategories(null)).thenReturn(List.of(category()));
         when(archiveMapper.tableExists("am_archive_item_contract")).thenReturn(1);
         when(archiveMapper.markArchiveItemDeleted(10L, 9L)).thenReturn(1);
 
@@ -165,7 +173,7 @@ class ArchiveItemAuditWriteTests {
     void lockItemShouldWriteAudit() {
         when(archiveMapper.lockArchiveItem(10L, "借阅冻结", 9L)).thenReturn(1);
         when(archiveMapper.getArchiveItem(10L)).thenReturn(itemRow(true));
-        when(archiveMetadataService.listCategories(null)).thenReturn(List.of(category()));
+        when(archiveCategoryService.listCategories(null)).thenReturn(List.of(category()));
 
         archiveItemLockService.lockItem(10L, 9L, new LockItemRequest(" 借阅冻结 "));
 
@@ -177,7 +185,7 @@ class ArchiveItemAuditWriteTests {
     void unlockItemShouldWriteAudit() {
         when(archiveMapper.unlockArchiveItem(10L, 9L)).thenReturn(1);
         when(archiveMapper.getArchiveItem(10L)).thenReturn(itemRow(false));
-        when(archiveMetadataService.listCategories(null)).thenReturn(List.of(category()));
+        when(archiveCategoryService.listCategories(null)).thenReturn(List.of(category()));
 
         archiveItemLockService.unlockItem(10L, 9L);
 
@@ -203,7 +211,7 @@ class ArchiveItemAuditWriteTests {
 
     private void stubItemDetailLoad(boolean locked) {
         when(archiveMapper.getArchiveItem(10L)).thenReturn(itemRow(locked));
-        when(archiveMetadataService.listCategories(null)).thenReturn(List.of(category()));
+        when(archiveCategoryService.listCategories(null)).thenReturn(List.of(category()));
         when(archiveMetadataService.listEffectiveFields(any(), any(), any(), any(), any()))
                 .thenReturn(List.of());
         when(archiveMapper.loadDynamicRecord(anyString(), eq(10L))).thenReturn(Map.of());

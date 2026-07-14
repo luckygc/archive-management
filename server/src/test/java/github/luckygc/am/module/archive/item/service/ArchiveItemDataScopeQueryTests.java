@@ -39,6 +39,7 @@ import github.luckygc.am.module.archive.mapper.ArchiveDataScopeSqlGroup;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.metadata.ArchiveManagementMode;
 import github.luckygc.am.module.archive.metadata.ArchiveTableStatus;
+import github.luckygc.am.module.archive.metadata.service.ArchiveCategoryService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryDto;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
@@ -48,6 +49,7 @@ class ArchiveItemDataScopeQueryTests {
 
     private ArchiveMapper archiveMapper;
     private ArchiveMetadataService archiveMetadataService;
+    private ArchiveCategoryService archiveCategoryService;
     private ArchiveGovernanceService governanceService;
     private ArchiveDataScopeService dataScopeService;
     private AuthorizationPermissionService permissionService;
@@ -60,6 +62,7 @@ class ArchiveItemDataScopeQueryTests {
     void setUp() {
         archiveMapper = mock(ArchiveMapper.class);
         archiveMetadataService = mock(ArchiveMetadataService.class);
+        archiveCategoryService = mock(ArchiveCategoryService.class);
         governanceService = mock(ArchiveGovernanceService.class);
         ArchiveItemSearchProjectionService searchProjectionService =
                 mock(ArchiveItemSearchProjectionService.class);
@@ -69,10 +72,15 @@ class ArchiveItemDataScopeQueryTests {
         when(permissionService.hasPermission(anyLong(), anyString())).thenReturn(true);
         archiveItemReadService =
                 new ArchiveItemReadService(
-                        archiveMetadataService, archiveMapper, dataScopeService, permissionService);
+                        archiveMetadataService,
+                        archiveCategoryService,
+                        archiveMapper,
+                        dataScopeService,
+                        permissionService);
         archiveItemRoutingService =
                 new ArchiveItemCommandService(
                         archiveMetadataService,
+                        archiveCategoryService,
                         governanceService,
                         archiveMapper,
                         searchProjectionService,
@@ -84,11 +92,12 @@ class ArchiveItemDataScopeQueryTests {
         archiveItemQueryService =
                 new ArchiveItemQueryService(
                         archiveMetadataService,
+                        archiveCategoryService,
                         archiveMapper,
                         dataScopeService,
                         permissionService,
                         new ArchiveItemSearchCriteriaCompiler(
-                                archiveMetadataService, archiveMapper),
+                                archiveMetadataService, archiveCategoryService, archiveMapper),
                         new ArchiveItemCursorPageAssembler(archiveMapper));
         archiveItemRelationService =
                 new ArchiveItemRelationService(
@@ -126,7 +135,7 @@ class ArchiveItemDataScopeQueryTests {
     @Test
     @DisplayName("查询档案列表时应用用户数据范围全宗条件")
     void searchItemsShouldApplyDataScopeFondsCodes() {
-        when(archiveMetadataService.getCategory(1L)).thenReturn(category());
+        when(archiveCategoryService.getCategory(1L)).thenReturn(category());
         when(archiveMapper.tableExists("am_archive_item_contract")).thenReturn(1);
         when(archiveMetadataService.listEffectiveFields(
                         eq(1L), eq(ArchiveLevel.ITEM), any(), eq(9L)))
@@ -174,7 +183,7 @@ class ArchiveItemDataScopeQueryTests {
     @Test
     @DisplayName("动态表第一页请求 total 时执行独立 count 查询")
     void searchItemsShouldCountDynamicItemsWhenFirstPageRequestsTotal() {
-        when(archiveMetadataService.getCategory(1L)).thenReturn(category());
+        when(archiveCategoryService.getCategory(1L)).thenReturn(category());
         when(archiveMapper.tableExists("am_archive_item_contract")).thenReturn(1);
         when(archiveMetadataService.listEffectiveFields(
                         eq(1L), eq(ArchiveLevel.ITEM), any(), eq(9L)))
@@ -217,7 +226,7 @@ class ArchiveItemDataScopeQueryTests {
     @Test
     @DisplayName("动态表未创建时拒绝查询档案列表")
     void searchItemsShouldRejectWhenDynamicTableIsNotBuilt() {
-        when(archiveMetadataService.getCategory(1L)).thenReturn(category());
+        when(archiveCategoryService.getCategory(1L)).thenReturn(category());
         when(archiveMapper.tableExists("am_archive_item_contract")).thenReturn(0);
         when(archiveMetadataService.listEffectiveFields(
                         eq(1L), eq(ArchiveLevel.ITEM), any(), eq(9L)))
@@ -243,7 +252,7 @@ class ArchiveItemDataScopeQueryTests {
     @Test
     @DisplayName("数据范围为空时不查询动态档案表")
     void searchItemsShouldReturnEmptyWhenDataScopeIsEmpty() {
-        when(archiveMetadataService.getCategory(1L)).thenReturn(category());
+        when(archiveCategoryService.getCategory(1L)).thenReturn(category());
         when(archiveMapper.tableExists("am_archive_item_contract")).thenReturn(1);
         when(archiveMetadataService.listEffectiveFields(
                         eq(1L), eq(ArchiveLevel.ITEM), any(), eq(9L)))
@@ -263,7 +272,7 @@ class ArchiveItemDataScopeQueryTests {
     @DisplayName("读取范围外档案详情时拒绝访问")
     void getItemDetailShouldRejectItemOutsideDataScope() {
         when(archiveMapper.getArchiveItem(10L)).thenReturn(itemRow());
-        when(archiveMetadataService.listCategories(null)).thenReturn(List.of(category()));
+        when(archiveCategoryService.listCategories(null)).thenReturn(List.of(category()));
         when(dataScopeService.buildItemFilter(9L, 1L, "F001"))
                 .thenReturn(ArchiveDataScopeFilter.none());
 
@@ -295,7 +304,7 @@ class ArchiveItemDataScopeQueryTests {
     void createRelationShouldRequireSourceAndTargetDataScope() {
         when(archiveMapper.getArchiveItem(10L)).thenReturn(itemRow(10L, "F001", "A-001"));
         when(archiveMapper.getArchiveItem(11L)).thenReturn(itemRow(11L, "F002", "A-002"));
-        when(archiveMetadataService.listCategories(null)).thenReturn(List.of(category()));
+        when(archiveCategoryService.listCategories(null)).thenReturn(List.of(category()));
         when(dataScopeService.buildItemFilter(9L, 1L, "F001"))
                 .thenReturn(ArchiveDataScopeFilter.all());
         when(dataScopeService.buildItemFilter(9L, 1L, "F002"))
@@ -317,7 +326,7 @@ class ArchiveItemDataScopeQueryTests {
     @Test
     @DisplayName("创建范围外档案时拒绝写入")
     void createItemShouldRejectTargetOutsideDataScope() {
-        when(archiveMetadataService.getCategory(1L)).thenReturn(category());
+        when(archiveCategoryService.getCategory(1L)).thenReturn(category());
         when(archiveMapper.tableExists("am_archive_item_contract")).thenReturn(1);
         when(archiveMetadataService.getEnabledFondsByCode("F001"))
                 .thenReturn(

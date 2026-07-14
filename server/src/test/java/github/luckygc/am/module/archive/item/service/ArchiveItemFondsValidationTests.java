@@ -32,6 +32,7 @@ import github.luckygc.am.module.archive.item.service.ArchiveVolumeService.Create
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.metadata.ArchiveManagementMode;
 import github.luckygc.am.module.archive.metadata.ArchiveTableStatus;
+import github.luckygc.am.module.archive.metadata.service.ArchiveCategoryService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryDto;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
@@ -41,6 +42,7 @@ class ArchiveItemFondsValidationTests {
 
     private ArchiveMapper archiveMapper;
     private ArchiveMetadataService archiveMetadataService;
+    private ArchiveCategoryService archiveCategoryService;
     private ArchiveGovernanceService governanceService;
     private ArchiveItemCommandService archiveItemRoutingService;
     private ArchiveVolumeService archiveVolumeService;
@@ -49,6 +51,7 @@ class ArchiveItemFondsValidationTests {
     void setUp() {
         archiveMapper = mock(ArchiveMapper.class);
         archiveMetadataService = mock(ArchiveMetadataService.class);
+        archiveCategoryService = mock(ArchiveCategoryService.class);
         governanceService = mock(ArchiveGovernanceService.class);
         ArchiveItemSearchProjectionService searchProjectionService =
                 mock(ArchiveItemSearchProjectionService.class);
@@ -61,10 +64,15 @@ class ArchiveItemFondsValidationTests {
         when(permissionService.hasPermission(anyLong(), anyString())).thenReturn(true);
         ArchiveItemReadService archiveItemReadService =
                 new ArchiveItemReadService(
-                        archiveMetadataService, archiveMapper, dataScopeService, permissionService);
+                        archiveMetadataService,
+                        archiveCategoryService,
+                        archiveMapper,
+                        dataScopeService,
+                        permissionService);
         archiveItemRoutingService =
                 new ArchiveItemCommandService(
                         archiveMetadataService,
+                        archiveCategoryService,
                         governanceService,
                         archiveMapper,
                         searchProjectionService,
@@ -77,6 +85,7 @@ class ArchiveItemFondsValidationTests {
                 new ArchiveVolumeService(
                         archiveMapper,
                         archiveMetadataService,
+                        archiveCategoryService,
                         governanceService,
                         archiveItemReadService,
                         permissionService,
@@ -87,7 +96,7 @@ class ArchiveItemFondsValidationTests {
     @DisplayName("创建档案条目时拒绝停用全宗")
     void createItemShouldRejectDisabledFonds() {
         ArchiveCategoryDto category = itemCategory();
-        when(archiveMetadataService.getCategory(1L)).thenReturn(category);
+        when(archiveCategoryService.getCategory(1L)).thenReturn(category);
         when(archiveMapper.tableExists("am_archive_item_contract")).thenReturn(1);
         when(archiveMetadataService.getEnabledFondsByCode("F001"))
                 .thenThrow(new BadRequestException("全宗不可用"));
@@ -126,7 +135,7 @@ class ArchiveItemFondsValidationTests {
     void updateItemShouldRejectDisabledFonds() {
         ArchiveCategoryDto category = itemCategory();
         when(archiveMapper.getArchiveItem(10L)).thenReturn(itemRow());
-        when(archiveMetadataService.listCategories(null)).thenReturn(List.of(category));
+        when(archiveCategoryService.listCategories(null)).thenReturn(List.of(category));
         when(archiveMetadataService.listEffectiveFields(
                         eq(1L), eq(ArchiveLevel.ITEM), any(), any(), isNull()))
                 .thenReturn(List.of());
@@ -165,7 +174,7 @@ class ArchiveItemFondsValidationTests {
     @Test
     @DisplayName("创建案卷时拒绝停用全宗")
     void createVolumeShouldRejectDisabledFonds() {
-        when(archiveMetadataService.getCategory(1L)).thenReturn(volumeCategory());
+        when(archiveCategoryService.getCategory(1L)).thenReturn(volumeCategory());
         when(archiveMetadataService.getEnabledFondsByCode("F001"))
                 .thenThrow(new BadRequestException("全宗不可用"));
 

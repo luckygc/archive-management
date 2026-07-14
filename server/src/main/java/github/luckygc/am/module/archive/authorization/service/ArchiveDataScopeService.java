@@ -31,6 +31,7 @@ import github.luckygc.am.module.archive.authorization.repository.ArchiveDataScop
 import github.luckygc.am.module.archive.item.ArchiveItemQueryOperator;
 import github.luckygc.am.module.archive.mapper.ArchiveDataScopeSqlGroup;
 import github.luckygc.am.module.archive.mapper.ArchiveSqlCondition;
+import github.luckygc.am.module.archive.metadata.service.ArchiveCategoryService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFieldDto;
@@ -55,6 +56,7 @@ public class ArchiveDataScopeService {
     private final AuthenticationUserDataRepository authenticationUserRepository;
     private final OrganizationDepartmentService departmentService;
     private final ArchiveMetadataService archiveMetadataService;
+    private final ArchiveCategoryService archiveCategoryService;
 
     public ArchiveDataScopeService(
             ArchiveDataScopeDataRepository dataScopeRepository,
@@ -64,7 +66,8 @@ public class ArchiveDataScopeService {
             AuthorizationUserRoleRelationDataRepository userRoleRelationRepository,
             AuthenticationUserDataRepository authenticationUserRepository,
             OrganizationDepartmentService departmentService,
-            ArchiveMetadataService archiveMetadataService) {
+            ArchiveMetadataService archiveMetadataService,
+            ArchiveCategoryService archiveCategoryService) {
         this.dataScopeRepository = dataScopeRepository;
         this.dimensionRepository = dimensionRepository;
         this.subjectRelationRepository = subjectRelationRepository;
@@ -73,6 +76,7 @@ public class ArchiveDataScopeService {
         this.authenticationUserRepository = authenticationUserRepository;
         this.departmentService = departmentService;
         this.archiveMetadataService = archiveMetadataService;
+        this.archiveCategoryService = archiveCategoryService;
     }
 
     public void validateScopeDefinition(
@@ -268,7 +272,7 @@ public class ArchiveDataScopeService {
         List<ArchiveDataScopeSqlGroup> groups = new ArrayList<>();
         String fondsCode = StringUtils.trimToNull(requestedFondsCode);
         Map<Long, ArchiveCategoryDto> categoriesById =
-                archiveMetadataService.listCategories(true).stream()
+                archiveCategoryService.listCategories(true).stream()
                         .collect(Collectors.toMap(ArchiveCategoryDto::id, category -> category));
         Map<String, ArchiveFieldDto> fieldsByCode =
                 archiveMetadataService.listFields(categoryId).stream()
@@ -556,7 +560,7 @@ public class ArchiveDataScopeService {
                         throw new BadRequestException(
                                 "分类范围必须指定分类 ID", "dimensions", "分类范围必须指定分类 ID");
                     }
-                    archiveMetadataService.getCategory(dimension.getTargetId());
+                    archiveCategoryService.getCategory(dimension.getTargetId());
                 }
                 case SECURITY_LEVEL -> {
                     if (dimension.getTargetId() == null) {
@@ -588,7 +592,7 @@ public class ArchiveDataScopeService {
                 throw new BadRequestException(
                         "动态字段条件必须指定字段编码", "dynamicCondition", "动态字段条件必须指定字段编码");
             }
-            archiveMetadataService.getCategory(condition.categoryId());
+            archiveCategoryService.getCategory(condition.categoryId());
             ArchiveFieldDto field =
                     archiveMetadataService.listFields(condition.categoryId()).stream()
                             .filter(item -> item.fieldCode().equals(condition.fieldCode()))

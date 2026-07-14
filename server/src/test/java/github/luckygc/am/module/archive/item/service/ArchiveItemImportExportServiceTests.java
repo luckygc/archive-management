@@ -40,6 +40,7 @@ import github.luckygc.am.module.archive.metadata.ArchiveFieldScope;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldType;
 import github.luckygc.am.module.archive.metadata.ArchiveManagementMode;
 import github.luckygc.am.module.archive.metadata.ArchiveTableStatus;
+import github.luckygc.am.module.archive.metadata.service.ArchiveCategoryService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFieldDto;
@@ -50,6 +51,7 @@ import github.luckygc.am.module.authorization.service.AuthorizationPermissionSer
 class ArchiveItemImportExportServiceTests {
 
     private ArchiveMetadataService archiveMetadataService;
+    private ArchiveCategoryService archiveCategoryService;
     private ArchiveItemCommandService archiveItemRoutingService;
     private ArchiveItemQueryService archiveItemQueryService;
     private AuthorizationPermissionService permissionService;
@@ -61,6 +63,7 @@ class ArchiveItemImportExportServiceTests {
     @BeforeEach
     void setUp() {
         archiveMetadataService = mock(ArchiveMetadataService.class);
+        archiveCategoryService = mock(ArchiveCategoryService.class);
         archiveItemRoutingService = mock(ArchiveItemCommandService.class);
         archiveItemQueryService = mock(ArchiveItemQueryService.class);
         permissionService = mock(AuthorizationPermissionService.class);
@@ -70,6 +73,7 @@ class ArchiveItemImportExportServiceTests {
         importExportService =
                 new ArchiveItemImportExportService(
                         archiveMetadataService,
+                        archiveCategoryService,
                         archiveItemRoutingService,
                         archiveItemQueryService,
                         permissionService,
@@ -85,7 +89,7 @@ class ArchiveItemImportExportServiceTests {
         when(permissionService.hasPermission(9L, "archive:item:update")).thenReturn(true);
         when(dataScopeService.buildItemFilter(9L, 1L, null))
                 .thenReturn(ArchiveDataScopeFilter.all());
-        when(archiveMetadataService.getCategory(1L)).thenReturn(category());
+        when(archiveCategoryService.getCategory(1L)).thenReturn(category());
         when(archiveMetadataService.listEnabledFields(1L, ArchiveLevel.ITEM))
                 .thenReturn(List.of(textField()));
 
@@ -106,7 +110,7 @@ class ArchiveItemImportExportServiceTests {
                 .thenReturn(ArchiveDataScopeFilter.all());
         when(dataScopeService.buildItemFilter(9L, 1L, "F001"))
                 .thenReturn(ArchiveDataScopeFilter.all());
-        when(archiveMetadataService.getCategory(1L)).thenReturn(category());
+        when(archiveCategoryService.getCategory(1L)).thenReturn(category());
         when(archiveMetadataService.listEnabledFields(1L, ArchiveLevel.ITEM))
                 .thenReturn(List.of(textField()));
         when(archiveMetadataService.getEnabledFondsByCode("F001")).thenReturn(fonds());
@@ -137,7 +141,7 @@ class ArchiveItemImportExportServiceTests {
                 .thenReturn(ArchiveDataScopeFilter.all());
         when(dataScopeService.buildItemFilter(9L, 1L, "F001"))
                 .thenReturn(ArchiveDataScopeFilter.all());
-        when(archiveMetadataService.getCategory(1L)).thenReturn(category());
+        when(archiveCategoryService.getCategory(1L)).thenReturn(category());
         when(archiveMetadataService.listEnabledFields(1L, ArchiveLevel.ITEM))
                 .thenReturn(List.of(textField()));
         when(archiveMetadataService.getEnabledFondsByCode("F001")).thenReturn(fonds());
@@ -184,7 +188,7 @@ class ArchiveItemImportExportServiceTests {
                                         null,
                                         null,
                                         null)));
-        when(archiveMetadataService.getCategory(1L)).thenReturn(category());
+        when(archiveCategoryService.getCategory(1L)).thenReturn(category());
 
         ArchiveExcelFile file = importExportService.exportItems(request, 9L);
 
@@ -204,7 +208,7 @@ class ArchiveItemImportExportServiceTests {
                                 List.of(textField()),
                                 CursorPageResponse.withCursorValues(
                                         List.of(), 0, null, null, null, null, null)));
-        when(archiveMetadataService.getCategory(1L)).thenReturn(category());
+        when(archiveCategoryService.getCategory(1L)).thenReturn(category());
 
         ArchiveExcelFile file =
                 importExportService.exportItems(

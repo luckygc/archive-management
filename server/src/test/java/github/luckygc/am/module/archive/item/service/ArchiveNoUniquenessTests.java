@@ -34,6 +34,7 @@ import github.luckygc.am.module.archive.item.service.ArchiveVolumeService.Create
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.metadata.ArchiveManagementMode;
 import github.luckygc.am.module.archive.metadata.ArchiveTableStatus;
+import github.luckygc.am.module.archive.metadata.service.ArchiveCategoryService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFondsDto;
@@ -44,6 +45,7 @@ class ArchiveNoUniquenessTests {
 
     private ArchiveMapper archiveMapper;
     private ArchiveMetadataService archiveMetadataService;
+    private ArchiveCategoryService archiveCategoryService;
     private ArchiveGovernanceService governanceService;
     private ArchiveItemCommandService archiveItemRoutingService;
     private ArchiveVolumeService archiveVolumeService;
@@ -52,6 +54,7 @@ class ArchiveNoUniquenessTests {
     void setUp() {
         archiveMapper = mock(ArchiveMapper.class);
         archiveMetadataService = mock(ArchiveMetadataService.class);
+        archiveCategoryService = mock(ArchiveCategoryService.class);
         governanceService = mock(ArchiveGovernanceService.class);
         ArchiveItemSearchProjectionService searchProjectionService =
                 mock(ArchiveItemSearchProjectionService.class);
@@ -66,10 +69,15 @@ class ArchiveNoUniquenessTests {
                 .thenReturn(governanceVersion());
         ArchiveItemReadService archiveItemReadService =
                 new ArchiveItemReadService(
-                        archiveMetadataService, archiveMapper, dataScopeService, permissionService);
+                        archiveMetadataService,
+                        archiveCategoryService,
+                        archiveMapper,
+                        dataScopeService,
+                        permissionService);
         archiveItemRoutingService =
                 new ArchiveItemCommandService(
                         archiveMetadataService,
+                        archiveCategoryService,
                         governanceService,
                         archiveMapper,
                         searchProjectionService,
@@ -82,6 +90,7 @@ class ArchiveNoUniquenessTests {
                 new ArchiveVolumeService(
                         archiveMapper,
                         archiveMetadataService,
+                        archiveCategoryService,
                         governanceService,
                         archiveItemReadService,
                         permissionService,
@@ -91,7 +100,7 @@ class ArchiveNoUniquenessTests {
     @Test
     @DisplayName("创建档案条目时拒绝同分类重复档号")
     void createItemShouldRejectDuplicateArchiveNo() {
-        when(archiveMetadataService.getCategory(1L)).thenReturn(itemCategory());
+        when(archiveCategoryService.getCategory(1L)).thenReturn(itemCategory());
         when(archiveMapper.tableExists("am_archive_item_contract")).thenReturn(1);
         when(archiveMetadataService.getEnabledFondsByCode("F001")).thenReturn(activeFonds());
         when(archiveMapper.countArchiveItemsByArchiveNo("contract", "A-001", null)).thenReturn(1);
@@ -126,7 +135,7 @@ class ArchiveNoUniquenessTests {
     @Test
     @DisplayName("创建档案条目遇到数据库档号唯一冲突时返回业务错误")
     void createItemShouldMapDuplicateArchiveNoFromDatabase() {
-        when(archiveMetadataService.getCategory(1L)).thenReturn(itemCategory());
+        when(archiveCategoryService.getCategory(1L)).thenReturn(itemCategory());
         when(archiveMapper.tableExists("am_archive_item_contract")).thenReturn(1);
         when(archiveMetadataService.getEnabledFondsByCode("F001")).thenReturn(activeFonds());
         when(archiveMapper.countArchiveItemsByArchiveNo("contract", "A-001", null)).thenReturn(0);
@@ -162,7 +171,7 @@ class ArchiveNoUniquenessTests {
     void updateItemShouldRejectDuplicateArchiveNo() {
         ArchiveCategoryDto category = itemCategory();
         when(archiveMapper.getArchiveItem(10L)).thenReturn(itemRow());
-        when(archiveMetadataService.listCategories(null)).thenReturn(List.of(category));
+        when(archiveCategoryService.listCategories(null)).thenReturn(List.of(category));
         when(archiveMetadataService.listEffectiveFields(
                         eq(1L), eq(ArchiveLevel.ITEM), any(), any(), isNull()))
                 .thenReturn(List.of());
@@ -201,7 +210,7 @@ class ArchiveNoUniquenessTests {
     void updateItemShouldMapDuplicateArchiveNoFromDatabase() {
         ArchiveCategoryDto category = itemCategory();
         when(archiveMapper.getArchiveItem(10L)).thenReturn(itemRow());
-        when(archiveMetadataService.listCategories(null)).thenReturn(List.of(category));
+        when(archiveCategoryService.listCategories(null)).thenReturn(List.of(category));
         when(archiveMetadataService.listEffectiveFields(
                         eq(1L), eq(ArchiveLevel.ITEM), any(), any(), isNull()))
                 .thenReturn(List.of());
@@ -237,7 +246,7 @@ class ArchiveNoUniquenessTests {
     @Test
     @DisplayName("创建案卷时拒绝同分类重复档号")
     void createVolumeShouldRejectDuplicateArchiveNo() {
-        when(archiveMetadataService.getCategory(1L)).thenReturn(volumeCategory());
+        when(archiveCategoryService.getCategory(1L)).thenReturn(volumeCategory());
         when(archiveMetadataService.getEnabledFondsByCode("F001")).thenReturn(activeFonds());
         when(archiveMapper.countArchiveVolumesByArchiveNo("contract", "V-001", null)).thenReturn(1);
 
@@ -266,7 +275,7 @@ class ArchiveNoUniquenessTests {
     @Test
     @DisplayName("创建案卷遇到数据库档号唯一冲突时返回业务错误")
     void createVolumeShouldMapDuplicateArchiveNoFromDatabase() {
-        when(archiveMetadataService.getCategory(1L)).thenReturn(volumeCategory());
+        when(archiveCategoryService.getCategory(1L)).thenReturn(volumeCategory());
         when(archiveMetadataService.getEnabledFondsByCode("F001")).thenReturn(activeFonds());
         when(archiveMapper.countArchiveVolumesByArchiveNo("contract", "V-001", null)).thenReturn(0);
         when(archiveMapper.insertArchiveVolume(

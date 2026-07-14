@@ -31,6 +31,7 @@ import github.luckygc.am.module.archive.mapper.ArchiveSqlAssignment;
 import github.luckygc.am.module.archive.metadata.ArchiveDynamicTableNames;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldScope;
 import github.luckygc.am.module.archive.metadata.ArchiveLayoutSurface;
+import github.luckygc.am.module.archive.metadata.service.ArchiveCategoryService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFieldDto;
@@ -48,6 +49,7 @@ public class ArchiveItemCommandService {
     private static final int DEFAULT_PAGE_LIMIT = 100;
     private static final int MAX_PAGE_LIMIT = 1000;
     private final ArchiveMetadataService archiveMetadataService;
+    private final ArchiveCategoryService archiveCategoryService;
     private final ArchiveGovernanceService governanceService;
     private final ArchiveMapper archiveMapper;
     private final ArchiveItemSearchProjectionService searchProjectionService;
@@ -59,6 +61,7 @@ public class ArchiveItemCommandService {
 
     public ArchiveItemCommandService(
             ArchiveMetadataService archiveMetadataService,
+            ArchiveCategoryService archiveCategoryService,
             ArchiveGovernanceService governanceService,
             ArchiveMapper archiveMapper,
             ArchiveItemSearchProjectionService searchProjectionService,
@@ -68,6 +71,7 @@ public class ArchiveItemCommandService {
             ArchiveItemReadService archiveItemReadService,
             ArchiveItemFieldValueConverter fieldValueConverter) {
         this.archiveMetadataService = archiveMetadataService;
+        this.archiveCategoryService = archiveCategoryService;
         this.governanceService = governanceService;
         this.archiveMapper = archiveMapper;
         this.searchProjectionService = searchProjectionService;
@@ -87,7 +91,7 @@ public class ArchiveItemCommandService {
         if (request.categoryId() == null) {
             throw badRequest("档案分类不能为空", "categoryId", "档案分类不能为空");
         }
-        ArchiveCategoryDto category = archiveMetadataService.getCategory(request.categoryId());
+        ArchiveCategoryDto category = archiveCategoryService.getCategory(request.categoryId());
         ArchiveLevel archiveLevel = ArchiveLevel.ITEM;
         ensureArchiveLevelAllowed(category, archiveLevel);
         String tableName = dynamicTableName(category, archiveLevel);

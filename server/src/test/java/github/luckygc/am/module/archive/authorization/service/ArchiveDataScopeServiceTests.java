@@ -38,6 +38,7 @@ import github.luckygc.am.module.archive.metadata.ArchiveFieldScope;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldType;
 import github.luckygc.am.module.archive.metadata.ArchiveManagementMode;
 import github.luckygc.am.module.archive.metadata.ArchiveTableStatus;
+import github.luckygc.am.module.archive.metadata.service.ArchiveCategoryService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFieldDto;
@@ -62,6 +63,7 @@ class ArchiveDataScopeServiceTests {
     private AuthenticationUserDataRepository authenticationUserRepository;
     private OrganizationDepartmentService departmentService;
     private ArchiveMetadataService archiveMetadataService;
+    private ArchiveCategoryService archiveCategoryService;
     private ArchiveDataScopeService dataScopeService;
 
     @BeforeEach
@@ -74,6 +76,7 @@ class ArchiveDataScopeServiceTests {
         authenticationUserRepository = mock(AuthenticationUserDataRepository.class);
         departmentService = mock(OrganizationDepartmentService.class);
         archiveMetadataService = mock(ArchiveMetadataService.class);
+        archiveCategoryService = mock(ArchiveCategoryService.class);
         dataScopeService =
                 new ArchiveDataScopeService(
                         dataScopeRepository,
@@ -83,7 +86,8 @@ class ArchiveDataScopeServiceTests {
                         userRoleRelationRepository,
                         authenticationUserRepository,
                         departmentService,
-                        archiveMetadataService);
+                        archiveMetadataService,
+                        archiveCategoryService);
     }
 
     @Test
@@ -307,7 +311,7 @@ class ArchiveDataScopeServiceTests {
         fondsDimension.setDimensionType(ArchiveDataScopeDimensionType.FONDS);
         fondsDimension.setTargetCode("F001");
         bindDirectUserScope(scope, List.of(categoryDimension, fondsDimension));
-        when(archiveMetadataService.listCategories(true))
+        when(archiveCategoryService.listCategories(true))
                 .thenReturn(List.of(category(10L, null), category(11L, 10L)));
         when(archiveMetadataService.listFields(11L)).thenReturn(List.of());
 
@@ -329,7 +333,7 @@ class ArchiveDataScopeServiceTests {
         securityLevelDimension.setDimensionType(ArchiveDataScopeDimensionType.SECURITY_LEVEL);
         securityLevelDimension.setTargetId(3L);
         bindDirectUserScope(scope, List.of(securityLevelDimension));
-        when(archiveMetadataService.listCategories(true)).thenReturn(List.of(category(11L, null)));
+        when(archiveCategoryService.listCategories(true)).thenReturn(List.of(category(11L, null)));
         when(archiveMetadataService.listFields(11L)).thenReturn(List.of());
 
         ArchiveDataScopeService.ArchiveDataScopeFilter filter =
@@ -353,7 +357,7 @@ class ArchiveDataScopeServiceTests {
                                         ArchiveItemQueryOperator.IN,
                                         List.of("LEGAL", "HR")))));
         bindDirectUserScope(scope, List.of());
-        when(archiveMetadataService.listCategories(true)).thenReturn(List.of(category(11L, null)));
+        when(archiveCategoryService.listCategories(true)).thenReturn(List.of(category(11L, null)));
         when(archiveMetadataService.listFields(11L))
                 .thenReturn(List.of(field(20L, 11L, "department", true)));
 
@@ -385,7 +389,7 @@ class ArchiveDataScopeServiceTests {
                                         ArchiveItemQueryOperator.EQ,
                                         List.of("LEGAL")))));
         bindDirectUserScope(scope, List.of(categoryDimension));
-        when(archiveMetadataService.listCategories(true))
+        when(archiveCategoryService.listCategories(true))
                 .thenReturn(List.of(category(10L, null), category(11L, 10L)));
         when(archiveMetadataService.listFields(11L)).thenReturn(List.of());
 

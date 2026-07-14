@@ -36,6 +36,7 @@ import github.luckygc.am.module.archive.item.ArchiveItem;
 import github.luckygc.am.module.archive.item.ArchiveItemAudit;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemAuditDataRepository;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemDataRepository;
+import github.luckygc.am.module.archive.metadata.service.ArchiveCategoryService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFieldDto;
@@ -53,6 +54,7 @@ public class ArchiveItemImportExportService {
     private static final int EXPORT_MAX_ROWS = 5000;
 
     private final ArchiveMetadataService archiveMetadataService;
+    private final ArchiveCategoryService archiveCategoryService;
     private final ArchiveItemCommandService archiveItemRoutingService;
     private final ArchiveItemQueryService archiveItemQueryService;
     private final AuthorizationPermissionService permissionService;
@@ -62,6 +64,7 @@ public class ArchiveItemImportExportService {
 
     public ArchiveItemImportExportService(
             ArchiveMetadataService archiveMetadataService,
+            ArchiveCategoryService archiveCategoryService,
             ArchiveItemCommandService archiveItemRoutingService,
             ArchiveItemQueryService archiveItemQueryService,
             AuthorizationPermissionService permissionService,
@@ -69,6 +72,7 @@ public class ArchiveItemImportExportService {
             ArchiveItemDataRepository archiveItemRepository,
             ArchiveItemAuditDataRepository auditRepository) {
         this.archiveMetadataService = archiveMetadataService;
+        this.archiveCategoryService = archiveCategoryService;
         this.archiveItemRoutingService = archiveItemRoutingService;
         this.archiveItemQueryService = archiveItemQueryService;
         this.permissionService = permissionService;
@@ -84,7 +88,7 @@ public class ArchiveItemImportExportService {
                 AuthorizationPermissionCode.ARCHIVE_ITEM_CREATE,
                 AuthorizationPermissionCode.ARCHIVE_ITEM_UPDATE);
         ensureCategoryInDataScope(categoryId, userId);
-        ArchiveCategoryDto category = archiveMetadataService.getCategory(categoryId);
+        ArchiveCategoryDto category = archiveCategoryService.getCategory(categoryId);
         List<ArchiveFieldDto> fields =
                 archiveMetadataService.listEnabledFields(categoryId, ArchiveLevel.ITEM);
         List<List<String>> head = importHead(fields);
@@ -98,7 +102,7 @@ public class ArchiveItemImportExportService {
     @Transactional
     public ArchiveImportResult importItems(Long categoryId, InputStream inputStream, Long userId) {
         ensureCategoryInDataScope(categoryId, userId);
-        ArchiveCategoryDto category = archiveMetadataService.getCategory(categoryId);
+        ArchiveCategoryDto category = archiveCategoryService.getCategory(categoryId);
         List<ArchiveFieldDto> fields =
                 archiveMetadataService.listEnabledFields(categoryId, ArchiveLevel.ITEM);
         List<ArchiveImportRow> rows = parseImportRows(categoryId, inputStream, fields);
@@ -464,7 +468,7 @@ public class ArchiveItemImportExportService {
         audit.setSourceRecordId(0L);
         audit.setFondsCode(StringUtils.trimToNull(request.fondsCode()));
         if (request.categoryId() != null) {
-            ArchiveCategoryDto category = archiveMetadataService.getCategory(request.categoryId());
+            ArchiveCategoryDto category = archiveCategoryService.getCategory(request.categoryId());
             audit.setCategoryCode(category.categoryCode());
         }
         audit.setOperationType("EXPORT");

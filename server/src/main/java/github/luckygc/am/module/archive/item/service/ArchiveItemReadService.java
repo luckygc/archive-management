@@ -25,6 +25,7 @@ import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.metadata.ArchiveDynamicTableNames;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldScope;
 import github.luckygc.am.module.archive.metadata.ArchiveLayoutSurface;
+import github.luckygc.am.module.archive.metadata.service.ArchiveCategoryService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFieldDto;
@@ -36,16 +37,19 @@ public class ArchiveItemReadService {
     private static final DateTimeFormatter DATE_TIME_FORMATTER =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private final ArchiveMetadataService archiveMetadataService;
+    private final ArchiveCategoryService archiveCategoryService;
     private final ArchiveMapper archiveMapper;
     private final ArchiveDataScopeService dataScopeService;
     private final AuthorizationPermissionService permissionService;
 
     public ArchiveItemReadService(
             ArchiveMetadataService archiveMetadataService,
+            ArchiveCategoryService archiveCategoryService,
             ArchiveMapper archiveMapper,
             ArchiveDataScopeService dataScopeService,
             AuthorizationPermissionService permissionService) {
         this.archiveMetadataService = archiveMetadataService;
+        this.archiveCategoryService = archiveCategoryService;
         this.archiveMapper = archiveMapper;
         this.dataScopeService = dataScopeService;
         this.permissionService = permissionService;
@@ -233,7 +237,7 @@ public class ArchiveItemReadService {
     }
 
     ArchiveCategoryDto getCategoryByCode(String categoryCode) {
-        return archiveMetadataService.listCategories(null).stream()
+        return archiveCategoryService.listCategories(null).stream()
                 .filter(category -> category.categoryCode().equals(categoryCode))
                 .findFirst()
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "档案分类不存在"));

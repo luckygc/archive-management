@@ -37,6 +37,7 @@ import github.luckygc.am.module.archive.mapper.ArchiveSqlRelatedGroup;
 import github.luckygc.am.module.archive.metadata.ArchiveDynamicTableNames;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldScope;
 import github.luckygc.am.module.archive.metadata.ArchiveLayoutSurface;
+import github.luckygc.am.module.archive.metadata.service.ArchiveCategoryService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFieldDto;
@@ -50,6 +51,7 @@ public class ArchiveItemQueryService {
     private static final int DEFAULT_PAGE_LIMIT = 100;
     private static final int MAX_PAGE_LIMIT = 1000;
     private final ArchiveMetadataService archiveMetadataService;
+    private final ArchiveCategoryService archiveCategoryService;
     private final ArchiveMapper archiveMapper;
     private final ArchiveDataScopeService dataScopeService;
     private final AuthorizationPermissionService permissionService;
@@ -58,12 +60,14 @@ public class ArchiveItemQueryService {
 
     public ArchiveItemQueryService(
             ArchiveMetadataService archiveMetadataService,
+            ArchiveCategoryService archiveCategoryService,
             ArchiveMapper archiveMapper,
             ArchiveDataScopeService dataScopeService,
             AuthorizationPermissionService permissionService,
             ArchiveItemSearchCriteriaCompiler criteriaCompiler,
             ArchiveItemCursorPageAssembler pageAssembler) {
         this.archiveMetadataService = archiveMetadataService;
+        this.archiveCategoryService = archiveCategoryService;
         this.archiveMapper = archiveMapper;
         this.dataScopeService = dataScopeService;
         this.permissionService = permissionService;
@@ -110,7 +114,7 @@ public class ArchiveItemQueryService {
     }
 
     public List<ArchiveRelatedFilterCategoryDto> listRelatedFilterCategories(Long categoryId) {
-        archiveMetadataService.getCategory(categoryId);
+        archiveCategoryService.getCategory(categoryId);
         return archiveMapper.listRelatedFilterCategories(categoryId).stream()
                 .map(
                         row ->
@@ -148,7 +152,7 @@ public class ArchiveItemQueryService {
             return itemList(null, List.of(), rows);
         }
 
-        ArchiveCategoryDto category = archiveMetadataService.getCategory(request.categoryId());
+        ArchiveCategoryDto category = archiveCategoryService.getCategory(request.categoryId());
         ArchiveLevel archiveLevel = ArchiveLevel.ITEM;
         ensureArchiveLevelAllowed(category, archiveLevel);
         String tableName = dynamicTableName(category, archiveLevel);

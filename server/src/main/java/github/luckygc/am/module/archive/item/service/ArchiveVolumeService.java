@@ -22,6 +22,7 @@ import github.luckygc.am.module.archive.governance.service.ArchiveGovernanceServ
 import github.luckygc.am.module.archive.item.service.ArchiveItemReadService.ArchiveItemDto;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.metadata.ArchiveManagementMode;
+import github.luckygc.am.module.archive.metadata.service.ArchiveCategoryService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFondsDto;
@@ -36,6 +37,7 @@ public class ArchiveVolumeService {
 
     private final ArchiveMapper archiveMapper;
     private final ArchiveMetadataService archiveMetadataService;
+    private final ArchiveCategoryService archiveCategoryService;
     private final ArchiveGovernanceService governanceService;
     private final ArchiveItemReadService archiveItemRoutingService;
     private final AuthorizationPermissionService permissionService;
@@ -44,12 +46,14 @@ public class ArchiveVolumeService {
     public ArchiveVolumeService(
             ArchiveMapper archiveMapper,
             ArchiveMetadataService archiveMetadataService,
+            ArchiveCategoryService archiveCategoryService,
             ArchiveGovernanceService governanceService,
             ArchiveItemReadService archiveItemRoutingService,
             AuthorizationPermissionService permissionService,
             ArchiveDataScopeService dataScopeService) {
         this.archiveMapper = archiveMapper;
         this.archiveMetadataService = archiveMetadataService;
+        this.archiveCategoryService = archiveCategoryService;
         this.governanceService = governanceService;
         this.archiveItemRoutingService = archiveItemRoutingService;
         this.permissionService = permissionService;
@@ -99,7 +103,7 @@ public class ArchiveVolumeService {
         if (StringUtils.isBlank(request.fondsCode())) {
             throw new BadRequestException("全宗不能为空");
         }
-        ArchiveCategoryDto category = archiveMetadataService.getCategory(request.categoryId());
+        ArchiveCategoryDto category = archiveCategoryService.getCategory(request.categoryId());
         if (category.managementMode() != ArchiveManagementMode.VOLUME_ITEM) {
             throw new BadRequestException("该分类未启用案卷管理");
         }
@@ -219,7 +223,7 @@ public class ArchiveVolumeService {
     }
 
     private ArchiveCategoryDto getCategoryByCode(String categoryCode) {
-        return archiveMetadataService.listCategories(null).stream()
+        return archiveCategoryService.listCategories(null).stream()
                 .filter(category -> category.categoryCode().equals(categoryCode))
                 .findFirst()
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "档案分类不存在"));

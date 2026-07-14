@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.metadata.ArchiveDynamicTableNames;
+import github.luckygc.am.module.archive.metadata.service.ArchiveCategoryService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFieldDto;
@@ -32,11 +33,15 @@ public class ArchiveItemSearchProjectionService {
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final ArchiveMetadataService archiveMetadataService;
+    private final ArchiveCategoryService archiveCategoryService;
     private final ArchiveMapper archiveMapper;
 
     ArchiveItemSearchProjectionService(
-            ArchiveMetadataService archiveMetadataService, ArchiveMapper archiveMapper) {
+            ArchiveMetadataService archiveMetadataService,
+            ArchiveCategoryService archiveCategoryService,
+            ArchiveMapper archiveMapper) {
         this.archiveMetadataService = archiveMetadataService;
+        this.archiveCategoryService = archiveCategoryService;
         this.archiveMapper = archiveMapper;
     }
 
@@ -59,7 +64,7 @@ public class ArchiveItemSearchProjectionService {
 
     @Transactional
     public SearchProjectionRebuildResult rebuild(Long categoryId) {
-        ArchiveCategoryDto category = archiveMetadataService.getCategory(categoryId);
+        ArchiveCategoryDto category = archiveCategoryService.getCategory(categoryId);
         ArchiveLevel archiveLevel = ArchiveLevel.ITEM;
         if (!isDynamicTableBuilt(category, archiveLevel)) {
             return new SearchProjectionRebuildResult(categoryId, 0);
@@ -247,7 +252,7 @@ public class ArchiveItemSearchProjectionService {
     }
 
     private ArchiveCategoryDto getCategoryByCode(String categoryCode) {
-        return archiveMetadataService.listCategories(null).stream()
+        return archiveCategoryService.listCategories(null).stream()
                 .filter(category -> category.categoryCode().equals(categoryCode))
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("档案分类不存在"));

@@ -29,6 +29,7 @@ import github.luckygc.am.module.archive.metadata.repository.ArchiveFondsCategory
 import github.luckygc.am.module.archive.metadata.repository.ArchiveFondsDataRepository;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveRetentionPeriodDataRepository;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveSecurityLevelDataRepository;
+import github.luckygc.am.module.archive.metadata.service.ArchiveCategoryService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveDynamicTableService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveFieldDefinitionService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveFieldLayoutService;
@@ -50,6 +51,7 @@ class ArchiveMetadataServiceTests {
     private ArchiveCategoryDataRepository categoryRepository;
     private ArchiveFieldDataRepository fieldRepository;
     private ArchiveMetadataService service;
+    private ArchiveCategoryService categoryService;
 
     @BeforeEach
     void setUp() {
@@ -73,6 +75,13 @@ class ArchiveMetadataServiceTests {
         ArchiveUniqueConstraintService uniqueConstraintService =
                 new ArchiveUniqueConstraintService(
                         archiveMapper, fieldDefinitionService, dynamicTableService);
+        categoryService =
+                new ArchiveCategoryService(
+                        archiveMapper,
+                        fondsRepository,
+                        classificationSchemeRepository,
+                        fondsCategoryScopeRepository,
+                        categoryRepository);
         service =
                 new ArchiveMetadataService(
                         archiveMapper,
@@ -86,7 +95,8 @@ class ArchiveMetadataServiceTests {
                         fieldDefinitionService,
                         dynamicTableService,
                         fieldLayoutService,
-                        uniqueConstraintService);
+                        uniqueConstraintService,
+                        categoryService);
     }
 
     @Test
@@ -118,7 +128,7 @@ class ArchiveMetadataServiceTests {
                 .thenAnswer(invocation -> withCategoryId(invocation.getArgument(0), 12L));
 
         ArchiveMetadataService.ArchiveCategoryDto response =
-                service.createCategory(
+                categoryService.createCategory(
                         new ArchiveMetadataService.ArchiveCategoryRequest(
                                 8L,
                                 "contract",
@@ -144,7 +154,7 @@ class ArchiveMetadataServiceTests {
 
         assertThatThrownBy(
                         () ->
-                                service.createCategory(
+                                categoryService.createCategory(
                                         new ArchiveMetadataService.ArchiveCategoryRequest(
                                                 8L,
                                                 "contract",
@@ -177,7 +187,7 @@ class ArchiveMetadataServiceTests {
         when(categoryRepository.findById(12L)).thenReturn(Optional.of(category));
 
         List<ArchiveMetadataService.ArchiveCategoryDto> categories =
-                service.listCategoriesForFonds(" F001 ", true);
+                categoryService.listCategoriesForFonds(" F001 ", true);
 
         assertThat(categories).extracting("id").containsExactly(12L);
         assertThat(categories).extracting("schemeId").containsExactly(8L);
@@ -202,7 +212,7 @@ class ArchiveMetadataServiceTests {
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
         List<ArchiveMetadataService.ArchiveFondsCategoryScopeDto> result =
-                service.saveFondsCategoryScopes(
+                categoryService.saveFondsCategoryScopes(
                         " F001 ", List.of(new ArchiveFondsCategoryScopeRequest(12L, true, 1)), 9L);
 
         assertThat(result).extracting("categoryId").containsExactly(12L);

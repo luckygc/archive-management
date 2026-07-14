@@ -17,6 +17,7 @@ import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.metadata.ArchiveDynamicTableNames;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldType;
+import github.luckygc.am.module.archive.metadata.service.ArchiveCategoryService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryDto;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionCode;
@@ -29,20 +30,23 @@ public class ArchiveItemLineTableService {
 
     private final ArchiveMapper archiveMapper;
     private final ArchiveMetadataService archiveMetadataService;
+    private final ArchiveCategoryService archiveCategoryService;
     private final AuthorizationPermissionService permissionService;
 
     public ArchiveItemLineTableService(
             ArchiveMapper archiveMapper,
             ArchiveMetadataService archiveMetadataService,
+            ArchiveCategoryService archiveCategoryService,
             AuthorizationPermissionService permissionService) {
         this.archiveMapper = archiveMapper;
         this.archiveMetadataService = archiveMetadataService;
+        this.archiveCategoryService = archiveCategoryService;
         this.permissionService = permissionService;
     }
 
     public List<ArchiveItemLineTableDto> listLineTables(Long categoryId, Long userId) {
         requireMetadataManage(userId);
-        archiveMetadataService.getCategory(categoryId);
+        archiveCategoryService.getCategory(categoryId);
         return archiveMapper.listItemLineTables(categoryId).stream()
                 .map(this::toLineTableDto)
                 .toList();
@@ -52,7 +56,7 @@ public class ArchiveItemLineTableService {
     public ArchiveItemLineTableDto createLineTable(
             Long categoryId, ArchiveItemLineTableRequest request, Long userId) {
         requireMetadataManage(userId);
-        ArchiveCategoryDto category = archiveMetadataService.getCategory(categoryId);
+        ArchiveCategoryDto category = archiveCategoryService.getCategory(categoryId);
         String tableCode = requiredCode(request.tableCode(), "明细表编码不能为空");
         String tableName = StringUtils.trimToNull(request.tableName());
         if (tableName == null) {

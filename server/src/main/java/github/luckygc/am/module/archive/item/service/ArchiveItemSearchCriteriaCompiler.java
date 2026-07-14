@@ -28,6 +28,7 @@ import github.luckygc.am.module.archive.metadata.ArchiveDynamicTableNames;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldScope;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldType;
 import github.luckygc.am.module.archive.metadata.ArchiveLayoutSurface;
+import github.luckygc.am.module.archive.metadata.service.ArchiveCategoryService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFieldDto;
@@ -38,11 +39,15 @@ import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.
 class ArchiveItemSearchCriteriaCompiler {
 
     private final ArchiveMetadataService archiveMetadataService;
+    private final ArchiveCategoryService archiveCategoryService;
     private final ArchiveMapper archiveMapper;
 
     ArchiveItemSearchCriteriaCompiler(
-            ArchiveMetadataService archiveMetadataService, ArchiveMapper archiveMapper) {
+            ArchiveMetadataService archiveMetadataService,
+            ArchiveCategoryService archiveCategoryService,
+            ArchiveMapper archiveMapper) {
         this.archiveMetadataService = archiveMetadataService;
+        this.archiveCategoryService = archiveCategoryService;
         this.archiveMapper = archiveMapper;
     }
 
@@ -205,7 +210,7 @@ class ArchiveItemSearchCriteriaCompiler {
             if (group.categoryId() == null) {
                 throw badRequest("关联分类不能为空", "relatedGroups.categoryId", "关联分类不能为空");
             }
-            ArchiveCategoryDto category = archiveMetadataService.getCategory(group.categoryId());
+            ArchiveCategoryDto category = archiveCategoryService.getCategory(group.categoryId());
             ArchiveLevel archiveLevel = ArchiveLevel.ITEM;
             ensureArchiveLevelAllowed(category, archiveLevel);
             if (!isDynamicTableBuilt(category, archiveLevel)) {

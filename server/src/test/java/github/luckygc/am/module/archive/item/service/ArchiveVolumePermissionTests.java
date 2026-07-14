@@ -28,6 +28,7 @@ import github.luckygc.am.module.archive.item.service.ArchiveVolumeService.Create
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.metadata.ArchiveManagementMode;
 import github.luckygc.am.module.archive.metadata.ArchiveTableStatus;
+import github.luckygc.am.module.archive.metadata.service.ArchiveCategoryService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveCategoryDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService.ArchiveFondsDto;
@@ -38,6 +39,7 @@ class ArchiveVolumePermissionTests {
 
     private ArchiveMapper archiveMapper;
     private ArchiveMetadataService archiveMetadataService;
+    private ArchiveCategoryService archiveCategoryService;
     private ArchiveGovernanceService governanceService;
     private ArchiveItemReadService archiveItemRoutingService;
     private AuthorizationPermissionService permissionService;
@@ -48,6 +50,7 @@ class ArchiveVolumePermissionTests {
     void setUp() {
         archiveMapper = mock(ArchiveMapper.class);
         archiveMetadataService = mock(ArchiveMetadataService.class);
+        archiveCategoryService = mock(ArchiveCategoryService.class);
         governanceService = mock(ArchiveGovernanceService.class);
         archiveItemRoutingService = mock(ArchiveItemReadService.class);
         permissionService = mock(AuthorizationPermissionService.class);
@@ -60,6 +63,7 @@ class ArchiveVolumePermissionTests {
                 new ArchiveVolumeService(
                         archiveMapper,
                         archiveMetadataService,
+                        archiveCategoryService,
                         governanceService,
                         archiveItemRoutingService,
                         permissionService,
@@ -85,8 +89,8 @@ class ArchiveVolumePermissionTests {
     @DisplayName("创建案卷必须有档案创建权限且满足数据范围")
     void createVolumeShouldRequireCreatePermissionAndDataScope() {
         when(permissionService.hasPermission(9L, "archive:item:create")).thenReturn(true);
-        when(archiveMetadataService.getCategory(1L)).thenReturn(volumeCategory());
-        when(archiveMetadataService.listCategories(null))
+        when(archiveCategoryService.getCategory(1L)).thenReturn(volumeCategory());
+        when(archiveCategoryService.listCategories(null))
                 .thenReturn(java.util.List.of(volumeCategory()));
         when(archiveMetadataService.getEnabledFondsByCode("F001")).thenReturn(activeFonds());
         when(archiveMapper.countArchiveVolumesByArchiveNo("contract", "V-001", null)).thenReturn(0);
@@ -122,8 +126,8 @@ class ArchiveVolumePermissionTests {
     @DisplayName("创建案卷时写入默认治理方案版本")
     void createVolumeShouldSaveDefaultGovernanceVersion() {
         when(permissionService.hasPermission(9L, "archive:item:create")).thenReturn(true);
-        when(archiveMetadataService.getCategory(1L)).thenReturn(volumeCategory());
-        when(archiveMetadataService.listCategories(null))
+        when(archiveCategoryService.getCategory(1L)).thenReturn(volumeCategory());
+        when(archiveCategoryService.listCategories(null))
                 .thenReturn(java.util.List.of(volumeCategory()));
         when(archiveMetadataService.getEnabledFondsByCode("F001")).thenReturn(activeFonds());
         when(archiveMapper.countArchiveVolumesByArchiveNo("contract", "V-001", null)).thenReturn(0);
