@@ -1,7 +1,9 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/vue";
 import ElementPlus from "element-plus";
+import { createPinia, setActivePinia } from "pinia";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { usePermissionStore } from "@/stores/permissionStore";
 import ArchiveCategoriesPage from "./ArchiveCategoriesPage.vue";
 
 const mocks = vi.hoisted(() => ({
@@ -20,7 +22,16 @@ const mocks = vi.hoisted(() => ({
     updateArchiveField: vi.fn(),
 }));
 vi.mock("@/shared/api/archive-metadata", () => mocks);
+const lineTableMocks = vi.hoisted(() => ({
+    buildArchiveLineTable: vi.fn(),
+    createArchiveLineField: vi.fn(),
+    createArchiveLineTable: vi.fn(),
+    listArchiveLineFields: vi.fn(),
+    listArchiveLineTables: vi.fn(),
+}));
+vi.mock("@/shared/api/archive-line-tables", () => lineTableMocks);
 beforeEach(() => {
+    setActivePinia(createPinia());
     mocks.listArchiveClassificationSchemes.mockResolvedValue({
         items: [
             {
@@ -66,6 +77,7 @@ beforeEach(() => {
         ],
     });
     mocks.listArchiveFondsCategoryScopes.mockResolvedValue({ items: [] });
+    lineTableMocks.listArchiveLineTables.mockResolvedValue({ items: [] });
 });
 afterEach(() => {
     cleanup();
@@ -83,7 +95,7 @@ describe("ArchiveCategoriesPage", () => {
         ).toBe(true);
     });
     it("提供全宗可用分类范围入口", async () => {
-        renderPage();
+        renderPage(["archive:metadata:manage"]);
         const button = await screen.findByRole("button", { name: "全宗可用分类" });
         await waitFor(() => expect(button).toBeEnabled());
         await fireEvent.click(button);
@@ -96,7 +108,22 @@ describe("ArchiveCategoriesPage", () => {
             expect(mocks.saveArchiveFondsCategoryScopes).toHaveBeenCalledWith("F001", []),
         );
     });
+    it("只有元数据维护权限可见明细表入口和维护控件", async () => {
+        const authorized = renderPage(["archive:metadata:manage"]);
+        expect(await screen.findByText("明细表定义")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "新增明细表" })).toBeVisible();
+        authorized.unmount();
+        cleanup();
+
+        renderPage([]);
+        expect((await screen.findAllByText("合同档案（contract）")).length).toBeGreaterThan(0);
+        expect(screen.queryByText("明细表定义")).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "新增明细表" })).not.toBeInTheDocument();
+    });
 });
-function renderPage() {
-    return render(ArchiveCategoriesPage, { global: { plugins: [ElementPlus] } });
+function renderPage(permissionCodes: string[] = ["archive:metadata:manage"]) {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    usePermissionStore().permissionCodes = permissionCodes;
+    return render(ArchiveCategoriesPage, { global: { plugins: [ElementPlus, pinia] } });
 }

@@ -1,5 +1,9 @@
 <script setup lang="ts">
+import { computed } from "vue";
+
+import { usePermissionStore } from "@/stores/permissionStore";
 import ArchiveCategoryScopeDialog from "./ArchiveCategoryScopeDialog.vue";
+import ArchiveLineTablePanel from "./ArchiveLineTablePanel.vue";
 import {
     fieldTypeLabels,
     managementModeLabels,
@@ -38,6 +42,9 @@ const {
     selectedSchemeId,
     treeData,
 } = useArchiveCategories();
+
+const permissionStore = usePermissionStore();
+const canManageMetadata = computed(() => permissionStore.has("archive:metadata:manage"));
 </script>
 
 <template>
@@ -145,8 +152,11 @@ const {
                             ></el-table-column
                         ></el-table
                     >
-                </el-card></el-col
-            >
+                </el-card>
+                <div v-if="canManageMetadata && selectedCategoryId" class="line-table-panel">
+                    <ArchiveLineTablePanel :category-id="selectedCategoryId" />
+                </div>
+            </el-col>
         </el-row>
         <el-dialog
             v-model="categoryDialogOpen"
@@ -272,5 +282,8 @@ const {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 12px;
+}
+.line-table-panel {
+    margin-top: 16px;
 }
 </style>
