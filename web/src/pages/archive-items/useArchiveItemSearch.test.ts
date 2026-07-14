@@ -85,7 +85,7 @@ describe("useArchiveItemSearch", () => {
         await waitFor(() => expect(search.loadError.value).toBe("查询服务暂不可用"));
 
         expect(search.result.value?.next).toBe("next-2");
-        search.refresh();
+        void search.refresh();
         await waitFor(() => expect(mocks.searchArchiveRecords).toHaveBeenCalledTimes(3));
         expect(mocks.searchArchiveRecords).toHaveBeenLastCalledWith(
             expect.objectContaining({ categoryId: 7, limit: 100, cursor: "next-2" }),
@@ -161,6 +161,35 @@ describe("useArchiveItemSearch", () => {
         await request.promise;
 
         await waitFor(() => expect(search.result.value).toBeUndefined());
+    });
+
+    it("刷新 Promise 在实际查询完成后才结束", async () => {
+        const search = renderSearch();
+        search.submit({ categoryId: 7, conditions: [], relatedGroups: [] });
+        await waitFor(() => expect(mocks.searchArchiveRecords).toHaveBeenCalledTimes(1));
+        const request = deferred<ArchiveRecordListDto>();
+        mocks.searchArchiveRecords.mockImplementationOnce(() => request.promise);
+
+        const refreshPromise = search.refresh();
+
+        expect(refreshPromise).toBeInstanceOf(Promise);
+        let settled = false;
+        void refreshPromise.then(() => (settled = true));
+        await Promise.resolve();
+        expect(settled).toBe(false);
+
+        request.resolve({ fields: [], items: [{ id: 2 }] });
+        await refreshPromise;
+        expect(settled).toBe(true);
+        expect(search.result.value?.items[0]?.id).toBe(2);
+    });
+
+    it("没有已提交查询时刷新返回已完成 Promise", async () => {
+        const search = renderSearch();
+
+        await expect(search.refresh()).resolves.toBeUndefined();
+
+        expect(mocks.searchArchiveRecords).not.toHaveBeenCalled();
     });
 
     it("修改分类草稿保留已提交查询和结果且翻页仍使用旧查询", async () => {

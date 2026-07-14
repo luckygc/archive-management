@@ -129,4 +129,33 @@ describe("useArchiveItemLifecycle", () => {
         expect(mocks.deleteArchiveRecord).toHaveBeenCalledTimes(1);
         expect(lifecycle.busyAction.value).toBeUndefined();
     });
+
+    it("刷新完成前保持忙碌且忽略第二个动作", async () => {
+        const refreshRequest = deferred<void>();
+        const refresh = vi.fn(() => refreshRequest.promise);
+        mocks.messageBox.confirm.mockResolvedValue("confirm");
+        const lifecycle = useArchiveItemLifecycle(refresh);
+
+        const first = lifecycle.remove(9);
+        await vi.waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
+        expect(lifecycle.busyAction.value).toBe("delete");
+        expect(mocks.message.success).not.toHaveBeenCalled();
+
+        await lifecycle.lock(10);
+        expect(mocks.messageBox.prompt).not.toHaveBeenCalled();
+        expect(mocks.lockArchiveRecord).not.toHaveBeenCalled();
+
+        refreshRequest.resolve();
+        await first;
+        expect(mocks.message.success).toHaveBeenCalledWith("档案已删除");
+        expect(lifecycle.busyAction.value).toBeUndefined();
+    });
 });
+
+function deferred<T>() {
+    let resolve!: (value: T | PromiseLike<T>) => void;
+    const promise = new Promise<T>((resolvePromise) => {
+        resolve = resolvePromise;
+    });
+    return { promise, resolve };
+}

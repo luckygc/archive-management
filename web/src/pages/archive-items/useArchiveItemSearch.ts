@@ -118,8 +118,9 @@ export function useArchiveItemSearch() {
         clearResultCursors();
         void execute(query);
     }
-    function refresh() {
-        if (committedQuery.value) void execute(committedQuery.value, cursor.value);
+    function refresh(): Promise<void> {
+        if (committedQuery.value) return execute(committedQuery.value, cursor.value);
+        return Promise.resolve();
     }
     function page(nextCursor: string) {
         if (committedQuery.value) void execute(committedQuery.value, nextCursor);

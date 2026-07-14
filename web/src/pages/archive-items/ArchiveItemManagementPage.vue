@@ -125,7 +125,7 @@ async function importFile(file: File) {
             );
         else {
             ElMessage.success(`已导入 ${response.importedCount} 条档案`);
-            refresh();
+            await refresh();
         }
     } catch (error) {
         ElMessage.error(errorMessage(error, "导入档案失败"));
@@ -214,7 +214,7 @@ async function saveRecord() {
             await updateArchiveRecord(editorState.value.archiveItemId!, common);
         ElMessage.success(mode === "create" ? "档案已创建" : "档案已更新");
         editorState.value = undefined;
-        refresh();
+        await refresh();
     } catch (error) {
         ElMessage.error(errorMessage(error, mode === "create" ? "创建档案失败" : "更新档案失败"));
     } finally {
@@ -235,7 +235,7 @@ async function saveRecord() {
                 :downloading-template="downloadingTemplate"
                 :importing="importing"
                 :exporting="exporting"
-                @refresh="refresh"
+                @refresh="void refresh()"
                 @download-template="downloadTemplate"
                 @import-file="importFile"
                 @export="exportCurrent"
@@ -258,7 +258,9 @@ async function saveRecord() {
         ></el-collapse>
         <el-card class="am-page__result" shadow="never"
             ><el-alert v-if="loadError" :title="loadError" type="error" show-icon :closable="false"
-                ><el-button link :loading="loading" @click="refresh">重试</el-button></el-alert
+                ><el-button link :loading="loading" @click="void refresh()"
+                    >重试</el-button
+                ></el-alert
             ><ArchiveResultTable
                 v-else-if="result"
                 :result="result"
