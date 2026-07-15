@@ -170,11 +170,6 @@ public class ArchiveLocalRuleService {
         return traceService.listRuleTraces(request, pageRequest);
     }
 
-    @Transactional(readOnly = true)
-    public List<Map<String, Object>> listRuleTraces(SearchArchiveRuleTracesRequest request) {
-        return traceService.listRuleTraces(request);
-    }
-
     private ArchiveRuleDecision executeRule(
             ArchiveRuleDefinition rule, ExecuteArchiveRulesRequest request) {
         JsonNode condition = toConditionNode(rule.getConditionJson());
@@ -492,21 +487,5 @@ public class ArchiveLocalRuleService {
             @Nullable String objectTypeCode,
             @Nullable Long objectId,
             @Nullable ArchiveRuleType ruleType,
-            @Nullable Long userId) {
-
-        public SearchArchiveRuleTracesRequest(
-                @Nullable Long schemeVersionId,
-                @Nullable String triggerCode,
-                @Nullable String objectTypeCode,
-                @Nullable Long objectId,
-                @Nullable ArchiveRuleType ruleType,
-                @Nullable Integer ignoredLimit,
-                @Nullable Long userId) {
-            this(schemeVersionId, triggerCode, objectTypeCode, objectId, ruleType, userId);
-        }
-
-        public @Nullable Integer limit() {
-            return null;
-        }
-    }
+            @Nullable Long userId) {}
 }

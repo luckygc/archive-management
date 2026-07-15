@@ -98,9 +98,18 @@ class ArchiveRuleTraceMapperIntegrationTests extends PostgreSqlContainerTest {
                                 List.of(),
                                 List.of(),
                                 new ArchiveRuleTracePageWindow(false, BASE_TIME, 9_520_002L, 3)));
+        List<Map<String, Object>> previous =
+                ruleMapper.listRuleTraces(
+                        criteria(
+                                true,
+                                7L,
+                                List.of(),
+                                List.of(),
+                                new ArchiveRuleTracePageWindow(true, BASE_TIME, 9_520_001L, 3)));
 
         assertThat(ids(first).subList(0, 2)).containsExactly(9_520_003L, 9_520_002L);
         assertThat(ids(second)).containsExactly(9_520_001L);
+        assertThat(ids(previous)).containsExactly(9_520_002L, 9_520_003L);
     }
 
     @Test
@@ -116,6 +125,32 @@ class ArchiveRuleTraceMapperIntegrationTests extends PostgreSqlContainerTest {
                 ruleMapper.listRuleTraces(criteria(false, 7L, List.of(scope), List.of(), page(10)));
 
         assertThat(ids(rows)).containsExactly(9_531_001L);
+    }
+
+    @Test
+    @DisplayName("固定范围组内按全宗密级保管期限 AND 且组间 OR")
+    void fixedScopeCombinesDimensionsWithAndAndGroupsWithOr() {
+        insertItem(9_532_001L, "F001", "DOC", 1L, 1L);
+        insertItem(9_532_002L, "F001", "DOC", 1L, 2L);
+        insertItem(9_532_003L, "F002", "DOC", 2L, 2L);
+        insertItem(9_532_004L, "F002", "DOC", 2L, 1L);
+        for (long id = 9_532_001L; id <= 9_532_004L; id++) {
+            insertTrace(
+                    id + 10_000L, "ARCHIVE_ITEM", id, 8L, BASE_TIME.plusSeconds(id - 9_532_000L));
+        }
+        ArchiveDataScopeSqlGroup firstGroup =
+                new ArchiveDataScopeSqlGroup(List.of("F001"), List.of(1L), List.of(1L), List.of());
+        ArchiveDataScopeSqlGroup secondGroup =
+                new ArchiveDataScopeSqlGroup(List.of("F002"), List.of(2L), List.of(2L), List.of());
+        ArchiveRuleTraceTargetScope targetScope =
+                new ArchiveRuleTraceTargetScope(
+                        "DOC", DYNAMIC_TABLE, List.of(firstGroup, secondGroup));
+
+        List<Map<String, Object>> rows =
+                ruleMapper.listRuleTraces(
+                        criteria(false, 7L, List.of(targetScope), List.of(), page(10)));
+
+        assertThat(ids(rows)).containsExactly(9_542_003L, 9_542_001L);
     }
 
     @Test
@@ -247,13 +282,25 @@ class ArchiveRuleTraceMapperIntegrationTests extends PostgreSqlContainerTest {
     }
 
     private void insertItem(long id, String fondsCode, String categoryCode) {
+        insertItem(id, fondsCode, categoryCode, null, null);
+    }
+
+    private void insertItem(
+            long id,
+            String fondsCode,
+            String categoryCode,
+            Long securityLevelId,
+            Long retentionPeriodId) {
         jdbcTemplate.update(
                 "insert into am_archive_item "
-                        + "(id, fonds_code, fonds_name, category_code, category_name, electronic_status, archive_year) "
-                        + "values (?, ?, '全宗', ?, '分类', 'NONE', 2026)",
+                        + "(id, fonds_code, fonds_name, category_code, category_name, electronic_status, "
+                        + "security_level_id, retention_period_id, archive_year) "
+                        + "values (?, ?, '全宗', ?, '分类', 'NONE', ?, ?, 2026)",
                 id,
                 fondsCode,
-                categoryCode);
+                categoryCode,
+                securityLevelId,
+                retentionPeriodId);
     }
 
     private void insertVolume(long id, String fondsCode, String categoryCode) {

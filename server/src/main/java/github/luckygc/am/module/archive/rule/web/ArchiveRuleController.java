@@ -2,6 +2,8 @@ package github.luckygc.am.module.archive.rule.web;
 
 import java.util.Map;
 
+import jakarta.data.page.PageRequest;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -14,6 +16,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import github.luckygc.am.common.api.CollectionResponse;
+import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.archive.rule.ArchiveRuleDecision;
 import github.luckygc.am.module.archive.rule.ArchiveRuleStatus;
@@ -83,10 +86,12 @@ public class ArchiveRuleController {
     }
 
     @PostMapping("/api/v1/archive-rule-traces:search")
-    public CollectionResponse<Map<String, Object>> searchRuleTraces(
-            @RequestBody SearchArchiveRuleTracesRequest request, Authentication authentication) {
+    public CursorPageResponse<Map<String, Object>> searchRuleTraces(
+            @RequestBody SearchArchiveRuleTracesRequest request,
+            PageRequest pageRequest,
+            Authentication authentication) {
         Long userId = requireManage(authentication);
-        return CollectionResponse.of(ruleService.listRuleTraces(withUserId(request, userId)));
+        return ruleService.listRuleTraces(withUserId(request, userId), pageRequest);
     }
 
     private ExecuteArchiveRulesRequest withUserId(ExecuteArchiveRulesRequest request, Long userId) {
@@ -112,7 +117,6 @@ public class ArchiveRuleController {
                 request.objectTypeCode(),
                 request.objectId(),
                 request.ruleType(),
-                request.limit(),
                 userId);
     }
 

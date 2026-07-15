@@ -70,11 +70,6 @@ public class ArchiveRuleTraceService {
         return toCursorPage(rows, pageRequest);
     }
 
-    @Transactional(readOnly = true)
-    public List<Map<String, Object>> listRuleTraces(SearchArchiveRuleTracesRequest request) {
-        return listRuleTraces(request, PageRequest.ofSize(100)).items();
-    }
-
     void saveTrace(ExecuteArchiveRulesRequest request, ArchiveRuleDecision decision) {
         ArchiveRuleTrace trace = new ArchiveRuleTrace();
         trace.setSchemeVersionId(request.schemeVersionId());

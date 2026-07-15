@@ -12,6 +12,8 @@ import static org.mockito.Mockito.when;
 import java.util.List;
 import java.util.Map;
 
+import jakarta.data.page.PageRequest;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -20,6 +22,7 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.web.server.ResponseStatusException;
 
+import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.common.security.AuthenticatedUser;
 import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.rule.service.ArchiveLocalRuleService;
@@ -69,6 +72,30 @@ class ArchiveRuleControllerProblemDetailTests {
     }
 
     @Test
+    @DisplayName("追踪查询使用认证用户并转发原分页请求")
+    void searchRuleTracesShouldUseAuthenticatedUserAndOriginalPageRequest() {
+        PageRequest pageRequest = PageRequest.ofSize(100);
+        when(ruleService.listRuleTraces(any(), any()))
+                .thenReturn(
+                        CursorPageResponse.withCursorValues(
+                                List.of(), 100, null, null, null, null, null));
+
+        controller.searchRuleTraces(
+                new SearchArchiveRuleTracesRequest(null, null, null, null, null, 999L),
+                pageRequest,
+                auth(9L));
+
+        verify(permissionService)
+                .requirePermission(9L, AuthorizationPermissionCode.ARCHIVE_GOVERNANCE_MANAGE);
+        ArgumentCaptor<SearchArchiveRuleTracesRequest> requestCaptor =
+                ArgumentCaptor.forClass(SearchArchiveRuleTracesRequest.class);
+        ArgumentCaptor<PageRequest> pageCaptor = ArgumentCaptor.forClass(PageRequest.class);
+        verify(ruleService).listRuleTraces(requestCaptor.capture(), pageCaptor.capture());
+        assertThat(requestCaptor.getValue().userId()).isEqualTo(9L);
+        assertThat(pageCaptor.getValue()).isSameAs(pageRequest);
+    }
+
+    @Test
     @DisplayName("追踪查询缺少治理权限时输出 ProblemDetail")
     void searchRuleTracesShouldUseProblemDetailWhenPermissionDenied() {
         doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "权限不足"))
@@ -79,7 +106,8 @@ class ArchiveRuleControllerProblemDetailTests {
                         () ->
                                 controller.searchRuleTraces(
                                         new SearchArchiveRuleTracesRequest(
-                                                null, null, null, null, null, 100, null),
+                                                null, null, null, null, null, null),
+                                        PageRequest.ofSize(100),
                                         auth(9L)))
                 .isInstanceOfSatisfying(
                         ResponseStatusException.class,
