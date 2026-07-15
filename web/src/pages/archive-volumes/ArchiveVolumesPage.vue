@@ -101,7 +101,7 @@ async function executeRequest(query: VolumeListRequest, preserveError = false) {
             const cursorInvalid = Boolean(query.cursor) && isCursorFieldViolation(error);
             failedRequest = cursorInvalid ? { ...query, cursor: undefined } : query;
             if (cursorInvalid) {
-                cursor.value = undefined;
+                clearCursors();
                 loadError.value = withRequestTraceId("数据已变化，将从第一页重新加载", error);
             } else loadError.value = requestErrorMessage(error, "加载案卷失败");
         }

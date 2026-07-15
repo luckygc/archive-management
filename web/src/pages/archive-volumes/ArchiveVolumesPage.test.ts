@@ -99,7 +99,13 @@ describe("ArchiveVolumesPage", () => {
 
     it("加载失败保留已有结果并以同一已提交请求重试", async () => {
         mocks.listArchiveVolumes
-            .mockResolvedValueOnce({ items: [volume()], next: "next-volume" })
+            .mockResolvedValueOnce({
+                items: [volume()],
+                self: "self-volume",
+                prev: "prev-volume",
+                next: "next-volume",
+                first: "first-volume",
+            })
             .mockRejectedValueOnce(new Error("案卷服务暂不可用"))
             .mockResolvedValueOnce({ items: [volume()] });
         renderPage();
@@ -139,6 +145,8 @@ describe("ArchiveVolumesPage", () => {
             await screen.findByText("数据已变化，将从第一页重新加载（追踪 ID：trace-volume）"),
         ).toBeVisible();
         expect(screen.getByText("V-2026-001")).toBeVisible();
+        expect(screen.getByRole("button", { name: "上一页" })).toBeDisabled();
+        expect(screen.getByRole("button", { name: "下一页" })).toBeDisabled();
         await fireEvent.click(screen.getByRole("button", { name: "重试" }));
 
         await waitFor(() => expect(mocks.listArchiveVolumes).toHaveBeenCalledTimes(3));

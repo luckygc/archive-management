@@ -54,6 +54,8 @@ export function useArchiveItemResources(openLink: (href: string) => void) {
     let requestVersion = 0;
     let failedRequest: DrawerReadRequest | undefined;
     let retryInFlight: Promise<void> | undefined;
+    let filesArchiveItemId: number | undefined;
+    let auditsArchiveItemId: number | undefined;
 
     onBeforeUnmount(() => {
         disposed = true;
@@ -83,6 +85,7 @@ export function useArchiveItemResources(openLink: (href: string) => void) {
 
     async function executeDrawerRead(state: DrawerReadRequest, preserveError = false) {
         const version = ++requestVersion;
+        clearDataFromAnotherArchiveItem(state);
         drawerLoading.value = true;
         if (!preserveError) {
             drawerLoadError.value = undefined;
@@ -116,6 +119,17 @@ export function useArchiveItemResources(openLink: (href: string) => void) {
             }
         } finally {
             if (!disposed && version === requestVersion) drawerLoading.value = false;
+        }
+    }
+
+    function clearDataFromAnotherArchiveItem(state: DrawerReadRequest) {
+        if (state.activeKey === "files" && filesArchiveItemId !== state.archiveItemId) {
+            files.value = [];
+            filesArchiveItemId = state.archiveItemId;
+        }
+        if (state.activeKey === "audits" && auditsArchiveItemId !== state.archiveItemId) {
+            audits.value = [];
+            auditsArchiveItemId = state.archiveItemId;
         }
     }
 

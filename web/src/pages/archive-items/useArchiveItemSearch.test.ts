@@ -95,6 +95,14 @@ describe("useArchiveItemSearch", () => {
 
     it("游标字段错误保留结果和草稿并从相同已提交查询第一页重试", async () => {
         const search = renderSearch();
+        mocks.searchArchiveRecords.mockResolvedValueOnce({
+            fields: [],
+            items: [{ id: 1 }],
+            self: "self-2",
+            prev: "prev-2",
+            next: "next-2",
+            first: "first-2",
+        });
         search.submit({
             categoryId: 7,
             fondsCode: "F-COMMITTED",
@@ -102,6 +110,8 @@ describe("useArchiveItemSearch", () => {
             relatedGroups: [],
         });
         await waitFor(() => expect(search.result.value?.next).toBe("next-2"));
+        search.limit.value = 200;
+        search.orderBy.value = [{ field: "archiveYear", direction: "DESC" }];
         mocks.searchArchiveRecords.mockRejectedValueOnce(
             new HttpClientError(
                 "游标无效",
@@ -120,13 +130,25 @@ describe("useArchiveItemSearch", () => {
         );
         search.queryForm.fondsCode = "未提交草稿";
 
-        expect(search.result.value?.next).toBe("next-2");
+        expect(search.result.value?.items).toEqual([{ id: 1 }]);
+        expect(search.result.value).toEqual(
+            expect.objectContaining({
+                self: undefined,
+                prev: undefined,
+                next: undefined,
+                first: undefined,
+            }),
+        );
+        expect(search.limit.value).toBe(200);
+        expect(search.orderBy.value).toEqual([{ field: "archiveYear", direction: "DESC" }]);
+        expect(search.committedQuery.value?.fondsCode).toBe("F-COMMITTED");
         await search.refresh();
         expect(mocks.searchArchiveRecords).toHaveBeenLastCalledWith(
             expect.objectContaining({
                 categoryId: 7,
                 fondsCode: "F-COMMITTED",
-                limit: 100,
+                orderBy: [{ field: "archiveYear", direction: "DESC" }],
+                limit: 200,
                 cursor: undefined,
             }),
         );

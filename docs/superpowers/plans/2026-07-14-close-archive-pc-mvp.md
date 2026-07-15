@@ -349,7 +349,7 @@ const common = {
 };
 ```
 
-- [x] **Step 5: 验证并提交**
+- [ ] **Step 5: 验证并提交**
 
 ```bash
 pnpm --filter @archive-management/web test -- ArchiveItemManagementPage.test.ts ArchiveItemComponents.test.ts DynamicArchiveFields.test.ts
@@ -1103,7 +1103,7 @@ it("渲染服务端摘要且不包含演示待办", async () => {
 
 工作台保留四个真实统计；近期事项区域在审批阶段完成前移除，不显示虚构空壳。
 
-- [ ] **Step 5: 验证并提交**
+- [x] **Step 5: 验证并提交**
 
 ```bash
 cd server && mise exec -- mvn -q -Dtest=ArchiveWorkspaceServiceTests,ArchiveWorkspaceControllerTests test
@@ -1129,7 +1129,7 @@ git commit -m "feat: 提供真实工作台摘要"
 
 **Interfaces:**
 - Produces: `<RequestErrorState :message retry-label :retrying :disabled @retry>`，只负责展示与重试事件，不负责请求。
-- Internal: 页面用非响应式失败请求快照重放已提交查询、排序、页大小和游标；共享 helper 只附加 `traceId` 并按 `HttpClientError.fieldViolations[field=cursor]` 识别游标错误，不持有页面状态或解析自由文本。
+- Internal: 页面用非响应式失败请求快照重放已提交查询、排序、页大小和游标；游标失效时保留数据与查询上下文但清除结果中的全部分页链接；资源 Drawer 只在同一档案和同一页签失败时保留旧数据；共享 helper 只附加 `traceId` 并按 `HttpClientError.fieldViolations[field=cursor]` 识别游标错误，不持有页面状态或解析自由文本。
 
 - [x] **Step 1: 写组件失败测试**
 

@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/vue";
 import ElementPlus from "element-plus";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { defineComponent, h } from "vue";
+import { defineComponent, h, ref } from "vue";
 
 import { HttpClientError } from "@archive-management/frontend-core/api";
 import DashboardPage from "./DashboardPage.vue";
@@ -84,6 +84,24 @@ describe("DashboardPage", () => {
 
         retryRequest.resolve(summary());
         expect(await screen.findByText("档案总数")).toBeVisible();
+    });
+
+    it("重复加载严格返回同一个在途 Promise", async () => {
+        const request = deferred<WorkspaceSummary>();
+        mocks.getWorkspaceSummary.mockReturnValue(request.promise);
+        const page = ref<{ loadSummary: () => Promise<void> }>();
+        render(defineComponent({ setup: () => () => h(DashboardPage, { ref: page }) }), {
+            global: { plugins: [ElementPlus] },
+        });
+        await waitFor(() => expect(mocks.getWorkspaceSummary).toHaveBeenCalledTimes(1));
+
+        const first = page.value!.loadSummary();
+        const second = page.value!.loadSummary();
+
+        expect(first).toBe(second);
+        expect(mocks.getWorkspaceSummary).toHaveBeenCalledTimes(1);
+        request.resolve(summary());
+        await first;
     });
 
     it("刷新失败时保留已有摘要并展示追踪 ID，成功后清除错误", async () => {

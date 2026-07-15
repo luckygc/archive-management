@@ -12,6 +12,7 @@ const loading = ref(false);
 const loadError = ref<string>();
 let disposed = false;
 let requestVersion = 0;
+let summaryInFlight: Promise<void> | undefined;
 
 onMounted(() => void loadSummary());
 
@@ -20,8 +21,19 @@ onBeforeUnmount(() => {
     requestVersion += 1;
 });
 
-async function loadSummary() {
-    if (loading.value || disposed) return;
+function loadSummary(): Promise<void> {
+    if (summaryInFlight) return summaryInFlight;
+    if (disposed) return Promise.resolve();
+    const promise = executeSummaryRequest();
+    summaryInFlight = promise;
+    const clearInFlight = () => {
+        if (summaryInFlight === promise) summaryInFlight = undefined;
+    };
+    void promise.then(clearInFlight, clearInFlight);
+    return promise;
+}
+
+async function executeSummaryRequest() {
     const version = ++requestVersion;
     const preserveError = Boolean(loadError.value);
     loading.value = true;
@@ -40,6 +52,8 @@ async function loadSummary() {
         if (!disposed && version === requestVersion) loading.value = false;
     }
 }
+
+defineExpose({ loadSummary });
 
 const metrics: Array<{ label: string; key: keyof WorkspaceSummaryResponse }> = [
     { label: "档案总数", key: "archiveItemCount" },

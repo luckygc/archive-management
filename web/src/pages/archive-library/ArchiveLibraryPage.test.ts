@@ -90,7 +90,10 @@ describe("ArchiveLibraryPage", () => {
             .mockResolvedValueOnce({
                 fields: [],
                 items: [{ id: 1, archive_no: "保留的旧结果" }],
+                self: "self-2",
+                prev: "prev-2",
                 next: "next-2",
+                first: "first-2",
             })
             .mockRejectedValueOnce(
                 new HttpClientError(
@@ -112,6 +115,8 @@ describe("ArchiveLibraryPage", () => {
             await screen.findByText("数据已变化，将从第一页重新加载（追踪 ID：trace-library）"),
         ).toBeVisible();
         expect(screen.getByText("保留的旧结果")).toBeVisible();
+        expect(screen.getByRole("button", { name: "上一页" })).toBeDisabled();
+        expect(screen.getByRole("button", { name: "下一页" })).toBeDisabled();
         await fireEvent.click(screen.getByRole("button", { name: "重试" }));
 
         await waitFor(() => expect(mocks.discoverArchiveRecords).toHaveBeenCalledTimes(3));

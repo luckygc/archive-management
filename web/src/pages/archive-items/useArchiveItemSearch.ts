@@ -142,7 +142,7 @@ export function useArchiveItemSearch() {
                 const cursorInvalid = Boolean(request.cursor) && isCursorFieldViolation(error);
                 failedRequest = cursorInvalid ? { ...request, cursor: undefined } : request;
                 if (cursorInvalid) {
-                    cursor.value = undefined;
+                    clearResultCursors();
                     loadError.value = withRequestTraceId("数据已变化，将从第一页重新加载", error);
                 } else loadError.value = requestErrorMessage(error, "查询失败");
             }
