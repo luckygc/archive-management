@@ -410,6 +410,62 @@ class ArchiveDataScopeServiceTests {
     }
 
     @Test
+    @DisplayName("单分类范围为全量范围时不加载分类和字段元数据")
+    void buildItemFilterShouldSkipMetadataForAllScope() {
+        ArchiveDataScope allScope = scope(100L, ArchiveDataScopeType.ALL, true);
+        bindDirectUserScope(allScope, List.of());
+
+        assertThat(dataScopeService.buildItemFilter(7L, 11L, null).allData()).isTrue();
+        verify(archiveCategoryService, never()).listCategories(any());
+        verify(archiveMetadataService, never()).listFields(any());
+    }
+
+    @Test
+    @DisplayName("单分类范围为空范围时不加载分类和字段元数据")
+    void buildItemFilterShouldSkipMetadataForEmptyScope() {
+        assertThat(dataScopeService.buildItemFilter(7L, 11L, null).empty()).isTrue();
+        verify(archiveCategoryService, never()).listCategories(any());
+        verify(archiveMetadataService, never()).listFields(any());
+    }
+
+    @Test
+    @DisplayName("批量编译全量、空范围和纯固定维度时不加载字段元数据")
+    void compileItemFiltersShouldLoadFieldsOnlyForDynamicConditions() {
+        List<ArchiveCategoryDto> categories = List.of(category(11L, null), category(12L, null));
+
+        assertThat(
+                        dataScopeService.compileItemFilters(
+                                ArchiveDataScopeResolutionTypes.ResolvedArchiveDataScope.all(),
+                                categories,
+                                null))
+                .allSatisfy((ignored, filter) -> assertThat(filter.allData()).isTrue());
+        assertThat(
+                        dataScopeService.compileItemFilters(
+                                ArchiveDataScopeResolutionTypes.ResolvedArchiveDataScope.none(),
+                                categories,
+                                null))
+                .allSatisfy((ignored, filter) -> assertThat(filter.empty()).isTrue());
+
+        ArchiveDataScope fixedScope = scope(100L, ArchiveDataScopeType.CONDITIONAL, true);
+        ArchiveDataScopeDimension fondsDimension = new ArchiveDataScopeDimension();
+        fondsDimension.setScopeId(100L);
+        fondsDimension.setDimensionType(ArchiveDataScopeDimensionType.FONDS);
+        fondsDimension.setTargetCode("F001");
+        var resolved =
+                ArchiveDataScopeResolutionTypes.ResolvedArchiveDataScope.conditional(
+                        List.of(
+                                new ArchiveDataScopeResolutionTypes.ResolvedScope(
+                                        fixedScope, List.of(fondsDimension))));
+        assertThat(dataScopeService.compileItemFilters(resolved, categories, null))
+                .allSatisfy(
+                        (ignored, filter) ->
+                                assertThat(filter.groups().getFirst().fondsCodes())
+                                        .containsExactly("F001"));
+
+        verify(archiveMetadataService, never()).listFields(any());
+    }
+
+    @Test
     @DisplayName("批量编译复用已解析范围和分类元数据并为每个分类只加载一次字段")
     void compileItemFiltersShouldReuseResolvedScopeAndCategoryMetadata() {
         ArchiveDataScope scope = scope(100L, ArchiveDataScopeType.CONDITIONAL, true);
@@ -431,7 +487,8 @@ class ArchiveDataScopeServiceTests {
                         List.of(
                                 new ArchiveDataScopeResolutionTypes.ResolvedScope(
                                         scope, List.of())));
-        List<ArchiveCategoryDto> categories = List.of(category(11L, null), category(12L, null));
+        List<ArchiveCategoryDto> categories =
+                List.of(category(11L, null), category(12L, null), category(13L, null));
         when(archiveMetadataService.listFields(11L))
                 .thenReturn(List.of(field(20L, 11L, "department", true)));
         when(archiveMetadataService.listFields(12L))
@@ -440,15 +497,59 @@ class ArchiveDataScopeServiceTests {
         Map<Long, ArchiveDataScopeResolutionTypes.ArchiveDataScopeFilter> filters =
                 dataScopeService.compileItemFilters(resolved, categories, null);
 
-        assertThat(filters).containsOnlyKeys(11L, 12L);
+        assertThat(filters).containsOnlyKeys(11L, 12L, 13L);
         assertThat(filters.get(11L).groups().getFirst().conditions().getFirst().value())
                 .isEqualTo("LEGAL");
         assertThat(filters.get(12L).groups().getFirst().conditions().getFirst().value())
                 .isEqualTo("HR");
+        assertThat(filters.get(13L).empty()).isTrue();
         verify(archiveMetadataService).listFields(11L);
         verify(archiveMetadataService).listFields(12L);
+        verify(archiveMetadataService, never()).listFields(13L);
         verify(archiveCategoryService, never()).listCategories(any());
         verify(subjectRelationRepository, never()).findBySubjectTypeAndSubjectId(any(), any());
+    }
+
+    @Test
+    @DisplayName("分类继承忽略停用子分类但保留停用分类精确匹配")
+    void compileItemFiltersShouldExcludeDisabledCategoryFromDescendantIndex() {
+        ArchiveDataScope descendantScope = scope(100L, ArchiveDataScopeType.CONDITIONAL, true);
+        ArchiveDataScopeDimension parentDimension = new ArchiveDataScopeDimension();
+        parentDimension.setScopeId(100L);
+        parentDimension.setDimensionType(ArchiveDataScopeDimensionType.CATEGORY);
+        parentDimension.setTargetId(10L);
+        parentDimension.setIncludeDescendants(true);
+        var descendantResolved =
+                ArchiveDataScopeResolutionTypes.ResolvedArchiveDataScope.conditional(
+                        List.of(
+                                new ArchiveDataScopeResolutionTypes.ResolvedScope(
+                                        descendantScope, List.of(parentDimension))));
+        List<ArchiveCategoryDto> categories =
+                List.of(category(10L, null, true), category(11L, 10L, false));
+
+        Map<Long, ArchiveDataScopeResolutionTypes.ArchiveDataScopeFilter> descendantFilters =
+                dataScopeService.compileItemFilters(descendantResolved, categories, null);
+
+        assertThat(descendantFilters.get(10L).empty()).isFalse();
+        assertThat(descendantFilters.get(11L).empty()).isTrue();
+
+        ArchiveDataScope exactScope = scope(101L, ArchiveDataScopeType.CONDITIONAL, true);
+        ArchiveDataScopeDimension exactDimension = new ArchiveDataScopeDimension();
+        exactDimension.setScopeId(101L);
+        exactDimension.setDimensionType(ArchiveDataScopeDimensionType.CATEGORY);
+        exactDimension.setTargetId(11L);
+        var exactResolved =
+                ArchiveDataScopeResolutionTypes.ResolvedArchiveDataScope.conditional(
+                        List.of(
+                                new ArchiveDataScopeResolutionTypes.ResolvedScope(
+                                        exactScope, List.of(exactDimension))));
+
+        assertThat(
+                        dataScopeService
+                                .compileItemFilters(exactResolved, categories, null)
+                                .get(11L)
+                                .empty())
+                .isFalse();
     }
 
     @Test
@@ -600,6 +701,10 @@ class ArchiveDataScopeServiceTests {
     }
 
     private static ArchiveCategoryDto category(Long id, Long parentId) {
+        return category(id, parentId, true);
+    }
+
+    private static ArchiveCategoryDto category(Long id, Long parentId, boolean enabled) {
         LocalDateTime now = LocalDateTime.of(2026, 6, 30, 10, 0);
         return new ArchiveCategoryDto(
                 id,
@@ -614,7 +719,7 @@ class ArchiveDataScopeServiceTests {
                 null,
                 ArchiveTableStatus.BUILT,
                 now,
-                true,
+                enabled,
                 0,
                 now,
                 now);

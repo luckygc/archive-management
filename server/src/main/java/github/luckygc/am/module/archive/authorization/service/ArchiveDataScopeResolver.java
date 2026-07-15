@@ -11,6 +11,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
@@ -114,19 +115,40 @@ public class ArchiveDataScopeResolver {
     public ArchiveDataScopeFilter buildItemFilter(
             Long userId, Long categoryId, @Nullable String requestedFondsCode) {
         ResolvedArchiveDataScope resolved = resolveUserDataScopeInternal(userId);
+        if (resolved.allData()) {
+            return ArchiveDataScopeFilter.all();
+        }
+        if (resolved.empty()) {
+            return ArchiveDataScopeFilter.none();
+        }
         List<ArchiveCategoryDto> categories = archiveCategoryService.listCategories(true);
         Map<Long, ArchiveCategoryDto> categoriesById = categoriesById(categories);
+        Map<String, ArchiveFieldDto> fieldsByCode =
+                dynamicCategoryIds(resolved).contains(categoryId)
+                        ? fieldsByCode(categoryId)
+                        : Map.of();
         return compileItemFilter(
-                resolved, categoryId, requestedFondsCode, categoriesById, fieldsByCode(categoryId));
+                resolved, categoryId, requestedFondsCode, categoriesById, fieldsByCode);
     }
 
     public Map<Long, ArchiveDataScopeFilter> compileItemFilters(
             ResolvedArchiveDataScope resolved,
             List<ArchiveCategoryDto> categories,
             @Nullable String requestedFondsCode) {
+        if (resolved.allData()) {
+            return constantFilters(categories, ArchiveDataScopeFilter.all());
+        }
+        if (resolved.empty()) {
+            return constantFilters(categories, ArchiveDataScopeFilter.none());
+        }
         Map<Long, ArchiveCategoryDto> categoriesById = categoriesById(categories);
+        Set<Long> dynamicCategoryIds = dynamicCategoryIds(resolved);
         Map<Long, ArchiveDataScopeFilter> filters = new LinkedHashMap<>();
         for (ArchiveCategoryDto category : categories) {
+            Map<String, ArchiveFieldDto> fieldsByCode =
+                    dynamicCategoryIds.contains(category.id())
+                            ? fieldsByCode(category.id())
+                            : Map.of();
             filters.put(
                     category.id(),
                     compileItemFilter(
@@ -134,7 +156,16 @@ public class ArchiveDataScopeResolver {
                             category.id(),
                             requestedFondsCode,
                             categoriesById,
-                            fieldsByCode(category.id())));
+                            fieldsByCode));
+        }
+        return Map.copyOf(filters);
+    }
+
+    private Map<Long, ArchiveDataScopeFilter> constantFilters(
+            List<ArchiveCategoryDto> categories, ArchiveDataScopeFilter filter) {
+        Map<Long, ArchiveDataScopeFilter> filters = new LinkedHashMap<>();
+        for (ArchiveCategoryDto category : categories) {
+            filters.put(category.id(), filter);
         }
         return Map.copyOf(filters);
     }
@@ -167,12 +198,23 @@ public class ArchiveDataScopeResolver {
 
     private Map<Long, ArchiveCategoryDto> categoriesById(List<ArchiveCategoryDto> categories) {
         return categories.stream()
+                .filter(ArchiveCategoryDto::enabled)
                 .collect(
                         Collectors.toMap(
                                 ArchiveCategoryDto::id,
                                 category -> category,
                                 (first, ignored) -> first,
                                 LinkedHashMap::new));
+    }
+
+    private Set<Long> dynamicCategoryIds(ResolvedArchiveDataScope resolved) {
+        return resolved.scopes().stream()
+                .map(ResolvedScope::scope)
+                .map(ArchiveDataScope::getDynamicCondition)
+                .filter(this::hasDynamicConditions)
+                .flatMap(condition -> condition.dynamicFields().stream())
+                .map(ArchiveDataScopeDynamicCondition.DynamicFieldCondition::categoryId)
+                .collect(Collectors.toSet());
     }
 
     private Map<String, ArchiveFieldDto> fieldsByCode(Long categoryId) {
