@@ -11,6 +11,14 @@
 - **AND** 模板 SHALL 包含固定字段和该分类允许导入的动态字段
 - **AND** 系统 SHALL 校验用户具备创建或编辑功能权限和目标分类数据范围
 
+#### Scenario: 创建导入模板下载短链
+
+- **WHEN** 已认证用户请求档案导入模板
+- **THEN** 客户端 SHALL 调用 `POST /api/v1/archive-categories/{categoryId}/archive-items:createImportTemplateDownloadLink`
+- **AND** 服务端 SHALL 校验创建或编辑权限与分类数据范围
+- **AND** 服务端 SHALL 生成 10 分钟有效的临时 S3 对象和当前用户绑定短链
+- **AND** 客户端 SHALL 使用临时 `<a>` 打开返回的安全 GET 短链
+
 #### Scenario: 校验导入文件
 
 - **WHEN** 用户上传标准 Excel 导入档案
@@ -33,9 +41,11 @@
 
 - **WHEN** 已认证用户请求导出档案管理查询结果
 - **THEN** 系统 SHALL 校验用户具备导出功能权限
-- **AND** 系统 SHALL 使用当前查询条件、排序和用户数据范围生成导出结果
+- **AND** 客户端 SHALL 使用 `POST /api/v1/archive-items:createExportDownloadLink` 在 JSON 请求体中提交当前查询条件
+- **AND** 服务端 SHALL 在同一成功事务中生成 Excel、写入导出审计、保存 10 分钟有效的临时 S3 对象并创建当前用户绑定短链
+- **AND** 客户端 SHALL 使用临时 `<a>` 打开返回的安全 GET 短链
+- **AND** 客户端 SHALL NOT 通过 XHR 或 fetch 读取导出文件 Blob
 - **AND** 系统 SHALL NOT 绕过后端范围导出全量档案
-- **AND** 前端 SHALL 使用可由浏览器直接打开的下载链接触发导出，不通过 XHR 读取 `Blob`
 
 #### Scenario: 导出写入审计
 

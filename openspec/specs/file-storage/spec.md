@@ -120,3 +120,32 @@
 - **WHEN** 统一过期数据清理服务运行
 - **THEN** 系统 SHALL 删除已过期的文件短链
 - **AND** 系统 SHALL NOT 因短链过期而删除长期有效的文件对象
+
+### Requirement: 临时对象生命周期
+
+系统 SHALL 以本地文件记录管理临时 S3 对象的过期与清理，并保证对象存储和本地记录最终一致。
+
+#### Scenario: 保存临时对象过期时间
+
+- **WHEN** 系统保存临时 S3 对象
+- **THEN** 系统 SHALL 在 `am_storage_object.expires_at` 固化过期时间
+- **AND** 系统 SHALL NOT 仅依赖短链过期时间或对象存储生命周期规则判断临时对象是否过期
+
+#### Scenario: 创建临时对象的事务回滚
+
+- **WHEN** 已上传临时 S3 对象的业务事务回滚
+- **THEN** 系统 SHALL 删除已上传的 S3 对象
+- **AND** 系统 SHALL NOT 保留缺少有效本地记录的临时 S3 对象
+
+#### Scenario: 清理过期临时对象
+
+- **WHEN** 统一过期数据清理服务处理已过期的临时对象记录
+- **THEN** 系统 SHALL 先删除 S3 对象
+- **AND** S3 对象删除成功后系统 SHALL 硬删除本地记录
+- **AND** S3 对象删除失败时系统 SHALL 保留本地记录以供后续重试
+
+#### Scenario: 永久对象不参与清理
+
+- **WHEN** 文件记录的 `expires_at` 为空
+- **THEN** 系统 SHALL 将该文件记录视为永久对象
+- **AND** 统一过期数据清理服务 SHALL NOT 清理该对象或硬删除其本地记录
