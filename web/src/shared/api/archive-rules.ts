@@ -6,9 +6,9 @@ import type {
     ArchiveRuleStatus,
     ArchiveRuleTraceDto,
     ExecuteArchiveRulesRequest,
-    SearchArchiveRuleTracesRequest,
+    SearchArchiveRuleTracesQuery,
 } from "../types/archive-rules";
-import type { CollectionResponse } from "../types/pagination";
+import type { CollectionResponse, CursorPageResponse } from "../types/pagination";
 import { queryString } from "./query-string";
 
 export function listArchiveRules(schemeVersionId: number, status?: ArchiveRuleStatus) {
@@ -40,9 +40,10 @@ export function executeArchiveRules(payload: ExecuteArchiveRulesRequest) {
     );
 }
 
-export function searchArchiveRuleTraces(payload: SearchArchiveRuleTracesRequest) {
-    return httpClient.post<CollectionResponse<ArchiveRuleTraceDto>>(
-        "/api/v1/archive-rule-traces:search",
-        payload,
+export function searchArchiveRuleTraces(query: SearchArchiveRuleTracesQuery) {
+    const { limit, cursor, requestTotal, ...body } = query;
+    return httpClient.post<CursorPageResponse<ArchiveRuleTraceDto>>(
+        `/api/v1/archive-rule-traces:search${queryString({ limit, cursor, requestTotal })}`,
+        body,
     );
 }

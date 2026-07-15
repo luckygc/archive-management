@@ -1,9 +1,17 @@
 <script setup lang="ts">
-import { ElMessage, type FormInstance } from "element-plus";
+import type { FormInstance } from "element-plus";
 import { ref } from "vue";
 
 import { searchArchiveRuleTraces } from "@/shared/api/archive-rules";
-import type { ArchiveRuleTraceDto, ArchiveRuleType } from "@/shared/types/archive-rules";
+import CursorPagination from "@/shared/components/CursorPagination.vue";
+import RequestErrorState from "@/shared/components/RequestErrorState.vue";
+import { requestErrorMessage } from "@/shared/requestError";
+import type {
+    ArchiveRuleTraceDto,
+    ArchiveRuleType,
+    SearchArchiveRuleTracesRequest,
+} from "@/shared/types/archive-rules";
+import type { CursorPageResponse } from "@/shared/types/pagination";
 
 const ruleTypes: ArchiveRuleType[] = [
     "VALIDATION",
@@ -24,30 +32,51 @@ const form = ref({
     objectTypeCode: "",
     objectId: undefined as number | undefined,
     ruleType: undefined as ArchiveRuleType | undefined,
-    limit: 100,
 });
-const items = ref<ArchiveRuleTraceDto[]>([]);
+const limit = ref(100);
+const committedQuery = ref<SearchArchiveRuleTracesRequest>();
+const result = ref<CursorPageResponse<ArchiveRuleTraceDto>>();
 const loading = ref(false);
+const loadError = ref<string>();
 
 async function submitSearch() {
     const valid = await formRef.value?.validate().catch(() => false);
     if (valid === false) return;
+    committedQuery.value = {
+        schemeVersionId: form.value.schemeVersionId,
+        triggerCode: form.value.triggerCode.trim() || undefined,
+        objectTypeCode: form.value.objectTypeCode.trim() || undefined,
+        objectId: form.value.objectId,
+        ruleType: form.value.ruleType,
+    };
+    await load(undefined);
+}
+
+async function load(cursor?: string) {
+    if (!committedQuery.value) return;
     loading.value = true;
     try {
         const response = await searchArchiveRuleTraces({
-            schemeVersionId: form.value.schemeVersionId,
-            triggerCode: form.value.triggerCode || undefined,
-            objectTypeCode: form.value.objectTypeCode || undefined,
-            objectId: form.value.objectId,
-            ruleType: form.value.ruleType,
-            limit: form.value.limit,
+            ...committedQuery.value,
+            limit: limit.value,
+            cursor,
         });
-        items.value = response.items;
+        result.value = response;
+        loadError.value = undefined;
     } catch (error) {
-        ElMessage.error((error as Error).message);
+        loadError.value = requestErrorMessage(error, "规则追踪查询失败");
     } finally {
         loading.value = false;
     }
+}
+
+function page(cursor: string) {
+    void load(cursor);
+}
+
+function limitChange(value: number) {
+    limit.value = value;
+    void load(undefined);
 }
 
 function resetForm() {
@@ -86,14 +115,6 @@ function resetForm() {
                         />
                     </el-select>
                 </el-form-item>
-                <el-form-item label="条数" prop="limit">
-                    <el-input-number
-                        v-model="form.limit"
-                        :min="1"
-                        :max="500"
-                        controls-position="right"
-                    />
-                </el-form-item>
                 <el-form-item>
                     <el-button type="primary" :loading="loading" @click="submitSearch"
                         >查询</el-button
@@ -103,7 +124,13 @@ function resetForm() {
             </el-form>
         </el-card>
         <el-card shadow="never">
-            <el-table v-loading="loading" :data="items" row-key="id">
+            <RequestErrorState
+                v-if="loadError"
+                :message="loadError"
+                :retrying="loading"
+                @retry="load(undefined)"
+            />
+            <el-table v-loading="loading" :data="result?.items || []" row-key="id">
                 <el-table-column prop="createdAt" label="时间" width="170" />
                 <el-table-column prop="schemeVersionId" label="治理版本" width="100" />
                 <el-table-column prop="triggerCode" label="触发点" width="130" />
@@ -124,6 +151,16 @@ function resetForm() {
                 </el-table-column>
                 <el-table-column prop="message" label="消息" />
             </el-table>
+            <div v-if="result" class="am-table-footer">
+                <CursorPagination
+                    :limit="limit"
+                    :prev="result.prev"
+                    :next="result.next"
+                    :loading="loading"
+                    @limit-change="limitChange"
+                    @page="page"
+                />
+            </div>
         </el-card>
     </section>
 </template>

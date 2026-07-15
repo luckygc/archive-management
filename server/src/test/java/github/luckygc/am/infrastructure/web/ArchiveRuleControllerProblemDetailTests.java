@@ -25,6 +25,7 @@ import org.springframework.web.server.ResponseStatusException;
 import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.common.security.AuthenticatedUser;
 import github.luckygc.am.module.archive.ArchiveLevel;
+import github.luckygc.am.module.archive.rule.ArchiveRuleType;
 import github.luckygc.am.module.archive.rule.service.ArchiveLocalRuleService;
 import github.luckygc.am.module.archive.rule.service.ArchiveLocalRuleService.ExecuteArchiveRulesRequest;
 import github.luckygc.am.module.archive.rule.service.ArchiveLocalRuleService.SearchArchiveRuleTracesRequest;
@@ -81,7 +82,8 @@ class ArchiveRuleControllerProblemDetailTests {
                                 List.of(), 100, null, null, null, null, null));
 
         controller.searchRuleTraces(
-                new SearchArchiveRuleTracesRequest(null, null, null, null, null, 999L),
+                new SearchArchiveRuleTracesRequest(
+                        11L, "BEFORE_SAVE", "ARCHIVE_ITEM", 21L, ArchiveRuleType.VALIDATION, 999L),
                 pageRequest,
                 auth(9L));
 
@@ -91,7 +93,15 @@ class ArchiveRuleControllerProblemDetailTests {
                 ArgumentCaptor.forClass(SearchArchiveRuleTracesRequest.class);
         ArgumentCaptor<PageRequest> pageCaptor = ArgumentCaptor.forClass(PageRequest.class);
         verify(ruleService).listRuleTraces(requestCaptor.capture(), pageCaptor.capture());
-        assertThat(requestCaptor.getValue().userId()).isEqualTo(9L);
+        assertThat(requestCaptor.getValue())
+                .isEqualTo(
+                        new SearchArchiveRuleTracesRequest(
+                                11L,
+                                "BEFORE_SAVE",
+                                "ARCHIVE_ITEM",
+                                21L,
+                                ArchiveRuleType.VALIDATION,
+                                9L));
         assertThat(pageCaptor.getValue()).isSameAs(pageRequest);
     }
 

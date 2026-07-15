@@ -103,8 +103,12 @@ export interface SearchArchiveRuleTracesRequest {
     objectTypeCode?: string;
     objectId?: number;
     ruleType?: ArchiveRuleType;
+}
+
+export interface SearchArchiveRuleTracesQuery extends SearchArchiveRuleTracesRequest {
     limit?: number;
-    userId?: number;
+    cursor?: string;
+    requestTotal?: boolean;
 }
 
 export interface ArchiveRuleTraceDto {
