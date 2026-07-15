@@ -46,12 +46,12 @@ public class PowLoginFilter extends OncePerRequestFilter {
             response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
             response.setContentType(MediaType.TEXT_PLAIN_VALUE);
             response.setCharacterEncoding(StandardCharsets.UTF_8.name());
-            response.getWriter().write(ex.getMessage() + "，可再次登录时间：" + ex.lockedUntil());
+            response.getWriter().write("登录受限，请稍后重试。");
         } catch (PowChallengeException ex) {
             response.setStatus(HttpStatus.UNAUTHORIZED.value());
             response.setContentType(MediaType.TEXT_PLAIN_VALUE);
             response.setCharacterEncoding(StandardCharsets.UTF_8.name());
-            response.getWriter().write(ex.getMessage());
+            response.getWriter().write("认证失败，请重试。");
         }
     }
 }
