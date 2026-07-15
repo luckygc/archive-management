@@ -350,22 +350,22 @@ public class ArchiveCategoryService {
     }
 
     private String requireCategoryCode(@Nullable String categoryCode) {
-        String normalized = StringUtils.trimToNull(categoryCode);
+        String normalized = StringUtils.stripToNull(categoryCode);
         if (normalized == null) {
             throw badRequest("分类编码不能为空");
         }
-        if (StringUtils.length(normalized) > CATEGORY_CODE_MAX_LENGTH) {
+        if (normalized.codePointCount(0, normalized.length()) > CATEGORY_CODE_MAX_LENGTH) {
             throw badRequest("分类编码长度不能超过 100");
         }
         return normalized;
     }
 
     private String requireCategoryName(@Nullable String categoryName) {
-        String normalized = StringUtils.trimToNull(categoryName);
+        String normalized = StringUtils.stripToNull(categoryName);
         if (normalized == null) {
             throw badRequest("分类名称不能为空");
         }
-        if (StringUtils.length(normalized) > CATEGORY_NAME_MAX_LENGTH) {
+        if (normalized.codePointCount(0, normalized.length()) > CATEGORY_NAME_MAX_LENGTH) {
             throw badRequest("分类名称长度不能超过 255");
         }
         return normalized;
