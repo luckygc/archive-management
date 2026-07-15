@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 修复同步导出只读事务、GET 导出副作用、规则追踪先截断后过滤和前端生成声明漂移，并以 POST 下载和稳定 cursor 分页形成完整闭环。
+**Goal:** 修复同步导出只读事务、直接文件流下载、规则追踪先截断后过滤和前端生成声明漂移，并以用户绑定临时短链和稳定 cursor 分页形成完整闭环。
 
-**Architecture:** 导出继续同步执行，但使用可写事务并只暴露 POST custom method；前端核心 HTTP client 增加一个只负责 POST 二进制响应的最小方法。规则追踪由 Service 一次性编译当前用户的数据范围，MyBatis 在 PostgreSQL 中完成可见性过滤和 `(created_at, id)` 键集分页，Controller 与前端统一使用 `PageRequest` / `CursorPageResponse` 合同。
+**Architecture:** 导入模板和导出结果由 POST 同步生成到具有 10 分钟 TTL 的临时 S3 对象，再复用现有用户绑定 FileLink 返回安全 GET 短链；前端只用临时 `<a>` 打开短链，不读取 Blob。规则追踪由 Service 一次性编译当前用户的数据范围，MyBatis 在 PostgreSQL 中完成可见性过滤和 `(created_at, id)` 键集分页，Controller 与前端统一使用 `PageRequest` / `CursorPageResponse` 合同。
 
 **Tech Stack:** Java 25、Spring Boot 4.1、Spring MVC、Spring Transaction、Jakarta Data、MyBatis、PostgreSQL 18/Testcontainers、Vue 3、TypeScript、Axios、Vite+、Vitest、OpenSpec。
 
@@ -12,7 +12,9 @@
 
 - 始终使用中文交流、编写文档和注释；只修改本次审查确认的四个问题，不扩展相邻模块。
 - 保留同步导出和现有 5000 行上限，不引入后台 Job、消息队列、适配层或配置开关。
-- 项目自有导出仅保留 `POST /api/v1/archive-items:export`；不保留尚未发布的 GET 兼容分支。
+- 导入模板和导出仅保留 `POST ...:createImportTemplateDownloadLink` 与 `POST ...:createExportDownloadLink`；不保留尚未发布的直接文件流兼容分支。
+- 临时 S3 对象与用户绑定短链统一使用 10 分钟 TTL；前端不得通过 XHR/fetch 读取 Blob。
+- 过期对象清理必须先幂等删除 S3 对象，成功后再硬删除本地存储记录；S3 失败时保留记录供重试。
 - 规则追踪分页固定按 `created_at DESC, id DESC`，分页参数只使用 URL query 中的 `limit`、`cursor`、`requestTotal`。
 - 动态档案表名和字段名只能来自已经校验的分类元数据与数据范围 SQL 条件，不接收客户端标识符。
 - 固定实体审计仍通过 Jakarta Data Repository 写入；规则追踪的动态数据范围与复杂分页继续由 MyBatis 承担。
@@ -23,20 +25,21 @@
 
 ## 文件结构
 
-- 修改 `openspec/changes/add-archive-data-scope-permissions-mvp-closure/specs/archive-import-export/spec.md`：把导出验收合同从浏览器 GET 链接改为 POST JSON + 二进制响应。
+- 修改 `openspec/changes/add-archive-data-scope-permissions-mvp-closure/specs/archive-import-export/spec.md`：明确模板和导出先生成临时对象与用户短链，再由浏览器直接打开安全 GET。
+- 修改 `openspec/specs/file-storage/spec.md`：补充 10 分钟临时对象与 S3/数据库统一清理合同。
 - 修改 `openspec/changes/add-archive-governance-foundation/specs/archive-local-rule-engine/spec.md`：明确规则追踪使用数据范围过滤后的稳定 cursor 分页。
 - 修改 `server/src/main/java/github/luckygc/am/module/archive/item/service/ArchiveItemImportExportService.java`：导出事务改为可写。
-- 修改 `server/src/main/java/github/luckygc/am/module/archive/item/web/ArchiveItemImportExportController.java`：删除 GET 导出及 Base64 解码依赖。
+- 修改 `server/src/main/java/github/luckygc/am/module/storage/service/StorageObjectService.java`：保存可过期对象并注册事务回滚 S3 补偿。
+- 修改 `server/src/main/java/github/luckygc/am/module/storage/repository/StorageObjectDataRepository.java`：用固定 HQL 分批查询过期对象。
+- 创建 `server/src/main/java/github/luckygc/am/module/storage/StorageObjectExpiredDataCleaner.java`：先清 S3、成功后删本地记录。
+- 创建 `server/src/test/java/github/luckygc/am/module/storage/StorageObjectExpiredDataCleanerTests.java`：覆盖顺序、失败保留与批量上限。
+- 修改 `server/src/main/java/github/luckygc/am/module/archive/item/service/ArchiveItemImportExportService.java`：生成模板和导出后保存临时对象并创建用户短链。
+- 修改 `server/src/main/java/github/luckygc/am/module/archive/item/web/ArchiveItemImportExportController.java`：只返回短链响应，删除所有直接文件流入口。
 - 修改 `server/src/test/java/github/luckygc/am/module/archive/item/service/ArchiveItemImportExportServiceTests.java`：固定导出方法必须使用可写事务。
 - 创建 `server/src/test/java/github/luckygc/am/module/archive/item/service/ArchiveItemExportTransactionIntegrationTests.java`：在 PostgreSQL 中证明导出成功写入审计。
-- 修改 `server/src/test/java/github/luckygc/am/module/archive/item/web/ArchiveItemImportExportControllerTests.java`：只验证 POST 请求体和认证用户。
-- 修改 `frontend-core/src/api/client.ts`：增加 POST 二进制下载能力和 Content-Disposition 文件名解析。
-- 修改 `frontend-core/src/api/client.test.ts`：覆盖 POST、CSRF、Blob URL、ProblemDetail 与文件名。
-- 修改 `web/src/shared/api/archive-records.ts`：导出请求改为 POST JSON，不再 Base64 编码查询。
-- 修改 `web/src/shared/api/archive.test.ts`：固定导出 URL、方法和请求体。
-- 修改 `web/src/pages/archive-items/downloadFromLink.ts`：支持 `download` 文件名并在点击后释放 Blob URL。
-- 修改 `web/src/pages/archive-items/ArchiveItemManagementPage.vue`：使用 POST 下载结果。
-- 修改相关档案管理页面测试：验证导出触发和 URL 释放。
+- 修改 `server/src/test/java/github/luckygc/am/module/archive/item/web/ArchiveItemImportExportControllerTests.java`：验证两个创建短链接口和认证用户。
+- 修改 `web/src/shared/api/archive-records.ts` 与 `web/src/shared/api/archive.test.ts`：模板和导出先 POST 创建短链，不再 Base64 编码查询。
+- 修改 `web/src/pages/archive-items/ArchiveItemManagementPage.vue` 及相关测试：通过临时 `<a>` 打开返回短链，断言不使用 Blob API。
 - 修改 `server/src/main/java/github/luckygc/am/module/archive/mapper/ArchiveRuleTraceSearchCriteria.java`：承载筛选、可见范围和分页窗口。
 - 修改 `server/src/main/java/github/luckygc/am/module/archive/mapper/ArchiveRuleMapper.java` 与 `server/src/main/resources/mapper/archive/ArchiveRuleMapper.xml`：数据库内过滤并稳定键集分页。
 - 修改 `server/src/main/java/github/luckygc/am/module/archive/rule/service/ArchiveRuleTraceService.java`：编译一次数据范围并组装 cursor 页。
@@ -54,10 +57,11 @@
 
 **Files:**
 - Modify: `openspec/changes/add-archive-data-scope-permissions-mvp-closure/specs/archive-import-export/spec.md:28-43`
+- Modify: `openspec/specs/file-storage/spec.md:88-122`
 - Modify: `openspec/changes/add-archive-governance-foundation/specs/archive-local-rule-engine/spec.md:131-145`
 
 **Interfaces:**
-- Consumes: 已批准设计中的 POST 导出与规则追踪 cursor 分页合同。
+- Consumes: 已批准设计中的临时 S3 短链、统一清理与规则追踪 cursor 分页合同。
 - Produces: 后端 Controller、前端 client 和测试共同遵守的验收真相源。
 
 - [ ] **Step 1: 运行当前严格校验建立基线**
@@ -66,17 +70,34 @@ Run: `openspec validate --all --strict --no-interactive`
 
 Expected: 所有现有 specs 与 changes 均通过；若基线失败，只记录与本任务无关的既有失败，不修改相邻规格。
 
-- [ ] **Step 2: 修改导出场景为 POST 二进制合同**
+- [ ] **Step 2: 修改生成文件场景为创建短链合同**
 
-将“导出查询结果”场景中的前端 GET 链接约束替换为以下明确断言：
+在 archive-import-export 规格中把“导出查询结果”明确为：
 
 ```markdown
-- **AND** 客户端 SHALL 使用 `POST /api/v1/archive-items:export` 在 JSON 请求体中提交当前查询条件
-- **AND** 服务端 SHALL 在同一成功事务中生成二进制 Excel 并写入导出审计
-- **AND** 客户端 SHALL 读取成功响应为 `Blob`、触发对象 URL 下载并在触发后释放对象 URL
+- **AND** 客户端 SHALL 使用 `POST /api/v1/archive-items:createExportDownloadLink` 在 JSON 请求体中提交当前查询条件
+- **AND** 服务端 SHALL 在同一成功事务中生成 Excel、写入导出审计、保存 10 分钟有效的临时 S3 对象并创建当前用户绑定短链
+- **AND** 客户端 SHALL 使用临时 `<a>` 打开返回的安全 GET 短链
+- **AND** 客户端 SHALL NOT 通过 XHR 或 fetch 读取导出文件 Blob
 ```
 
-- [ ] **Step 3: 补充规则追踪分页验收场景**
+- [ ] **Step 3: 补充模板和临时对象清理合同**
+
+在同一规格增加模板场景：
+
+```markdown
+#### Scenario: 创建导入模板下载短链
+
+- **WHEN** 已认证用户请求档案导入模板
+- **THEN** 客户端 SHALL 调用 `POST /api/v1/archive-categories/{categoryId}/archive-items:createImportTemplateDownloadLink`
+- **AND** 服务端 SHALL 校验创建或编辑权限与分类数据范围
+- **AND** 服务端 SHALL 生成 10 分钟有效的临时 S3 对象和当前用户绑定短链
+- **AND** 客户端 SHALL 使用临时 `<a>` 打开返回的安全 GET 短链
+```
+
+在 `file-storage` 规格补充：临时对象必须在 `am_storage_object.expires_at` 固化过期时间；事务回滚删除已上传 S3 对象；清理器先删除 S3，成功后硬删除本地记录，失败保留记录重试；永久对象 `expires_at` 为空不参与清理。
+
+- [ ] **Step 4: 补充规则追踪分页验收场景**
 
 在“查询规则追踪”后增加：
 
@@ -89,7 +110,7 @@ Expected: 所有现有 specs 与 changes 均通过；若基线失败，只记录
 - **AND** 相邻页面 SHALL NOT 返回重复追踪
 ```
 
-- [ ] **Step 4: 验证规格并提交**
+- [ ] **Step 5: 验证规格并提交**
 
 Run: `openspec validate --all --strict --no-interactive`
 
@@ -97,8 +118,9 @@ Expected: 输出显示所有 specs 与 changes 均有效，无 strict validation
 
 ```bash
 git add openspec/changes/add-archive-data-scope-permissions-mvp-closure/specs/archive-import-export/spec.md \
+  openspec/specs/file-storage/spec.md \
   openspec/changes/add-archive-governance-foundation/specs/archive-local-rule-engine/spec.md
-git commit -m "docs: 修正规则追踪与导出合同"
+git commit -m "docs: 统一生成文件短链合同"
 ```
 
 ### Task 2: 让同步导出在真实可写事务中记录审计
@@ -192,228 +214,303 @@ git add server/src/main/java/github/luckygc/am/module/archive/item/service/Archi
 git commit -m "fix: 允许导出事务写入审计"
 ```
 
-### Task 3: 删除 GET 导出并提供 POST 二进制下载
+### Task 3: 为临时 S3 对象实现过期与可重试清理
 
 **Files:**
+- Modify: `server/src/test/java/github/luckygc/am/module/storage/service/StorageObjectServiceTests.java`
+- Create: `server/src/test/java/github/luckygc/am/module/storage/StorageObjectExpiredDataCleanerTests.java`
+- Modify: `server/src/main/java/github/luckygc/am/module/storage/service/StorageObjectService.java`
+- Modify: `server/src/main/java/github/luckygc/am/module/storage/repository/StorageObjectDataRepository.java`
+- Create: `server/src/main/java/github/luckygc/am/module/storage/StorageObjectExpiredDataCleaner.java`
+
+**Interfaces:**
+- Consumes: 现有 `StorageObjectService.storeObject(StoreStorageObjectCommand, Long)` 与 `FileStorageService.deleteObject(bucketName, objectKey)`。
+- Produces: `StoreStorageObjectCommand(..., @Nullable LocalDateTime expiresAt)`、事务回滚补偿和 `StorageObjectExpiredDataCleaner`。
+
+- [ ] **Step 1: 写临时对象过期时间和事务回滚补偿测试**
+
+在 `StorageObjectServiceTests` 保留现有永久对象用例，并新增：
+
+```java
+@Test
+@DisplayName("保存临时对象时固化过期时间")
+void storeObjectShouldPersistExpiration() {
+    LocalDateTime expiresAt = LocalDateTime.of(2026, 7, 15, 10, 10);
+    service.storeObject(
+            new StoreStorageObjectCommand(
+                    "archive-export.xlsx",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    3,
+                    new ByteArrayInputStream(new byte[] {1, 2, 3}),
+                    expiresAt),
+            9L);
+
+    ArgumentCaptor<StorageObject> captor = ArgumentCaptor.forClass(StorageObject.class);
+    verify(repository).insert(captor.capture());
+    assertThat(captor.getValue().getExpiresAt()).isEqualTo(expiresAt);
+}
+```
+
+测试中调用 `TransactionSynchronizationManager.initSynchronization()` 后执行 `storeObject`，取出已注册的唯一 `TransactionSynchronization` 并分别调用 `afterCompletion(STATUS_ROLLED_BACK)` 与 `afterCompletion(STATUS_COMMITTED)`；断言只有回滚状态调用 `fileStorageService.deleteObject("archive", objectKey)`，最后在 `finally` 中 `clearSynchronization()`。当前 command 不含 expiresAt 且没有同步回调，因此先失败。
+
+- [ ] **Step 2: 写清理顺序与失败保留测试**
+
+创建 `StorageObjectExpiredDataCleanerTests`，mock Repository 和 `FileStorageService`：
+
+```java
+@Test
+@DisplayName("清理器先删除 S3 对象再删除本地记录")
+void cleanerShouldDeleteRecordOnlyAfterObject() throws IOException {
+    StorageObject expired = expiredObject(31L, "archive", "tmp/export.xlsx");
+    when(repository.findExpired(NOW, Limit.of(100))).thenReturn(List.of(expired));
+
+    ExpiredDataCleanupResult result = cleaner.cleanupExpired(NOW);
+
+    InOrder order = inOrder(fileStorageService, repository);
+    order.verify(fileStorageService).deleteObject("archive", "tmp/export.xlsx");
+    order.verify(repository).delete(expired);
+    assertThat(result.deletedCount()).isEqualTo(1);
+}
+
+@Test
+@DisplayName("S3 删除失败时保留本地记录供下次重试")
+void cleanerShouldKeepRecordWhenObjectDeletionFails() throws IOException {
+    StorageObject expired = expiredObject(32L, "archive", "tmp/failed.xlsx");
+    when(repository.findExpired(NOW, Limit.of(100))).thenReturn(List.of(expired));
+    doThrow(new IOException("S3 unavailable"))
+            .when(fileStorageService)
+            .deleteObject("archive", "tmp/failed.xlsx");
+
+    ExpiredDataCleanupResult result = cleaner.cleanupExpired(NOW);
+
+    verify(repository, never()).delete(expired);
+    assertThat(result.deletedCount()).isZero();
+}
+```
+
+再断言 repository 只请求 `Limit.of(100)`，永久对象不会由 `findExpired` 返回。
+
+- [ ] **Step 3: 运行测试并确认红灯**
+
+Run: `cd server && mise exec -- mvn -q -Dtest=StorageObjectServiceTests,StorageObjectExpiredDataCleanerTests test`
+
+Expected: testCompile FAIL 或断言 FAIL，因为 command、findExpired 和 cleaner 尚不存在。
+
+- [ ] **Step 4: 扩展存储命令并注册回滚补偿**
+
+`StoreStorageObjectCommand` 增加第五个字段：
+
+```java
+public record StoreStorageObjectCommand(
+        String originalFilename,
+        @Nullable String contentType,
+        long contentLength,
+        InputStream inputStream,
+        @Nullable LocalDateTime expiresAt) {}
+```
+
+现有电子文件调用明确传 `null`。`storeObject` 在 insert 前调用 `storageObject.setExpiresAt(command.expiresAt())`。S3 put 成功后，如果事务同步已激活，注册 `TransactionSynchronization`：仅当 `afterCompletion(STATUS_ROLLED_BACK)` 时调用 `deleteObject(objectInfo.bucketName(), objectInfo.objectKey())`；补偿失败记录 error 日志但不得覆盖原事务异常。无事务时若 repository insert 抛异常，catch 中立即删除该 S3 对象后再抛出。
+
+- [ ] **Step 5: 增加固定 HQL 过期查询和清理器**
+
+Repository 增加显式固定实体查询：
+
+```java
+@Transactional(readOnly = true)
+@HQL("from StorageObject where expiresAt is not null and expiresAt <= ?1 order by expiresAt, id")
+List<StorageObject> findExpired(@Nonnull LocalDateTime expiresAt, Limit limit);
+```
+
+`StorageObjectExpiredDataCleaner` 实现 `ExpiredDataCleaner`，名称固定为 `storage_object`，每次使用 `Limit.of(100)`。逐条调用 `fileStorageService.deleteObject`，成功后 `repository.delete(object)` 并计数；捕获 `IOException | RuntimeException` 后记录包含 storage object ID 的 error 日志并继续下一条，不删除失败记录。
+
+- [ ] **Step 6: 运行测试并格式化**
+
+Run: `cd server && mise exec -- mvn -q -Dtest=StorageObjectServiceTests,StorageObjectExpiredDataCleanerTests test`
+
+Expected: 所有测试 PASS，失败 S3 用例验证本地记录保留。
+
+Run: `cd server && mise exec -- mvn -q spotless:apply && git diff --check`
+
+- [ ] **Step 7: 提交临时对象生命周期**
+
+```bash
+git add server/src/main/java/github/luckygc/am/module/storage/service/StorageObjectService.java \
+  server/src/main/java/github/luckygc/am/module/storage/repository/StorageObjectDataRepository.java \
+  server/src/main/java/github/luckygc/am/module/storage/StorageObjectExpiredDataCleaner.java \
+  server/src/main/java/github/luckygc/am/module/archive/item/service/ArchiveItemElectronicFileService.java \
+  server/src/test/java/github/luckygc/am/module/storage/service/StorageObjectServiceTests.java \
+  server/src/test/java/github/luckygc/am/module/storage/StorageObjectExpiredDataCleanerTests.java
+git commit -m "feat: 清理过期临时存储对象"
+```
+
+### Task 4: 统一模板和导出短链
+
+**Files:**
+- Modify: `server/src/test/java/github/luckygc/am/module/archive/item/service/ArchiveItemImportExportServiceTests.java`
+- Modify: `server/src/test/java/github/luckygc/am/module/archive/item/service/ArchiveItemExportTransactionIntegrationTests.java`
 - Modify: `server/src/test/java/github/luckygc/am/module/archive/item/web/ArchiveItemImportExportControllerTests.java`
+- Modify: `server/src/test/java/github/luckygc/am/module/storage/web/FileLinkDownloadControllerTests.java`
+- Modify: `server/src/main/java/github/luckygc/am/module/archive/item/service/ArchiveItemImportExportService.java`
 - Modify: `server/src/main/java/github/luckygc/am/module/archive/item/web/ArchiveItemImportExportController.java`
-- Modify: `frontend-core/src/api/client.test.ts`
-- Modify: `frontend-core/src/api/client.ts`
 - Modify: `web/src/shared/api/archive.test.ts`
 - Modify: `web/src/shared/api/archive-records.ts`
-- Modify: `web/src/pages/archive-items/downloadFromLink.ts`
 - Modify: `web/src/pages/archive-items/ArchiveItemManagementPage.vue`
 - Modify: `web/src/pages/archive-items/ArchiveItemManagementPage.error-state.test.ts`
 
 **Interfaces:**
-- Consumes: `POST /api/v1/archive-items:export` 和 `SearchArchiveRecordsRequest`。
-- Produces: `httpClient.postDownload(path, body): Promise<DownloadedFile>`，其中 `DownloadedFile` 为 `{ href: string; filename?: string }`。
+- Consumes: Task 3 的可过期 `StoreStorageObjectCommand`、`StorageObjectService.storeObject`、现有 `FileLinkService.createUserLink(STORAGE_OBJECT, ...)`。
+- Produces: `ArchiveItemDownloadLinkResponse(url, expiresAt)`，以及两个 POST custom methods。
 
-- [ ] **Step 1: 把后端 Controller 测试改为 POST 请求体语义**
+- [ ] **Step 1: 写 Service 创建临时对象和用户短链失败测试**
 
-删除 Base64 测试，新增：
+在 `ArchiveItemImportExportServiceTests` 为模板和导出分别断言：生成的 `ArchiveExcelFile` 被包装为 `ByteArrayInputStream`，`StoreStorageObjectCommand.expiresAt()` 为固定 Clock 当前时间加 10 分钟；随后调用：
 
 ```java
-@Test
-@DisplayName("POST 导出使用请求体查询条件和认证用户")
-void exportItemsShouldUseBodyAndAuthenticatedUser() {
-    SearchArchiveItemsRequest request =
-            new SearchArchiveItemsRequest(1L, "F001", null, null, null, null, null, null);
-    when(importExportService.exportItems(request, 9L))
-            .thenReturn(new ArchiveExcelFile("archive-export.xlsx", new byte[] {1, 2}));
-
-    ResponseEntity<?> response = controller.exportItems(request, authentication(9L));
-
-    assertThat(response.getHeaders().getContentDisposition().getFilename())
-            .isEqualTo("archive-export.xlsx");
-    verify(importExportService).exportItems(request, 9L);
-}
+fileLinkService.createUserLink(
+        FileLinkTargetType.STORAGE_OBJECT,
+        null,
+        storageObject.id(),
+        Duration.ofMinutes(10),
+        userId);
 ```
 
-- [ ] **Step 2: 写前端核心 POST 下载失败测试**
+返回值为：
 
-在 `frontend-core/src/api/client.test.ts` 使用 `window.fetch` mock 返回带 Content-Disposition 的 XLSX 响应，并断言：
+```java
+public record DownloadLinkCreated(String code, LocalDateTime expiresAt) {}
+```
+
+导出用例同时 verify audit repository insert；当 storage 或 link 抛异常时方法抛出，外层事务回滚审计。
+
+- [ ] **Step 2: 写 Controller custom method 测试**
+
+删除直接 `ResponseEntity<ByteArrayResource>` 测试，新增模板与导出两个测试，断言完整路径的方法分别调用 `createImportTemplateDownloadLink(categoryId, userId)` 和 `createExportDownloadLink(request, userId)`，并返回：
+
+```java
+new ArchiveItemDownloadLinkResponse(
+        "/api/v1/file-links/short-code:download",
+        LocalDateTime.of(2026, 7, 15, 10, 10))
+```
+
+在 `FileLinkDownloadControllerTests` 增加内部短链测试：认证用户 9 访问 `downloadInternal("short-code", authentication)`，verify `fileLinkService.resolveInternal("short-code", 9L)`，`STORAGE_OBJECT` resolver 返回 `StorageObjectDownload`，响应保持 `application/octet-stream` 与附件文件名。
+
+- [ ] **Step 3: 写前端 API 与临时 a 标签测试**
+
+`web/src/shared/api/archive.test.ts` 断言：
 
 ```ts
-const createObjectURL = vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:archive-export");
-document.cookie = "XSRF-TOKEN=csrf-token";
-
-await expect(httpClient.postDownload("/api/v1/archive-items:export", { categoryId: 1 }))
-    .resolves.toEqual({ href: "blob:archive-export", filename: "archive-export.xlsx" });
-expect(fetchSpy).toHaveBeenCalledWith(
-    expect.any(Request),
+await downloadArchiveImportTemplate(11);
+expect(httpClientMock.post).toHaveBeenCalledWith(
+    "/api/v1/archive-categories/11/archive-items:createImportTemplateDownloadLink",
 );
-expect(createObjectURL).toHaveBeenCalledWith(expect.any(Blob));
-```
-
-从传给 fetch adapter 的请求中同时断言 method 为 `POST`、JSON body 为 `{"categoryId":1}`、`X-XSRF-TOKEN` 已设置。当前 `postDownload` 不存在，因此测试必须先失败。
-
-- [ ] **Step 3: 写 web API 失败测试**
-
-把 `exportArchiveRecords` 加入 `web/src/shared/api/archive.test.ts` import，并断言：
-
-```ts
-httpClientMock.postDownload.mockResolvedValue({
-    href: "blob:archive-export",
-    filename: "archive-export.xlsx",
-});
 
 await exportArchiveRecords({ categoryId: 1, keyword: "合同", limit: 100, cursor: "ignored" });
-
-expect(httpClientMock.postDownload).toHaveBeenCalledWith("/api/v1/archive-items:export", {
-    categoryId: 1,
-    keyword: "合同",
-});
-expect(httpClientMock.download).not.toHaveBeenCalled();
+expect(httpClientMock.post).toHaveBeenCalledWith(
+    "/api/v1/archive-items:createExportDownloadLink",
+    { categoryId: 1, keyword: "合同" },
+);
+expect(httpClientMock.download).toHaveBeenCalledWith(
+    "/api/v1/file-links/export-code:download",
+);
 ```
 
-把 mock 补上 `postDownload: vi.fn()`。`limit`、`cursor`、`requestTotal` 不属于同步导出查询体，继续由 `archiveRecordSearchRequest` 去除。
+页面测试令两个 API 返回 `{ href: "/api/v1/file-links/code:download" }`，spy `HTMLAnchorElement.prototype.click`，断言模板和导出均点击临时 `<a>`；spy `URL.createObjectURL` 并断言从未调用。
 
 - [ ] **Step 4: 运行测试并确认红灯**
 
-Run: `pnpm --filter @archive-management/frontend-core test -- client.test.ts && pnpm --filter @archive-management/web test -- src/shared/api/archive.test.ts`
+Run: `cd server && mise exec -- mvn -q -Dtest=ArchiveItemImportExportServiceTests,ArchiveItemImportExportControllerTests test`
 
-Expected: FAIL，原因分别为 `postDownload is not a function` 或方法未被调用。
+Run: `pnpm --filter @archive-management/web test -- src/shared/api/archive.test.ts src/pages/archive-items/ArchiveItemManagementPage.error-state.test.ts`
 
-- [ ] **Step 5: 实现最小 POST 下载方法**
+Expected: 后端编译失败或调用不匹配；前端仍调用直接 GET/Base64 URL，测试 FAIL。
 
-在 `frontend-core/src/api/client.ts` 增加：
+- [ ] **Step 5: 实现创建短链 Service**
 
-```ts
-export interface DownloadedFile extends DownloadLink {
-    filename?: string;
-}
-
-postDownload(path: string, body?: RequestBody) {
-    return requestDownload(path, withBody({}, "POST", body));
-},
-
-async function requestDownload(path: string, init: RequestInit): Promise<DownloadedFile> {
-    try {
-        const response = await axiosClient.request<Blob>({
-            ...axiosConfig(path, init),
-            responseType: "blob",
-        });
-        const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
-        return {
-            href: URL.createObjectURL(blob),
-            filename: attachmentFilename(
-                response.headers.get("content-disposition")?.toString(),
-            ),
-        };
-    } catch (error) {
-        throw await toDownloadHttpClientError(error);
-    }
-}
-
-function attachmentFilename(value?: string) {
-    if (!value) return undefined;
-    const encoded = /filename\*=UTF-8''([^;]+)/i.exec(value)?.[1];
-    if (encoded) return decodeURIComponent(encoded).split(/[\\/]/).at(-1);
-    return /filename="?([^";]+)"?/i.exec(value)?.[1]?.trim().split(/[\\/]/).at(-1);
-}
-
-async function toDownloadHttpClientError(error: unknown) {
-    if (axios.isAxiosError(error) && error.response?.data instanceof Blob) {
-        const response = error.response;
-        const body = problemDetailBody(await response.data.text());
-        if (body) {
-            const fieldViolations =
-                body.fieldViolations?.filter((violation) => violation.message) ?? [];
-            const message =
-                fieldViolations.length > 0
-                    ? fieldViolations.map((violation) => violation.message).join("；")
-                    : body.detail || body.title;
-            return new HttpClientError(
-                message || `请求失败：${response.status}`,
-                response.status,
-                body.code,
-                fieldViolations,
-                body.traceId,
-            );
-        }
-    }
-    return toHttpClientError(error);
-}
-```
-
-`attachmentFilename` 只解析标准 `filename=` 与 UTF-8 `filename*=`，去除包裹引号；`toDownloadHttpClientError` 在错误响应为 Blob 时先读取文本，再复用现有 ProblemDetail 转换。不要改变现有安全 GET `download()` 的同步链接语义。
-
-- [ ] **Step 6: 删除后端 GET 合同**
-
-从 `ArchiveItemImportExportController` 删除 `exportItemsFromLink`、`decodeExportQuery`、`JsonMapper` 字段和构造参数，以及 `Base64`、`StandardCharsets`、Jackson、GET 导出所需 import。构造器变为：
+在 `ArchiveItemImportExportService` 注入 `StorageObjectService`、`FileLinkService`、`Clock`，常量固定：
 
 ```java
-public ArchiveItemImportExportController(ArchiveItemImportExportService importExportService) {
-    this.importExportService = importExportService;
-}
+private static final Duration DOWNLOAD_LINK_TTL = Duration.ofMinutes(10);
+private static final String XLSX_CONTENT_TYPE =
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 ```
 
-保留现有 POST 方法和 `excelResponse`。
+保留原生成 Excel 私有核心逻辑，公开用例为：
 
-- [ ] **Step 7: 切换 web API 与触发器**
+```java
+@Transactional
+public DownloadLinkCreated createImportTemplateDownloadLink(Long categoryId, Long userId)
 
-`exportArchiveRecords` 返回 Promise，并只提交业务请求体：
+@Transactional
+public DownloadLinkCreated createExportDownloadLink(
+        ArchiveItemQueryService.@Nullable SearchArchiveItemsRequest request, Long userId)
+```
+
+两个方法生成 `ArchiveExcelFile` 后调用私有 `createDownloadLink(file, userId)`：以 `LocalDateTime.now(clock).plus(DOWNLOAD_LINK_TTL)` 写临时对象，创建 `STORAGE_OBJECT` 用户短链并返回 code/expiresAt。多个公开方法不得互相调用；共享 Excel 生成提取为 private 方法。导出审计仍位于同一外层事务内。
+
+同步更新 Task 2 的事务测试：反射断言目标改为 `createExportDownloadLink(SearchArchiveItemsRequest, Long)`；PostgreSQL 集成测试 mock `StorageObjectService` 与 `FileLinkService`，调用 `createExportDownloadLink(null, 9L)` 后仍断言真实 `am_archive_item_audit` 写入成功。再令 `fileLinkService.createUserLink` 抛异常，断言请求失败且本次 EXPORT 审计计数仍为 0，证明外层事务回滚。旧公开 `exportItems` 不再保留。
+
+- [ ] **Step 6: 实现 Controller 和前端 API**
+
+Controller 只保留导入 POST 与两个创建短链 POST，删除 `excelResponse`、直接模板 GET、导出文件流 POST/GET、Base64/Jackson 依赖。响应 record：
+
+```java
+public record ArchiveItemDownloadLinkResponse(String url, LocalDateTime expiresAt) {}
+```
+
+用统一私有 mapper 生成 `/api/v1/file-links/{code}:download`。前端接口：
 
 ```ts
-export function exportArchiveRecords(query: SearchArchiveRecordsQuery) {
-    return httpClient.postDownload(
-        "/api/v1/archive-items:export",
+interface ArchiveItemDownloadLinkResponse {
+    url: string;
+    expiresAt: string;
+}
+
+export async function downloadArchiveImportTemplate(categoryId: number): Promise<DownloadLink> {
+    const response = await httpClient.post<ArchiveItemDownloadLinkResponse>(
+        `/api/v1/archive-categories/${categoryId}/archive-items:createImportTemplateDownloadLink`,
+    );
+    return httpClient.download(response.url);
+}
+
+export async function exportArchiveRecords(query: SearchArchiveRecordsQuery): Promise<DownloadLink> {
+    const response = await httpClient.post<ArchiveItemDownloadLinkResponse>(
+        "/api/v1/archive-items:createExportDownloadLink",
         archiveRecordSearchRequest(query).body,
     );
+    return httpClient.download(response.url);
 }
 ```
 
-删除 `encodeDownloadQuery`。把下载工具改为：
+删除 `encodeDownloadQuery`。页面继续调用现有 `downloadFromLink(link.href)`，不新增 Blob、filename 或 revoke 逻辑。
 
-```ts
-export function downloadFromLink(href: string, filename?: string) {
-    const anchor = document.createElement("a");
-    anchor.href = href;
-    if (filename) anchor.download = filename;
-    anchor.click();
-    if (href.startsWith("blob:")) URL.revokeObjectURL(href);
-}
-```
+- [ ] **Step 7: 运行目标测试并审计直接流入口**
 
-页面导出调用改为：
+Run: `cd server && mise exec -- mvn -q -Dtest=ArchiveItemImportExportServiceTests,ArchiveItemExportTransactionIntegrationTests,ArchiveItemImportExportControllerTests,StorageObjectServiceTests,FileLinkDownloadControllerTests test`
 
-```ts
-const file = await exportArchiveRecords({
-    ...query,
-    orderBy: orderBy.value.length ? orderBy.value : undefined,
-});
-downloadFromLink(file.href, file.filename);
-```
+Run: `pnpm --filter @archive-management/web test -- src/shared/api/archive.test.ts src/pages/archive-items/ArchiveItemManagementPage.error-state.test.ts`
 
-- [ ] **Step 8: 补页面 URL 释放测试并运行窄测试**
+Run: `rg -n 'archive-items:export|archive-items:importTemplate|encodeDownloadQuery|createObjectURL' server/src/main web/src/shared/api/archive-records.ts web/src/pages/archive-items || true`
 
-在 `ArchiveItemManagementPage.error-state.test.ts` 的导出成功用例中令 API 返回 `{ href: "blob:archive-export", filename: "archive-export.xlsx" }`，spy `HTMLAnchorElement.prototype.click` 与 `URL.revokeObjectURL`，断言点击、文件名和释放均发生。
+Expected: 测试 PASS；rg 不匹配旧直接接口、Base64 编码或 Blob API。
 
-Run: `cd server && mise exec -- mvn -q -Dtest=ArchiveItemImportExportControllerTests test`
+- [ ] **Step 8: 格式化并提交**
 
-Run: `pnpm --filter @archive-management/frontend-core test -- client.test.ts && pnpm --filter @archive-management/web test -- src/shared/api/archive.test.ts src/pages/archive-items/ArchiveItemManagementPage.error-state.test.ts`
-
-Expected: 所有目标测试 PASS；后端测试源码中不再出现 `exportItemsFromLink`，前端导出 URL 中不再出现 `query=`。
-
-- [ ] **Step 9: 格式化并提交**
-
-Run: `cd server && mise exec -- mvn -q spotless:apply`
-
-Run: `pnpm check:fix && git diff --check`
+Run: `cd server && mise exec -- mvn -q spotless:apply && cd .. && pnpm check:fix && git diff --check`
 
 ```bash
-git add server/src/main/java/github/luckygc/am/module/archive/item/web/ArchiveItemImportExportController.java \
+git add server/src/main/java/github/luckygc/am/module/archive/item/service/ArchiveItemImportExportService.java \
+  server/src/main/java/github/luckygc/am/module/archive/item/web/ArchiveItemImportExportController.java \
+  server/src/test/java/github/luckygc/am/module/archive/item/service/ArchiveItemImportExportServiceTests.java \
+  server/src/test/java/github/luckygc/am/module/archive/item/service/ArchiveItemExportTransactionIntegrationTests.java \
   server/src/test/java/github/luckygc/am/module/archive/item/web/ArchiveItemImportExportControllerTests.java \
-  frontend-core/src/api/client.ts frontend-core/src/api/client.test.ts \
+  server/src/test/java/github/luckygc/am/module/storage/web/FileLinkDownloadControllerTests.java \
   web/src/shared/api/archive-records.ts web/src/shared/api/archive.test.ts \
-  web/src/pages/archive-items/downloadFromLink.ts \
   web/src/pages/archive-items/ArchiveItemManagementPage.vue \
   web/src/pages/archive-items/ArchiveItemManagementPage.error-state.test.ts
-git commit -m "fix: 使用 POST 导出档案文件"
+git commit -m "fix: 统一生成文件用户短链"
 ```
 
-### Task 4: 将规则追踪可见性和 cursor 分页下推到 MyBatis
+### Task 5: 将规则追踪可见性和 cursor 分页下推到 MyBatis
 
 **Files:**
 - Modify: `server/src/test/java/github/luckygc/am/module/archive/rule/service/ArchiveLocalRuleServiceTests.java`
@@ -729,7 +826,7 @@ git add server/src/main/java/github/luckygc/am/module/archive/mapper/ArchiveRule
 git commit -m "fix: 在数据库内分页规则追踪"
 ```
 
-### Task 5: 对齐规则追踪 HTTP 与前端 cursor 交互
+### Task 6: 对齐规则追踪 HTTP 与前端 cursor 交互
 
 **Files:**
 - Modify: `server/src/test/java/github/luckygc/am/infrastructure/web/ArchiveRuleControllerProblemDetailTests.java`
@@ -740,7 +837,7 @@ git commit -m "fix: 在数据库内分页规则追踪"
 - Modify: `web/src/pages/archive-rule-traces/ArchiveRuleTracesPage.vue`
 
 **Interfaces:**
-- Consumes: Task 4 的 `listRuleTraces(request, pageRequest)`。
+- Consumes: Task 5 的 `listRuleTraces(request, pageRequest)`。
 - Produces: `searchArchiveRuleTraces(query): Promise<CursorPageResponse<ArchiveRuleTraceDto>>` 与页面 cursor 导航。
 
 - [ ] **Step 1: 先更新 Controller 测试**
@@ -851,7 +948,7 @@ git add server/src/main/java/github/luckygc/am/module/archive/rule/web/ArchiveRu
 git commit -m "fix: 为规则追踪接入游标分页"
 ```
 
-### Task 6: 固化前端生成声明
+### Task 7: 固化前端生成声明
 
 **Files:**
 - Modify: `web/src/components.d.ts`
@@ -883,10 +980,10 @@ git add web/src/components.d.ts
 git commit -m "chore: 同步前端组件声明"
 ```
 
-### Task 7: 全量验证与工作树审计
+### Task 8: 全量验证与工作树审计
 
 **Files:**
-- Verify only: all files from Tasks 1-6
+- Verify only: all files from Tasks 1-7
 
 **Interfaces:**
 - Consumes: 所有修复提交。
@@ -900,7 +997,7 @@ Expected: 所有 specs 与 changes 通过。
 
 - [ ] **Step 2: 验证后端目标测试和完整测试**
 
-Run: `cd server && mise exec -- mvn -q -Dtest=ArchiveItemImportExportServiceTests,ArchiveItemExportTransactionIntegrationTests,ArchiveItemImportExportControllerTests,ArchiveLocalRuleServiceTests,ArchiveRuleTraceMapperIntegrationTests,ArchiveRuleControllerProblemDetailTests test`
+Run: `cd server && mise exec -- mvn -q -Dtest=StorageObjectServiceTests,StorageObjectExpiredDataCleanerTests,ArchiveItemImportExportServiceTests,ArchiveItemExportTransactionIntegrationTests,ArchiveItemImportExportControllerTests,ArchiveLocalRuleServiceTests,ArchiveRuleTraceMapperIntegrationTests,ArchiveRuleControllerProblemDetailTests test`
 
 Expected: 目标测试 PASS；记录 Testcontainers 测试是 PASS 还是因 Docker 不可用 SKIPPED。
 
@@ -934,7 +1031,7 @@ Expected: source-lines PASS，components 声明无二次漂移。
 
 - [ ] **Step 6: 审计 API、SQL 和工作树**
 
-Run: `rg -n 'GetMapping\("/api/v1/archive-items:export"|exportItemsFromLink|encodeDownloadQuery' server web frontend-core || true`
+Run: `rg -n 'archive-items:export|archive-items:importTemplate|exportItemsFromLink|encodeDownloadQuery|postDownload|createObjectURL' server/src/main web/src frontend-core/src || true`
 
 Expected: 无匹配。
 
