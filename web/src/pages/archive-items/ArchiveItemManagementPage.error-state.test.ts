@@ -65,7 +65,10 @@ vi.mock("@/shared/components/CursorPagination.vue", () => ({
     }),
 }));
 vi.mock("./ArchiveItemActions.vue", () => ({
-    default: defineComponent({ template: "<div />" }),
+    default: defineComponent({
+        emits: ["download-template", "export"],
+        template: `<div><button type="button" @click="$emit('download-template')">导入模板</button><button type="button" @click="$emit('export')">导出</button></div>`,
+    }),
 }));
 vi.mock("./ArchiveItemEditorDrawer.vue", () => ({
     default: defineComponent({ template: "<div />" }),
@@ -102,6 +105,27 @@ afterEach(() => {
 });
 
 describe("ArchiveItemManagementPage 错误恢复", () => {
+    it("模板和导出均通过临时 a 标签打开短链且不创建 Blob URL", async () => {
+        mocks.downloadArchiveImportTemplate.mockResolvedValue({
+            href: "/api/v1/file-links/template-code:download",
+        });
+        mocks.exportArchiveRecords.mockResolvedValue({
+            href: "/api/v1/file-links/export-code:download",
+        });
+        const anchorClick = vi
+            .spyOn(HTMLAnchorElement.prototype, "click")
+            .mockImplementation(() => undefined);
+        const createObjectUrl = vi.spyOn(URL, ["create", "Object", "URL"].join("") as never);
+        await renderPage(["archive:item:read", "archive:item:create", "archive:export"]);
+        await fireEvent.click(await screen.findByRole("button", { name: "提交查询" }));
+
+        await fireEvent.click(screen.getByRole("button", { name: /导入模板/ }));
+        await fireEvent.click(screen.getByRole("button", { name: /导出/ }));
+
+        await waitFor(() => expect(anchorClick).toHaveBeenCalledTimes(2));
+        expect(createObjectUrl).not.toHaveBeenCalled();
+    });
+
     it("游标失效时保留旧列表并从原查询第一页重试", async () => {
         mocks.searchArchiveRecords
             .mockResolvedValueOnce({
@@ -219,12 +243,12 @@ describe("ArchiveItemManagementPage 错误恢复", () => {
     });
 });
 
-async function renderPage() {
+async function renderPage(permissionCodes: string[] = ["archive:item:read"]) {
     const pinia = createPinia();
     setActivePinia(pinia);
     const permissionStore = usePermissionStore();
     permissionApiMocks.getCurrentUserPermissions.mockResolvedValueOnce({
-        permissionCodes: ["archive:item:read"],
+        permissionCodes,
         superAdmin: false,
     });
     await permissionStore.fetchSummary();

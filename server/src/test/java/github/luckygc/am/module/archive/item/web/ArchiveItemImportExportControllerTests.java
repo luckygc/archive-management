@@ -5,20 +5,16 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
+import java.time.LocalDateTime;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 
 import github.luckygc.am.common.security.AuthenticatedUser;
 import github.luckygc.am.module.archive.item.service.ArchiveItemImportExportService;
-import github.luckygc.am.module.archive.item.service.ArchiveItemImportExportService.ArchiveExcelFile;
+import github.luckygc.am.module.archive.item.service.ArchiveItemImportExportService.DownloadLinkCreated;
 import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService.SearchArchiveItemsRequest;
-
-import tools.jackson.databind.json.JsonMapper;
 
 @DisplayName("档案导入导出 HTTP 入口")
 class ArchiveItemImportExportControllerTests {
@@ -26,34 +22,39 @@ class ArchiveItemImportExportControllerTests {
     private final ArchiveItemImportExportService importExportService =
             mock(ArchiveItemImportExportService.class);
     private final ArchiveItemImportExportController controller =
-            new ArchiveItemImportExportController(
-                    importExportService, JsonMapper.builder().findAndAddModules().build());
+            new ArchiveItemImportExportController(importExportService);
 
     @Test
-    @DisplayName("链接导出从 query 参数还原查询条件")
-    void exportItemsFromLinkShouldDecodeQueryParameter() {
+    @DisplayName("创建导入模板用户短链")
+    void createImportTemplateDownloadLinkShouldReturnInternalDownloadUrl() {
         Authentication authentication = authentication(9L);
-        String query =
-                Base64.getUrlEncoder()
-                        .withoutPadding()
-                        .encodeToString(
-                                "{\"categoryId\":1,\"fondsCode\":\"F001\"}"
-                                        .getBytes(StandardCharsets.UTF_8));
-        when(importExportService.exportItems(
-                        new SearchArchiveItemsRequest(
-                                1L, "F001", null, null, null, null, null, null),
-                        9L))
-                .thenReturn(new ArchiveExcelFile("archive-export.xlsx", new byte[] {1, 2}));
+        when(importExportService.createImportTemplateDownloadLink(1L, 9L))
+                .thenReturn(
+                        new DownloadLinkCreated(
+                                "template-code", LocalDateTime.of(2026, 7, 15, 10, 10)));
 
-        ResponseEntity<?> response = controller.exportItemsFromLink(query, authentication);
+        var response = controller.createImportTemplateDownloadLink(1L, authentication);
 
-        assertThat(response.getHeaders().getContentDisposition().getFilename())
-                .isEqualTo("archive-export.xlsx");
-        verify(importExportService)
-                .exportItems(
-                        new SearchArchiveItemsRequest(
-                                1L, "F001", null, null, null, null, null, null),
-                        9L);
+        assertThat(response.url()).isEqualTo("/api/v1/file-links/template-code:download");
+        assertThat(response.expiresAt()).isEqualTo(LocalDateTime.of(2026, 7, 15, 10, 10));
+        verify(importExportService).createImportTemplateDownloadLink(1L, 9L);
+    }
+
+    @Test
+    @DisplayName("创建导出用户短链")
+    void createExportDownloadLinkShouldForwardSearchRequest() {
+        Authentication authentication = authentication(9L);
+        SearchArchiveItemsRequest request =
+                new SearchArchiveItemsRequest(1L, "F001", null, null, null, null, null, null);
+        when(importExportService.createExportDownloadLink(request, 9L))
+                .thenReturn(
+                        new DownloadLinkCreated(
+                                "export-code", LocalDateTime.of(2026, 7, 15, 10, 10)));
+
+        var response = controller.createExportDownloadLink(request, authentication);
+
+        assertThat(response.url()).isEqualTo("/api/v1/file-links/export-code:download");
+        verify(importExportService).createExportDownloadLink(request, 9L);
     }
 
     private Authentication authentication(Long userId) {

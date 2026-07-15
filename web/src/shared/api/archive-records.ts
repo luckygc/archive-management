@@ -70,10 +70,16 @@ export function unlockArchiveRecord(id: number) {
     return httpClient.post<ArchiveRecordDto>(`/api/v1/archive-items/${id}:unlock`);
 }
 
-export function downloadArchiveImportTemplate(categoryId: number): DownloadLink {
-    return httpClient.download(
-        `/api/v1/archive-categories/${categoryId}/archive-items:importTemplate`,
+interface ArchiveItemDownloadLinkResponse {
+    url: string;
+    expiresAt: string;
+}
+
+export async function downloadArchiveImportTemplate(categoryId: number): Promise<DownloadLink> {
+    const response = await httpClient.post<ArchiveItemDownloadLinkResponse>(
+        `/api/v1/archive-categories/${categoryId}/archive-items:createImportTemplateDownloadLink`,
     );
+    return httpClient.download(response.url);
 }
 
 export function importArchiveRecords(categoryId: number, file: File) {
@@ -85,12 +91,14 @@ export function importArchiveRecords(categoryId: number, file: File) {
     );
 }
 
-export function exportArchiveRecords(query: SearchArchiveRecordsQuery): DownloadLink {
-    return httpClient.download(
-        `/api/v1/archive-items:export${queryString({
-            query: encodeDownloadQuery(archiveRecordSearchRequest(query).body),
-        })}`,
+export async function exportArchiveRecords(
+    query: SearchArchiveRecordsQuery,
+): Promise<DownloadLink> {
+    const response = await httpClient.post<ArchiveItemDownloadLinkResponse>(
+        "/api/v1/archive-items:createExportDownloadLink",
+        archiveRecordSearchRequest(query).body,
     );
+    return httpClient.download(response.url);
 }
 
 export function listArchiveItemElectronicFiles(archiveItemId: number) {
@@ -196,13 +204,4 @@ function compactObject<T extends object>(value: T): T {
     return Object.fromEntries(
         Object.entries(value).filter(([, entryValue]) => entryValue !== undefined),
     ) as T;
-}
-
-function encodeDownloadQuery(query: SearchArchiveRecordsRequest) {
-    const bytes = new TextEncoder().encode(JSON.stringify(query));
-    let binary = "";
-    bytes.forEach((byte) => {
-        binary += String.fromCharCode(byte);
-    });
-    return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
 }

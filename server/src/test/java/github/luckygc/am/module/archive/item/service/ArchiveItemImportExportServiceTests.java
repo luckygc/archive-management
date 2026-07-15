@@ -12,7 +12,11 @@ import static org.mockito.Mockito.when;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 
@@ -32,7 +36,6 @@ import github.luckygc.am.module.archive.item.ArchiveItem;
 import github.luckygc.am.module.archive.item.ArchiveItemAudit;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemAuditDataRepository;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemDataRepository;
-import github.luckygc.am.module.archive.item.service.ArchiveItemImportExportService.ArchiveExcelFile;
 import github.luckygc.am.module.archive.item.service.ArchiveItemImportExportService.ArchiveImportResult;
 import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService.ArchiveItemListDto;
 import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService.SearchArchiveItemsRequest;
@@ -48,6 +51,10 @@ import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.Ar
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFieldDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFondsDto;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
+import github.luckygc.am.module.storage.FileLinkTargetType;
+import github.luckygc.am.module.storage.service.FileLinkService;
+import github.luckygc.am.module.storage.service.StorageObjectService;
+import github.luckygc.am.module.storage.service.StorageObjectService.StorageObjectDto;
 
 @DisplayName("档案 Excel 导入导出")
 class ArchiveItemImportExportServiceTests {
@@ -61,6 +68,9 @@ class ArchiveItemImportExportServiceTests {
     private ArchiveDataScopeService dataScopeService;
     private ArchiveItemDataRepository archiveItemRepository;
     private ArchiveItemAuditDataRepository auditRepository;
+    private StorageObjectService storageObjectService;
+    private FileLinkService fileLinkService;
+    private Clock clock;
     private ArchiveItemImportExportService importExportService;
 
     @BeforeEach
@@ -74,6 +84,9 @@ class ArchiveItemImportExportServiceTests {
         dataScopeService = mock(ArchiveDataScopeService.class);
         archiveItemRepository = mock(ArchiveItemDataRepository.class);
         auditRepository = mock(ArchiveItemAuditDataRepository.class);
+        storageObjectService = mock(StorageObjectService.class);
+        fileLinkService = mock(FileLinkService.class);
+        clock = Clock.fixed(Instant.parse("2026-07-15T10:00:00Z"), ZoneOffset.UTC);
         importExportService =
                 new ArchiveItemImportExportService(
                         archiveMetadataService,
@@ -84,12 +97,15 @@ class ArchiveItemImportExportServiceTests {
                         permissionService,
                         dataScopeService,
                         archiveItemRepository,
-                        auditRepository);
+                        auditRepository,
+                        storageObjectService,
+                        fileLinkService,
+                        clock);
     }
 
     @Test
     @DisplayName("导入模板不需要独立导入权限，有创建或编辑权限即可生成")
-    void generateImportTemplateShouldUseCreateOrUpdatePermission() {
+    void createImportTemplateDownloadLinkShouldStoreTemporaryObjectAndCreateUserLink() {
         when(permissionService.hasPermission(9L, "archive:item:create")).thenReturn(false);
         when(permissionService.hasPermission(9L, "archive:item:update")).thenReturn(true);
         when(dataScopeService.buildItemFilter(9L, 1L, null))
@@ -98,10 +114,33 @@ class ArchiveItemImportExportServiceTests {
         when(archiveMetadataService.listEnabledFields(1L, ArchiveLevel.ITEM))
                 .thenReturn(List.of(textField()));
 
-        ArchiveExcelFile file = importExportService.generateImportTemplate(1L, 9L);
+        when(storageObjectService.storeObject(any(), eq(9L)))
+                .thenReturn(
+                        new StorageObjectDto(
+                                20L, "archive", "key", "template.xlsx", 3, null, null, 9L));
+        when(fileLinkService.createUserLink(
+                        FileLinkTargetType.STORAGE_OBJECT, null, 20L, Duration.ofMinutes(10), 9L))
+                .thenReturn(
+                        new FileLinkService.FileLinkCreated(
+                                "template-code", LocalDateTime.of(2026, 7, 15, 10, 10)));
 
-        assertThat(file.filename()).contains("archive-import-template-contract");
-        assertThat(file.bytes()).isNotEmpty();
+        var result = importExportService.createImportTemplateDownloadLink(1L, 9L);
+
+        assertThat(result.code()).isEqualTo("template-code");
+        assertThat(result.expiresAt()).isEqualTo(LocalDateTime.of(2026, 7, 15, 10, 10));
+        var commandCaptor =
+                org.mockito.ArgumentCaptor.forClass(
+                        StorageObjectService.StoreStorageObjectCommand.class);
+        verify(storageObjectService).storeObject(commandCaptor.capture(), eq(9L));
+        assertThat(commandCaptor.getValue().originalFilename())
+                .contains("archive-import-template-contract");
+        assertThat(commandCaptor.getValue().contentLength()).isPositive();
+        assertThat(commandCaptor.getValue().inputStream()).isInstanceOf(ByteArrayInputStream.class);
+        assertThat(commandCaptor.getValue().expiresAt())
+                .isEqualTo(LocalDateTime.of(2026, 7, 15, 10, 10));
+        verify(fileLinkService)
+                .createUserLink(
+                        FileLinkTargetType.STORAGE_OBJECT, null, 20L, Duration.ofMinutes(10), 9L);
     }
 
     @Test
@@ -167,7 +206,7 @@ class ArchiveItemImportExportServiceTests {
 
     @Test
     @DisplayName("导出使用当前查询并写入导出审计")
-    void exportItemsShouldUseSearchAndWriteAudit() {
+    void createExportDownloadLinkShouldUseSearchWriteAuditAndCreateUserLink() {
         when(permissionService.hasPermission(9L, "archive:export")).thenReturn(true);
         SearchArchiveItemsRequest request =
                 new SearchArchiveItemsRequest(1L, "F001", null, null, null, 100, null, null);
@@ -195,20 +234,32 @@ class ArchiveItemImportExportServiceTests {
                                         null)));
         when(archiveCategoryService.getCategory(1L)).thenReturn(category());
 
-        ArchiveExcelFile file = importExportService.exportItems(request, 9L);
+        stubStoredDownload("export-code");
 
-        assertThat(file.filename()).isEqualTo("archive-export.xlsx");
-        assertThat(file.bytes()).isNotEmpty();
+        var result = importExportService.createExportDownloadLink(request, 9L);
+
+        assertThat(result.code()).isEqualTo("export-code");
+        var commandCaptor =
+                org.mockito.ArgumentCaptor.forClass(
+                        StorageObjectService.StoreStorageObjectCommand.class);
+        verify(storageObjectService).storeObject(commandCaptor.capture(), eq(9L));
+        assertThat(commandCaptor.getValue().originalFilename()).isEqualTo("archive-export.xlsx");
+        assertThat(commandCaptor.getValue().inputStream()).isInstanceOf(ByteArrayInputStream.class);
+        assertThat(commandCaptor.getValue().expiresAt())
+                .isEqualTo(LocalDateTime.of(2026, 7, 15, 10, 10));
+        verify(fileLinkService)
+                .createUserLink(
+                        FileLinkTargetType.STORAGE_OBJECT, null, 20L, Duration.ofMinutes(10), 9L);
         verify(auditRepository).insert(any(ArchiveItemAudit.class));
     }
 
     @Test
     @DisplayName("导出使用可写事务以记录操作审计")
-    void exportItemsShouldUseWritableTransaction() throws NoSuchMethodException {
+    void createExportDownloadLinkShouldUseWritableTransaction() throws NoSuchMethodException {
         Transactional transactional =
                 ArchiveItemImportExportService.class
                         .getMethod(
-                                "exportItems",
+                                "createExportDownloadLink",
                                 ArchiveItemQueryService.SearchArchiveItemsRequest.class,
                                 Long.class)
                         .getAnnotation(Transactional.class);
@@ -230,13 +281,14 @@ class ArchiveItemImportExportServiceTests {
                                         List.of(), 0, null, null, null, null, null)));
         when(archiveCategoryService.getCategory(1L)).thenReturn(category());
 
-        ArchiveExcelFile file =
-                importExportService.exportItems(
+        stubStoredDownload("empty-export");
+        var result =
+                importExportService.createExportDownloadLink(
                         new SearchArchiveItemsRequest(
                                 1L, "F001", null, null, null, 100, null, null),
                         9L);
 
-        assertThat(file.bytes()).isNotEmpty();
+        assertThat(result.code()).isEqualTo("empty-export");
         verify(archiveItemQueryService).searchItems(any(), eq(9L));
         verify(auditRepository).insert(any(ArchiveItemAudit.class));
     }
@@ -246,12 +298,24 @@ class ArchiveItemImportExportServiceTests {
     void exportItemsShouldRejectMissingExportPermission() {
         when(permissionService.hasPermission(9L, "archive:export")).thenReturn(false);
 
-        assertThatThrownBy(() -> importExportService.exportItems(null, 9L))
+        assertThatThrownBy(() -> importExportService.createExportDownloadLink(null, 9L))
                 .isInstanceOfSatisfying(
                         ResponseStatusException.class,
                         exception ->
                                 assertThat(exception.getStatusCode())
                                         .isEqualTo(HttpStatus.FORBIDDEN));
+    }
+
+    private void stubStoredDownload(String code) {
+        when(storageObjectService.storeObject(any(), eq(9L)))
+                .thenReturn(
+                        new StorageObjectDto(
+                                20L, "archive", "key", "export.xlsx", 3, null, null, 9L));
+        when(fileLinkService.createUserLink(
+                        FileLinkTargetType.STORAGE_OBJECT, null, 20L, Duration.ofMinutes(10), 9L))
+                .thenReturn(
+                        new FileLinkService.FileLinkCreated(
+                                code, LocalDateTime.of(2026, 7, 15, 10, 10)));
     }
 
     private static byte[] workbookBytes(List<List<Object>> rows) throws IOException {

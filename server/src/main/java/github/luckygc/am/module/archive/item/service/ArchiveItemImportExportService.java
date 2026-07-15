@@ -1,11 +1,14 @@
 package github.luckygc.am.module.archive.item.service;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.sql.Date;
 import java.sql.Timestamp;
+import java.time.Clock;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Year;
@@ -43,6 +46,10 @@ import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.Ar
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFieldDto;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionCode;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
+import github.luckygc.am.module.storage.FileLinkTargetType;
+import github.luckygc.am.module.storage.service.FileLinkService;
+import github.luckygc.am.module.storage.service.StorageObjectService;
+import github.luckygc.am.module.storage.service.StorageObjectService.StoreStorageObjectCommand;
 
 @Service
 public class ArchiveItemImportExportService {
@@ -53,6 +60,9 @@ public class ArchiveItemImportExportService {
     private static final String HEADER_ELECTRONIC_STATUS = "电子状态";
     private static final int EXPORT_BATCH_LIMIT = 1000;
     private static final int EXPORT_MAX_ROWS = 5000;
+    private static final Duration DOWNLOAD_LINK_TTL = Duration.ofMinutes(10);
+    private static final String XLSX_CONTENT_TYPE =
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
     private final ArchiveMetadataService archiveMetadataService;
     private final ArchiveMetadataReferenceService archiveMetadataReferenceService;
@@ -63,6 +73,9 @@ public class ArchiveItemImportExportService {
     private final ArchiveDataScopeService dataScopeService;
     private final ArchiveItemDataRepository archiveItemRepository;
     private final ArchiveItemAuditDataRepository auditRepository;
+    private final StorageObjectService storageObjectService;
+    private final FileLinkService fileLinkService;
+    private final Clock clock;
 
     public ArchiveItemImportExportService(
             ArchiveMetadataService archiveMetadataService,
@@ -73,7 +86,10 @@ public class ArchiveItemImportExportService {
             AuthorizationPermissionService permissionService,
             ArchiveDataScopeService dataScopeService,
             ArchiveItemDataRepository archiveItemRepository,
-            ArchiveItemAuditDataRepository auditRepository) {
+            ArchiveItemAuditDataRepository auditRepository,
+            StorageObjectService storageObjectService,
+            FileLinkService fileLinkService,
+            Clock clock) {
         this.archiveMetadataService = archiveMetadataService;
         this.archiveMetadataReferenceService = archiveMetadataReferenceService;
         this.archiveCategoryService = archiveCategoryService;
@@ -83,15 +99,22 @@ public class ArchiveItemImportExportService {
         this.dataScopeService = dataScopeService;
         this.archiveItemRepository = archiveItemRepository;
         this.auditRepository = auditRepository;
+        this.storageObjectService = storageObjectService;
+        this.fileLinkService = fileLinkService;
+        this.clock = clock;
     }
 
-    @Transactional(readOnly = true)
-    public ArchiveExcelFile generateImportTemplate(Long categoryId, Long userId) {
+    @Transactional
+    public DownloadLinkCreated createImportTemplateDownloadLink(Long categoryId, Long userId) {
         requireAnyPermission(
                 userId,
                 AuthorizationPermissionCode.ARCHIVE_ITEM_CREATE,
                 AuthorizationPermissionCode.ARCHIVE_ITEM_UPDATE);
         ensureCategoryInDataScope(categoryId, userId);
+        return createDownloadLink(generateImportTemplate(categoryId), userId);
+    }
+
+    private ArchiveExcelFile generateImportTemplate(Long categoryId) {
         ArchiveCategoryDto category = archiveCategoryService.getCategory(categoryId);
         List<ArchiveFieldDto> fields =
                 archiveMetadataService.listEnabledFields(categoryId, ArchiveLevel.ITEM);
@@ -128,7 +151,7 @@ public class ArchiveItemImportExportService {
     }
 
     @Transactional
-    public ArchiveExcelFile exportItems(
+    public DownloadLinkCreated createExportDownloadLink(
             ArchiveItemQueryService.@Nullable SearchArchiveItemsRequest request, Long userId) {
         requirePermission(userId, AuthorizationPermissionCode.ARCHIVE_EXPORT);
         ArchiveItemQueryService.SearchArchiveItemsRequest base =
@@ -160,7 +183,28 @@ public class ArchiveItemImportExportService {
         } while (cursor != null && exportedRows.size() < EXPORT_MAX_ROWS);
         byte[] bytes = writeExcel(exportHead(fields), exportBody(fields, exportedRows), "导出结果");
         writeExportAudit(base, userId, exportedRows.size());
-        return new ArchiveExcelFile("archive-export.xlsx", bytes);
+        return createDownloadLink(new ArchiveExcelFile("archive-export.xlsx", bytes), userId);
+    }
+
+    private DownloadLinkCreated createDownloadLink(ArchiveExcelFile file, Long userId) {
+        LocalDateTime expiresAt = LocalDateTime.now(clock).plus(DOWNLOAD_LINK_TTL);
+        var storageObject =
+                storageObjectService.storeObject(
+                        new StoreStorageObjectCommand(
+                                file.filename(),
+                                XLSX_CONTENT_TYPE,
+                                file.bytes().length,
+                                new ByteArrayInputStream(file.bytes()),
+                                expiresAt),
+                        userId);
+        var link =
+                fileLinkService.createUserLink(
+                        FileLinkTargetType.STORAGE_OBJECT,
+                        null,
+                        storageObject.id(),
+                        DOWNLOAD_LINK_TTL,
+                        userId);
+        return new DownloadLinkCreated(link.code(), link.expiresAt());
     }
 
     private void requirePermission(Long userId, AuthorizationPermissionCode permissionCode) {
@@ -495,4 +539,6 @@ public class ArchiveItemImportExportService {
     public record ArchiveImportRowError(int rowNumber, String fieldName, String message) {}
 
     public record ArchiveExcelFile(String filename, byte[] bytes) {}
+
+    public record DownloadLinkCreated(String code, LocalDateTime expiresAt) {}
 }

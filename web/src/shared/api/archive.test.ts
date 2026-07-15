@@ -5,6 +5,8 @@ import {
     createArchiveItemRelation,
     deleteArchiveRecord,
     deleteArchiveItemRelation,
+    downloadArchiveImportTemplate,
+    exportArchiveRecords,
     listArchiveItemRelations,
     searchArchiveRecords,
     uploadArchiveItemElectronicFile,
@@ -57,6 +59,50 @@ describe("archive API", () => {
                 keyword: "合同",
                 orderBy: [{ field: "createdAt", direction: "DESC" }],
             },
+        );
+    });
+
+    it("为导入模板创建短链后返回浏览器可直接打开的地址", async () => {
+        httpClientMock.post.mockResolvedValue({
+            url: "/api/v1/file-links/template-code:download",
+            expiresAt: "2026-07-15T10:10:00",
+        });
+        httpClientMock.download.mockReturnValue({
+            href: "/api/v1/file-links/template-code:download",
+        });
+
+        await downloadArchiveImportTemplate(11);
+
+        expect(httpClientMock.post).toHaveBeenCalledWith(
+            "/api/v1/archive-categories/11/archive-items:createImportTemplateDownloadLink",
+        );
+        expect(httpClientMock.download).toHaveBeenCalledWith(
+            "/api/v1/file-links/template-code:download",
+        );
+    });
+
+    it("导出只提交业务查询并通过短链下载", async () => {
+        httpClientMock.post.mockResolvedValue({
+            url: "/api/v1/file-links/export-code:download",
+            expiresAt: "2026-07-15T10:10:00",
+        });
+        httpClientMock.download.mockReturnValue({
+            href: "/api/v1/file-links/export-code:download",
+        });
+
+        await exportArchiveRecords({
+            categoryId: 1,
+            keyword: "合同",
+            limit: 100,
+            cursor: "ignored",
+        });
+
+        expect(httpClientMock.post).toHaveBeenCalledWith(
+            "/api/v1/archive-items:createExportDownloadLink",
+            { categoryId: 1, keyword: "合同" },
+        );
+        expect(httpClientMock.download).toHaveBeenCalledWith(
+            "/api/v1/file-links/export-code:download",
         );
     });
 
