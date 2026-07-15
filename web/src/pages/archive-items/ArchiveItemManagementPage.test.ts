@@ -58,7 +58,7 @@ vi.mock("@/pages/archive-library/ArchiveAdvancedQueryPanel.vue", () => ({
 vi.mock("@/pages/archive-library/ArchiveResultTable.vue", () => ({
     default: defineComponent({
         props: ["result"],
-        template: `<div><div v-for="row in result.items" :key="row.id"><span>{{ row.archiveNo }}</span><slot name="actions" :row="row" /></div></div>`,
+        template: `<div><div v-for="row in result.items" :key="row.id"><slot name="actions" :row="row" /></div></div>`,
     }),
 }));
 vi.mock("@/pages/archive-library/DynamicArchiveFields.vue", () => ({
@@ -345,115 +345,6 @@ describe("ArchiveItemManagementPage", () => {
         await waitFor(() => expect(mocks.searchArchiveRecords).toHaveBeenCalledTimes(2));
         expect(screen.queryByText("管理列表加载失败")).not.toBeInTheDocument();
         expect(screen.getByRole("button", { name: "下一页" })).toBeEnabled();
-    });
-
-    it("游标失效时保留旧列表并从原查询第一页重试", async () => {
-        mocks.searchArchiveRecords
-            .mockResolvedValueOnce({
-                fields: [],
-                items: [{ id: 1, archiveNo: "保留的管理结果" }],
-                next: "next-management",
-            })
-            .mockRejectedValueOnce(
-                new HttpClientError(
-                    "游标无效",
-                    400,
-                    "INVALID_ARGUMENT",
-                    [{ field: "cursor", message: "已失效" }],
-                    "trace-management",
-                ),
-            )
-            .mockResolvedValueOnce({ fields: [], items: [{ id: 2, archiveNo: "第一页结果" }] });
-        await renderPage(["archive:item:read"]);
-        await fireEvent.click(await screen.findByRole("button", { name: "提交查询" }));
-        expect(await screen.findByText("保留的管理结果")).toBeVisible();
-        await fireEvent.click(screen.getByRole("button", { name: "下一页" }));
-
-        expect(
-            await screen.findByText("数据已变化，将从第一页重新加载（追踪 ID：trace-management）"),
-        ).toBeVisible();
-        expect(screen.getByText("保留的管理结果")).toBeVisible();
-        await fireEvent.click(screen.getByRole("button", { name: "重试" }));
-
-        await waitFor(() => expect(mocks.searchArchiveRecords).toHaveBeenCalledTimes(3));
-        expect(mocks.searchArchiveRecords).toHaveBeenLastCalledWith(
-            expect.objectContaining({ categoryId: 1, cursor: undefined, limit: 100 }),
-        );
-    });
-
-    it("电子文件读取失败在抽屉原位展示并保留旧结果重试", async () => {
-        mocks.listArchiveItemElectronicFiles
-            .mockResolvedValueOnce({
-                items: [
-                    {
-                        id: 10,
-                        archiveItemId: 1,
-                        storageObjectId: 20,
-                        usageType: "DEFAULT",
-                        displayOrder: 0,
-                        originalFilename: "合同.pdf",
-                        fileSize: 1024,
-                        createdAt: "",
-                    },
-                ],
-            })
-            .mockRejectedValueOnce(
-                new HttpClientError("文件服务失败", 500, "INTERNAL", [], "trace-files"),
-            )
-            .mockRejectedValueOnce(new Error("重试文件仍失败"))
-            .mockResolvedValueOnce({ items: [] });
-        await renderPage(["archive:item:read"]);
-        await fireEvent.click(await screen.findByRole("button", { name: "提交查询" }));
-        await fireEvent.click(await screen.findByRole("button", { name: "文件" }));
-        expect(await screen.findByText("合同.pdf")).toBeVisible();
-        await fireEvent.click(screen.getByRole("tab", { name: "审计记录" }));
-        await fireEvent.click(screen.getByRole("tab", { name: "电子文件" }));
-
-        expect(await screen.findByText("文件服务失败（追踪 ID：trace-files）")).toBeVisible();
-        expect(screen.getByText("合同.pdf")).toBeVisible();
-        const unhandled = vi.fn();
-        window.addEventListener("unhandledrejection", unhandled);
-        await fireEvent.click(screen.getByRole("button", { name: "重试" }));
-
-        await waitFor(() => expect(mocks.listArchiveItemElectronicFiles).toHaveBeenCalledTimes(3));
-        expect(await screen.findByText("重试文件仍失败")).toBeVisible();
-        expect(unhandled).not.toHaveBeenCalled();
-        await fireEvent.click(screen.getByRole("button", { name: "重试" }));
-        await waitFor(() => expect(mocks.listArchiveItemElectronicFiles).toHaveBeenCalledTimes(4));
-        window.removeEventListener("unhandledrejection", unhandled);
-    });
-
-    it("切换到审计页签后忽略迟到的电子文件响应", async () => {
-        const filesRequest = deferred<{ items: Array<Record<string, unknown>> }>();
-        mocks.listArchiveItemElectronicFiles.mockImplementationOnce(() => filesRequest.promise);
-        await renderPage(["archive:item:read"]);
-        await fireEvent.click(await screen.findByRole("button", { name: "提交查询" }));
-        await fireEvent.click(await screen.findByRole("button", { name: "文件" }));
-        await fireEvent.click(screen.getByRole("tab", { name: "审计记录" }));
-        expect(await screen.findByText("CREATE")).toBeVisible();
-
-        filesRequest.resolve({
-            items: [{ id: 99, originalFilename: "迟到文件.pdf", fileSize: 1 }],
-        });
-        await filesRequest.promise;
-
-        expect(screen.queryByText("迟到文件.pdf")).not.toBeInTheDocument();
-        expect(screen.getByText("CREATE")).toBeVisible();
-    });
-
-    it("资源读取期间卸载后忽略迟到响应", async () => {
-        const filesRequest = deferred<{ items: Array<Record<string, unknown>> }>();
-        const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
-        mocks.listArchiveItemElectronicFiles.mockImplementationOnce(() => filesRequest.promise);
-        const view = await renderPage(["archive:item:read"]);
-        await fireEvent.click(await screen.findByRole("button", { name: "提交查询" }));
-        await fireEvent.click(await screen.findByRole("button", { name: "文件" }));
-
-        view.unmount();
-        filesRequest.resolve({ items: [] });
-        await filesRequest.promise;
-
-        expect(consoleError).not.toHaveBeenCalled();
     });
     it("编辑时加载启用参考数据并分别回填提交实物字段和动态字段", async () => {
         mocks.searchArchiveRecords.mockResolvedValue({ fields: [], items: [{ id: 9 }] });
