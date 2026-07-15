@@ -126,6 +126,16 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
         Assertions.assertTrue(
                 uniqueIndexUsesActiveRowsOnly("uk_am_archive_item_category_archive_no_active"));
         Assertions.assertEquals(
+                "uk_am_archive_category_code_active",
+                jdbcTemplate.queryForObject(
+                        "select to_regclass('uk_am_archive_category_code_active')::text",
+                        String.class));
+        Assertions.assertNull(
+                jdbcTemplate.queryForObject(
+                        "select to_regclass('uk_am_archive_category_scheme_code_active')::text",
+                        String.class));
+        Assertions.assertTrue(uniqueIndexUsesActiveRowsOnly("uk_am_archive_category_code_active"));
+        Assertions.assertEquals(
                 "am_archive_item_line_table",
                 jdbcTemplate.queryForObject(
                         "select to_regclass('am_archive_item_line_table')::text", String.class));
@@ -195,6 +205,72 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
         return indexDefinition != null
                 && indexDefinition.contains("UNIQUE")
                 && indexDefinition.contains("WHERE (deleted_flag = false)");
+    }
+
+    @Test
+    @DisplayName("分类编码跨方案全局唯一且逻辑删除后可复用")
+    void categoryCodeIsGloballyUniqueAndReusableAfterSoftDelete() {
+        String categoryCode = "GLOBAL_UNIQUE_TEST";
+        String firstSchemeCode = "GLOBAL_UNIQUE_SCHEME_1";
+        String secondSchemeCode = "GLOBAL_UNIQUE_SCHEME_2";
+        deleteCategoryUniquenessFixtures(categoryCode, firstSchemeCode, secondSchemeCode);
+        try {
+            Long firstSchemeId = insertClassificationScheme(firstSchemeCode);
+            Long secondSchemeId = insertClassificationScheme(secondSchemeCode);
+            jdbcTemplate.update(
+                    "insert into am_archive_category "
+                            + "(scheme_id, category_code, category_name, management_mode) "
+                            + "values (?, ?, '全局唯一测试分类', 'ITEM_ONLY')",
+                    firstSchemeId,
+                    categoryCode);
+
+            Assertions.assertThrows(
+                    org.springframework.dao.DataIntegrityViolationException.class,
+                    () ->
+                            jdbcTemplate.update(
+                                    "insert into am_archive_category "
+                                            + "(scheme_id, category_code, category_name, "
+                                            + "management_mode) "
+                                            + "values (?, ?, '重复分类', 'ITEM_ONLY')",
+                                    secondSchemeId,
+                                    categoryCode));
+
+            jdbcTemplate.update(
+                    "update am_archive_category set deleted_flag = true "
+                            + "where scheme_id = ? and category_code = ?",
+                    firstSchemeId,
+                    categoryCode);
+            Assertions.assertEquals(
+                    1,
+                    jdbcTemplate.update(
+                            "insert into am_archive_category "
+                                    + "(scheme_id, category_code, category_name, management_mode) "
+                                    + "values (?, ?, '复用分类', 'ITEM_ONLY')",
+                            secondSchemeId,
+                            categoryCode));
+        } finally {
+            deleteCategoryUniquenessFixtures(categoryCode, firstSchemeCode, secondSchemeCode);
+        }
+    }
+
+    private Long insertClassificationScheme(String schemeCode) {
+        return jdbcTemplate.queryForObject(
+                "insert into am_archive_classification_scheme "
+                        + "(scheme_code, scheme_name, enabled, default_flag, sort_order) "
+                        + "values (?, ?, true, false, 0) returning id",
+                Long.class,
+                schemeCode,
+                schemeCode);
+    }
+
+    private void deleteCategoryUniquenessFixtures(
+            String categoryCode, String firstSchemeCode, String secondSchemeCode) {
+        jdbcTemplate.update(
+                "delete from am_archive_category where category_code = ?", categoryCode);
+        jdbcTemplate.update(
+                "delete from am_archive_classification_scheme where scheme_code in (?, ?)",
+                firstSchemeCode,
+                secondSchemeCode);
     }
 
     @Test

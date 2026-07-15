@@ -2,9 +2,11 @@ package github.luckygc.am.module.archive.metadata;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -144,6 +146,133 @@ class ArchiveMetadataServiceTests {
 
         assertThat(response.schemeId()).isEqualTo(8L);
         assertThat(response.categoryCode()).isEqualTo("contract");
+    }
+
+    @Test
+    @DisplayName("拒绝跨分类方案创建重复分类编码")
+    void createCategoryShouldRejectGloballyDuplicateCode() {
+        ArchiveClassificationScheme scheme = scheme(8L, "enterprise_project", true);
+        ArchiveCategory existing = category(12L, ArchiveManagementMode.ITEM_ONLY);
+        existing.setSchemeId(7L);
+        when(classificationSchemeRepository.findById(8L)).thenReturn(Optional.of(scheme));
+        when(categoryRepository.findByCategoryCode("contract")).thenReturn(existing);
+
+        assertThatThrownBy(
+                        () ->
+                                categoryService.createCategory(
+                                        new ArchiveMetadataTypes.ArchiveCategoryRequest(
+                                                8L,
+                                                " contract ",
+                                                "合同档案",
+                                                null,
+                                                ArchiveManagementMode.ITEM_ONLY,
+                                                true,
+                                                0),
+                                        9L))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(
+                        exception ->
+                                assertThat(((ResponseStatusException) exception).getStatusCode())
+                                        .isEqualTo(org.springframework.http.HttpStatus.CONFLICT))
+                .hasMessageContaining("分类编码已存在");
+
+        verify(categoryRepository, never()).insert(any(ArchiveCategory.class));
+    }
+
+    @Test
+    @DisplayName("修改分类时允许保留自身编码")
+    void updateCategoryShouldAllowKeepingOwnCode() {
+        ArchiveClassificationScheme scheme = scheme(8L, "enterprise_project", true);
+        ArchiveCategory current = category(12L, ArchiveManagementMode.ITEM_ONLY);
+        current.setSchemeId(8L);
+        when(classificationSchemeRepository.findById(8L)).thenReturn(Optional.of(scheme));
+        when(categoryRepository.findById(12L)).thenReturn(Optional.of(current));
+        when(categoryRepository.findByCategoryCode("contract")).thenReturn(current);
+        when(categoryRepository.update(any(ArchiveCategory.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        ArchiveMetadataTypes.ArchiveCategoryDto response =
+                categoryService.updateCategory(
+                        12L,
+                        new ArchiveMetadataTypes.ArchiveCategoryRequest(
+                                8L,
+                                " contract ",
+                                "合同档案",
+                                null,
+                                ArchiveManagementMode.ITEM_ONLY,
+                                true,
+                                0),
+                        9L);
+
+        assertThat(response.id()).isEqualTo(12L);
+        assertThat(response.categoryCode()).isEqualTo("contract");
+    }
+
+    @Test
+    @DisplayName("拒绝把分类编码修改为其他分类已占用的编码")
+    void updateCategoryShouldRejectCodeOwnedByAnotherCategory() {
+        ArchiveClassificationScheme scheme = scheme(8L, "enterprise_project", true);
+        ArchiveCategory current = category(12L, ArchiveManagementMode.ITEM_ONLY);
+        current.setSchemeId(8L);
+        current.setCategoryCode("contract");
+        ArchiveCategory occupied = category(13L, ArchiveManagementMode.ITEM_ONLY);
+        occupied.setSchemeId(7L);
+        occupied.setCategoryCode("project");
+        when(classificationSchemeRepository.findById(8L)).thenReturn(Optional.of(scheme));
+        when(categoryRepository.findById(12L)).thenReturn(Optional.of(current));
+        when(categoryRepository.findByCategoryCode("project")).thenReturn(occupied);
+
+        assertThatThrownBy(
+                        () ->
+                                categoryService.updateCategory(
+                                        12L,
+                                        new ArchiveMetadataTypes.ArchiveCategoryRequest(
+                                                8L,
+                                                "project",
+                                                "项目档案",
+                                                null,
+                                                ArchiveManagementMode.ITEM_ONLY,
+                                                true,
+                                                0),
+                                        9L))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(
+                        exception ->
+                                assertThat(((ResponseStatusException) exception).getStatusCode())
+                                        .isEqualTo(org.springframework.http.HttpStatus.CONFLICT))
+                .hasMessageContaining("分类编码已存在");
+
+        verify(categoryRepository, never()).update(any(ArchiveCategory.class));
+    }
+
+    @Test
+    @DisplayName("并发创建触发数据库唯一冲突时返回资源已存在")
+    void createCategoryShouldMapDatabaseUniqueConflict() {
+        ArchiveClassificationScheme scheme = scheme(8L, "enterprise_project", true);
+        when(classificationSchemeRepository.findById(8L)).thenReturn(Optional.of(scheme));
+        when(categoryRepository.findByCategoryCode("contract")).thenReturn(null);
+        when(categoryRepository.insert(any(ArchiveCategory.class)))
+                .thenThrow(
+                        new org.springframework.dao.DataIntegrityViolationException("duplicate"));
+
+        assertThatThrownBy(
+                        () ->
+                                categoryService.createCategory(
+                                        new ArchiveMetadataTypes.ArchiveCategoryRequest(
+                                                8L,
+                                                "contract",
+                                                "合同档案",
+                                                null,
+                                                ArchiveManagementMode.ITEM_ONLY,
+                                                true,
+                                                0),
+                                        9L))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(
+                        exception ->
+                                assertThat(((ResponseStatusException) exception).getStatusCode())
+                                        .isEqualTo(org.springframework.http.HttpStatus.CONFLICT))
+                .hasMessageContaining("分类编码已存在");
     }
 
     @Test

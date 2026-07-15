@@ -5,10 +5,12 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jspecify.annotations.Nullable;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.support.JdbcUtils;
 import org.springframework.stereotype.Service;
@@ -83,37 +85,45 @@ public class ArchiveCategoryService {
     @Transactional
     public ArchiveCategoryDto createCategory(ArchiveCategoryRequest request, Long userId) {
         ArchiveClassificationScheme scheme = loadEnabledClassificationScheme(request.schemeId());
-        validateRequired(request.categoryCode(), "分类编码不能为空");
+        String categoryCode = requireUniqueCategoryCode(request.categoryCode(), null);
         validateRequired(request.categoryName(), "分类名称不能为空");
         validateParentCategory(scheme.getId(), null, request.parentId());
         ArchiveCategory category = new ArchiveCategory();
         category.setSchemeId(scheme.getId());
         category.setParentId(request.parentId());
-        category.setCategoryCode(request.categoryCode().trim());
+        category.setCategoryCode(categoryCode);
         category.setCategoryName(request.categoryName().trim());
         category.setManagementMode(normalizeManagementMode(request.managementMode()));
         category.setEnabled(request.enabled() == null || request.enabled());
         category.setSortOrder(request.sortOrder() == null ? 0 : request.sortOrder());
-        return mapCategory(categoryRepository.insert(category));
+        try {
+            return mapCategory(categoryRepository.insert(category));
+        } catch (DataIntegrityViolationException exception) {
+            throw categoryCodeConflict(exception);
+        }
     }
 
     @Transactional
     public ArchiveCategoryDto updateCategory(Long id, ArchiveCategoryRequest request, Long userId) {
         requireId(id);
         ArchiveClassificationScheme scheme = loadEnabledClassificationScheme(request.schemeId());
-        validateRequired(request.categoryCode(), "分类编码不能为空");
+        String categoryCode = requireUniqueCategoryCode(request.categoryCode(), id);
         validateRequired(request.categoryName(), "分类名称不能为空");
         validateParentCategory(scheme.getId(), id, request.parentId());
         ArchiveCategory category =
                 categoryRepository.findById(id).orElseThrow(() -> notFound("档案分类不存在"));
         category.setSchemeId(scheme.getId());
         category.setParentId(request.parentId());
-        category.setCategoryCode(request.categoryCode().trim());
+        category.setCategoryCode(categoryCode);
         category.setCategoryName(request.categoryName().trim());
         category.setManagementMode(normalizeManagementMode(request.managementMode()));
         category.setEnabled(request.enabled() == null || request.enabled());
         category.setSortOrder(request.sortOrder() == null ? 0 : request.sortOrder());
-        return mapCategory(categoryRepository.update(category));
+        try {
+            return mapCategory(categoryRepository.update(category));
+        } catch (DataIntegrityViolationException exception) {
+            throw categoryCodeConflict(exception);
+        }
     }
 
     @Transactional
@@ -330,6 +340,19 @@ public class ArchiveCategoryService {
         }
     }
 
+    private String requireUniqueCategoryCode(
+            @Nullable String categoryCode, @Nullable Long currentCategoryId) {
+        if (StringUtils.isBlank(categoryCode)) {
+            throw badRequest("分类编码不能为空");
+        }
+        String normalizedCode = categoryCode.trim();
+        ArchiveCategory existing = categoryRepository.findByCategoryCode(normalizedCode);
+        if (existing != null && !Objects.equals(existing.getId(), currentCategoryId)) {
+            throw categoryCodeConflict();
+        }
+        return normalizedCode;
+    }
+
     private void requireId(Long id) {
         if (id == null || id <= 0) {
             throw badRequest("ID 不合法");
@@ -342,6 +365,15 @@ public class ArchiveCategoryService {
 
     private ResponseStatusException badRequest(String message) {
         return new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
+    }
+
+    private ResponseStatusException categoryCodeConflict() {
+        return new ResponseStatusException(HttpStatus.CONFLICT, "分类编码已存在");
+    }
+
+    private ResponseStatusException categoryCodeConflict(
+            DataIntegrityViolationException exception) {
+        return new ResponseStatusException(HttpStatus.CONFLICT, "分类编码已存在", exception);
     }
 
     private ArchiveFondsCategoryScopeDto mapFondsCategoryScope(ArchiveFondsCategoryScope scope) {

@@ -3,6 +3,7 @@ package github.luckygc.am.module.archive.metadata.repository;
 import java.util.List;
 
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import jakarta.data.repository.Find;
 import jakarta.data.repository.OrderBy;
 import jakarta.data.repository.Repository;
@@ -16,6 +17,10 @@ import github.luckygc.am.module.archive.metadata.ArchiveCategory;
 @Transactional(rollbackFor = Throwable.class, isolation = Isolation.READ_COMMITTED)
 @Repository
 public interface ArchiveCategoryDataRepository extends DataRepository<ArchiveCategory, Long> {
+
+    @Transactional(readOnly = true)
+    @Find
+    @Nullable ArchiveCategory findByCategoryCode(@Nonnull String categoryCode);
 
     @Transactional(readOnly = true)
     @Find

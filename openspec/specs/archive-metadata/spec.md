@@ -311,6 +311,13 @@
 - **AND** 系统 SHALL NOT 要求选择全宗
 - **AND** 系统 SHALL 允许选择一个未删除档案分类作为父级分类
 
+#### Scenario: 拒绝重复分类编码
+
+- **WHEN** 客户端创建分类或将分类编码修改为其他未删除分类已占用的编码
+- **THEN** 系统 SHALL 拒绝保存
+- **AND** 响应 SHALL 使用 `409 Conflict` 和 `ALREADY_EXISTS` ProblemDetail
+- **AND** 已逻辑删除分类 SHALL NOT 继续占用分类编码
+
 #### Scenario: 查询档案分类
 
 - **WHEN** 客户端查询档案分类列表
