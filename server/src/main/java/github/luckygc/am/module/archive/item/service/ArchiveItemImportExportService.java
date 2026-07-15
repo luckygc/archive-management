@@ -127,7 +127,7 @@ public class ArchiveItemImportExportService {
         return new ArchiveImportResult(imported, List.of());
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public ArchiveExcelFile exportItems(
             ArchiveItemQueryService.@Nullable SearchArchiveItemsRequest request, Long userId) {
         requirePermission(userId, AuthorizationPermissionCode.ARCHIVE_EXPORT);

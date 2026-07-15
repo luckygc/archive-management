@@ -21,6 +21,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.api.CursorPageResponse;
@@ -199,6 +200,21 @@ class ArchiveItemImportExportServiceTests {
         assertThat(file.filename()).isEqualTo("archive-export.xlsx");
         assertThat(file.bytes()).isNotEmpty();
         verify(auditRepository).insert(any(ArchiveItemAudit.class));
+    }
+
+    @Test
+    @DisplayName("导出使用可写事务以记录操作审计")
+    void exportItemsShouldUseWritableTransaction() throws NoSuchMethodException {
+        Transactional transactional =
+                ArchiveItemImportExportService.class
+                        .getMethod(
+                                "exportItems",
+                                ArchiveItemQueryService.SearchArchiveItemsRequest.class,
+                                Long.class)
+                        .getAnnotation(Transactional.class);
+
+        assertThat(transactional).isNotNull();
+        assertThat(transactional.readOnly()).isFalse();
     }
 
     @Test
