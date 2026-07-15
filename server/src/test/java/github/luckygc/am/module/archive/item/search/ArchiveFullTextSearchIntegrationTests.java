@@ -166,56 +166,64 @@ class ArchiveFullTextSearchIntegrationTests {
                         "select item_table_name from am_archive_category where id = ?",
                         String.class,
                         categoryId);
+        deleteTask12Rows(itemTableName);
+        try {
+            jdbcTemplate.update(
+                    """
+                    insert into am_archive_item
+                        (fonds_code, fonds_name, category_code, category_name, archive_no,
+                         electronic_status, archive_year, created_at, updated_at)
+                    select
+                        'TASK12', '分页验收全宗', 'GW', '公文档案',
+                        'TASK12-' || lpad(value::text, 3, '0'), 'DRAFT', 2026,
+                        timestamp '2026-07-15 08:00:00', timestamp '2026-07-15 08:00:00'
+                    from generate_series(1, 101) value
+                    """);
+            jdbcTemplate.update(
+                    "insert into "
+                            + itemTableName
+                            + " (id, f_title) select id, archive_no from am_archive_item where fonds_code = 'TASK12'");
+
+            List<String> archiveNos = new ArrayList<>();
+            String cursor = null;
+            int pageCount = 0;
+            do {
+                var page =
+                        archiveItemQueryService.searchItems(
+                                new SearchArchiveItemsRequest(
+                                        categoryId,
+                                        "TASK12",
+                                        null,
+                                        null,
+                                        null,
+                                        100,
+                                        cursor,
+                                        List.of(new ArchiveItemOrderBy("archiveYear", "ASC"))),
+                                1L);
+                archiveNos.addAll(
+                        page.items().stream().map(row -> (String) row.get("archive_no")).toList());
+                cursor = encodePage(page).next();
+                pageCount += 1;
+            } while (cursor != null);
+
+            List<String> expected =
+                    jdbcTemplate.queryForList(
+                            "select archive_no from am_archive_item where fonds_code = 'TASK12'",
+                            String.class);
+            assertThat(pageCount).isEqualTo(2);
+            assertThat(archiveNos).hasSize(101).doesNotHaveDuplicates();
+            assertThat(archiveNos).containsExactlyInAnyOrderElementsOf(expected);
+        } finally {
+            deleteTask12Rows(itemTableName);
+        }
+    }
+
+    private void deleteTask12Rows(String itemTableName) {
         jdbcTemplate.update(
                 "delete from "
                         + itemTableName
                         + " where id in (select id from am_archive_item where fonds_code = 'TASK12')");
         jdbcTemplate.update("delete from am_archive_item where fonds_code = 'TASK12'");
-        jdbcTemplate.update(
-                """
-                insert into am_archive_item
-                    (fonds_code, fonds_name, category_code, category_name, archive_no,
-                     electronic_status, archive_year, created_at, updated_at)
-                select
-                    'TASK12', '分页验收全宗', 'GW', '公文档案',
-                    'TASK12-' || lpad(value::text, 3, '0'), 'DRAFT', 2026,
-                    timestamp '2026-07-15 08:00:00', timestamp '2026-07-15 08:00:00'
-                from generate_series(1, 101) value
-                """);
-        jdbcTemplate.update(
-                "insert into "
-                        + itemTableName
-                        + " (id, f_title) select id, archive_no from am_archive_item where fonds_code = 'TASK12'");
-
-        List<String> archiveNos = new ArrayList<>();
-        String cursor = null;
-        int pageCount = 0;
-        do {
-            var page =
-                    archiveItemQueryService.searchItems(
-                            new SearchArchiveItemsRequest(
-                                    categoryId,
-                                    "TASK12",
-                                    null,
-                                    null,
-                                    null,
-                                    100,
-                                    cursor,
-                                    List.of(new ArchiveItemOrderBy("archiveYear", "ASC"))),
-                            1L);
-            archiveNos.addAll(
-                    page.items().stream().map(row -> (String) row.get("archive_no")).toList());
-            cursor = encodePage(page).next();
-            pageCount += 1;
-        } while (cursor != null);
-
-        List<String> expected =
-                jdbcTemplate.queryForList(
-                        "select archive_no from am_archive_item where fonds_code = 'TASK12'",
-                        String.class);
-        assertThat(pageCount).isEqualTo(2);
-        assertThat(archiveNos).hasSize(101).doesNotHaveDuplicates();
-        assertThat(archiveNos).containsExactlyInAnyOrderElementsOf(expected);
     }
 
     @Test

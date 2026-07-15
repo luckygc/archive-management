@@ -106,7 +106,7 @@ DELETE /api/v1/login-sessions/{session}
 }
 ```
 
-游标分页默认不返回 `total`。`limit` 和 `cursor` 位于 URL query，业务筛选和 `orderBy` 留在请求体；翻页必须复用首次请求的业务条件、排序和页大小。token 对客户端不透明，并与查询摘要绑定。分页、排序、过滤和 token 的完整合同以 `openspec/specs/api-contract/spec.md` 为准。
+游标分页默认不返回 `total`。`limit` 和 `cursor` 位于 URL query；使用 JSON 请求体表达复杂条件的搜索接口，把业务筛选和 `orderBy` 留在请求体，GET 资源列表的筛选条件仍使用 URL query。翻页必须复用首次请求的业务条件、排序和页大小。token 对客户端不透明，并与查询摘要绑定。分页、排序、过滤和 token 的完整合同以 `openspec/specs/api-contract/spec.md` 为准。
 
 ## 权限合同
 
