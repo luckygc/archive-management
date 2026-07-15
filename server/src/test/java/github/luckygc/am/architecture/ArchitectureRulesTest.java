@@ -241,9 +241,9 @@ class ArchitectureRulesTest {
                                                         repository.getMethods().stream()
                                                                 .filter(
                                                                         method ->
-                                                                                method.getOwner()
-                                                                                        .equals(
-                                                                                                repository))
+                                                                                isSourceDeclaredMethod(
+                                                                                        repository,
+                                                                                        method))
                                                                 .filter(
                                                                         method ->
                                                                                 !hasRepositoryOperationAnnotation(
@@ -258,9 +258,9 @@ class ArchitectureRulesTest {
                                                         repository.getMethods().stream()
                                                                 .filter(
                                                                         method ->
-                                                                                method.getOwner()
-                                                                                        .equals(
-                                                                                                repository))
+                                                                                isSourceDeclaredMethod(
+                                                                                        repository,
+                                                                                        method))
                                                                 .filter(
                                                                         ArchitectureRulesTest
                                                                                 ::isRepositoryUpsertMethod)
@@ -470,7 +470,8 @@ class ArchitectureRulesTest {
 
     private static boolean isProjectDataRepository(JavaClass javaClass) {
         return javaClass.isInterface()
-                && javaClass.getPackageName().startsWith("github.luckygc.am.module")
+                && (javaClass.getPackageName().equals("github.luckygc.am.module")
+                        || javaClass.getPackageName().startsWith("github.luckygc.am.module."))
                 && javaClass.getSimpleName().endsWith("DataRepository");
     }
 
@@ -522,6 +523,12 @@ class ArchitectureRulesTest {
         return method.isAnnotatedWith("jakarta.data.repository.Save")
                 || method.getName().equals("save")
                 || method.getName().toLowerCase().contains("upsert");
+    }
+
+    private static boolean isSourceDeclaredMethod(JavaClass repository, JavaMethod method) {
+        return method.getOwner().equals(repository)
+                && !method.getModifiers().contains(JavaModifier.SYNTHETIC)
+                && !method.getModifiers().contains(JavaModifier.BRIDGE);
     }
 
     private static boolean isSpringComponentClass(JavaClass javaClass) {
