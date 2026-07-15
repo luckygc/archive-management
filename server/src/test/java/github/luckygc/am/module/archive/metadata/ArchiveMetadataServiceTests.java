@@ -11,6 +11,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -187,7 +188,6 @@ class ArchiveMetadataServiceTests {
         current.setSchemeId(8L);
         when(classificationSchemeRepository.findById(8L)).thenReturn(Optional.of(scheme));
         when(categoryRepository.findById(12L)).thenReturn(Optional.of(current));
-        when(categoryRepository.findByCategoryCode("contract")).thenReturn(current);
         when(categoryRepository.update(any(ArchiveCategory.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -209,18 +209,11 @@ class ArchiveMetadataServiceTests {
     }
 
     @Test
-    @DisplayName("拒绝把分类编码修改为其他分类已占用的编码")
-    void updateCategoryShouldRejectCodeOwnedByAnotherCategory() {
-        ArchiveClassificationScheme scheme = scheme(8L, "enterprise_project", true);
+    @DisplayName("拒绝修改分类编码")
+    void updateCategoryShouldRejectCategoryCodeChange() {
         ArchiveCategory current = category(12L, ArchiveManagementMode.ITEM_ONLY);
         current.setSchemeId(8L);
-        current.setCategoryCode("contract");
-        ArchiveCategory occupied = category(13L, ArchiveManagementMode.ITEM_ONLY);
-        occupied.setSchemeId(7L);
-        occupied.setCategoryCode("project");
-        when(classificationSchemeRepository.findById(8L)).thenReturn(Optional.of(scheme));
         when(categoryRepository.findById(12L)).thenReturn(Optional.of(current));
-        when(categoryRepository.findByCategoryCode("project")).thenReturn(occupied);
 
         assertThatThrownBy(
                         () ->
@@ -239,21 +232,89 @@ class ArchiveMetadataServiceTests {
                 .satisfies(
                         exception ->
                                 assertThat(((ResponseStatusException) exception).getStatusCode())
-                                        .isEqualTo(org.springframework.http.HttpStatus.CONFLICT))
-                .hasMessageContaining("分类编码已存在");
+                                        .isEqualTo(org.springframework.http.HttpStatus.BAD_REQUEST))
+                .hasMessageContaining("分类编码创建后不可修改");
 
         verify(categoryRepository, never()).update(any(ArchiveCategory.class));
     }
 
     @Test
-    @DisplayName("并发创建触发数据库唯一冲突时返回资源已存在")
-    void createCategoryShouldMapDatabaseUniqueConflict() {
+    @DisplayName("修改不存在分类时优先返回资源不存在")
+    void updateCategoryShouldLoadTargetBeforeValidatingCode() {
+        when(categoryRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(
+                        () ->
+                                categoryService.updateCategory(
+                                        99L,
+                                        new ArchiveMetadataTypes.ArchiveCategoryRequest(
+                                                8L,
+                                                "occupied",
+                                                "不存在分类",
+                                                null,
+                                                ArchiveManagementMode.ITEM_ONLY,
+                                                true,
+                                                0),
+                                        9L))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(
+                        exception ->
+                                assertThat(((ResponseStatusException) exception).getStatusCode())
+                                        .isEqualTo(org.springframework.http.HttpStatus.NOT_FOUND));
+    }
+
+    @Test
+    @DisplayName("创建分类时拒绝超长编码和名称")
+    void createCategoryShouldRejectOversizedCodeAndName() {
+        ArchiveClassificationScheme scheme = scheme(8L, "enterprise_project", true);
+        when(classificationSchemeRepository.findById(8L)).thenReturn(Optional.of(scheme));
+
+        assertThatThrownBy(
+                        () ->
+                                categoryService.createCategory(
+                                        new ArchiveMetadataTypes.ArchiveCategoryRequest(
+                                                8L,
+                                                "c".repeat(101),
+                                                "合同档案",
+                                                null,
+                                                ArchiveManagementMode.ITEM_ONLY,
+                                                true,
+                                                0),
+                                        9L))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("分类编码长度不能超过 100");
+
+        assertThatThrownBy(
+                        () ->
+                                categoryService.createCategory(
+                                        new ArchiveMetadataTypes.ArchiveCategoryRequest(
+                                                8L,
+                                                "contract",
+                                                "名".repeat(256),
+                                                null,
+                                                ArchiveManagementMode.ITEM_ONLY,
+                                                true,
+                                                0),
+                                        9L))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("分类名称长度不能超过 255");
+
+        verify(categoryRepository, never()).insert(any(ArchiveCategory.class));
+    }
+
+    @Test
+    @DisplayName("指定分类编码唯一约束冲突返回资源已存在")
+    void createCategoryShouldMapNamedUniqueConstraint() {
         ArchiveClassificationScheme scheme = scheme(8L, "enterprise_project", true);
         when(classificationSchemeRepository.findById(8L)).thenReturn(Optional.of(scheme));
         when(categoryRepository.findByCategoryCode("contract")).thenReturn(null);
+        var constraintViolation =
+                new org.hibernate.exception.ConstraintViolationException(
+                        "duplicate", new SQLException("duplicate"), "uk_am_archive_category_code");
         when(categoryRepository.insert(any(ArchiveCategory.class)))
                 .thenThrow(
-                        new org.springframework.dao.DataIntegrityViolationException("duplicate"));
+                        new org.springframework.dao.DataIntegrityViolationException(
+                                "duplicate", constraintViolation));
 
         assertThatThrownBy(
                         () ->
@@ -273,6 +334,36 @@ class ArchiveMetadataServiceTests {
                                 assertThat(((ResponseStatusException) exception).getStatusCode())
                                         .isEqualTo(org.springframework.http.HttpStatus.CONFLICT))
                 .hasMessageContaining("分类编码已存在");
+    }
+
+    @Test
+    @DisplayName("非分类编码约束的完整性异常保持原样")
+    void createCategoryShouldRethrowUnrelatedIntegrityViolation() {
+        ArchiveClassificationScheme scheme = scheme(8L, "enterprise_project", true);
+        when(classificationSchemeRepository.findById(8L)).thenReturn(Optional.of(scheme));
+        when(categoryRepository.findByCategoryCode("contract")).thenReturn(null);
+        var unrelated =
+                new org.springframework.dao.DataIntegrityViolationException(
+                        "other",
+                        new org.hibernate.exception.ConstraintViolationException(
+                                "other",
+                                new SQLException("other"),
+                                "fk_am_archive_category_scheme"));
+        when(categoryRepository.insert(any(ArchiveCategory.class))).thenThrow(unrelated);
+
+        assertThatThrownBy(
+                        () ->
+                                categoryService.createCategory(
+                                        new ArchiveMetadataTypes.ArchiveCategoryRequest(
+                                                8L,
+                                                "contract",
+                                                "合同档案",
+                                                null,
+                                                ArchiveManagementMode.ITEM_ONLY,
+                                                true,
+                                                0),
+                                        9L))
+                .isSameAs(unrelated);
     }
 
     @Test

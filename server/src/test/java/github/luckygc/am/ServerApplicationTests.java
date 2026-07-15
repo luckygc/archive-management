@@ -21,17 +21,23 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.caffeine.CaffeineCacheManager;
 import org.springframework.context.annotation.Bean;
+import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.session.SessionRepository;
 import org.springframework.session.jdbc.JdbcIndexedSessionRepository;
 import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.web.server.ResponseStatusException;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import github.luckygc.am.app.ArchiveManagementApplication;
 import github.luckygc.am.module.archive.metadata.ArchiveFonds;
+import github.luckygc.am.module.archive.metadata.ArchiveManagementMode;
+import github.luckygc.am.module.archive.metadata.repository.ArchiveCategoryDataRepository;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveFondsDataRepository;
+import github.luckygc.am.module.archive.metadata.service.ArchiveCategoryService;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes;
 import github.luckygc.am.module.authentication.ArchiveUserDetails;
 import github.luckygc.am.module.authentication.service.PowChallengeService;
 import github.luckygc.am.test.PostgreSqlContainerTest;
@@ -56,6 +62,8 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
     @Autowired private JdbcTemplate jdbcTemplate;
     @Autowired private PowChallengeService powChallengeService;
     @Autowired private ArchiveFondsDataRepository archiveFondsDataRepository;
+    @Autowired private ArchiveCategoryDataRepository archiveCategoryDataRepository;
+    @Autowired private ArchiveCategoryService archiveCategoryService;
     @Autowired private JsonMapper jsonMapper;
     @Autowired private SessionRepository<?> sessionRepository;
     @Autowired private CacheManager cacheManager;
@@ -126,15 +134,18 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
         Assertions.assertTrue(
                 uniqueIndexUsesActiveRowsOnly("uk_am_archive_item_category_archive_no_active"));
         Assertions.assertEquals(
-                "uk_am_archive_category_code_active",
+                "uk_am_archive_category_code",
                 jdbcTemplate.queryForObject(
-                        "select to_regclass('uk_am_archive_category_code_active')::text",
-                        String.class));
+                        "select to_regclass('uk_am_archive_category_code')::text", String.class));
         Assertions.assertNull(
                 jdbcTemplate.queryForObject(
                         "select to_regclass('uk_am_archive_category_scheme_code_active')::text",
                         String.class));
-        Assertions.assertTrue(uniqueIndexUsesActiveRowsOnly("uk_am_archive_category_code_active"));
+        Assertions.assertNull(
+                jdbcTemplate.queryForObject(
+                        "select to_regclass('uk_am_archive_category_code_active')::text",
+                        String.class));
+        Assertions.assertFalse(uniqueIndexUsesActiveRowsOnly("uk_am_archive_category_code"));
         Assertions.assertEquals(
                 "am_archive_item_line_table",
                 jdbcTemplate.queryForObject(
@@ -208,8 +219,8 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
     }
 
     @Test
-    @DisplayName("分类编码跨方案全局唯一且逻辑删除后可复用")
-    void categoryCodeIsGloballyUniqueAndReusableAfterSoftDelete() {
+    @DisplayName("分类编码跨方案且跨逻辑删除历史永久全局唯一")
+    void categoryCodeRemainsGloballyUniqueAfterSoftDelete() {
         String categoryCode = "GLOBAL_UNIQUE_TEST";
         String firstSchemeCode = "GLOBAL_UNIQUE_SCHEME_1";
         String secondSchemeCode = "GLOBAL_UNIQUE_SCHEME_2";
@@ -240,14 +251,23 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
                             + "where scheme_id = ? and category_code = ?",
                     firstSchemeId,
                     categoryCode);
-            Assertions.assertEquals(
-                    1,
-                    jdbcTemplate.update(
-                            "insert into am_archive_category "
-                                    + "(scheme_id, category_code, category_name, management_mode) "
-                                    + "values (?, ?, '复用分类', 'ITEM_ONLY')",
-                            secondSchemeId,
-                            categoryCode));
+            Assertions.assertNull(archiveCategoryDataRepository.findByCategoryCode(categoryCode));
+
+            ResponseStatusException exception =
+                    Assertions.assertThrows(
+                            ResponseStatusException.class,
+                            () ->
+                                    archiveCategoryService.createCategory(
+                                            new ArchiveMetadataTypes.ArchiveCategoryRequest(
+                                                    secondSchemeId,
+                                                    categoryCode,
+                                                    "历史编码不可复用",
+                                                    null,
+                                                    ArchiveManagementMode.ITEM_ONLY,
+                                                    true,
+                                                    0),
+                                            9L));
+            Assertions.assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
         } finally {
             deleteCategoryUniquenessFixtures(categoryCode, firstSchemeCode, secondSchemeCode);
         }

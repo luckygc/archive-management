@@ -5,8 +5,9 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
+
+import jakarta.data.exceptions.DataException;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jspecify.annotations.Nullable;
@@ -36,6 +37,10 @@ import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.Ar
 
 @Service
 public class ArchiveCategoryService {
+
+    private static final String CATEGORY_CODE_UNIQUE_CONSTRAINT = "uk_am_archive_category_code";
+    private static final int CATEGORY_CODE_MAX_LENGTH = 100;
+    private static final int CATEGORY_NAME_MAX_LENGTH = 255;
 
     private final ArchiveMapper archiveMapper;
     private final ArchiveFondsDataRepository fondsRepository;
@@ -85,45 +90,49 @@ public class ArchiveCategoryService {
     @Transactional
     public ArchiveCategoryDto createCategory(ArchiveCategoryRequest request, Long userId) {
         ArchiveClassificationScheme scheme = loadEnabledClassificationScheme(request.schemeId());
-        String categoryCode = requireUniqueCategoryCode(request.categoryCode(), null);
-        validateRequired(request.categoryName(), "分类名称不能为空");
+        String categoryCode = requireCategoryCode(request.categoryCode());
+        String categoryName = requireCategoryName(request.categoryName());
+        if (categoryRepository.findByCategoryCode(categoryCode) != null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "分类编码已存在");
+        }
         validateParentCategory(scheme.getId(), null, request.parentId());
         ArchiveCategory category = new ArchiveCategory();
         category.setSchemeId(scheme.getId());
         category.setParentId(request.parentId());
         category.setCategoryCode(categoryCode);
-        category.setCategoryName(request.categoryName().trim());
+        category.setCategoryName(categoryName);
         category.setManagementMode(normalizeManagementMode(request.managementMode()));
         category.setEnabled(request.enabled() == null || request.enabled());
         category.setSortOrder(request.sortOrder() == null ? 0 : request.sortOrder());
         try {
             return mapCategory(categoryRepository.insert(category));
-        } catch (DataIntegrityViolationException exception) {
-            throw categoryCodeConflict(exception);
+        } catch (DataIntegrityViolationException | DataException exception) {
+            if (isCategoryCodeUniqueViolation(exception)) {
+                throw categoryCodeConflict(exception);
+            }
+            throw exception;
         }
     }
 
     @Transactional
     public ArchiveCategoryDto updateCategory(Long id, ArchiveCategoryRequest request, Long userId) {
         requireId(id);
-        ArchiveClassificationScheme scheme = loadEnabledClassificationScheme(request.schemeId());
-        String categoryCode = requireUniqueCategoryCode(request.categoryCode(), id);
-        validateRequired(request.categoryName(), "分类名称不能为空");
-        validateParentCategory(scheme.getId(), id, request.parentId());
         ArchiveCategory category =
                 categoryRepository.findById(id).orElseThrow(() -> notFound("档案分类不存在"));
+        String categoryCode = requireCategoryCode(request.categoryCode());
+        if (!category.getCategoryCode().equals(categoryCode)) {
+            throw badRequest("分类编码创建后不可修改");
+        }
+        ArchiveClassificationScheme scheme = loadEnabledClassificationScheme(request.schemeId());
+        String categoryName = requireCategoryName(request.categoryName());
+        validateParentCategory(scheme.getId(), id, request.parentId());
         category.setSchemeId(scheme.getId());
         category.setParentId(request.parentId());
-        category.setCategoryCode(categoryCode);
-        category.setCategoryName(request.categoryName().trim());
+        category.setCategoryName(categoryName);
         category.setManagementMode(normalizeManagementMode(request.managementMode()));
         category.setEnabled(request.enabled() == null || request.enabled());
         category.setSortOrder(request.sortOrder() == null ? 0 : request.sortOrder());
-        try {
-            return mapCategory(categoryRepository.update(category));
-        } catch (DataIntegrityViolationException exception) {
-            throw categoryCodeConflict(exception);
-        }
+        return mapCategory(categoryRepository.update(category));
     }
 
     @Transactional
@@ -340,17 +349,38 @@ public class ArchiveCategoryService {
         }
     }
 
-    private String requireUniqueCategoryCode(
-            @Nullable String categoryCode, @Nullable Long currentCategoryId) {
-        if (StringUtils.isBlank(categoryCode)) {
+    private String requireCategoryCode(@Nullable String categoryCode) {
+        String normalized = StringUtils.trimToNull(categoryCode);
+        if (normalized == null) {
             throw badRequest("分类编码不能为空");
         }
-        String normalizedCode = categoryCode.trim();
-        ArchiveCategory existing = categoryRepository.findByCategoryCode(normalizedCode);
-        if (existing != null && !Objects.equals(existing.getId(), currentCategoryId)) {
-            throw categoryCodeConflict();
+        if (StringUtils.length(normalized) > CATEGORY_CODE_MAX_LENGTH) {
+            throw badRequest("分类编码长度不能超过 100");
         }
-        return normalizedCode;
+        return normalized;
+    }
+
+    private String requireCategoryName(@Nullable String categoryName) {
+        String normalized = StringUtils.trimToNull(categoryName);
+        if (normalized == null) {
+            throw badRequest("分类名称不能为空");
+        }
+        if (StringUtils.length(normalized) > CATEGORY_NAME_MAX_LENGTH) {
+            throw badRequest("分类名称长度不能超过 255");
+        }
+        return normalized;
+    }
+
+    private boolean isCategoryCodeUniqueViolation(Throwable exception) {
+        Throwable current = exception;
+        while (current != null) {
+            if (current instanceof org.hibernate.exception.ConstraintViolationException violation
+                    && CATEGORY_CODE_UNIQUE_CONSTRAINT.equals(violation.getConstraintName())) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 
     private void requireId(Long id) {
@@ -367,12 +397,7 @@ public class ArchiveCategoryService {
         return new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
     }
 
-    private ResponseStatusException categoryCodeConflict() {
-        return new ResponseStatusException(HttpStatus.CONFLICT, "分类编码已存在");
-    }
-
-    private ResponseStatusException categoryCodeConflict(
-            DataIntegrityViolationException exception) {
+    private ResponseStatusException categoryCodeConflict(RuntimeException exception) {
         return new ResponseStatusException(HttpStatus.CONFLICT, "分类编码已存在", exception);
     }
 

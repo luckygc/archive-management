@@ -307,16 +307,24 @@
 
 - **WHEN** 客户端提交分类编码和分类名称
 - **THEN** 系统 SHALL 创建一条档案分类记录
-- **AND** 分类编码 SHALL 在未删除记录中唯一
+- **AND** 分类编码 SHALL 在全部历史分类中永久唯一
+- **AND** 分类编码长度 SHALL 不超过 100 个字符
+- **AND** 分类名称长度 SHALL 不超过 255 个字符
 - **AND** 系统 SHALL NOT 要求选择全宗
 - **AND** 系统 SHALL 允许选择一个未删除档案分类作为父级分类
 
-#### Scenario: 拒绝重复分类编码
+#### Scenario: 拒绝修改分类编码
 
-- **WHEN** 客户端创建分类或将分类编码修改为其他未删除分类已占用的编码
+- **WHEN** 客户端修改已有分类并提交与当前值不同的分类编码
+- **THEN** 系统 SHALL 拒绝保存
+- **AND** 响应 SHALL 使用 `400 Bad Request` 和 `INVALID_ARGUMENT` ProblemDetail
+
+#### Scenario: 拒绝复用分类编码
+
+- **WHEN** 客户端创建分类并提交任一历史分类已使用的编码
 - **THEN** 系统 SHALL 拒绝保存
 - **AND** 响应 SHALL 使用 `409 Conflict` 和 `ALREADY_EXISTS` ProblemDetail
-- **AND** 已逻辑删除分类 SHALL NOT 继续占用分类编码
+- **AND** 已逻辑删除分类 SHALL 继续占用分类编码
 
 #### Scenario: 查询档案分类
 
