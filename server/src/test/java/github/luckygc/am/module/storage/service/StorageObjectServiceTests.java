@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -23,6 +24,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.http.HttpStatus;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.storage.FileStorageResource;
@@ -78,7 +81,8 @@ class StorageObjectServiceTests {
                                 "application/pdf",
                                 4,
                                 new ByteArrayInputStream(
-                                        "demo".getBytes(java.nio.charset.StandardCharsets.UTF_8))),
+                                        "demo".getBytes(java.nio.charset.StandardCharsets.UTF_8)),
+                                null),
                         9L);
 
         assertThat(dto.id()).isEqualTo(20L);
@@ -98,6 +102,69 @@ class StorageObjectServiceTests {
         verify(storageObjectRepository).insert(storageObjectCaptor.capture());
         assertThat(storageObjectCaptor.getValue().getChecksumSha256())
                 .isEqualTo(DigestUtils.sha256Hex("demo"));
+        assertThat(storageObjectCaptor.getValue().getExpiresAt()).isNull();
+    }
+
+    @Test
+    @DisplayName("保存临时对象时固化过期时间")
+    void storeObjectShouldPersistExpiration() throws Exception {
+        LocalDateTime expiresAt = LocalDateTime.of(2026, 7, 15, 10, 10);
+        stubSuccessfulObjectStorage();
+
+        storageObjectService.storeObject(command(expiresAt), 9L);
+
+        ArgumentCaptor<StorageObject> captor = ArgumentCaptor.forClass(StorageObject.class);
+        verify(storageObjectRepository).insert(captor.capture());
+        assertThat(captor.getValue().getExpiresAt()).isEqualTo(expiresAt);
+    }
+
+    @Test
+    @DisplayName("事务回滚时删除已经上传的对象")
+    void storeObjectShouldDeleteUploadedObjectAfterRollback() throws Exception {
+        stubSuccessfulObjectStorage();
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            storageObjectService.storeObject(command(null), 9L);
+            TransactionSynchronization synchronization = onlySynchronization();
+
+            synchronization.afterCompletion(TransactionSynchronization.STATUS_ROLLED_BACK);
+
+            ArgumentCaptor<String> objectKeyCaptor = ArgumentCaptor.forClass(String.class);
+            verify(fileStorageService).deleteObject(eq("archive"), objectKeyCaptor.capture());
+            assertThat(objectKeyCaptor.getValue()).endsWith(".xlsx");
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
+
+    @Test
+    @DisplayName("事务提交时保留已经上传的对象")
+    void storeObjectShouldKeepUploadedObjectAfterCommit() throws Exception {
+        stubSuccessfulObjectStorage();
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            storageObjectService.storeObject(command(null), 9L);
+            TransactionSynchronization synchronization = onlySynchronization();
+
+            synchronization.afterCompletion(TransactionSynchronization.STATUS_COMMITTED);
+
+            verify(fileStorageService, never()).deleteObject(any(String.class), any(String.class));
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
+
+    @Test
+    @DisplayName("无事务时登记记录失败立即删除已经上传的对象")
+    void storeObjectShouldDeleteUploadedObjectWhenInsertFailsWithoutTransaction() throws Exception {
+        stubSuccessfulObjectStorage();
+        RuntimeException insertFailure = new RuntimeException("database unavailable");
+        when(storageObjectRepository.insert(any(StorageObject.class))).thenThrow(insertFailure);
+
+        assertThatThrownBy(() -> storageObjectService.storeObject(command(null), 9L))
+                .isSameAs(insertFailure);
+
+        verify(fileStorageService).deleteObject(eq("archive"), any(String.class));
     }
 
     @Test
@@ -173,5 +240,39 @@ class StorageObjectServiceTests {
         object.setChecksumSha256("abc");
         object.setCreatedAt(LocalDateTime.of(2026, 6, 30, 10, 0));
         return object;
+    }
+
+    private void stubSuccessfulObjectStorage() throws Exception {
+        when(fileStorageService.putObject(
+                        any(String.class), any(InputStream.class), eq(3L), eq("application/test")))
+                .thenAnswer(
+                        invocation ->
+                                new StorageObjectInfo(
+                                        "archive",
+                                        invocation.getArgument(0),
+                                        3,
+                                        "application/test",
+                                        "etag-test"));
+        when(storageObjectRepository.insert(any(StorageObject.class)))
+                .thenAnswer(
+                        invocation -> {
+                            StorageObject object = invocation.getArgument(0);
+                            object.setId(21L);
+                            return object;
+                        });
+    }
+
+    private StorageObjectService.StoreStorageObjectCommand command(LocalDateTime expiresAt) {
+        return new StorageObjectService.StoreStorageObjectCommand(
+                "archive-export.xlsx",
+                "application/test",
+                3,
+                new ByteArrayInputStream(new byte[] {1, 2, 3}),
+                expiresAt);
+    }
+
+    private TransactionSynchronization onlySynchronization() {
+        assertThat(TransactionSynchronizationManager.getSynchronizations()).hasSize(1);
+        return TransactionSynchronizationManager.getSynchronizations().getFirst();
     }
 }

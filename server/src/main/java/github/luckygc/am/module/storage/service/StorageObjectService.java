@@ -14,9 +14,13 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.exception.BadRequestException;
@@ -31,6 +35,7 @@ import github.luckygc.am.module.storage.repository.StorageObjectDataRepository;
 @Service
 public class StorageObjectService {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(StorageObjectService.class);
     private static final String DEFAULT_CONTENT_TYPE = "application/octet-stream";
 
     private final StorageObjectDataRepository storageObjectRepository;
@@ -65,26 +70,39 @@ public class StorageObjectService {
         String objectKey = ObjectKeys.generate(LocalDate.now(clock), originalFilename);
         MessageDigest digest = DigestUtils.getSha256Digest();
         DigestInputStream inputStream = new DigestInputStream(command.inputStream(), digest);
+        StorageObjectInfo objectInfo;
         try {
-            StorageObjectInfo objectInfo =
+            objectInfo =
                     fileStorageService.putObject(
                             objectKey, inputStream, command.contentLength(), contentType);
-            String checksumSha256 = Hex.encodeHexString(digest.digest());
-            StorageObject storageObject = new StorageObject();
-            storageObject.setBucketName(objectInfo.bucketName());
-            storageObject.setObjectKey(objectInfo.objectKey());
-            storageObject.setOriginalFilename(originalFilename);
-            storageObject.setFileSize(objectInfo.contentLength());
-            storageObject.setContentType(
-                    StringUtils.defaultIfBlank(objectInfo.contentType(), contentType));
-            storageObject.setFileExtension(fileExtension(originalFilename));
-            storageObject.setChecksumSha256(checksumSha256);
-            storageObject.setEtag(objectInfo.eTag());
-            storageObject.setCreatedBy(userId);
-            return toDto(storageObjectRepository.insert(storageObject));
         } catch (IOException exception) {
             throw new ResponseStatusException(
                     HttpStatus.INTERNAL_SERVER_ERROR, "文件保存失败", exception);
+        }
+        String checksumSha256 = Hex.encodeHexString(digest.digest());
+        StorageObject storageObject = new StorageObject();
+        storageObject.setBucketName(objectInfo.bucketName());
+        storageObject.setObjectKey(objectInfo.objectKey());
+        storageObject.setOriginalFilename(originalFilename);
+        storageObject.setFileSize(objectInfo.contentLength());
+        storageObject.setContentType(
+                StringUtils.defaultIfBlank(objectInfo.contentType(), contentType));
+        storageObject.setFileExtension(fileExtension(originalFilename));
+        storageObject.setChecksumSha256(checksumSha256);
+        storageObject.setEtag(objectInfo.eTag());
+        storageObject.setCreatedBy(userId);
+        storageObject.setExpiresAt(command.expiresAt());
+        boolean synchronizationActive = TransactionSynchronizationManager.isSynchronizationActive();
+        if (synchronizationActive) {
+            registerRollbackCompensation(objectInfo);
+        }
+        try {
+            return toDto(storageObjectRepository.insert(storageObject));
+        } catch (RuntimeException exception) {
+            if (!synchronizationActive) {
+                deleteUploadedObject(objectInfo, exception);
+            }
+            throw exception;
         }
     }
 
@@ -171,11 +189,40 @@ public class StorageObjectService {
         return extension.length() > 50 ? null : extension;
     }
 
+    private void registerRollbackCompensation(StorageObjectInfo objectInfo) {
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCompletion(int status) {
+                        if (status == STATUS_ROLLED_BACK) {
+                            deleteUploadedObject(objectInfo, null);
+                        }
+                    }
+                });
+    }
+
+    private void deleteUploadedObject(
+            StorageObjectInfo objectInfo, @Nullable RuntimeException originalException) {
+        try {
+            fileStorageService.deleteObject(objectInfo.bucketName(), objectInfo.objectKey());
+        } catch (IOException | RuntimeException compensationException) {
+            LOGGER.error(
+                    "补偿删除存储对象失败: bucket={}, objectKey={}",
+                    objectInfo.bucketName(),
+                    objectInfo.objectKey(),
+                    compensationException);
+            if (originalException != null) {
+                originalException.addSuppressed(compensationException);
+            }
+        }
+    }
+
     public record StoreStorageObjectCommand(
             String originalFilename,
             @Nullable String contentType,
             long contentLength,
-            InputStream inputStream) {}
+            InputStream inputStream,
+            @Nullable LocalDateTime expiresAt) {}
 
     public record StorageObjectDto(
             Long id,

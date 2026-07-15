@@ -81,7 +81,8 @@ public class ArchiveItemElectronicFileService {
                                 command.originalFilename(),
                                 command.contentType(),
                                 command.contentLength(),
-                                command.inputStream()),
+                                command.inputStream(),
+                                null),
                         userId);
         String usageType = usageType(command.usageType());
         int displayOrder = command.displayOrder() == null ? 0 : command.displayOrder();
