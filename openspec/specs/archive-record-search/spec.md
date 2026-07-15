@@ -111,18 +111,19 @@
 
 ### Requirement: 条目全文投影
 
-系统 SHALL 为全文检索维护独立投影表，并以所有启用动态字段生成投影文本。
+系统 SHALL 为 archive item 全文检索维护独立投影表，并以启用的 `METADATA` 动态字段和条目明细行文本生成投影文本。
 
 #### Scenario: 创建档案条目后维护投影
 
-- **WHEN** 客户端创建档案条目且分类存在启用的动态字段
-- **THEN** 系统 SHALL 将所有启用动态字段的字段名称和值拼接为 `search_text`
+- **WHEN** 客户端创建档案条目且分类存在启用的 `field_scope=METADATA` item 动态字段
+- **THEN** 系统 SHALL 将这些动态字段的字段名称和值拼接为 `search_text`
 - **AND** 全文投影表 SHALL 只保存条目 ID、`search_text`、索引版本和投影维护时间
 
 #### Scenario: 条目投影包含明细行
 
 - **WHEN** 系统维护条目全文投影
-- **THEN** `search_text` SHALL 包含条目固定字段、条目分类动态字段、条目实物字段和条目明细行文本
+- **THEN** `search_text` SHALL 包含该分类下所有启用的 `field_scope=METADATA` item 动态字段名称和值
+- **AND** `search_text` SHALL 包含该条目未删除明细行的字段名称和值
 - **AND** 系统 SHALL NOT 将关联条目的全文内容拼入当前条目投影
 
 #### Scenario: 删除档案条目后删除投影
@@ -136,16 +137,6 @@
 - **WHEN** 客户端新增、启用或重命名动态字段定义
 - **THEN** 系统 SHALL NOT 阻塞字段定义保存来同步重建历史投影
 - **AND** 系统 SHALL 允许通过单独重建流程补齐历史投影
-
-### Requirement: 案卷全文投影
-
-系统 SHALL 为 archive volume 维护独立全文投影。
-
-#### Scenario: 案卷投影不拼接卷内条目
-
-- **WHEN** 系统维护案卷全文投影
-- **THEN** `search_text` SHALL 只包含案卷自身固定字段、分类动态字段和实物字段
-- **AND** 系统 SHALL NOT 将案卷下所有条目全文拼入案卷投影
 
 ### Requirement: 条目关联检索边界
 

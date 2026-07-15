@@ -192,8 +192,9 @@
 
 #### Scenario: 全文投影字段来源
 
-- **WHEN** 系统维护全文检索投影
-- **THEN** 系统 SHALL 固定读取该分类下所有启用动态字段
+- **WHEN** 系统维护条目全文检索投影
+- **THEN** 系统 SHALL 固定读取该分类下所有启用的 `field_scope=METADATA` item 动态字段名称和值
+- **AND** 系统 SHALL 读取该条目未删除明细行的字段名称和值
 - **AND** 系统 SHALL NOT 要求客户端为字段配置全文检索开关
 
 #### Scenario: 使用固定记录字段编码创建动态字段
@@ -313,7 +314,9 @@
 #### Scenario: 查询档案分类
 
 - **WHEN** 客户端查询档案分类列表
-- **THEN** 系统 SHALL 返回分类编码、分类名称、父级分类 ID、动态表名、建表状态和更新时间
+- **THEN** 系统 SHALL 返回分类编码、分类名称和父级分类 ID
+- **AND** 系统 SHALL 分别返回案卷元数据表名 `volumeTableName`、卷内元数据表名 `itemTableName`、案卷实物表名 `volumePhysicalTableName` 和卷内实物表名 `itemPhysicalTableName`
+- **AND** 系统 SHALL 返回建表状态 `tableStatus` 和更新时间
 
 #### Scenario: 禁止分类循环
 
