@@ -1,7 +1,9 @@
 # archive-governance-scheme Specification
 
 ## Purpose
-TBD - created by archiving change add-archive-governance-foundation. Update Purpose after archive.
+
+定义档案治理方案、版本生命周期、适用范围、默认版本解析和配置绑定边界。作为治理版本发布、冻结、退役与历史解释的长期验收真相源，确保档案实例数据不进入治理配置。
+
 ## Requirements
 ### Requirement: 治理方案与版本
 

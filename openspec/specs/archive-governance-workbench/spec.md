@@ -1,7 +1,9 @@
 # archive-governance-workbench Specification
 
 ## Purpose
-TBD - created by archiving change improve-archive-governance-workbench. Update Purpose after archive.
+
+定义治理版本工作台的配置读取、草稿维护、只读边界和默认版本解析试算。作为管理端展示和维护治理装配的长期合同，确保非草稿版本不可修改且试算结果完全来自后端解析。
+
 ## Requirements
 ### Requirement: 治理版本配置读取
 

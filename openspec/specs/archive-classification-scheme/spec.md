@@ -1,7 +1,9 @@
 # archive-classification-scheme Specification
 
 ## Purpose
-TBD - created by archiving change add-fonds-classification-adoption. Update Purpose after archive.
+
+定义分类方案、分类节点归属、全宗可用分类范围和默认分类解析合同。作为分类模板共享与全宗采用关系的长期真相源，避免为每个全宗复制分类结构或引入旧结构兼容分支。
+
 ## Requirements
 ### Requirement: 分类方案管理
 

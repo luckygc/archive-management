@@ -1,7 +1,9 @@
 # archive-ontology-core Specification
 
 ## Purpose
-TBD - created by archiving change add-archive-governance-foundation. Update Purpose after archive.
+
+定义档案治理本体的对象、属性、关系、事件、物理字段映射和版本约束。作为治理规则统一解释固定字段、动态字段和对象关系的长期合同，确保本体不保存档案实例值且历史语义可追溯。
+
 ## Requirements
 ### Requirement: 本体对象类型
 

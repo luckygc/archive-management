@@ -62,15 +62,51 @@
 - **THEN** 系统 SHALL 将记录标记为已逻辑删除
 - **AND** 系统 SHALL 允许后续记录重新使用该唯一值
 
-### Requirement: 动态表固定删除标记和维护时间
+### Requirement: 分类动态表边界和路由
 
-系统 SHALL 在每张分类动态数据表中固定保存动态表删除标记和动态行维护时间。
+系统 SHALL 按 item/volume 对象类型和字段域创建分类动态表，并只保存对象关联、动态业务字段和固定行维护列。
 
-#### Scenario: 创建分类动态表固定列
+#### Scenario: 分类动态表不复制主表系统字段
 
 - **WHEN** 系统创建分类动态数据表
-- **THEN** 动态表 SHALL 固定包含 `deleted_flag`、`deleted_at`、`deleted_by`、`created_at` 和 `updated_at`
-- **AND** 业务动态字段 SHALL NOT 复用这些固定维护列名
+- **THEN** 动态表 SHALL 固定包含对象 ID、`deleted_flag`、`deleted_at`、`deleted_by`、`created_at` 和 `updated_at`
+- **AND** 动态表 SHALL NOT 复制主表的全宗、分类、档号、状态、锁定和随机分桶字段
+- **AND** 业务动态字段 SHALL NOT 复用固定维护列名
+
+#### Scenario: 按对象类型和字段域路由动态表
+
+- **WHEN** 系统为分类的某个对象类型和字段域创建动态表
+- **THEN** item 动态表 SHALL 使用 `id` 引用 `am_archive_item`
+- **AND** volume 动态表 SHALL 使用 `id` 引用 `am_archive_volume`
+- **AND** `METADATA` 与 `PHYSICAL` 字段 SHALL 分别进入该对象的元数据表和实物信息表
+- **AND** 系统 SHALL NOT 将 item、volume、元数据和实物信息混写到同一张动态表
+
+#### Scenario: 动态表名使用稳定业务键
+
+- **WHEN** 系统为档案分类、对象类型和字段域生成默认动态表名
+- **THEN** 表名 SHALL 基于分类编码、item/volume 对象类型和 `field_scope` 这些稳定业务键生成
+- **AND** 表名 SHALL NOT 使用数据库自增 ID 作为必要组成部分
+- **AND** 表名 SHALL 使用小写 snake_case 且不超过 PostgreSQL 63 字节标识符限制
+- **AND** 当稳定业务键过长时，系统 SHALL 使用稳定哈希后缀生成可重复的短表名
+
+#### Scenario: 分层创建电子和实物动态表
+
+- **WHEN** 档案分类启用 `ITEM_ONLY` 管理模式
+- **THEN** 系统 SHALL 至少支持卷内条目的元数据表
+- **AND** 系统 SHALL 在存在卷内实物字段时支持独立的卷内实物信息表
+- **WHEN** 档案分类启用 `VOLUME_ITEM` 管理模式
+- **THEN** 系统 SHALL 支持案卷元数据、案卷实物、卷内元数据和卷内实物四类动态表
+- **AND** 系统 SHALL NOT 强制案卷和卷内共用同一套实物字段
+
+#### Scenario: 逻辑删除条目及其动态数据
+
+- **WHEN** 客户端删除档案条目
+- **THEN** 系统 SHALL 将 `am_archive_item.deleted_flag` 标记为 `true`
+- **AND** 系统 SHALL 写入 `am_archive_item.deleted_at` 和 `am_archive_item.deleted_by`
+- **AND** 系统 SHALL 将该条目已建元数据表和实物信息表对应行的 `deleted_flag` 标记为 `true`
+- **AND** 系统 SHALL 写入对应动态行的 `deleted_at` 和 `deleted_by`
+- **AND** 系统 SHALL 允许动态表部分唯一索引释放该记录占用的唯一值
+- **AND** 回收站查询 SHALL 使用 `deleted_at DESC, id DESC` 作为稳定默认排序
 
 ### Requirement: 条目与案卷分对象
 
@@ -125,41 +161,15 @@
 - **THEN** 系统 SHALL 创建动态明细表
 - **AND** 动态明细表 SHALL 使用 `item_id` 引用 `am_archive_item`
 - **AND** 动态明细表 SHALL 支持同一条目下多行明细
+- **AND** 动态明细表 SHALL 固定包含 `id`、`item_id`、`line_order`、`deleted_flag`、`deleted_at`、`deleted_by`、`created_at` 和 `updated_at`
+- **AND** 系统 SHALL 为未删除明细行提供按 `item_id`、`line_order` 和 `id` 查询的索引
 
-#### Scenario: 动态表名使用稳定业务键
+#### Scenario: 逻辑删除条目明细行
 
-- **WHEN** 系统为档案分类、档案层级和字段域生成默认动态表名
-- **THEN** 表名 SHALL 基于分类编码、item/volume 对象类型和 `field_scope` 这些稳定业务键生成
-- **AND** 表名 SHALL NOT 使用数据库自增 ID 作为必要组成部分
-- **AND** 表名 SHALL 使用小写 snake_case 且不超过 PostgreSQL 63 字节标识符限制
-- **AND** 当稳定业务键过长时，系统 SHALL 使用稳定哈希后缀生成可重复的短表名
-
-#### Scenario: 首次创建分类动态表
-
-- **WHEN** 客户端对有启用字段的档案分类执行建表动作
-- **THEN** 系统 SHALL 创建该分类对应的动态数据表
-- **AND** 动态表 SHALL 固定包含 `id`、`deleted_flag`、`deleted_at`、`deleted_by`、`created_at` 和 `updated_at`
-- **AND** 动态表 SHALL 使用 `id` 作为主键并引用 `am_archive_item` 或 `am_archive_volume` 对象 ID
-
-#### Scenario: 分层创建电子和实物动态表
-
-- **WHEN** 档案分类启用 `ITEM_ONLY` 管理模式
-- **THEN** 系统 SHALL 至少支持卷内条目的电子字段动态表
-- **AND** 系统 SHALL 在存在卷内实物字段时支持独立的卷内实物信息动态表
-- **WHEN** 档案分类启用 `VOLUME_ITEM` 管理模式
-- **THEN** 系统 SHALL 支持案卷电子、案卷实物、卷内电子和卷内实物四类动态表
-- **AND** 系统 SHALL NOT 将案卷和卷内数据混写到同一张分类动态表
-- **AND** 系统 SHALL NOT 强制案卷和卷内共用同一套实物字段
-
-#### Scenario: 逻辑删除释放动态表唯一值
-
-- **WHEN** 客户端删除档案条目
-- **THEN** 系统 SHALL 将`am_archive_item.deleted_flag` 标记为 `true`
-- **AND** 系统 SHALL 写入 `am_archive_item.deleted_at` 和 `am_archive_item.deleted_by`
-- **AND** 系统 SHALL 将该条目对应分类动态表行的 `deleted_flag` 标记为 `true`
-- **AND** 系统 SHALL 写入该条目对应分类动态表行的 `deleted_at` 和 `deleted_by`
-- **AND** 系统 SHALL 允许动态表部分唯一索引释放该记录占用的唯一值
-- **AND** 回收站查询 SHALL 使用 `deleted_at DESC, id DESC` 作为稳定默认排序
+- **WHEN** 客户端删除一条档案条目明细行
+- **THEN** 系统 SHALL 将该明细行的 `deleted_flag` 标记为 `true`
+- **AND** 系统 SHALL 写入该明细行的 `deleted_at` 和 `deleted_by`
+- **AND** 未删除明细行 SHALL 按 `line_order` 和 `id` 稳定排序
 
 ### Requirement: 字段检索标记
 
@@ -345,10 +355,10 @@
 
 #### Scenario: 首次建表
 
-- **WHEN** 客户端对有启用字段且未建表的档案分类执行建表动作
-- **THEN** 系统 SHALL 创建该分类对应的动态数据表
-- **AND** 动态表 SHALL 包含 `id`、字段定义对应列、`created_at`、`updated_at`
-- **AND** 动态表主键 `id` SHALL 同时引用统一档案记录主表 `id`
+- **WHEN** 客户端对某个对象类型和字段域中有启用字段且未建表的档案分类执行建表动作
+- **THEN** 系统 SHALL 创建该分类对应的 item 或 volume 元数据表或实物信息表
+- **AND** 动态表 SHALL 符合“分类动态表边界和路由”Requirement 的固定列和字段隔离合同
+- **AND** 动态表主键 `id` SHALL 按对象类型引用 `am_archive_item.id` 或 `am_archive_volume.id`
 
 #### Scenario: 增量加列
 

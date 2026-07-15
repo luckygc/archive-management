@@ -1,7 +1,9 @@
 # archive-local-rule-engine Specification
 
 ## Purpose
-TBD - created by archiving change add-archive-governance-foundation. Update Purpose after archive.
+
+定义档案本地规则的结构化条件、受控 effect、发布校验、执行决策和追踪边界。作为规则定义、解析、执行和审计的长期合同，禁止自由脚本、自由 SQL 和规则引擎直接产生副作用。
+
 ## Requirements
 ### Requirement: 本地规则定义
 
