@@ -83,9 +83,10 @@
 #### Scenario: 保存动态字段条件
 
 - **WHEN** 管理员为数据范围添加动态字段条件
-- **THEN** 请求 SHALL 指定分类 ID、字段编码、操作符和值
-- **AND** 系统 SHALL 校验字段属于该分类且允许用于数据范围
-- **AND** 系统 SHALL 校验操作符和值类型匹配字段类型
+- **THEN** 请求 SHALL 指定分类 ID、字段编码和操作符，并按操作符提供值列表
+- **AND** 系统 SHALL 校验分类存在，且字段属于该分类、处于启用状态并设置 `dataScopeFilterable=true`
+- **AND** 操作符 SHALL 只允许 `EQ`、`IN`、`IS_NULL` 和 `IS_NOT_NULL`
+- **AND** `EQ` SHALL 恰好提供一个非空白值，`IN` SHALL 至少提供一个值，`IS_NULL` 和 `IS_NOT_NULL` SHALL NOT 提供值
 - **AND** 系统 SHALL 将该动态字段条件保存为 jsonb 结构化数据
 - **AND** 系统 SHALL NOT 为权限或数据范围表动态增加字段列
 
@@ -94,6 +95,8 @@
 - **WHEN** 系统计算档案查询数据范围
 - **THEN** 系统 SHALL 解析动态字段 jsonb 条件
 - **AND** 系统 SHALL 根据分类和字段定义定位对应动态表与列
+- **AND** `EQ` 和 `IN` 的条件值 SHALL 在受控查询编译阶段按字段类型转换
+- **AND** 条件值无法转换为字段类型时系统 SHALL 拒绝编译，并将错误关联到 `dynamicCondition`
 - **AND** 系统 SHALL 生成受控 MyBatis 查询条件
 - **AND** 系统 SHALL NOT 直接拼接来自 jsonb 的 SQL 文本
 
