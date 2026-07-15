@@ -2,6 +2,7 @@ package github.luckygc.am.module.archive.authorization.service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import org.apache.commons.lang3.StringUtils;
@@ -26,6 +27,7 @@ import github.luckygc.am.module.archive.item.ArchiveItemQueryOperator;
 import github.luckygc.am.module.archive.metadata.service.ArchiveCategoryService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataReferenceService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveCategoryDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFieldDto;
 import github.luckygc.am.module.authentication.AuthenticationUser;
 import github.luckygc.am.module.authentication.repository.AuthenticationUserDataRepository;
@@ -229,6 +231,14 @@ public class ArchiveDataScopeService {
     public ArchiveDataScopeFilter buildItemFilter(
             Long userId, Long categoryId, @Nullable String requestedFondsCode) {
         return dataScopeResolver.buildItemFilter(userId, categoryId, requestedFondsCode);
+    }
+
+    @Transactional(readOnly = true)
+    public Map<Long, ArchiveDataScopeFilter> compileItemFilters(
+            ResolvedArchiveDataScope resolved,
+            List<ArchiveCategoryDto> categories,
+            @Nullable String requestedFondsCode) {
+        return dataScopeResolver.compileItemFilters(resolved, categories, requestedFondsCode);
     }
 
     public boolean matchesItemFilter(

@@ -3,6 +3,8 @@ package github.luckygc.am.module.archive.rule.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -230,10 +232,15 @@ class ArchiveLocalRuleServiceTests {
     @Test
     @DisplayName("规则追踪一次编译分类范围并使用 limit 加一查询")
     void listRuleTracesShouldCompileScopeBeforePaging() {
-        when(dataScopeService.resolveUserDataScope(7L)).thenReturn(ResolvedArchiveDataScope.none());
-        when(categoryService.listCategories(null)).thenReturn(List.of(category(11L, "DOC")));
-        when(dataScopeService.buildItemFilter(7L, 11L, null))
-                .thenReturn(ArchiveDataScopeFilter.fondsCodes(List.of("F001")));
+        ResolvedArchiveDataScope resolved = ResolvedArchiveDataScope.none();
+        List<ArchiveCategoryDto> categories = List.of(category(11L, "DOC"), category(12L, "PHOTO"));
+        when(dataScopeService.resolveUserDataScope(7L)).thenReturn(resolved);
+        when(categoryService.listCategories(null)).thenReturn(categories);
+        when(dataScopeService.compileItemFilters(same(resolved), eq(categories), eq(null)))
+                .thenReturn(
+                        Map.of(
+                                11L, ArchiveDataScopeFilter.fondsCodes(List.of("F001")),
+                                12L, ArchiveDataScopeFilter.none()));
         when(ruleMapper.listRuleTraces(any())).thenReturn(List.of(trace(3L), trace(2L), trace(1L)));
 
         CursorPageResponse<Map<String, Object>> page =
@@ -248,14 +255,19 @@ class ArchiveLocalRuleServiceTests {
         verify(ruleMapper).listRuleTraces(captor.capture());
         assertThat(captor.getValue().page().rowLimit()).isEqualTo(3);
         assertThat(captor.getValue().itemScopes()).hasSize(1);
-        verify(dataScopeService).buildItemFilter(7L, 11L, null);
+        verify(dataScopeService).resolveUserDataScope(7L);
+        verify(categoryService).listCategories(null);
+        verify(dataScopeService).compileItemFilters(same(resolved), eq(categories), eq(null));
+        verify(dataScopeService, never()).buildItemFilter(any(), any(), any());
     }
 
     @Test
     @DisplayName("动态条件仅进入条目范围而不进入案卷范围")
     void listRuleTracesShouldExcludeDynamicConditionsFromVolumeScopes() {
-        when(dataScopeService.resolveUserDataScope(7L)).thenReturn(ResolvedArchiveDataScope.none());
-        when(categoryService.listCategories(null)).thenReturn(List.of(category(11L, "DOC")));
+        ResolvedArchiveDataScope resolved = ResolvedArchiveDataScope.none();
+        List<ArchiveCategoryDto> categories = List.of(category(11L, "DOC"));
+        when(dataScopeService.resolveUserDataScope(7L)).thenReturn(resolved);
+        when(categoryService.listCategories(null)).thenReturn(categories);
         ArchiveDataScopeSqlGroup dynamicGroup =
                 new ArchiveDataScopeSqlGroup(
                         List.of(),
@@ -264,8 +276,8 @@ class ArchiveLocalRuleServiceTests {
                         List.of(
                                 new ArchiveSqlCondition(
                                         "status", ArchiveItemQueryOperator.EQ, "A")));
-        when(dataScopeService.buildItemFilter(7L, 11L, null))
-                .thenReturn(ArchiveDataScopeFilter.groups(List.of(dynamicGroup)));
+        when(dataScopeService.compileItemFilters(same(resolved), eq(categories), eq(null)))
+                .thenReturn(Map.of(11L, ArchiveDataScopeFilter.groups(List.of(dynamicGroup))));
         when(ruleMapper.listRuleTraces(any())).thenReturn(List.of());
 
         service.listRuleTraces(searchRequest(7L), PageRequest.ofSize(20));
@@ -287,6 +299,7 @@ class ArchiveLocalRuleServiceTests {
         service.listRuleTraces(searchRequest(7L), PageRequest.ofSize(20));
 
         verify(categoryService, never()).listCategories(null);
+        verify(dataScopeService, never()).compileItemFilters(any(), any(), any());
         ArgumentCaptor<ArchiveRuleTraceSearchCriteria> captor =
                 ArgumentCaptor.forClass(ArchiveRuleTraceSearchCriteria.class);
         verify(ruleMapper).listRuleTraces(captor.capture());

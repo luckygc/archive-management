@@ -20,6 +20,7 @@ import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeResolutionTypes.ArchiveDataScopeFilter;
+import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeResolutionTypes.ResolvedArchiveDataScope;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
 import github.luckygc.am.module.archive.mapper.ArchiveDataScopeSqlGroup;
 import github.luckygc.am.module.archive.mapper.ArchiveRuleMapper;
@@ -63,8 +64,9 @@ public class ArchiveRuleTraceService {
     public CursorPageResponse<Map<String, Object>> listRuleTraces(
             SearchArchiveRuleTracesRequest request, PageRequest pageRequest) {
         Long userId = AuthenticatedUsers.requireResolvedUserId(request.userId());
-        boolean allData = dataScopeService.resolveUserDataScope(userId).allData();
-        TraceScopes scopes = allData ? TraceScopes.empty() : traceScopes(userId);
+        ResolvedArchiveDataScope resolved = dataScopeService.resolveUserDataScope(userId);
+        boolean allData = resolved.allData();
+        TraceScopes scopes = allData ? TraceScopes.empty() : traceScopes(resolved);
         List<Map<String, Object>> rows =
                 ruleMapper.listRuleTraces(criteria(request, pageRequest, userId, allData, scopes));
         return toCursorPage(rows, pageRequest);
@@ -99,12 +101,15 @@ public class ArchiveRuleTraceService {
         traceRepository.insert(trace);
     }
 
-    private TraceScopes traceScopes(Long userId) {
+    private TraceScopes traceScopes(ResolvedArchiveDataScope resolved) {
         List<ArchiveRuleTraceTargetScope> itemScopes = new ArrayList<>();
         List<ArchiveRuleTraceTargetScope> volumeScopes = new ArrayList<>();
-        for (var category : categoryService.listCategories(null)) {
+        var categories = categoryService.listCategories(null);
+        Map<Long, ArchiveDataScopeFilter> filters =
+                dataScopeService.compileItemFilters(resolved, categories, null);
+        for (var category : categories) {
             ArchiveDataScopeFilter filter =
-                    dataScopeService.buildItemFilter(userId, category.id(), null);
+                    filters.getOrDefault(category.id(), ArchiveDataScopeFilter.none());
             if (filter.empty()) {
                 continue;
             }

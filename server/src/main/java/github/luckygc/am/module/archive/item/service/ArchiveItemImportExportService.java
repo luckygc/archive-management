@@ -164,15 +164,7 @@ public class ArchiveItemImportExportService {
         @Nullable String cursor = null;
         do {
             ArchiveItemQueryService.SearchArchiveItemsRequest pageRequest =
-                    new ArchiveItemQueryService.SearchArchiveItemsRequest(
-                            base.categoryId(),
-                            base.fondsCode(),
-                            base.keyword(),
-                            base.where(),
-                            base.relatedGroups(),
-                            EXPORT_BATCH_LIMIT,
-                            cursor,
-                            base.orderBy());
+                    base.withPage(EXPORT_BATCH_LIMIT, cursor);
             ArchiveItemQueryService.ArchiveItemListDto page =
                     archiveItemQueryService.searchItems(pageRequest, userId);
             ArchiveItemQueryService.ArchiveItemListDto encodedPage =

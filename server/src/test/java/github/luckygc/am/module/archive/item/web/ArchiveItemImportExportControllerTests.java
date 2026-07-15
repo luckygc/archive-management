@@ -15,6 +15,7 @@ import github.luckygc.am.common.security.AuthenticatedUser;
 import github.luckygc.am.module.archive.item.service.ArchiveItemImportExportService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemImportExportService.DownloadLinkCreated;
 import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService.SearchArchiveItemsRequest;
+import github.luckygc.am.module.archive.item.web.ArchiveItemImportExportController.ExportArchiveRecordsRequest;
 
 @DisplayName("档案导入导出 HTTP 入口")
 class ArchiveItemImportExportControllerTests {
@@ -44,9 +45,11 @@ class ArchiveItemImportExportControllerTests {
     @DisplayName("创建导出用户短链")
     void createExportDownloadLinkShouldForwardSearchRequest() {
         Authentication authentication = authentication(9L);
-        SearchArchiveItemsRequest request =
-                new SearchArchiveItemsRequest(1L, "F001", null, null, null, null, null, null);
-        when(importExportService.createExportDownloadLink(request, 9L))
+        ExportArchiveRecordsRequest request =
+                new ExportArchiveRecordsRequest(1L, "F001", 77L, "合同", null, null, null);
+        SearchArchiveItemsRequest internalRequest =
+                new SearchArchiveItemsRequest(1L, "F001", "合同", null, null, null, null, null, 77L);
+        when(importExportService.createExportDownloadLink(internalRequest, 9L))
                 .thenReturn(
                         new DownloadLinkCreated(
                                 "export-code", LocalDateTime.of(2026, 7, 15, 10, 10)));
@@ -54,7 +57,7 @@ class ArchiveItemImportExportControllerTests {
         var response = controller.createExportDownloadLink(request, authentication);
 
         assertThat(response.url()).isEqualTo("/api/v1/file-links/export-code:download");
-        verify(importExportService).createExportDownloadLink(request, 9L);
+        verify(importExportService).createExportDownloadLink(internalRequest, 9L);
     }
 
     private Authentication authentication(Long userId) {

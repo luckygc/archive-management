@@ -43,6 +43,8 @@
 - **WHEN** 已认证用户请求导出档案管理查询结果
 - **THEN** 系统 SHALL 校验用户具备导出功能权限
 - **AND** 客户端 SHALL 使用 `POST /api/v1/archive-items:createExportDownloadLink` 在 JSON 请求体中提交当前查询条件
+- **AND** 请求体 SHALL 仅包含 `categoryId`、`fondsCode`、`volumeId`、`keyword`、`where`、`relatedGroups` 和 `orderBy` 业务查询字段
+- **AND** 请求体 SHALL NOT 接收或提交 `limit`、`cursor` 和 `requestTotal` 分页控制字段
 - **AND** 服务端 SHALL 在同一成功事务中生成 Excel、写入导出审计并保存临时 S3 对象，且该对象 SHALL 自创建起 10 分钟过期
 - **AND** 服务端 SHALL 在同一成功事务中创建当前用户绑定短链，且该短链 SHALL 自创建起 10 分钟过期
 - **AND** 客户端 SHALL 使用临时 `<a>` 打开返回的安全 GET 短链

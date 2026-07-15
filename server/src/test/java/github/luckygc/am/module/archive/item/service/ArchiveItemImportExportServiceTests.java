@@ -25,6 +25,7 @@ import org.apache.fesod.sheet.FesodSheet;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -221,7 +222,7 @@ class ArchiveItemImportExportServiceTests {
     void createExportDownloadLinkShouldUseSearchWriteAuditAndCreateUserLink() {
         when(permissionService.hasPermission(9L, "archive:export")).thenReturn(true);
         SearchArchiveItemsRequest request =
-                new SearchArchiveItemsRequest(1L, "F001", null, null, null, 100, null, null);
+                new SearchArchiveItemsRequest(1L, "F001", null, null, null, 100, null, null, 77L);
         when(archiveItemQueryService.searchItems(any(), eq(9L)))
                 .thenReturn(
                         new ArchiveItemListDto(
@@ -267,6 +268,49 @@ class ArchiveItemImportExportServiceTests {
                         LocalDateTime.of(2026, 7, 15, 10, 10),
                         9L);
         verify(auditRepository).insert(any(ArchiveItemAudit.class));
+        ArgumentCaptor<SearchArchiveItemsRequest> requestCaptor =
+                ArgumentCaptor.forClass(SearchArchiveItemsRequest.class);
+        verify(archiveItemQueryService).searchItems(requestCaptor.capture(), eq(9L));
+        assertThat(requestCaptor.getValue().volumeId()).isEqualTo(77L);
+        assertThat(requestCaptor.getValue().limit()).isEqualTo(1000);
+    }
+
+    @Test
+    @DisplayName("导出多页时每一页都保留案卷筛选并维持五千条上限")
+    void createExportDownloadLinkShouldKeepVolumeFilterAcrossPages() {
+        when(permissionService.hasPermission(9L, "archive:export")).thenReturn(true);
+        when(archiveCategoryService.getCategory(1L)).thenReturn(category());
+        when(archiveItemQueryService.searchItems(any(), eq(9L)))
+                .thenReturn(
+                        new ArchiveItemListDto(
+                                category(),
+                                List.of(),
+                                CursorPageResponse.withCursorValues(
+                                        List.of(), 1000, null, null, List.of(10L), null, null)),
+                        new ArchiveItemListDto(
+                                category(),
+                                List.of(),
+                                CursorPageResponse.withCursorValues(
+                                        List.of(), 1000, null, null, null, null, null)));
+        stubStoredDownload("paged-export");
+
+        importExportService.createExportDownloadLink(
+                new SearchArchiveItemsRequest(
+                        1L, "F001", "合同", null, null, 20, "ignored", null, 77L),
+                9L);
+
+        ArgumentCaptor<SearchArchiveItemsRequest> requestCaptor =
+                ArgumentCaptor.forClass(SearchArchiveItemsRequest.class);
+        verify(archiveItemQueryService, org.mockito.Mockito.times(2))
+                .searchItems(requestCaptor.capture(), eq(9L));
+        assertThat(requestCaptor.getAllValues())
+                .allSatisfy(
+                        pageRequest -> {
+                            assertThat(pageRequest.volumeId()).isEqualTo(77L);
+                            assertThat(pageRequest.limit()).isEqualTo(1000);
+                        });
+        assertThat(requestCaptor.getAllValues().getFirst().cursor()).isNull();
+        assertThat(requestCaptor.getAllValues().getLast().cursor()).isNotBlank();
     }
 
     @Test

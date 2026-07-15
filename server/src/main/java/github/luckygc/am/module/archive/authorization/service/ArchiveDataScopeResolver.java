@@ -7,6 +7,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -113,6 +114,37 @@ public class ArchiveDataScopeResolver {
     public ArchiveDataScopeFilter buildItemFilter(
             Long userId, Long categoryId, @Nullable String requestedFondsCode) {
         ResolvedArchiveDataScope resolved = resolveUserDataScopeInternal(userId);
+        List<ArchiveCategoryDto> categories = archiveCategoryService.listCategories(true);
+        Map<Long, ArchiveCategoryDto> categoriesById = categoriesById(categories);
+        return compileItemFilter(
+                resolved, categoryId, requestedFondsCode, categoriesById, fieldsByCode(categoryId));
+    }
+
+    public Map<Long, ArchiveDataScopeFilter> compileItemFilters(
+            ResolvedArchiveDataScope resolved,
+            List<ArchiveCategoryDto> categories,
+            @Nullable String requestedFondsCode) {
+        Map<Long, ArchiveCategoryDto> categoriesById = categoriesById(categories);
+        Map<Long, ArchiveDataScopeFilter> filters = new LinkedHashMap<>();
+        for (ArchiveCategoryDto category : categories) {
+            filters.put(
+                    category.id(),
+                    compileItemFilter(
+                            resolved,
+                            category.id(),
+                            requestedFondsCode,
+                            categoriesById,
+                            fieldsByCode(category.id())));
+        }
+        return Map.copyOf(filters);
+    }
+
+    private ArchiveDataScopeFilter compileItemFilter(
+            ResolvedArchiveDataScope resolved,
+            Long categoryId,
+            @Nullable String requestedFondsCode,
+            Map<Long, ArchiveCategoryDto> categoriesById,
+            Map<String, ArchiveFieldDto> fieldsByCode) {
         if (resolved.allData()) {
             return ArchiveDataScopeFilter.all();
         }
@@ -121,12 +153,6 @@ public class ArchiveDataScopeResolver {
         }
         List<ArchiveDataScopeSqlGroup> groups = new ArrayList<>();
         String fondsCode = StringUtils.trimToNull(requestedFondsCode);
-        Map<Long, ArchiveCategoryDto> categoriesById =
-                archiveCategoryService.listCategories(true).stream()
-                        .collect(Collectors.toMap(ArchiveCategoryDto::id, category -> category));
-        Map<String, ArchiveFieldDto> fieldsByCode =
-                archiveMetadataService.listFields(categoryId).stream()
-                        .collect(Collectors.toMap(ArchiveFieldDto::fieldCode, field -> field));
         for (ResolvedScope scope : resolved.scopes()) {
             ArchiveDataScopeSqlGroup group =
                     compileScopeGroup(categoryId, fondsCode, categoriesById, fieldsByCode, scope);
@@ -137,6 +163,26 @@ public class ArchiveDataScopeResolver {
         return groups.isEmpty()
                 ? ArchiveDataScopeFilter.none()
                 : ArchiveDataScopeFilter.groups(groups);
+    }
+
+    private Map<Long, ArchiveCategoryDto> categoriesById(List<ArchiveCategoryDto> categories) {
+        return categories.stream()
+                .collect(
+                        Collectors.toMap(
+                                ArchiveCategoryDto::id,
+                                category -> category,
+                                (first, ignored) -> first,
+                                LinkedHashMap::new));
+    }
+
+    private Map<String, ArchiveFieldDto> fieldsByCode(Long categoryId) {
+        return archiveMetadataService.listFields(categoryId).stream()
+                .collect(
+                        Collectors.toMap(
+                                ArchiveFieldDto::fieldCode,
+                                field -> field,
+                                (first, ignored) -> first,
+                                LinkedHashMap::new));
     }
 
     private @Nullable ArchiveDataScopeSqlGroup compileScopeGroup(

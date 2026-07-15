@@ -92,14 +92,16 @@ describe("archive API", () => {
 
         await exportArchiveRecords({
             categoryId: 1,
+            volumeId: 77,
             keyword: "合同",
             limit: 100,
             cursor: "ignored",
+            requestTotal: true,
         });
 
         expect(httpClientMock.post).toHaveBeenCalledWith(
             "/api/v1/archive-items:createExportDownloadLink",
-            { categoryId: 1, keyword: "合同" },
+            { categoryId: 1, volumeId: 77, keyword: "合同" },
         );
         expect(httpClientMock.download).toHaveBeenCalledWith(
             "/api/v1/file-links/export-code:download",

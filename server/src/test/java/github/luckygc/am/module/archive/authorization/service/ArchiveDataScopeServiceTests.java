@@ -410,6 +410,48 @@ class ArchiveDataScopeServiceTests {
     }
 
     @Test
+    @DisplayName("批量编译复用已解析范围和分类元数据并为每个分类只加载一次字段")
+    void compileItemFiltersShouldReuseResolvedScopeAndCategoryMetadata() {
+        ArchiveDataScope scope = scope(100L, ArchiveDataScopeType.CONDITIONAL, true);
+        scope.setDynamicCondition(
+                new ArchiveDataScopeDynamicCondition(
+                        List.of(
+                                new ArchiveDataScopeDynamicCondition.DynamicFieldCondition(
+                                        11L,
+                                        "department",
+                                        ArchiveItemQueryOperator.EQ,
+                                        List.of("LEGAL")),
+                                new ArchiveDataScopeDynamicCondition.DynamicFieldCondition(
+                                        12L,
+                                        "department",
+                                        ArchiveItemQueryOperator.EQ,
+                                        List.of("HR")))));
+        var resolved =
+                ArchiveDataScopeResolutionTypes.ResolvedArchiveDataScope.conditional(
+                        List.of(
+                                new ArchiveDataScopeResolutionTypes.ResolvedScope(
+                                        scope, List.of())));
+        List<ArchiveCategoryDto> categories = List.of(category(11L, null), category(12L, null));
+        when(archiveMetadataService.listFields(11L))
+                .thenReturn(List.of(field(20L, 11L, "department", true)));
+        when(archiveMetadataService.listFields(12L))
+                .thenReturn(List.of(field(21L, 12L, "department", true)));
+
+        Map<Long, ArchiveDataScopeResolutionTypes.ArchiveDataScopeFilter> filters =
+                dataScopeService.compileItemFilters(resolved, categories, null);
+
+        assertThat(filters).containsOnlyKeys(11L, 12L);
+        assertThat(filters.get(11L).groups().getFirst().conditions().getFirst().value())
+                .isEqualTo("LEGAL");
+        assertThat(filters.get(12L).groups().getFirst().conditions().getFirst().value())
+                .isEqualTo("HR");
+        verify(archiveMetadataService).listFields(11L);
+        verify(archiveMetadataService).listFields(12L);
+        verify(archiveCategoryService, never()).listCategories(any());
+        verify(subjectRelationRepository, never()).findBySubjectTypeAndSubjectId(any(), any());
+    }
+
+    @Test
     @DisplayName("动态字段条件只作用于声明分类，不随分类继承下发")
     void buildItemFilterShouldNotApplyDynamicConditionToDescendantCategory() {
         ArchiveDataScope scope = scope(100L, ArchiveDataScopeType.CONDITIONAL, true);
