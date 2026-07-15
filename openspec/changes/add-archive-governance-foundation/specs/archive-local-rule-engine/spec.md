@@ -148,5 +148,6 @@
 
 - **WHEN** 当前用户查询规则追踪且更晚的记录中包含超过一页的不可见记录
 - **THEN** 系统 SHALL 在数据库中先应用当前用户功能权限和数据范围，再按 `created_at DESC, id DESC` 返回 cursor 页
+- **AND** 分页控制参数 SHALL 仅使用 URL query 中的 `limit`、`cursor`、`requestTotal`
 - **AND** 相邻页面 SHALL NOT 因不可见记录而漏掉可见追踪
 - **AND** 相邻页面 SHALL NOT 返回重复追踪
