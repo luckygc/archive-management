@@ -291,6 +291,72 @@ describe("档案治理基础页面", () => {
             cursor: undefined,
         });
     });
+
+    it("规则追踪忽略晚于最新请求成功的旧结果", async () => {
+        const { first, second } = await startConcurrentPageRequests();
+
+        second.resolve(tracePage(2, "最新结果"));
+        expect(await screen.findByText("最新结果")).toBeInTheDocument();
+        first.resolve(tracePage(1, "过期结果"));
+        await first.promise;
+        await Promise.resolve();
+
+        expect(screen.getByText("最新结果")).toBeInTheDocument();
+        expect(screen.queryByText("过期结果")).not.toBeInTheDocument();
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "查询" })).not.toHaveClass("is-loading");
+    });
+
+    it("规则追踪忽略晚于最新请求失败的旧错误", async () => {
+        const { first, second } = await startConcurrentPageRequests();
+
+        second.resolve(tracePage(2, "最新结果"));
+        expect(await screen.findByText("最新结果")).toBeInTheDocument();
+        first.reject(new Error("过期错误"));
+        await first.promise.catch(() => undefined);
+        await Promise.resolve();
+
+        expect(screen.getByText("最新结果")).toBeInTheDocument();
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "查询" })).not.toHaveClass("is-loading");
+    });
+
+    it("规则追踪在旧请求先完成时保持最新请求的加载状态", async () => {
+        const { first, second } = await startConcurrentPageRequests();
+
+        first.resolve(tracePage(1, "过期结果"));
+        await first.promise;
+        await waitFor(() =>
+            expect(screen.getByRole("button", { name: "查询" })).toHaveClass("is-loading"),
+        );
+        expect(screen.queryByText("过期结果")).not.toBeInTheDocument();
+
+        second.resolve(tracePage(2, "最新结果"));
+        expect(await screen.findByText("最新结果")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "查询" })).not.toHaveClass("is-loading");
+    });
+
+    it("规则追踪快速连续提交时只接受最新校验的表单快照", async () => {
+        renderPage(ArchiveRuleTracesPage);
+        const input = triggerCodeInput() as HTMLInputElement;
+        const submit = screen.getByRole("button", { name: "查询" });
+
+        updateInputSynchronously(input, "BEFORE_SAVE");
+        submit.click();
+        updateInputSynchronously(input, "AFTER_SAVE");
+        submit.click();
+
+        await waitFor(() => expect(archiveApiMocks.searchArchiveRuleTraces).toHaveBeenCalledOnce());
+        expect(archiveApiMocks.searchArchiveRuleTraces).toHaveBeenCalledWith({
+            schemeVersionId: undefined,
+            triggerCode: "AFTER_SAVE",
+            objectTypeCode: undefined,
+            objectId: undefined,
+            ruleType: undefined,
+            limit: 100,
+            cursor: undefined,
+        });
+    });
 });
 
 function renderPage(component: Component) {
@@ -302,4 +368,55 @@ function triggerCodeInput() {
         screen.queryByRole("textbox", { name: "触发点" }) ??
         within(screen.getByRole("group", { name: "触发点" })).getByRole("textbox")
     );
+}
+
+function updateInputSynchronously(input: HTMLInputElement, value: string) {
+    input.value = value;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+async function startConcurrentPageRequests() {
+    const first = deferred<ReturnType<typeof tracePage>>();
+    const second = deferred<ReturnType<typeof tracePage>>();
+    archiveApiMocks.searchArchiveRuleTraces
+        .mockResolvedValueOnce({ items: [], next: "next-token" })
+        .mockReturnValueOnce(first.promise)
+        .mockReturnValueOnce(second.promise);
+    renderPage(ArchiveRuleTracesPage);
+
+    await fireEvent.click(screen.getByRole("button", { name: "查询" }));
+    const next = await screen.findByRole("button", { name: "下一页" });
+    next.click();
+    next.click();
+    await waitFor(() => expect(archiveApiMocks.searchArchiveRuleTraces).toHaveBeenCalledTimes(3));
+    return { first, second };
+}
+
+function tracePage(id: number, message: string) {
+    return {
+        items: [
+            {
+                id,
+                schemeVersionId: 11,
+                triggerCode: "BEFORE_SAVE",
+                objectTypeCode: "ARCHIVE_ITEM",
+                matchedFlag: true,
+                blockingFlag: false,
+                effectJson: {},
+                message,
+                createdAt: "2026-07-15T10:00:00Z",
+            },
+        ],
+        next: "next-token",
+    };
+}
+
+function deferred<T>() {
+    let resolve!: (value: T) => void;
+    let reject!: (reason?: unknown) => void;
+    const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+        resolve = resolvePromise;
+        reject = rejectPromise;
+    });
+    return { promise, resolve, reject };
 }

@@ -38,22 +38,27 @@ const committedQuery = ref<SearchArchiveRuleTracesRequest>();
 const result = ref<CursorPageResponse<ArchiveRuleTraceDto>>();
 const loading = ref(false);
 const loadError = ref<string>();
+let submissionVersion = 0;
+let requestVersion = 0;
 
 async function submitSearch() {
-    const valid = await formRef.value?.validate().catch(() => false);
-    if (valid === false) return;
-    committedQuery.value = {
+    const version = ++submissionVersion;
+    const query: SearchArchiveRuleTracesRequest = {
         schemeVersionId: form.value.schemeVersionId,
         triggerCode: form.value.triggerCode.trim() || undefined,
         objectTypeCode: form.value.objectTypeCode.trim() || undefined,
         objectId: form.value.objectId,
         ruleType: form.value.ruleType,
     };
+    const valid = await formRef.value?.validate().catch(() => false);
+    if (version !== submissionVersion || valid === false) return;
+    committedQuery.value = query;
     await load(undefined);
 }
 
 async function load(cursor?: string) {
     if (!committedQuery.value) return;
+    const version = ++requestVersion;
     loading.value = true;
     try {
         const response = await searchArchiveRuleTraces({
@@ -61,12 +66,14 @@ async function load(cursor?: string) {
             limit: limit.value,
             cursor,
         });
+        if (version !== requestVersion) return;
         result.value = response;
         loadError.value = undefined;
     } catch (error) {
+        if (version !== requestVersion) return;
         loadError.value = requestErrorMessage(error, "规则追踪查询失败");
     } finally {
-        loading.value = false;
+        if (version === requestVersion) loading.value = false;
     }
 }
 
@@ -80,6 +87,7 @@ function limitChange(value: number) {
 }
 
 function resetForm() {
+    submissionVersion += 1;
     formRef.value?.resetFields();
 }
 </script>
