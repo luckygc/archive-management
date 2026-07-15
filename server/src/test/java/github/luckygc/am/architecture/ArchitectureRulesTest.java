@@ -10,11 +10,11 @@ import java.util.TreeSet;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
-import jakarta.data.repository.CrudRepository;
 import jakarta.data.repository.Delete;
 import jakarta.data.repository.Find;
 import jakarta.data.repository.Insert;
 import jakarta.data.repository.Query;
+import jakarta.data.repository.Repository;
 import jakarta.data.repository.Update;
 import jakarta.persistence.Entity;
 
@@ -219,82 +219,65 @@ class ArchitectureRulesTest {
                     .haveFullyQualifiedName("jakarta.data.repository.Save");
 
     @ArchTest
-    static void project_repositories_should_not_extend_jakarta_crud_repository(
-            JavaClasses classes) {
-        List<String> violations =
-                classes.stream()
-                        .filter(ArchitectureRulesTest::isProjectDataRepository)
-                        .filter(repository -> repository.isAssignableTo(CrudRepository.class))
-                        .map(JavaClass::getName)
-                        .sorted()
-                        .toList();
-
-        assertTrue(
-                violations.isEmpty(),
-                () -> "项目 Repository 不应继承 Jakarta CrudRepository，应使用项目自定义基础接口: " + violations);
-    }
-
-    @ArchTest
-    static void repository_custom_methods_should_declare_operation_annotation(JavaClasses classes) {
+    static void project_repositories_should_declare_only_required_methods(JavaClasses classes) {
         List<String> violations =
                 classes.stream()
                         .filter(ArchitectureRulesTest::isProjectDataRepository)
                         .flatMap(
                                 repository ->
-                                        repository.getMethods().stream()
-                                                .filter(
-                                                        method ->
-                                                                method.getOwner()
-                                                                        .equals(repository))
-                                                .filter(
-                                                        method ->
-                                                                !hasRepositoryOperationAnnotation(
-                                                                        method))
-                                                .map(
-                                                        method ->
-                                                                repository.getName()
-                                                                        + "#"
-                                                                        + method.getName()))
+                                        Stream.of(
+                                                        repository.isAnnotatedWith(Repository.class)
+                                                                ? Stream.<String>empty()
+                                                                : Stream.of(
+                                                                        repository.getName()
+                                                                                + " 缺少 @jakarta.data.repository.Repository"),
+                                                        repository.getRawInterfaces().stream()
+                                                                .map(
+                                                                        parent ->
+                                                                                repository.getName()
+                                                                                        + " 继承接口 "
+                                                                                        + parent
+                                                                                                .getName()),
+                                                        repository.getMethods().stream()
+                                                                .filter(
+                                                                        method ->
+                                                                                method.getOwner()
+                                                                                        .equals(
+                                                                                                repository))
+                                                                .filter(
+                                                                        method ->
+                                                                                !hasRepositoryOperationAnnotation(
+                                                                                        method))
+                                                                .map(
+                                                                        method ->
+                                                                                repository.getName()
+                                                                                        + "#"
+                                                                                        + method
+                                                                                                .getName()
+                                                                                        + " 缺少 Repository 操作注解"),
+                                                        repository.getMethods().stream()
+                                                                .filter(
+                                                                        method ->
+                                                                                method.getOwner()
+                                                                                        .equals(
+                                                                                                repository))
+                                                                .filter(
+                                                                        ArchitectureRulesTest
+                                                                                ::isRepositoryUpsertMethod)
+                                                                .map(
+                                                                        method ->
+                                                                                repository.getName()
+                                                                                        + "#"
+                                                                                        + method
+                                                                                                .getName()
+                                                                                        + " 声明 save/upsert 或 @Save"))
+                                                .flatMap(stream -> stream))
                         .sorted()
                         .toList();
 
         assertTrue(
                 violations.isEmpty(),
-                () -> "Repository 自定义方法必须显式标注 Jakarta Data/HQL 操作注解: " + violations);
-    }
-
-    @ArchTest
-    static void repository_upsert_methods_should_not_be_declared(JavaClasses classes) {
-        List<String> violations =
-                classes.stream()
-                        .filter(ArchitectureRulesTest::isProjectDataRepository)
-                        .flatMap(
-                                repository ->
-                                        repository.getMethods().stream()
-                                                .filter(
-                                                        method ->
-                                                                method.getOwner()
-                                                                        .equals(repository))
-                                                .filter(
-                                                        method ->
-                                                                method.isAnnotatedWith(
-                                                                                "jakarta.data.repository.Save")
-                                                                        || method.getName()
-                                                                                .equals("save")
-                                                                        || method.getName()
-                                                                                .toLowerCase()
-                                                                                .contains("upsert"))
-                                                .map(
-                                                        method ->
-                                                                repository.getName()
-                                                                        + "#"
-                                                                        + method.getName()))
-                        .sorted()
-                        .toList();
-
-        assertTrue(
-                violations.isEmpty(),
-                () -> "Repository 禁止定义 save/upsert 或 @Save 方法: " + violations);
+                () -> "项目 Repository 必须直接声明实际需要的方法，不得继承基础 Repository: " + violations);
     }
 
     @ArchTest
@@ -533,6 +516,12 @@ class ArchitectureRulesTest {
                 || method.isAnnotatedWith(Insert.class)
                 || method.isAnnotatedWith(Update.class)
                 || method.isAnnotatedWith(Delete.class);
+    }
+
+    private static boolean isRepositoryUpsertMethod(JavaMethod method) {
+        return method.isAnnotatedWith("jakarta.data.repository.Save")
+                || method.getName().equals("save")
+                || method.getName().toLowerCase().contains("upsert");
     }
 
     private static boolean isSpringComponentClass(JavaClass javaClass) {
