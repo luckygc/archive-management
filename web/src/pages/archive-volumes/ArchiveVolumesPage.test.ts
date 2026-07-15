@@ -3,6 +3,7 @@ import ElementPlus, { ElMessage } from "element-plus";
 import { createPinia, setActivePinia } from "pinia";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { HttpClientError } from "@archive-management/frontend-core/api";
 import { usePermissionStore } from "@/stores/permissionStore";
 import ArchiveVolumeEditorDrawer from "./ArchiveVolumeEditorDrawer.vue";
 import ArchiveVolumeItemsDrawer from "./ArchiveVolumeItemsDrawer.vue";
@@ -114,6 +115,80 @@ describe("ArchiveVolumesPage", () => {
             limit: 100,
             cursor: "next-volume",
         });
+    });
+
+    it("游标字段错误保留结果和草稿并从相同查询第一页恢复", async () => {
+        mocks.listArchiveVolumes
+            .mockResolvedValueOnce({ items: [volume()], next: "next-volume" })
+            .mockRejectedValueOnce(
+                new HttpClientError(
+                    "cursor invalid",
+                    400,
+                    "INVALID_ARGUMENT",
+                    [{ field: "cursor", message: "已失效" }],
+                    "trace-volume",
+                ),
+            )
+            .mockResolvedValueOnce({ items: [{ ...volume(), archiveNo: "FIRST" }] });
+        renderPage();
+        expect(await screen.findByText("V-2026-001")).toBeVisible();
+        await chooseOption("全宗", "F001 全宗一");
+        await fireEvent.click(screen.getByRole("button", { name: "下一页" }));
+
+        expect(
+            await screen.findByText("数据已变化，将从第一页重新加载（追踪 ID：trace-volume）"),
+        ).toBeVisible();
+        expect(screen.getByText("V-2026-001")).toBeVisible();
+        await fireEvent.click(screen.getByRole("button", { name: "重试" }));
+
+        await waitFor(() => expect(mocks.listArchiveVolumes).toHaveBeenCalledTimes(3));
+        expect(mocks.listArchiveVolumes).toHaveBeenLastCalledWith({ limit: 100 });
+        expect(await screen.findByText("FIRST")).toBeVisible();
+        await fireEvent.click(screen.getByRole("combobox", { name: "全宗" }));
+        expect(await screen.findByRole("option", { name: "F001 全宗一" })).toHaveAttribute(
+            "aria-selected",
+            "true",
+        );
+    });
+
+    it("普通错误按原游标重试并在进行中阻止重复请求", async () => {
+        const retryRequest = deferred<{ items: ReturnType<typeof volume>[] }>();
+        mocks.listArchiveVolumes
+            .mockResolvedValueOnce({ items: [volume()], next: "next-volume" })
+            .mockRejectedValueOnce(
+                new HttpClientError("服务繁忙", 500, "INTERNAL", [], "trace-volume-500"),
+            )
+            .mockImplementationOnce(() => retryRequest.promise);
+        renderPage();
+        expect(await screen.findByText("V-2026-001")).toBeVisible();
+        await fireEvent.click(screen.getByRole("button", { name: "下一页" }));
+        expect(await screen.findByText("服务繁忙（追踪 ID：trace-volume-500）")).toBeVisible();
+
+        const retry = screen.getByRole("button", { name: "重试" });
+        await fireEvent.click(retry);
+        await fireEvent.click(retry);
+
+        expect(mocks.listArchiveVolumes).toHaveBeenCalledTimes(3);
+        expect(mocks.listArchiveVolumes).toHaveBeenLastCalledWith({
+            limit: 100,
+            cursor: "next-volume",
+        });
+        expect(retry).toBeDisabled();
+        retryRequest.resolve({ items: [volume()] });
+        await retryRequest.promise;
+    });
+
+    it("卸载后忽略在途列表响应", async () => {
+        const request = deferred<{ items: ReturnType<typeof volume>[] }>();
+        const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+        mocks.listArchiveVolumes.mockImplementationOnce(() => request.promise);
+        const view = renderPage();
+
+        view.unmount();
+        request.resolve({ items: [volume()] });
+        await request.promise;
+
+        expect(consoleError).not.toHaveBeenCalled();
     });
 
     it("旧请求后返回时不覆盖最新筛选结果", async () => {

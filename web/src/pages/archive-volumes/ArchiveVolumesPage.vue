@@ -1,12 +1,18 @@
 <script setup lang="ts">
 import { ElMessage } from "element-plus";
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
 
 import { errorMessage } from "@archive-management/frontend-core/api";
 
 import { listArchiveCategories, listArchiveFonds } from "@/shared/api/archive-metadata";
 import { listArchiveVolumes } from "@/shared/api/archive-volumes";
 import CursorPagination from "@/shared/components/CursorPagination.vue";
+import RequestErrorState from "@/shared/components/RequestErrorState.vue";
+import {
+    isCursorFieldViolation,
+    requestErrorMessage,
+    withRequestTraceId,
+} from "@/shared/requestError";
 import type { ArchiveCategoryDto, ArchiveFondsDto } from "@/shared/types/archive-metadata";
 import type { CursorPageResponse } from "@/shared/types/pagination";
 import type {
@@ -17,6 +23,8 @@ import { usePermissionStore } from "@/stores/permissionStore";
 
 import ArchiveVolumeEditorDrawer from "./ArchiveVolumeEditorDrawer.vue";
 import ArchiveVolumeItemsDrawer from "./ArchiveVolumeItemsDrawer.vue";
+
+type VolumeListRequest = ListArchiveVolumesQuery;
 
 const permissionStore = usePermissionStore();
 const canCreate = computed(() => permissionStore.has("archive:item:create"));
@@ -32,10 +40,19 @@ const loadError = ref<string>();
 const editorState = ref<{ mode: "create" | "detail"; volumeId?: number }>();
 const itemsVolume = ref<ArchiveVolumeResponse>();
 let requestVersion = 0;
+let disposed = false;
+let failedRequest: VolumeListRequest | undefined;
+let retryInFlight: Promise<void> | undefined;
 
 onMounted(() => {
     void loadReferences();
     void execute();
+});
+
+onBeforeUnmount(() => {
+    disposed = true;
+    requestVersion += 1;
+    loading.value = false;
 });
 
 async function loadReferences() {
@@ -44,6 +61,7 @@ async function loadReferences() {
             listArchiveFonds(true),
             listArchiveCategories(true),
         ]);
+        if (disposed) return;
         fonds.value = fondsResponse.items;
         categories.value = categoryResponse.items.filter(
             (item) => item.managementMode === "VOLUME_ITEM",
@@ -53,23 +71,42 @@ async function loadReferences() {
     }
 }
 
-async function execute(nextCursor = cursor.value) {
-    const version = ++requestVersion;
+function execute(nextCursor = cursor.value) {
     const query: ListArchiveVolumesQuery = {
         ...committed.value,
         limit: limit.value,
         cursor: nextCursor,
     };
-    cursor.value = nextCursor;
+    return executeRequest(query);
+}
+
+async function executeRequest(query: VolumeListRequest, preserveError = false) {
+    const version = ++requestVersion;
+    cursor.value = query.cursor;
     loading.value = true;
-    loadError.value = undefined;
+    if (!preserveError) {
+        loadError.value = undefined;
+        failedRequest = undefined;
+        retryInFlight = undefined;
+    }
     try {
         const response = await listArchiveVolumes(query);
-        if (version === requestVersion) result.value = response;
+        if (!disposed && version === requestVersion) {
+            result.value = response;
+            loadError.value = undefined;
+            failedRequest = undefined;
+        }
     } catch (error) {
-        if (version === requestVersion) loadError.value = errorMessage(error, "加载案卷失败");
+        if (!disposed && version === requestVersion) {
+            const cursorInvalid = Boolean(query.cursor) && isCursorFieldViolation(error);
+            failedRequest = cursorInvalid ? { ...query, cursor: undefined } : query;
+            if (cursorInvalid) {
+                cursor.value = undefined;
+                loadError.value = withRequestTraceId("数据已变化，将从第一页重新加载", error);
+            } else loadError.value = requestErrorMessage(error, "加载案卷失败");
+        }
     } finally {
-        if (version === requestVersion) loading.value = false;
+        if (!disposed && version === requestVersion) loading.value = false;
     }
 }
 
@@ -113,6 +150,16 @@ function clearCursors() {
 }
 
 function refresh() {
+    if (retryInFlight) return retryInFlight;
+    if (failedRequest) {
+        const promise = executeRequest({ ...failedRequest }, true);
+        retryInFlight = promise;
+        const clearRetry = () => {
+            if (retryInFlight === promise) retryInFlight = undefined;
+        };
+        void promise.then(clearRetry, clearRetry);
+        return promise;
+    }
     return execute(cursor.value);
 }
 
@@ -189,9 +236,12 @@ function formatTime(value: string) {
             </el-form>
         </el-card>
         <el-card class="am-page__result" shadow="never">
-            <el-alert v-if="loadError" :title="loadError" type="error" show-icon :closable="false">
-                <el-button link :loading="loading" @click="refresh">重试</el-button>
-            </el-alert>
+            <RequestErrorState
+                v-if="loadError"
+                :message="loadError"
+                :retrying="loading"
+                @retry="refresh"
+            />
             <el-table v-loading="loading" :data="result?.items || []" row-key="id">
                 <el-table-column label="档号" prop="archiveNo" min-width="160">
                     <template #default="{ row }">{{ row.archiveNo || "-" }}</template>

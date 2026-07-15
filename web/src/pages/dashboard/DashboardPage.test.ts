@@ -3,6 +3,7 @@ import ElementPlus from "element-plus";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { defineComponent, h } from "vue";
 
+import { HttpClientError } from "@archive-management/frontend-core/api";
 import DashboardPage from "./DashboardPage.vue";
 
 const mocks = vi.hoisted(() => ({ getWorkspaceSummary: vi.fn() }));
@@ -83,6 +84,27 @@ describe("DashboardPage", () => {
 
         retryRequest.resolve(summary());
         expect(await screen.findByText("档案总数")).toBeVisible();
+    });
+
+    it("刷新失败时保留已有摘要并展示追踪 ID，成功后清除错误", async () => {
+        mocks.getWorkspaceSummary
+            .mockResolvedValueOnce(summary())
+            .mockRejectedValueOnce(
+                new HttpClientError("摘要刷新失败", 500, "INTERNAL", [], "trace-dashboard"),
+            )
+            .mockResolvedValueOnce({ ...summary(), archiveItemCount: 13 });
+        renderPage();
+        expect(await screen.findByText("12")).toBeVisible();
+
+        await fireEvent.click(screen.getByRole("button", { name: "刷新摘要" }));
+
+        expect(await screen.findByText("摘要刷新失败（追踪 ID：trace-dashboard）")).toBeVisible();
+        expect(screen.getByText("档案总数")).toBeVisible();
+        expect(screen.getByText("12")).toBeVisible();
+        await fireEvent.click(screen.getByRole("button", { name: "重试加载档案摘要" }));
+
+        expect(await screen.findByText("13")).toBeVisible();
+        expect(screen.queryByText(/trace-dashboard/)).not.toBeInTheDocument();
     });
 
     it("卸载后到达的响应不会继续更新页面或产生警告", async () => {

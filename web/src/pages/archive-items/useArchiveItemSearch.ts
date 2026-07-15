@@ -1,7 +1,5 @@
 import { ElMessage } from "element-plus";
-import { onMounted, reactive, ref, watch } from "vue";
-
-import { errorMessage } from "@archive-management/frontend-core/api";
+import { onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 
 import { searchArchiveRecords } from "@/shared/api/archive-records";
 import {
@@ -19,6 +17,13 @@ import type {
 } from "@/shared/types/archive-records";
 import type { ArchiveQueryFormValues } from "@/pages/archive-library/archiveQueryTypes";
 import { toSearchQuery } from "@/pages/archive-library/archiveQuery";
+import {
+    isCursorFieldViolation,
+    requestErrorMessage,
+    withRequestTraceId,
+} from "@/shared/requestError";
+
+type SearchRequest = Parameters<typeof searchArchiveRecords>[0];
 
 export function useArchiveItemSearch() {
     const queryForm = reactive<ArchiveQueryFormValues>({ conditions: [], relatedGroups: [] });
@@ -36,6 +41,16 @@ export function useArchiveItemSearch() {
     const loadError = ref<string>();
     let categoryLoadVersion = 0;
     let requestVersion = 0;
+    let disposed = false;
+    let failedRequest: SearchRequest | undefined;
+    let retryInFlight: Promise<void> | undefined;
+
+    onBeforeUnmount(() => {
+        disposed = true;
+        requestVersion += 1;
+        categoryLoadVersion += 1;
+        loading.value = false;
+    });
 
     onMounted(async () => {
         try {
@@ -43,6 +58,7 @@ export function useArchiveItemSearch() {
                 listArchiveCategories(true),
                 listArchiveFonds(true),
             ]);
+            if (disposed) return;
             categories.value = categoryResponse.items;
             fonds.value = fondsResponse.items;
         } catch (error) {
@@ -74,7 +90,11 @@ export function useArchiveItemSearch() {
                 ]);
                 const ids = [...new Set(relatedResponse.items.map((item) => item.categoryId))];
                 const responses = await Promise.all(ids.map((id) => listArchiveFields(id, "ITEM")));
-                if (loadVersion !== categoryLoadVersion || queryForm.categoryId !== categoryId)
+                if (
+                    disposed ||
+                    loadVersion !== categoryLoadVersion ||
+                    queryForm.categoryId !== categoryId
+                )
                     return;
                 fields.value = fieldResponse.items;
                 relatedCategories.value = relatedResponse.items;
@@ -82,7 +102,7 @@ export function useArchiveItemSearch() {
                     ids.map((id, index) => [id, responses[index]!.items]),
                 );
             } catch (error) {
-                if (loadVersion !== categoryLoadVersion) return;
+                if (disposed || loadVersion !== categoryLoadVersion) return;
                 fields.value = [];
                 relatedCategories.value = [];
                 relatedFieldsByCategory.value = new Map();
@@ -91,24 +111,43 @@ export function useArchiveItemSearch() {
         },
     );
 
-    async function execute(query: SearchArchiveRecordsQuery, nextCursor?: string) {
-        const version = ++requestVersion;
-        const request = {
+    function execute(query: SearchArchiveRecordsQuery, nextCursor?: string) {
+        const request: SearchRequest = {
             ...query,
             orderBy: orderBy.value.length ? orderBy.value.map((item) => ({ ...item })) : undefined,
             limit: limit.value,
             cursor: nextCursor,
         };
+        return executeRequest(request);
+    }
+
+    async function executeRequest(request: SearchRequest, preserveError = false) {
+        const version = ++requestVersion;
         loading.value = true;
-        loadError.value = undefined;
-        cursor.value = nextCursor;
+        if (!preserveError) {
+            loadError.value = undefined;
+            failedRequest = undefined;
+            retryInFlight = undefined;
+        }
+        cursor.value = request.cursor;
         try {
             const response = await searchArchiveRecords(request);
-            if (version === requestVersion) result.value = response;
+            if (!disposed && version === requestVersion) {
+                result.value = response;
+                loadError.value = undefined;
+                failedRequest = undefined;
+            }
         } catch (error) {
-            if (version === requestVersion) loadError.value = errorMessage(error, "查询失败");
+            if (!disposed && version === requestVersion) {
+                const cursorInvalid = Boolean(request.cursor) && isCursorFieldViolation(error);
+                failedRequest = cursorInvalid ? { ...request, cursor: undefined } : request;
+                if (cursorInvalid) {
+                    cursor.value = undefined;
+                    loadError.value = withRequestTraceId("数据已变化，将从第一页重新加载", error);
+                } else loadError.value = requestErrorMessage(error, "查询失败");
+            }
         } finally {
-            if (version === requestVersion) loading.value = false;
+            if (!disposed && version === requestVersion) loading.value = false;
         }
     }
     function submit(values: ArchiveQueryFormValues) {
@@ -119,6 +158,16 @@ export function useArchiveItemSearch() {
         void execute(query);
     }
     function refresh(): Promise<void> {
+        if (retryInFlight) return retryInFlight;
+        if (failedRequest) {
+            const promise = executeRequest({ ...failedRequest }, true);
+            retryInFlight = promise;
+            const clearRetry = () => {
+                if (retryInFlight === promise) retryInFlight = undefined;
+            };
+            void promise.then(clearRetry, clearRetry);
+            return promise;
+        }
         if (committedQuery.value) return execute(committedQuery.value, cursor.value);
         return Promise.resolve();
     }
@@ -145,6 +194,8 @@ export function useArchiveItemSearch() {
         orderBy.value = [];
         cursor.value = undefined;
         loadError.value = undefined;
+        failedRequest = undefined;
+        retryInFlight = undefined;
     }
     function orderResults(next: ArchiveRecordOrderBy[]) {
         if (!committedQuery.value) return;

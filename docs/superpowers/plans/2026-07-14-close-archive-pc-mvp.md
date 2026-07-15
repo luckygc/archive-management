@@ -349,7 +349,7 @@ const common = {
 };
 ```
 
-- [ ] **Step 5: 验证并提交**
+- [x] **Step 5: 验证并提交**
 
 ```bash
 pnpm --filter @archive-management/web test -- ArchiveItemManagementPage.test.ts ArchiveItemComponents.test.ts DynamicArchiveFields.test.ts
@@ -1103,7 +1103,7 @@ it("渲染服务端摘要且不包含演示待办", async () => {
 
 工作台保留四个真实统计；近期事项区域在审批阶段完成前移除，不显示虚构空壳。
 
-- [x] **Step 5: 验证并提交**
+- [ ] **Step 5: 验证并提交**
 
 ```bash
 cd server && mise exec -- mvn -q -Dtest=ArchiveWorkspaceServiceTests,ArchiveWorkspaceControllerTests test
@@ -1117,17 +1117,21 @@ git commit -m "feat: 提供真实工作台摘要"
 **Files:**
 - Create: `web/src/shared/components/RequestErrorState.vue`
 - Create: `web/src/shared/components/RequestErrorState.test.ts`
+- Create: `web/src/shared/requestError.ts`
+- Create: `web/src/shared/requestError.test.ts`
 - Modify: `web/src/pages/archive-items/useArchiveItemSearch.ts`
 - Modify: `web/src/pages/archive-items/useArchiveItemResources.ts`
 - Modify: `web/src/pages/archive-items/ArchiveItemManagementPage.vue`
+- Modify: `web/src/pages/archive-items/ArchiveItemResourcesDrawer.vue`
 - Modify: `web/src/pages/archive-library/ArchiveLibraryPage.vue`
 - Modify: `web/src/pages/archive-volumes/ArchiveVolumesPage.vue`
 - Modify: `web/src/pages/dashboard/DashboardPage.vue`
 
 **Interfaces:**
-- Produces: `<RequestErrorState :message retry-label @retry>`，只负责展示与重试事件，不负责请求。
+- Produces: `<RequestErrorState :message retry-label :retrying :disabled @retry>`，只负责展示与重试事件，不负责请求。
+- Internal: 页面用非响应式失败请求快照重放已提交查询、排序、页大小和游标；共享 helper 只附加 `traceId` 并按 `HttpClientError.fieldViolations[field=cursor]` 识别游标错误，不持有页面状态或解析自由文本。
 
-- [ ] **Step 1: 写组件失败测试**
+- [x] **Step 1: 写组件失败测试**
 
 ```ts
 it("展示可执行错误并发出重试事件", async () => {
@@ -1137,13 +1141,13 @@ it("展示可执行错误并发出重试事件", async () => {
 });
 ```
 
-- [ ] **Step 2: 运行并确认组件缺失**
+- [x] **Step 2: 运行并确认组件缺失**
 
 ```bash
 pnpm --filter @archive-management/web test -- RequestErrorState.test.ts
 ```
 
-- [ ] **Step 3: 实现无额外状态源的展示组件**
+- [x] **Step 3: 实现无额外状态源的展示组件**
 
 ```vue
 <template>
@@ -1155,11 +1159,11 @@ pnpm --filter @archive-management/web test -- RequestErrorState.test.ts
 </template>
 ```
 
-- [ ] **Step 4: 接入列表与摘要页面**
+- [x] **Step 4: 接入列表与摘要页面**
 
-加载失败保留当前结果和已提交条件；错误区域位于对应内容容器内。保存、删除、锁定等瞬时命令继续使用消息反馈，不强制改成页面错误。
+加载失败保留当前结果和已提交条件；错误区域位于对应内容容器内。重试精确重放失败请求，重复重试复用同一在途 Promise；游标错误只按 `fieldViolations.cursor` 识别，并用相同已提交查询、排序和页大小从第一页恢复，普通错误保留原游标。工作台刷新失败与已有摘要同显；电子文件和审计读取错误在 Drawer 对应页签内恢复。保存、删除、锁定等瞬时命令继续使用消息反馈，不强制改成页面错误。
 
-- [ ] **Step 5: 验证并提交**
+- [x] **Step 5: 验证并提交**
 
 ```bash
 pnpm --filter @archive-management/web test -- RequestErrorState.test.ts ArchiveItemManagementPage.test.ts ArchiveLibraryPage.test.ts ArchiveVolumesPage.test.ts DashboardPage.test.ts

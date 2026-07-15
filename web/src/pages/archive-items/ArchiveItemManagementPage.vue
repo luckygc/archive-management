@@ -25,6 +25,7 @@ import type {
     ArchiveRecordDetailDto,
 } from "@/shared/types/archive-records";
 import CursorPagination from "@/shared/components/CursorPagination.vue";
+import RequestErrorState from "@/shared/components/RequestErrorState.vue";
 import { usePermissionStore } from "@/stores/permissionStore";
 
 import ArchiveAdvancedQueryPanel from "@/pages/archive-library/ArchiveAdvancedQueryPanel.vue";
@@ -104,10 +105,12 @@ const {
     downloadingFileId,
     downloadFile,
     drawerLoading,
+    drawerLoadError,
     drawerState,
     fileForm,
     files,
     openDrawer,
+    retryDrawer,
     unbindingFileId,
     unbindFile,
     uploading,
@@ -381,12 +384,12 @@ function applyEditorFieldViolations(error: unknown) {
                     @reset="reset" /></el-collapse-item
         ></el-collapse>
         <el-card class="am-page__result" shadow="never"
-            ><el-alert v-if="loadError" :title="loadError" type="error" show-icon :closable="false"
-                ><el-button link :loading="loading" @click="void refresh()"
-                    >重试</el-button
-                ></el-alert
-            ><ArchiveResultTable
-                v-else-if="result"
+            ><RequestErrorState
+                v-if="loadError"
+                :message="loadError"
+                :retrying="loading"
+                @retry="void refresh()" /><ArchiveResultTable
+                v-if="result"
                 :result="result"
                 :loading="loading"
                 :order-by="orderBy"
@@ -410,7 +413,7 @@ function applyEditorFieldViolations(error: unknown) {
                         @lock="lock(rowId(row)!)"
                         @unlock="unlock(rowId(row)!)"
                         @delete="remove(rowId(row)!)" /></template></ArchiveResultTable
-            ><el-empty v-else description="选择分类并提交高级查询后显示管理列表" />
+            ><el-empty v-else-if="!loadError" description="选择分类并提交高级查询后显示管理列表" />
             <div v-if="result" class="am-table-footer">
                 <CursorPagination
                     :limit="limit"
@@ -424,6 +427,7 @@ function applyEditorFieldViolations(error: unknown) {
         <ArchiveItemResourcesDrawer
             :state="drawerState"
             :loading="drawerLoading"
+            :load-error="drawerLoadError"
             :file-form="fileForm"
             :files="files"
             :audits="audits"
@@ -440,6 +444,7 @@ function applyEditorFieldViolations(error: unknown) {
             @upload="uploadElectronicFile"
             @download="downloadFile"
             @unbind="unbindFile"
+            @retry="void retryDrawer()"
         />
         <ArchiveItemEditorDrawer
             :state="editorState"

@@ -1,5 +1,5 @@
 import { ElMessage } from "element-plus";
-import { computed, reactive, ref } from "vue";
+import { computed, onBeforeUnmount, reactive, ref } from "vue";
 
 import { errorMessage } from "@archive-management/frontend-core/api";
 
@@ -15,6 +15,12 @@ import type {
     ArchiveItemElectronicFileDto,
 } from "@/shared/types/archive-records";
 import { usePermissionStore } from "@/stores/permissionStore";
+import { requestErrorMessage } from "@/shared/requestError";
+
+type DrawerReadRequest = {
+    archiveItemId: number;
+    activeKey: "files" | "audits";
+};
 
 export function useArchiveItemResources(openLink: (href: string) => void) {
     const permissionStore = usePermissionStore();
@@ -40,9 +46,20 @@ export function useArchiveItemResources(openLink: (href: string) => void) {
     const audits = ref<ArchiveItemAuditDto[]>([]);
     const fileForm = reactive({ usageType: "", displayOrder: undefined as number | undefined });
     const drawerLoading = ref(false);
+    const drawerLoadError = ref<string>();
     const uploading = ref(false);
     const downloadingFileId = ref<number>();
     const unbindingFileId = ref<number>();
+    let disposed = false;
+    let requestVersion = 0;
+    let failedRequest: DrawerReadRequest | undefined;
+    let retryInFlight: Promise<void> | undefined;
+
+    onBeforeUnmount(() => {
+        disposed = true;
+        requestVersion += 1;
+        drawerLoading.value = false;
+    });
 
     async function openDrawer(value: unknown, activeKey: "files" | "audits" | "relations") {
         const id = rowId(value);
@@ -51,29 +68,81 @@ export function useArchiveItemResources(openLink: (href: string) => void) {
         await loadDrawer();
     }
 
-    async function loadDrawer() {
+    function loadDrawer() {
         if (!drawerState.value) return;
-        const state = { ...drawerState.value };
+        if (drawerState.value.activeKey === "relations") {
+            drawerLoadError.value = undefined;
+            failedRequest = undefined;
+            return;
+        }
+        return executeDrawerRead({
+            archiveItemId: drawerState.value.archiveItemId,
+            activeKey: drawerState.value.activeKey,
+        });
+    }
+
+    async function executeDrawerRead(state: DrawerReadRequest, preserveError = false) {
+        const version = ++requestVersion;
         drawerLoading.value = true;
+        if (!preserveError) {
+            drawerLoadError.value = undefined;
+            failedRequest = undefined;
+            retryInFlight = undefined;
+        }
         try {
             if (state.activeKey === "files") {
                 const response = await listArchiveItemElectronicFiles(state.archiveItemId);
-                if (drawerState.value?.archiveItemId === state.archiveItemId)
+                if (isCurrentRequest(state, version)) {
                     files.value = response.items;
+                    drawerLoadError.value = undefined;
+                    failedRequest = undefined;
+                }
             } else if (state.activeKey === "audits") {
                 const response = await listArchiveItemAudits({
                     archiveItemId: state.archiveItemId,
                     limit: 20,
                     requestTotal: true,
                 });
-                if (drawerState.value?.archiveItemId === state.archiveItemId)
+                if (isCurrentRequest(state, version)) {
                     audits.value = response.items;
+                    drawerLoadError.value = undefined;
+                    failedRequest = undefined;
+                }
             }
         } catch (error) {
-            ElMessage.error(errorMessage(error, "加载档案关联信息失败"));
+            if (isCurrentRequest(state, version)) {
+                failedRequest = state;
+                drawerLoadError.value = requestErrorMessage(error, "加载档案关联信息失败");
+            }
         } finally {
-            drawerLoading.value = false;
+            if (!disposed && version === requestVersion) drawerLoading.value = false;
         }
+    }
+
+    function isCurrentRequest(state: DrawerReadRequest, version: number) {
+        return (
+            !disposed &&
+            version === requestVersion &&
+            drawerState.value?.archiveItemId === state.archiveItemId &&
+            drawerState.value.activeKey === state.activeKey
+        );
+    }
+
+    function retryDrawer(): Promise<void> {
+        if (retryInFlight) return retryInFlight;
+        if (
+            !failedRequest ||
+            drawerState.value?.archiveItemId !== failedRequest.archiveItemId ||
+            drawerState.value.activeKey !== failedRequest.activeKey
+        )
+            return Promise.resolve();
+        const promise = executeDrawerRead({ ...failedRequest }, true);
+        retryInFlight = promise;
+        const clearRetry = () => {
+            if (retryInFlight === promise) retryInFlight = undefined;
+        };
+        void promise.then(clearRetry, clearRetry);
+        return promise;
     }
 
     async function changeDrawerTab(value: string | number) {
@@ -140,10 +209,12 @@ export function useArchiveItemResources(openLink: (href: string) => void) {
         downloadingFileId,
         downloadFile,
         drawerLoading,
+        drawerLoadError,
         drawerState,
         fileForm,
         files,
         openDrawer,
+        retryDrawer,
         unbindingFileId,
         unbindFile,
         uploading,

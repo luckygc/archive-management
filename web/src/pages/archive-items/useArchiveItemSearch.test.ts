@@ -2,6 +2,7 @@ import { cleanup, render, waitFor } from "@testing-library/vue";
 import { defineComponent, h } from "vue";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { HttpClientError } from "@archive-management/frontend-core/api";
 import type { ArchiveRecordListDto } from "@/shared/types/archive-records";
 
 import { useArchiveItemSearch } from "./useArchiveItemSearch";
@@ -90,6 +91,98 @@ describe("useArchiveItemSearch", () => {
         expect(mocks.searchArchiveRecords).toHaveBeenLastCalledWith(
             expect.objectContaining({ categoryId: 7, limit: 100, cursor: "next-2" }),
         );
+    });
+
+    it("游标字段错误保留结果和草稿并从相同已提交查询第一页重试", async () => {
+        const search = renderSearch();
+        search.submit({
+            categoryId: 7,
+            fondsCode: "F-COMMITTED",
+            conditions: [],
+            relatedGroups: [],
+        });
+        await waitFor(() => expect(search.result.value?.next).toBe("next-2"));
+        mocks.searchArchiveRecords.mockRejectedValueOnce(
+            new HttpClientError(
+                "游标无效",
+                400,
+                "INVALID_ARGUMENT",
+                [{ field: "cursor", message: "游标已过期" }],
+                "trace-cursor",
+            ),
+        );
+
+        search.page("next-2");
+        await waitFor(() =>
+            expect(search.loadError.value).toBe(
+                "数据已变化，将从第一页重新加载（追踪 ID：trace-cursor）",
+            ),
+        );
+        search.queryForm.fondsCode = "未提交草稿";
+
+        expect(search.result.value?.next).toBe("next-2");
+        await search.refresh();
+        expect(mocks.searchArchiveRecords).toHaveBeenLastCalledWith(
+            expect.objectContaining({
+                categoryId: 7,
+                fondsCode: "F-COMMITTED",
+                limit: 100,
+                cursor: undefined,
+            }),
+        );
+        expect(search.queryForm.fondsCode).toBe("未提交草稿");
+    });
+
+    it("普通错误展示追踪 ID 且重试继续使用失败时的游标", async () => {
+        const search = renderSearch();
+        search.submit({ categoryId: 7, conditions: [], relatedGroups: [] });
+        await waitFor(() => expect(search.result.value?.next).toBe("next-2"));
+        mocks.searchArchiveRecords.mockRejectedValueOnce(
+            new HttpClientError("服务繁忙", 500, "INTERNAL", [], "trace-normal"),
+        );
+
+        search.page("next-2");
+        await waitFor(() =>
+            expect(search.loadError.value).toBe("服务繁忙（追踪 ID：trace-normal）"),
+        );
+        await search.refresh();
+
+        expect(mocks.searchArchiveRecords).toHaveBeenLastCalledWith(
+            expect.objectContaining({ cursor: "next-2" }),
+        );
+    });
+
+    it("重试进行中重复触发只复用同一请求", async () => {
+        const retryRequest = deferred<ArchiveRecordListDto>();
+        const search = renderSearch();
+        mocks.searchArchiveRecords.mockRejectedValueOnce(new Error("暂不可用"));
+        search.submit({ categoryId: 7, conditions: [], relatedGroups: [] });
+        await waitFor(() => expect(search.loadError.value).toBe("暂不可用"));
+        mocks.searchArchiveRecords.mockImplementationOnce(() => retryRequest.promise);
+
+        const first = search.refresh();
+        const second = search.refresh();
+
+        expect(mocks.searchArchiveRecords).toHaveBeenCalledTimes(2);
+        expect(second).toBe(first);
+        retryRequest.resolve({ fields: [], items: [] });
+        await first;
+    });
+
+    it("重试再次失败时更新原位错误且不产生未处理拒绝", async () => {
+        const unhandled = vi.fn();
+        window.addEventListener("unhandledrejection", unhandled);
+        const search = renderSearch();
+        mocks.searchArchiveRecords.mockRejectedValueOnce(new Error("首次失败"));
+        search.submit({ categoryId: 7, conditions: [], relatedGroups: [] });
+        await waitFor(() => expect(search.loadError.value).toBe("首次失败"));
+        mocks.searchArchiveRecords.mockRejectedValueOnce(new Error("重试仍失败"));
+
+        await expect(search.refresh()).resolves.toBeUndefined();
+
+        expect(search.loadError.value).toBe("重试仍失败");
+        expect(unhandled).not.toHaveBeenCalled();
+        window.removeEventListener("unhandledrejection", unhandled);
     });
 
     it("旧请求先完成时不提前结束最新请求的加载状态", async () => {

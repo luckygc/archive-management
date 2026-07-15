@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { ElMessage } from "element-plus";
-import { onMounted, reactive, ref, watch } from "vue";
-
-import { errorMessage } from "@archive-management/frontend-core/api";
+import { onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 
 import { discoverArchiveRecords } from "@/shared/api/archive-records";
 import {
@@ -18,11 +16,19 @@ import type {
     SearchArchiveRecordsQuery,
 } from "@/shared/types/archive-records";
 import CursorPagination from "@/shared/components/CursorPagination.vue";
+import RequestErrorState from "@/shared/components/RequestErrorState.vue";
+import {
+    isCursorFieldViolation,
+    requestErrorMessage,
+    withRequestTraceId,
+} from "@/shared/requestError";
 
 import ArchiveAdvancedQueryPanel from "./ArchiveAdvancedQueryPanel.vue";
 import type { ArchiveQueryFormValues } from "./archiveQueryTypes";
 import ArchiveResultTable from "./ArchiveResultTable.vue";
 import { toSearchQuery } from "./archiveQuery";
+
+type DiscoverRequest = Parameters<typeof discoverArchiveRecords>[0];
 
 const form = reactive<ArchiveQueryFormValues>({ conditions: [], relatedGroups: [] });
 const categories = ref<ArchiveCategoryDto[]>([]);
@@ -38,10 +44,21 @@ const loading = ref(false);
 const loadError = ref<string>();
 let categoryLoadVersion = 0;
 let requestVersion = 0;
+let disposed = false;
+let failedRequest: DiscoverRequest | undefined;
+let retryInFlight: Promise<void> | undefined;
+
+onBeforeUnmount(() => {
+    disposed = true;
+    requestVersion += 1;
+    categoryLoadVersion += 1;
+    loading.value = false;
+});
 
 onMounted(async () => {
     try {
-        categories.value = (await listArchiveCategories(true)).items;
+        const response = await listArchiveCategories(true);
+        if (!disposed) categories.value = response.items;
     } catch (error) {
         ElMessage.error(error instanceof Error ? error.message : "加载档案分类失败");
     }
@@ -77,14 +94,15 @@ watch(
                 ),
             ];
             const responses = await Promise.all(ids.map((id) => listArchiveFields(id, "ITEM")));
-            if (loadVersion !== categoryLoadVersion || form.categoryId !== categoryId) return;
+            if (disposed || loadVersion !== categoryLoadVersion || form.categoryId !== categoryId)
+                return;
             fields.value = fieldResponse.items;
             relatedCategories.value = relatedResponse.items;
             relatedFieldsByCategory.value = new Map(
                 ids.map((id, index) => [id, responses[index]!.items]),
             );
         } catch (error) {
-            if (loadVersion !== categoryLoadVersion) return;
+            if (disposed || loadVersion !== categoryLoadVersion) return;
             fields.value = [];
             relatedCategories.value = [];
             relatedFieldsByCategory.value = new Map();
@@ -92,24 +110,42 @@ watch(
         }
     },
 );
-async function execute(query: SearchArchiveRecordsQuery, nextCursor?: string) {
-    const version = ++requestVersion;
-    const request = {
+function execute(query: SearchArchiveRecordsQuery, nextCursor?: string) {
+    const request: DiscoverRequest = {
         ...query,
         orderBy: orderBy.value.length ? orderBy.value.map((item) => ({ ...item })) : undefined,
         limit: limit.value,
         cursor: nextCursor,
     };
+    return executeRequest(request);
+}
+async function executeRequest(request: DiscoverRequest, preserveError = false) {
+    const version = ++requestVersion;
     loading.value = true;
-    loadError.value = undefined;
-    cursor.value = nextCursor;
+    if (!preserveError) {
+        loadError.value = undefined;
+        failedRequest = undefined;
+        retryInFlight = undefined;
+    }
+    cursor.value = request.cursor;
     try {
         const response = await discoverArchiveRecords(request);
-        if (version === requestVersion) result.value = response;
+        if (!disposed && version === requestVersion) {
+            result.value = response;
+            loadError.value = undefined;
+            failedRequest = undefined;
+        }
     } catch (error) {
-        if (version === requestVersion) loadError.value = errorMessage(error, "查询失败");
+        if (!disposed && version === requestVersion) {
+            const cursorInvalid = Boolean(request.cursor) && isCursorFieldViolation(error);
+            failedRequest = cursorInvalid ? { ...request, cursor: undefined } : request;
+            if (cursorInvalid) {
+                cursor.value = undefined;
+                loadError.value = withRequestTraceId("数据已变化，将从第一页重新加载", error);
+            } else loadError.value = requestErrorMessage(error, "查询失败");
+        }
     } finally {
-        if (version === requestVersion) loading.value = false;
+        if (!disposed && version === requestVersion) loading.value = false;
     }
 }
 function submit(values: ArchiveQueryFormValues) {
@@ -125,8 +161,19 @@ function orderResults(next: ArchiveRecordOrderBy[]) {
     clearResultCursors();
     void execute(committedQuery.value);
 }
-function refresh() {
-    if (committedQuery.value) void execute(committedQuery.value, cursor.value);
+function refresh(): Promise<void> {
+    if (retryInFlight) return retryInFlight;
+    if (failedRequest) {
+        const promise = executeRequest({ ...failedRequest }, true);
+        retryInFlight = promise;
+        const clearRetry = () => {
+            if (retryInFlight === promise) retryInFlight = undefined;
+        };
+        void promise.then(clearRetry, clearRetry);
+        return promise;
+    }
+    if (committedQuery.value) return execute(committedQuery.value, cursor.value);
+    return Promise.resolve();
 }
 function page(nextCursor: string) {
     if (committedQuery.value) void execute(committedQuery.value, nextCursor);
@@ -151,6 +198,8 @@ function reset() {
     orderBy.value = [];
     cursor.value = undefined;
     loadError.value = undefined;
+    failedRequest = undefined;
+    retryInFlight = undefined;
 }
 function clearResultCursors() {
     cursor.value = undefined;
@@ -183,15 +232,17 @@ function clearResultCursors() {
                     @submit="submit" /></el-collapse-item
         ></el-collapse>
         <el-card class="am-page__result" shadow="never"
-            ><el-alert v-if="loadError" :title="loadError" type="error" show-icon :closable="false"
-                ><el-button link :loading="loading" @click="refresh">重试</el-button></el-alert
-            ><ArchiveResultTable
-                v-else-if="result"
+            ><RequestErrorState
+                v-if="loadError"
+                :message="loadError"
+                :retrying="loading"
+                @retry="refresh" /><ArchiveResultTable
+                v-if="result"
                 :result="result"
                 :loading="loading"
                 :order-by="orderBy"
                 @order-change="orderResults" /><el-empty
-                v-else
+                v-else-if="!loadError"
                 description="选择分类并提交高级查询后显示结果" />
             <div v-if="result" class="am-table-footer">
                 <CursorPagination

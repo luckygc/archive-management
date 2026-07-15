@@ -2,9 +2,9 @@
 import { ElSkeleton } from "element-plus";
 import { onBeforeUnmount, onMounted, ref } from "vue";
 
-import { errorMessage } from "@archive-management/frontend-core/api";
-
 import { getWorkspaceSummary } from "@/shared/api/workspace";
+import RequestErrorState from "@/shared/components/RequestErrorState.vue";
+import { requestErrorMessage } from "@/shared/requestError";
 import type { WorkspaceSummaryResponse } from "@/shared/types/workspace";
 
 const summary = ref<WorkspaceSummaryResponse>();
@@ -23,14 +23,18 @@ onBeforeUnmount(() => {
 async function loadSummary() {
     if (loading.value || disposed) return;
     const version = ++requestVersion;
+    const preserveError = Boolean(loadError.value);
     loading.value = true;
-    loadError.value = undefined;
+    if (!preserveError) loadError.value = undefined;
     try {
         const response = await getWorkspaceSummary();
-        if (!disposed && version === requestVersion) summary.value = response;
+        if (!disposed && version === requestVersion) {
+            summary.value = response;
+            loadError.value = undefined;
+        }
     } catch (error) {
         if (!disposed && version === requestVersion) {
-            loadError.value = errorMessage(error, "加载档案摘要失败");
+            loadError.value = requestErrorMessage(error, "加载档案摘要失败");
         }
     } finally {
         if (!disposed && version === requestVersion) loading.value = false;
@@ -48,33 +52,31 @@ const metrics: Array<{ label: string; key: keyof WorkspaceSummaryResponse }> = [
 <template>
     <section class="am-page">
         <div class="am-page__header"><h1>工作台</h1></div>
-        <el-card class="dashboard-summary" header="档案概览" shadow="never">
+        <el-card class="dashboard-summary" shadow="never">
+            <template #header>
+                <div class="dashboard-summary__header">
+                    <span>档案概览</span>
+                    <el-button link :loading="loading" :disabled="loading" @click="loadSummary">
+                        刷新摘要
+                    </el-button>
+                </div>
+            </template>
             <div
-                v-if="loading && !summary"
+                v-if="loading && !summary && !loadError"
                 class="dashboard-summary__loading"
                 aria-label="正在加载档案摘要"
                 aria-live="polite"
             >
                 <ElSkeleton :rows="2" animated />
             </div>
-            <el-alert
-                v-else-if="loadError"
-                title="档案摘要加载失败"
-                type="error"
-                show-icon
-                :closable="false"
-            >
-                <p class="dashboard-summary__error">{{ loadError }}</p>
-                <el-button
-                    link
-                    :loading="loading"
-                    aria-label="重试加载档案摘要"
-                    @click="loadSummary"
-                >
-                    重试
-                </el-button>
-            </el-alert>
-            <dl v-else-if="summary" class="dashboard-summary__metrics" aria-live="polite">
+            <RequestErrorState
+                v-if="loadError"
+                :message="loadError"
+                retry-label="重试加载档案摘要"
+                :retrying="loading"
+                @retry="loadSummary"
+            />
+            <dl v-if="summary" class="dashboard-summary__metrics" aria-live="polite">
                 <div v-for="metric in metrics" :key="metric.key" class="dashboard-summary__metric">
                     <dt>{{ metric.label }}</dt>
                     <dd>{{ summary[metric.key].toLocaleString() }}</dd>
@@ -89,8 +91,10 @@ const metrics: Array<{ label: string; key: keyof WorkspaceSummaryResponse }> = [
     min-height: 96px;
 }
 
-.dashboard-summary__error {
-    margin: 4px 0 8px;
+.dashboard-summary__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
 
 .dashboard-summary__metrics {

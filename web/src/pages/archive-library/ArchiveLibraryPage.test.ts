@@ -3,6 +3,7 @@ import ElementPlus from "element-plus";
 import { defineComponent } from "vue";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { HttpClientError } from "@archive-management/frontend-core/api";
 import type { ArchiveRecordListDto } from "@/shared/types/archive-records";
 
 import ArchiveLibraryPage from "./ArchiveLibraryPage.vue";
@@ -82,6 +83,87 @@ describe("ArchiveLibraryPage", () => {
         expect(await screen.findByText("重试成功")).toBeInTheDocument();
         expect(screen.queryByText("查询服务暂不可用")).not.toBeInTheDocument();
         expect(screen.getByRole("button", { name: "下一页" })).toBeEnabled();
+    });
+
+    it("游标失效与旧结果同时显示并按原已提交查询从第一页恢复", async () => {
+        mocks.discoverArchiveRecords
+            .mockResolvedValueOnce({
+                fields: [],
+                items: [{ id: 1, archive_no: "保留的旧结果" }],
+                next: "next-2",
+            })
+            .mockRejectedValueOnce(
+                new HttpClientError(
+                    "cursor invalid",
+                    400,
+                    "INVALID_ARGUMENT",
+                    [{ field: "cursor", message: "游标失效" }],
+                    "trace-library",
+                ),
+            )
+            .mockResolvedValueOnce({ fields: [], items: [{ id: 2, archive_no: "第一页结果" }] });
+        renderPage();
+        await fireEvent.click(await screen.findByRole("button", { name: "提交查询" }));
+        expect(await screen.findByText("保留的旧结果")).toBeVisible();
+        await fireEvent.click(screen.getByRole("button", { name: "修改草稿" }));
+        await fireEvent.click(screen.getByRole("button", { name: "下一页" }));
+
+        expect(
+            await screen.findByText("数据已变化，将从第一页重新加载（追踪 ID：trace-library）"),
+        ).toBeVisible();
+        expect(screen.getByText("保留的旧结果")).toBeVisible();
+        await fireEvent.click(screen.getByRole("button", { name: "重试" }));
+
+        await waitFor(() => expect(mocks.discoverArchiveRecords).toHaveBeenCalledTimes(3));
+        expect(mocks.discoverArchiveRecords).toHaveBeenLastCalledWith(
+            expect.objectContaining({
+                categoryId: 7,
+                keyword: "已提交",
+                cursor: undefined,
+                limit: 100,
+            }),
+        );
+        expect(await screen.findByText("第一页结果")).toBeVisible();
+    });
+
+    it("普通错误保留原游标和追踪 ID 且重复重试不并发", async () => {
+        const retryRequest = deferred<ArchiveRecordListDto>();
+        mocks.discoverArchiveRecords
+            .mockResolvedValueOnce({ fields: [], items: [], next: "next-2" })
+            .mockRejectedValueOnce(
+                new HttpClientError("服务繁忙", 500, "INTERNAL", [], "trace-library-500"),
+            )
+            .mockImplementationOnce(() => retryRequest.promise);
+        renderPage();
+        await fireEvent.click(await screen.findByRole("button", { name: "提交查询" }));
+        await fireEvent.click(await screen.findByRole("button", { name: "下一页" }));
+        expect(await screen.findByText("服务繁忙（追踪 ID：trace-library-500）")).toBeVisible();
+
+        const retry = screen.getByRole("button", { name: "重试" });
+        await fireEvent.click(retry);
+        await fireEvent.click(retry);
+
+        expect(mocks.discoverArchiveRecords).toHaveBeenCalledTimes(3);
+        expect(mocks.discoverArchiveRecords).toHaveBeenLastCalledWith(
+            expect.objectContaining({ cursor: "next-2" }),
+        );
+        expect(retry).toBeDisabled();
+        retryRequest.resolve({ fields: [], items: [] });
+        await retryRequest.promise;
+    });
+
+    it("卸载后忽略在途查询响应", async () => {
+        const request = deferred<ArchiveRecordListDto>();
+        const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+        mocks.discoverArchiveRecords.mockImplementationOnce(() => request.promise);
+        const view = renderPage();
+        await fireEvent.click(await screen.findByRole("button", { name: "提交查询" }));
+
+        view.unmount();
+        request.resolve({ fields: [], items: [{ id: 1, archive_no: "卸载后结果" }] });
+        await request.promise;
+
+        expect(consoleError).not.toHaveBeenCalled();
     });
 
     it("旧查询后成功时不覆盖先完成的新查询结果", async () => {
