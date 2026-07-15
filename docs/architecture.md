@@ -53,9 +53,16 @@ Spring Bean 的 public 方法表示可由 Controller、事件监听器或其他 
 | --- | --- |
 | 固定 CRUD 表 | Jakarta Data Repository |
 | 动态表、复杂 SQL、批处理、报表、认证适配查询 | MyBatis |
+| 文件内容 | `FileStorageService`，统一使用 S3 兼容对象存储 |
 
 固定实体的 `created_by`、`updated_by` 由无状态 Hibernate 会话上的安全审计拦截器统一维护，Service 不再重复赋值。MyBatis 写入不会经过该拦截器，仍须在 SQL 或调用条件中显式维护审计字段。`ArchiveRuleTrace.createdBy` 表示规则执行请求中的业务操作人，`StorageObject.createdBy` 与 `FileLink.createdBy` 同时参与文件所有权和链接归属判断，因此保留显式赋值；这些字段不是固定实体通用审计的第二套来源。
-| 文件内容 | `FileStorageService`，统一使用 S3 兼容对象存储 |
+
+档案 PC 闭环中的具体选择保持单一且可追踪：
+
+- 案卷是固定实体，列表使用 `ArchiveVolumeDataRepository` 和 Jakarta Data `CursoredPage`；Service 在事务内转换为项目游标响应。
+- 档案动态字段查询、关系分页、明细行和工作台聚合需要动态表、复杂连接或数据范围 SQL，继续由 MyBatis 承担。
+- 关系和工作台在 SQL 内应用数据范围，不能先分页或聚合后再由 Service 过滤。
+- 明细行的动态表名和列名只来自已校验元数据，值通过参数绑定；逻辑删除、审计字段和时间字段由 MyBatis 写入路径显式维护。
 
 约束：
 
@@ -107,6 +114,12 @@ Spring Bean 的 public 方法表示可由 Controller、事件监听器或其他 
 
 当前档案管理页复用高级查询、结果表格和动态字段组件，并由 `useArchiveItemResources` 集中电子文件与审计抽屉的加载、上传、下载和解绑状态；治理页由 `useArchiveGovernanceWorkbench` 集中版本适用范围、装配绑定和默认解析状态。其余大页面已按职责检查，分类、本体、授权、数据范围和用户页面当前仍是单一强关联工作台，暂不为减少文件行数机械拆分。
 
+档案管理、全文发现和案卷列表分别显式维护自己的草稿条件、已提交查询、排序、页大小、当前游标和响应游标。提交筛选、修改排序或页大小会清除旧游标；翻页、刷新和生命周期操作后的刷新只重放已提交查询，不读取尚未提交的表单草稿。不同业务查询不共享参数化 loader，也不增加第二套列表状态源。
+
+读取失败由所属页面保存失败请求快照并原位恢复。共享 `RequestErrorState` 只展示错误和发出重试事件，不发请求也不持有页面状态；普通失败重放原请求，结构化 `fieldViolations.cursor` 表示游标失效时保留旧结果和查询上下文、清除分页链接，并从相同查询第一页重试。错误反馈保留服务端 `traceId`，字段错误继续回填对应表单，保存、锁定和删除等瞬时命令继续使用消息反馈。
+
+工作台通过 `GET /api/v1/workspace-summary` 读取真实聚合。无档案读取权限的已认证用户获得全零摘要；有权限时后端按启用分类复用档案查询的数据范围和逻辑删除语义汇总，前端不维护演示统计或虚构待办。
+
 `frontend-core/` 不承载页面、UI 壳层或框架 Store，只提供框架无关的共享基础能力。
 
 ## 文件预览服务
@@ -120,6 +133,8 @@ Spring Bean 的 public 方法表示可由 Controller、事件监听器或其他 
 - `POST /v1/preview:convert`
 
 首版同步转换只覆盖低风险闭环，复杂格式返回明确不支持或外部工具缺失。
+
+当前 PC 电子文件 Drawer 尚未接入该服务，因此“预览服务可运行”和“产品文件预览闭环”是两个独立状态；后者仍需单独的 OpenSpec 与端到端验收。
 
 ## 运行时基础设施
 

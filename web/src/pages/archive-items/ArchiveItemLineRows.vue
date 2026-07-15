@@ -507,36 +507,4 @@ function setFormValue(fieldCode: string, value: unknown) {
     </section>
 </template>
 
-<style scoped>
-.line-rows {
-    margin-top: 20px;
-}
-
-.line-toolbar,
-.line-form__actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
-    margin-bottom: 12px;
-}
-
-.line-error {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.line-error .el-alert {
-    flex: 1;
-}
-
-.line-loading {
-    min-height: 120px;
-}
-
-.line-form {
-    margin-top: 16px;
-    padding-top: 16px;
-    border-top: 1px solid var(--el-border-color);
-}
-</style>
+<style scoped src="./ArchiveItemLineRows.css"></style>

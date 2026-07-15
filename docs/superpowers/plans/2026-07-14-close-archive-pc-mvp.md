@@ -1183,7 +1183,7 @@ git commit -m "fix: 增加关键页面原位错误恢复"
 - Consumes: Tasks 1-11 的实现和测试证据。
 - Produces: 完整阶段验收记录和与代码一致的文档。
 
-- [ ] **Step 1: 运行 Java 格式化与定向后端测试**
+- [x] **Step 1: 运行 Java 格式化与定向后端测试**
 
 ```bash
 cd server && mise exec -- mvn -q spotless:apply
@@ -1192,7 +1192,7 @@ cd server && mise exec -- mvn -q test
 
 Expected: Spotless 完成，后端测试零失败、零错误。
 
-- [ ] **Step 2: 运行前端完整验证**
+- [x] **Step 2: 运行前端完整验证**
 
 ```bash
 pnpm check
@@ -1202,7 +1202,7 @@ pnpm run build
 
 Expected: 格式、lint、类型检查、测试和生产构建退出码均为 0。
 
-- [ ] **Step 3: 运行规格与职责验证**
+- [x] **Step 3: 运行规格与职责验证**
 
 ```bash
 openspec validate close-archive-pc-mvp --strict
@@ -1212,15 +1212,15 @@ pnpm run check:source-lines
 
 Expected: OpenSpec 严格校验全部通过，源码职责检查无硬失败。
 
-- [ ] **Step 4: 回填真实文档与任务状态**
+- [x] **Step 4: 回填真实文档与任务状态**
 
 MVP 差距文档必须删除已经关闭的缺口；API 文档记录分页、案卷、关系、明细行和工作台合同；架构文档不增加新运行面。只有有对应实现和验证证据的 task 才标记为 `[x]`。
 
-- [ ] **Step 5: 最终需求审计**
+- [x] **Step 5: 最终需求审计**
 
 逐项对照 OpenSpec 场景，确认超过 100 条翻页、生命周期、物理字段、案卷、关系、明细行、权限、真实摘要和错误恢复均有代码、测试和页面入口证据。任何缺失保持任务未完成并继续修复。
 
-- [ ] **Step 6: 提交阶段收口**
+- [x] **Step 6: 提交阶段收口**
 
 ```bash
 git add openspec/changes/close-archive-pc-mvp docs server web

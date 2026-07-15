@@ -67,8 +67,11 @@ DELETE /api/v1/login-sessions/{session}
 | 403 | `PERMISSION_DENIED` |
 | 404 | `NOT_FOUND` |
 | 409 | `ALREADY_EXISTS` |
+| 412 | `FAILED_PRECONDITION` |
 | 429 | `RESOURCE_EXHAUSTED` |
 | 500 | `INTERNAL` |
+
+客户端按 `code`、`reason` 和 `fieldViolations` 处理稳定语义，并在错误反馈中保留 `traceId`；不要解析异常类名或自由文本来判断字段错误、游标失效或权限状态。
 
 ## 分页和集合
 
@@ -88,8 +91,7 @@ DELETE /api/v1/login-sessions/{session}
     "self": "encoded-self-cursor",
     "prev": null,
     "next": "encoded-next-cursor",
-    "first": null,
-    "total": 123
+    "first": null
 }
 ```
 
@@ -104,7 +106,14 @@ DELETE /api/v1/login-sessions/{session}
 }
 ```
 
-分页、排序、过滤和游标 token 合同以 `openspec/specs/api-contract/spec.md` 为准。
+游标分页默认不返回 `total`。`limit` 和 `cursor` 位于 URL query，业务筛选和 `orderBy` 留在请求体；翻页必须复用首次请求的业务条件、排序和页大小。token 对客户端不透明，并与查询摘要绑定。分页、排序、过滤和 token 的完整合同以 `openspec/specs/api-contract/spec.md` 为准。
+
+## 权限合同
+
+- 路由、菜单和按钮权限只改善 PC 体验，不替代服务端授权。
+- 服务端对档案读取、创建、更新、删除、锁定、电子文件、审计、元数据和授权管理等操作分别校验精确权限；涉及档案数据时同时应用用户数据范围。
+- `superAdmin` 由服务端权限摘要声明；普通用户使用服务端返回的权限码。权限不足返回 `403 PERMISSION_DENIED`。
+- `GET /api/v1/me/permissions` 是当前会话功能权限摘要；`GET /api/v1/authentication-user-options` 是数据范围授权使用的最小用户选项目录，不替代用户管理列表。
 
 ## 认证和用户
 
@@ -200,20 +209,22 @@ DELETE /api/v1/login-sessions/{session}
 | `GET` | `/api/v1/archive-items/{id}` | 档案条目详情 |
 | `PATCH` | `/api/v1/archive-items/{id}` | 更新档案条目 |
 | `DELETE` | `/api/v1/archive-items/{id}` | 删除档案条目 |
-| `POST` | `/api/v1/archive-items:search` | 高级搜索 |
-| `POST` | `/api/v1/archive-items:discover` | 全文发现 |
-| `POST` | `/api/v1/archive-items:searchDeleted` | 删除记录搜索 |
-| `POST` | `/api/v1/archive-items/{id}:lock` | 锁定条目 |
+| `POST` | `/api/v1/archive-items:search` | 高级搜索，URL query 使用 `limit`、`cursor`，请求体可含 `volumeId` 和 `orderBy` |
+| `POST` | `/api/v1/archive-items:discover` | 全文发现，使用游标分页 |
+| `POST` | `/api/v1/archive-items:searchDeleted` | 删除记录游标搜索 |
+| `POST` | `/api/v1/archive-items/{id}:lock` | 锁定条目，请求体可提交 `reason` |
 | `POST` | `/api/v1/archive-items/{id}:unlock` | 解锁条目 |
-| `GET` | `/api/v1/archive-items/{id}/relations` | 条目关联列表 |
+| `GET` | `/api/v1/archive-items/{id}/relations` | 条目关联游标列表，URL query 使用 `depth`、`limit`、`cursor` |
 | `POST` | `/api/v1/archive-items/{id}/relations` | 创建条目关联 |
 | `DELETE` | `/api/v1/archive-items/{id}/relations/{relationId}` | 删除条目关联 |
-| `GET` | `/api/v1/archive-volumes` | 案卷列表 |
+| `GET` | `/api/v1/archive-volumes` | 案卷游标列表，可按全宗和分类筛选 |
 | `POST` | `/api/v1/archive-volumes` | 创建案卷 |
 | `GET` | `/api/v1/archive-volumes/{id}` | 案卷详情 |
-| `POST` | `/api/v1/archive-volumes/{id}:addItem` | 将条目加入案卷 |
+| `POST` | `/api/v1/archive-volumes/{id}:addItem` | 将条目加入案卷，请求体为 `itemId`、可选 `displayOrder`，成功返回 `204` |
 | `GET` | `/api/v1/archive-item-audits` | 档案条目审计 |
 | `GET` | `/api/v1/archive-categories/{id}/related-filter-categories` | 关联筛选分类 |
+
+档案创建和更新合同分别维护固定字段、`securityLevelId`、`retentionPeriodId`、`physicalFields` 与 `dynamicFields`。字段校验错误通过 `fieldViolations` 返回完整路径，例如 `physicalFields.box_no` 或 `dynamicFields.title`。
 
 ## 明细表、导入导出和电子文件
 
@@ -225,6 +236,11 @@ DELETE /api/v1/login-sessions/{session}
 | `POST` | `/api/v1/archive-item-line-tables/{lineTableId}:build` | 构建明细表 |
 | `GET` | `/api/v1/archive-item-line-tables/{lineTableId}/fields` | 明细表字段 |
 | `POST` | `/api/v1/archive-item-line-tables/{lineTableId}/fields` | 创建明细表字段 |
+| `GET` | `/api/v1/archive-items/{archiveItem}/line-tables` | 当前档案可用的只读明细表定义 |
+| `GET` | `/api/v1/archive-items/{archiveItem}/line-tables/{lineTable}/rows` | 明细行游标列表，按 `lineOrder`、`id` 稳定排序 |
+| `POST` | `/api/v1/archive-items/{archiveItem}/line-tables/{lineTable}/rows` | 创建明细行 |
+| `PATCH` | `/api/v1/archive-items/{archiveItem}/line-tables/{lineTable}/rows/{row}` | 部分更新明细行，缺失字段不修改，显式 `null` 清空值 |
+| `DELETE` | `/api/v1/archive-items/{archiveItem}/line-tables/{lineTable}/rows/{row}` | 逻辑删除明细行 |
 | `GET` | `/api/v1/archive-categories/{categoryId}/archive-items:importTemplate` | 下载导入模板 |
 | `POST` | `/api/v1/archive-categories/{categoryId}/archive-items:import` | multipart 导入档案 |
 | `POST` | `/api/v1/archive-items:export` | 按请求体导出 |
@@ -239,6 +255,14 @@ DELETE /api/v1/login-sessions/{session}
 - `file`：文件。
 - `usageType`：可选用途类型。
 - `displayOrder`：可选显示顺序。
+
+## 工作台
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| `GET` | `/api/v1/workspace-summary` | 当前用户数据范围内的档案总数、草稿数、锁定数和电子文件数 |
+
+已认证用户可以读取工作台摘要；没有 `archive:item:read` 时四项计数均为零且服务端不查询档案分类。拥有读取权限时，计数继续受全宗、分类和动态字段数据范围约束。
 
 ## 数据范围
 
