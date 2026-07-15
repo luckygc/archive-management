@@ -1,20 +1,18 @@
 schema: spec-driven
 
-# Project context (optional)
-# This is shown to AI when creating artifacts.
-# Add your tech stack, conventions, style guides, domain knowledge, etc.
-# Example:
-#   context: |
-#     Tech stack: TypeScript, React, Node.js
-#     We use conventional commits
-#     Domain: e-commerce platform
+context: |
+  PC 前端使用 Vue 3、TypeScript 和 Element Plus。
+  后端是 Spring Boot 模块化单体，数据库使用 PostgreSQL。
+  固定实体使用 Jakarta Data；动态表、复杂 SQL、批处理和报表使用 MyBatis。
+  OpenSpec 制品、项目文档和代码注释使用中文。
+  当前业务和 API 合同的真相源位于 openspec/specs/；openspec/changes/ 只保留进行中的增量。
 
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always include a "Non-goals" section
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
+rules:
+  proposal:
+    - 必须包含目标、非目标和受影响的真相源。
+  design:
+    - 必须包含决策、替代方案、失败路径和迁移或回滚影响。
+  specs:
+    - 只承载可测试的业务或 API 要求，不承载里程碑、实现过程或纯工程治理。
+  tasks:
+    - 每个实施任务必须包含精确的验证命令和可观察的预期结果。
