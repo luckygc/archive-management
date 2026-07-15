@@ -6,7 +6,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -101,8 +100,12 @@ class ArchiveItemExportTransactionIntegrationTests extends PostgreSqlContainerTe
                 .thenReturn(
                         new StorageObjectDto(
                                 20L, "archive", "key", "archive-export.xlsx", 3, null, null, 9L));
-        when(fileLinkService.createUserLink(
-                        FileLinkTargetType.STORAGE_OBJECT, null, 20L, Duration.ofMinutes(10), 9L))
+        when(fileLinkService.createUserLinkUntil(
+                        eq(FileLinkTargetType.STORAGE_OBJECT),
+                        eq(null),
+                        eq(20L),
+                        any(LocalDateTime.class),
+                        eq(9L)))
                 .thenThrow(new IllegalStateException("短链创建失败"));
 
         assertThatThrownBy(() -> importExportService.createExportDownloadLink(null, 9L))
@@ -121,8 +124,12 @@ class ArchiveItemExportTransactionIntegrationTests extends PostgreSqlContainerTe
                 .thenReturn(
                         new StorageObjectDto(
                                 20L, "archive", "key", "archive-export.xlsx", 3, null, null, 9L));
-        when(fileLinkService.createUserLink(
-                        FileLinkTargetType.STORAGE_OBJECT, null, 20L, Duration.ofMinutes(10), 9L))
+        when(fileLinkService.createUserLinkUntil(
+                        eq(FileLinkTargetType.STORAGE_OBJECT),
+                        eq(null),
+                        eq(20L),
+                        any(LocalDateTime.class),
+                        eq(9L)))
                 .thenReturn(
                         new FileLinkService.FileLinkCreated(
                                 "export-code", LocalDateTime.of(2026, 7, 15, 10, 10)));

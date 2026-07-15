@@ -198,11 +198,11 @@ public class ArchiveItemImportExportService {
                                 expiresAt),
                         userId);
         var link =
-                fileLinkService.createUserLink(
+                fileLinkService.createUserLinkUntil(
                         FileLinkTargetType.STORAGE_OBJECT,
                         null,
                         storageObject.id(),
-                        DOWNLOAD_LINK_TTL,
+                        expiresAt,
                         userId);
         return new DownloadLinkCreated(link.code(), link.expiresAt());
     }

@@ -47,6 +47,18 @@ public class FileLinkService {
     }
 
     @Transactional
+    public FileLinkCreated createUserLinkUntil(
+            FileLinkTargetType targetType,
+            @Nullable Long targetParentId,
+            Long targetId,
+            LocalDateTime expiresAt,
+            Long userId) {
+        userId = requireUserId(userId);
+        FileLink link = createLink(targetType, targetParentId, targetId, userId, userId, expiresAt);
+        return new FileLinkCreated(link.getCode(), link.getExpiresAt());
+    }
+
+    @Transactional
     public FileLinkCreated createPublicLink(
             FileLinkTargetType targetType,
             @Nullable Long targetParentId,

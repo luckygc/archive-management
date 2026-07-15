@@ -16,6 +16,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
@@ -51,7 +52,10 @@ import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.Ar
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFieldDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFondsDto;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
+import github.luckygc.am.module.storage.FileLink;
 import github.luckygc.am.module.storage.FileLinkTargetType;
+import github.luckygc.am.module.storage.repository.FileLinkDataRepository;
+import github.luckygc.am.module.storage.service.FileLinkCodeGenerator;
 import github.luckygc.am.module.storage.service.FileLinkService;
 import github.luckygc.am.module.storage.service.StorageObjectService;
 import github.luckygc.am.module.storage.service.StorageObjectService.StorageObjectDto;
@@ -118,8 +122,12 @@ class ArchiveItemImportExportServiceTests {
                 .thenReturn(
                         new StorageObjectDto(
                                 20L, "archive", "key", "template.xlsx", 3, null, null, 9L));
-        when(fileLinkService.createUserLink(
-                        FileLinkTargetType.STORAGE_OBJECT, null, 20L, Duration.ofMinutes(10), 9L))
+        when(fileLinkService.createUserLinkUntil(
+                        FileLinkTargetType.STORAGE_OBJECT,
+                        null,
+                        20L,
+                        LocalDateTime.of(2026, 7, 15, 10, 10),
+                        9L))
                 .thenReturn(
                         new FileLinkService.FileLinkCreated(
                                 "template-code", LocalDateTime.of(2026, 7, 15, 10, 10)));
@@ -139,8 +147,12 @@ class ArchiveItemImportExportServiceTests {
         assertThat(commandCaptor.getValue().expiresAt())
                 .isEqualTo(LocalDateTime.of(2026, 7, 15, 10, 10));
         verify(fileLinkService)
-                .createUserLink(
-                        FileLinkTargetType.STORAGE_OBJECT, null, 20L, Duration.ofMinutes(10), 9L);
+                .createUserLinkUntil(
+                        FileLinkTargetType.STORAGE_OBJECT,
+                        null,
+                        20L,
+                        LocalDateTime.of(2026, 7, 15, 10, 10),
+                        9L);
     }
 
     @Test
@@ -248,9 +260,64 @@ class ArchiveItemImportExportServiceTests {
         assertThat(commandCaptor.getValue().expiresAt())
                 .isEqualTo(LocalDateTime.of(2026, 7, 15, 10, 10));
         verify(fileLinkService)
-                .createUserLink(
-                        FileLinkTargetType.STORAGE_OBJECT, null, 20L, Duration.ofMinutes(10), 9L);
+                .createUserLinkUntil(
+                        FileLinkTargetType.STORAGE_OBJECT,
+                        null,
+                        20L,
+                        LocalDateTime.of(2026, 7, 15, 10, 10),
+                        9L);
         verify(auditRepository).insert(any(ArchiveItemAudit.class));
+    }
+
+    @Test
+    @DisplayName("临时对象与短链使用同一个绝对过期时间")
+    void createExportDownloadLinkShouldShareOneAbsoluteExpiresAt() {
+        AdvancingClock advancingClock =
+                new AdvancingClock(
+                        Instant.parse("2026-07-15T10:00:00Z"),
+                        ZoneOffset.UTC,
+                        Duration.ofSeconds(30));
+        FileLinkDataRepository fileLinkRepository = mock(FileLinkDataRepository.class);
+        FileLinkCodeGenerator codeGenerator = mock(FileLinkCodeGenerator.class);
+        when(codeGenerator.generate()).thenReturn("export-code");
+        when(fileLinkRepository.insert(any(FileLink.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        FileLinkService realFileLinkService =
+                new FileLinkService(fileLinkRepository, codeGenerator, advancingClock);
+        importExportService =
+                new ArchiveItemImportExportService(
+                        archiveMetadataService,
+                        archiveMetadataReferenceService,
+                        archiveCategoryService,
+                        archiveItemRoutingService,
+                        archiveItemQueryService,
+                        permissionService,
+                        dataScopeService,
+                        archiveItemRepository,
+                        auditRepository,
+                        storageObjectService,
+                        realFileLinkService,
+                        advancingClock);
+        when(permissionService.hasPermission(9L, "archive:export")).thenReturn(true);
+        when(archiveItemQueryService.searchItems(any(), eq(9L)))
+                .thenReturn(
+                        new ArchiveItemListDto(
+                                null,
+                                List.of(),
+                                CursorPageResponse.withCursorValues(
+                                        List.of(), 0, null, null, null, null, null)));
+        when(storageObjectService.storeObject(any(), eq(9L)))
+                .thenReturn(
+                        new StorageObjectDto(
+                                20L, "archive", "key", "export.xlsx", 3, null, null, 9L));
+        var commandCaptor =
+                org.mockito.ArgumentCaptor.forClass(
+                        StorageObjectService.StoreStorageObjectCommand.class);
+
+        var result = importExportService.createExportDownloadLink(null, 9L);
+
+        verify(storageObjectService).storeObject(commandCaptor.capture(), eq(9L));
+        assertThat(result.expiresAt()).isEqualTo(commandCaptor.getValue().expiresAt());
     }
 
     @Test
@@ -311,11 +378,44 @@ class ArchiveItemImportExportServiceTests {
                 .thenReturn(
                         new StorageObjectDto(
                                 20L, "archive", "key", "export.xlsx", 3, null, null, 9L));
-        when(fileLinkService.createUserLink(
-                        FileLinkTargetType.STORAGE_OBJECT, null, 20L, Duration.ofMinutes(10), 9L))
+        when(fileLinkService.createUserLinkUntil(
+                        FileLinkTargetType.STORAGE_OBJECT,
+                        null,
+                        20L,
+                        LocalDateTime.of(2026, 7, 15, 10, 10),
+                        9L))
                 .thenReturn(
                         new FileLinkService.FileLinkCreated(
                                 code, LocalDateTime.of(2026, 7, 15, 10, 10)));
+    }
+
+    private static final class AdvancingClock extends Clock {
+        private Instant current;
+        private final ZoneId zone;
+        private final Duration step;
+
+        private AdvancingClock(Instant current, ZoneId zone, Duration step) {
+            this.current = current;
+            this.zone = zone;
+            this.step = step;
+        }
+
+        @Override
+        public ZoneId getZone() {
+            return zone;
+        }
+
+        @Override
+        public Clock withZone(ZoneId newZone) {
+            return new AdvancingClock(current, newZone, step);
+        }
+
+        @Override
+        public Instant instant() {
+            Instant result = current;
+            current = current.plus(step);
+            return result;
+        }
     }
 
     private static byte[] workbookBytes(List<List<Object>> rows) throws IOException {

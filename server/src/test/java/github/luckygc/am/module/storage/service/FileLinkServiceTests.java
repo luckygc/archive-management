@@ -71,6 +71,21 @@ class FileLinkServiceTests {
     }
 
     @Test
+    @DisplayName("使用绝对期限创建用户绑定短链")
+    void createUserLinkUntilShouldKeepProvidedExpiresAt() {
+        when(codeGenerator.generate()).thenReturn("AbCdEfGhIjKlMnOpQrStUv");
+        when(fileLinkRepository.insert(any(FileLink.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        LocalDateTime expiresAt = LocalDateTime.of(2026, 7, 1, 10, 5, 30);
+
+        FileLinkService.FileLinkCreated created =
+                fileLinkService.createUserLinkUntil(
+                        FileLinkTargetType.STORAGE_OBJECT, null, 30L, expiresAt, 9L);
+
+        assertThat(created.expiresAt()).isEqualTo(expiresAt);
+    }
+
+    @Test
     @DisplayName("内部入口允许绑定用户访问自己的短链")
     void resolveInternalShouldAllowBoundUser() {
         FileLink link = activeLink();
