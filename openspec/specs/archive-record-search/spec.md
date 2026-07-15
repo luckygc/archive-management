@@ -23,12 +23,31 @@
 - **THEN** 系统 SHALL 拒绝查询
 - **AND** 响应 SHALL 说明管理查询只支持数据库字段筛选
 
+#### Scenario: 管理查询应用当前用户数据范围
+
+- **WHEN** 用户查询档案管理列表
+- **THEN** 系统 SHALL 使用 `deleted_flag=false AND 用户数据范围 AND 用户查询条件` 查询档案
+- **AND** 系统 SHALL 返回同时命中数据范围和查询条件的档案记录
+- **AND** 系统 SHALL NOT 返回用户数据范围外档案
+
+#### Scenario: 数据范围与用户条件冲突
+
+- **WHEN** 用户查询条件与用户数据范围没有交集
+- **THEN** 系统 SHALL 返回空结果
+- **AND** 系统 SHALL NOT 放宽用户数据范围以满足查询条件
+
 #### Scenario: 普通用户全文搜索合并业务过滤
 
 - **WHEN** 查档、借阅或利用服务类入口提交全文关键词、全宗、结构化字段、权限和逻辑删除条件
 - **THEN** 系统 SHALL 在同一查询语义中合并全文条件、结构化筛选、权限判断和逻辑删除判断
 - **AND** 系统 SHALL NOT 先从全文 provider 召回裸 ID 再由业务代码二次过滤
 - **AND** 最终结果 SHALL 排除已逻辑删除条目和当前用户不可见记录
+
+#### Scenario: 未认证用户全文发现
+
+- **WHEN** 未认证用户请求全文发现
+- **THEN** 系统 SHALL 拒绝请求
+- **AND** 系统 SHALL NOT 返回任何档案记录
 
 ### Requirement: 全文检索 provider
 
@@ -109,6 +128,15 @@
 - **THEN** 系统 SHALL 通过 `am_archive_item` 固定字段 `fonds_code` 过滤记录
 - **AND** 系统 SHALL NOT 要求 `fonds_code` 在字段定义表中存在
 
+#### Scenario: 按所属案卷固定字段过滤
+
+- **WHEN** 客户端在 `SearchArchiveItemsRequest` 中提交可空 `volumeId`
+- **THEN** 系统 SHALL 通过 `am_archive_item.volume_id` 过滤指定案卷内的未删除档案
+- **AND** `volumeId` SHALL 作为业务筛选字段进入 JSON 请求体和 cursor 查询摘要
+- **AND** 带 cursor 的后续请求 SHALL 重复提交与首次查询相同的 `volumeId`
+- **AND** URL query 中的 `limit`、`cursor` 和 `requestTotal` SHALL 继续作为分页控制字段
+- **AND** `limit`、`cursor` 和 `requestTotal` SHALL NOT 进入 cursor 查询摘要
+
 ### Requirement: 条目全文投影
 
 系统 SHALL 为 archive item 全文检索维护独立投影表，并以启用的 `METADATA` 动态字段和条目明细行文本生成投影文本。
@@ -148,3 +176,18 @@
 - **THEN** 系统 SHALL 默认只返回一层直接关联
 - **AND** 关联图最大深度 SHALL 不超过 2
 - **AND** 系统 SHALL 对关联目标执行权限过滤并防止循环展开
+
+### Requirement: 档案详情读取
+
+系统 SHALL 在读取档案详情时校验当前用户功能权限和数据范围。
+
+#### Scenario: 读取范围内档案详情
+
+- **WHEN** 用户读取其数据范围内的档案详情
+- **THEN** 系统 SHALL 返回档案固定字段、动态字段和布局信息
+
+#### Scenario: 拒绝读取范围外档案详情
+
+- **WHEN** 用户读取其数据范围外的档案详情
+- **THEN** 系统 SHALL 拒绝请求
+- **AND** 响应 SHALL 使用项目统一 ProblemDetail 错误模型
