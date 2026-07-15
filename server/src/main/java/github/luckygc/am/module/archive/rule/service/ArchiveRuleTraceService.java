@@ -1,25 +1,33 @@
 package github.luckygc.am.module.archive.rule.service;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.regex.Pattern;
+
+import jakarta.data.page.PageRequest;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jspecify.annotations.Nullable;
-import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.support.JdbcUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
+import github.luckygc.am.common.api.CursorPageResponse;
+import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.common.security.AuthenticatedUsers;
+import github.luckygc.am.module.archive.ArchiveLevel;
+import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeResolutionTypes.ArchiveDataScopeFilter;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
-import github.luckygc.am.module.archive.item.service.ArchiveItemReadService;
-import github.luckygc.am.module.archive.item.service.ArchiveVolumeService;
+import github.luckygc.am.module.archive.mapper.ArchiveDataScopeSqlGroup;
 import github.luckygc.am.module.archive.mapper.ArchiveRuleMapper;
 import github.luckygc.am.module.archive.mapper.ArchiveRuleTraceSearchCriteria;
+import github.luckygc.am.module.archive.mapper.ArchiveRuleTraceSearchCriteria.ArchiveRuleTracePageWindow;
+import github.luckygc.am.module.archive.mapper.ArchiveRuleTraceSearchCriteria.ArchiveRuleTraceTargetScope;
+import github.luckygc.am.module.archive.metadata.ArchiveDynamicTableNames;
+import github.luckygc.am.module.archive.metadata.service.ArchiveCategoryService;
 import github.luckygc.am.module.archive.rule.ArchiveRuleDecision;
 import github.luckygc.am.module.archive.rule.ArchiveRuleTrace;
 import github.luckygc.am.module.archive.rule.repository.ArchiveRuleTraceDataRepository;
@@ -38,40 +46,33 @@ public class ArchiveRuleTraceService {
     private final ArchiveRuleTraceDataRepository traceRepository;
     private final ArchiveRuleMapper ruleMapper;
     private final ArchiveDataScopeService dataScopeService;
-    private final ArchiveItemReadService archiveItemReadService;
-    private final ArchiveVolumeService archiveVolumeService;
+    private final ArchiveCategoryService categoryService;
 
     public ArchiveRuleTraceService(
             ArchiveRuleTraceDataRepository traceRepository,
             ArchiveRuleMapper ruleMapper,
             ArchiveDataScopeService dataScopeService,
-            ArchiveItemReadService archiveItemReadService,
-            ArchiveVolumeService archiveVolumeService) {
+            ArchiveCategoryService categoryService) {
         this.traceRepository = traceRepository;
         this.ruleMapper = ruleMapper;
         this.dataScopeService = dataScopeService;
-        this.archiveItemReadService = archiveItemReadService;
-        this.archiveVolumeService = archiveVolumeService;
+        this.categoryService = categoryService;
+    }
+
+    @Transactional(readOnly = true)
+    public CursorPageResponse<Map<String, Object>> listRuleTraces(
+            SearchArchiveRuleTracesRequest request, PageRequest pageRequest) {
+        Long userId = AuthenticatedUsers.requireResolvedUserId(request.userId());
+        boolean allData = dataScopeService.resolveUserDataScope(userId).allData();
+        TraceScopes scopes = allData ? TraceScopes.empty() : traceScopes(userId);
+        List<Map<String, Object>> rows =
+                ruleMapper.listRuleTraces(criteria(request, pageRequest, userId, allData, scopes));
+        return toCursorPage(rows, pageRequest);
     }
 
     @Transactional(readOnly = true)
     public List<Map<String, Object>> listRuleTraces(SearchArchiveRuleTracesRequest request) {
-        Long userId = AuthenticatedUsers.requireResolvedUserId(request.userId());
-        int limit = request.limit() == null ? 100 : Math.clamp(request.limit(), 1, 500);
-        boolean allData = dataScopeService.resolveUserDataScope(userId).allData();
-        return ruleMapper
-                .listRuleTraces(
-                        new ArchiveRuleTraceSearchCriteria(
-                                request.schemeVersionId(),
-                                StringUtils.trimToNull(request.triggerCode()),
-                                StringUtils.trimToNull(request.objectTypeCode()),
-                                request.objectId(),
-                                request.ruleType() == null ? null : request.ruleType().name(),
-                                500))
-                .stream()
-                .filter(trace -> traceVisible(trace, userId, allData))
-                .limit(limit)
-                .toList();
+        return listRuleTraces(request, PageRequest.ofSize(100)).items();
     }
 
     void saveTrace(ExecuteArchiveRulesRequest request, ArchiveRuleDecision decision) {
@@ -103,39 +104,101 @@ public class ArchiveRuleTraceService {
         traceRepository.insert(trace);
     }
 
-    private boolean traceVisible(Map<String, Object> trace, Long userId, boolean allData) {
-        if (allData) return true;
-        String objectTypeCode = string(trace, "objectTypeCode");
-        Long objectId = longOrNull(trace, "objectId");
-        if ("ARCHIVE_ITEM".equals(objectTypeCode) && objectId != null)
-            return archiveItemVisible(objectId, userId);
-        if ("ARCHIVE_VOLUME".equals(objectTypeCode) && objectId != null)
-            return archiveVolumeVisible(objectId, userId);
-        return Objects.equals(longOrNull(trace, "createdBy"), userId);
-    }
-
-    private boolean archiveItemVisible(Long objectId, Long userId) {
-        try {
-            archiveItemReadService.assertItemInDataScope(objectId, userId);
-            return true;
-        } catch (ResponseStatusException exception) {
-            return nonVisibleArchiveObject(exception);
+    private TraceScopes traceScopes(Long userId) {
+        List<ArchiveRuleTraceTargetScope> itemScopes = new ArrayList<>();
+        List<ArchiveRuleTraceTargetScope> volumeScopes = new ArrayList<>();
+        for (var category : categoryService.listCategories(null)) {
+            ArchiveDataScopeFilter filter =
+                    dataScopeService.buildItemFilter(userId, category.id(), null);
+            if (filter.empty()) {
+                continue;
+            }
+            List<ArchiveDataScopeSqlGroup> groups =
+                    filter.allData()
+                            ? List.of(
+                                    new ArchiveDataScopeSqlGroup(
+                                            List.of(), List.of(), List.of(), List.of()))
+                            : filter.groups();
+            String tableName = ArchiveDynamicTableNames.tableName(category, ArchiveLevel.ITEM);
+            itemScopes.add(
+                    new ArchiveRuleTraceTargetScope(category.categoryCode(), tableName, groups));
+            List<ArchiveDataScopeSqlGroup> fixedGroups =
+                    groups.stream().filter(group -> group.conditions().isEmpty()).toList();
+            if (!fixedGroups.isEmpty()) {
+                volumeScopes.add(
+                        new ArchiveRuleTraceTargetScope(
+                                category.categoryCode(), tableName, fixedGroups));
+            }
         }
+        return new TraceScopes(itemScopes, volumeScopes);
     }
 
-    private boolean archiveVolumeVisible(Long objectId, Long userId) {
-        try {
-            archiveVolumeService.assertVolumeInDataScope(objectId, userId);
-            return true;
-        } catch (ResponseStatusException exception) {
-            return nonVisibleArchiveObject(exception);
+    private ArchiveRuleTraceSearchCriteria criteria(
+            SearchArchiveRuleTracesRequest request,
+            PageRequest pageRequest,
+            Long userId,
+            boolean allData,
+            TraceScopes scopes) {
+        return new ArchiveRuleTraceSearchCriteria(
+                request.schemeVersionId(),
+                StringUtils.trimToNull(request.triggerCode()),
+                StringUtils.trimToNull(request.objectTypeCode()),
+                request.objectId(),
+                request.ruleType() == null ? null : request.ruleType().name(),
+                allData,
+                userId,
+                scopes.itemScopes(),
+                scopes.volumeScopes(),
+                pageWindow(pageRequest));
+    }
+
+    private ArchiveRuleTracePageWindow pageWindow(PageRequest pageRequest) {
+        @Nullable LocalDateTime cursorCreatedAt = null;
+        @Nullable Long cursorId = null;
+        if (pageRequest.cursor().isPresent()) {
+            List<?> values = pageRequest.cursor().orElseThrow().elements();
+            if (values.size() != 2
+                    || !(values.get(0) instanceof LocalDateTime createdAt)
+                    || !(values.get(1) instanceof Number id)) {
+                throw new BadRequestException(
+                        "分页 cursor 无效", "cursor", "规则追踪 cursor 必须包含创建时间和数值 ID");
+            }
+            cursorCreatedAt = createdAt;
+            cursorId = id.longValue();
         }
+        return new ArchiveRuleTracePageWindow(
+                pageRequest.mode() == PageRequest.Mode.CURSOR_PREVIOUS,
+                cursorCreatedAt,
+                cursorId,
+                pageRequest.size() + 1);
     }
 
-    private boolean nonVisibleArchiveObject(ResponseStatusException exception) {
-        if (exception.getStatusCode() == HttpStatus.FORBIDDEN
-                || exception.getStatusCode() == HttpStatus.NOT_FOUND) return false;
-        throw exception;
+    private CursorPageResponse<Map<String, Object>> toCursorPage(
+            List<Map<String, Object>> rows, PageRequest pageRequest) {
+        int limit = pageRequest.size();
+        boolean hasMore = rows.size() > limit;
+        List<Map<String, Object>> pageRows =
+                new ArrayList<>(hasMore ? rows.subList(0, limit) : rows);
+        boolean previousQuery = pageRequest.mode() == PageRequest.Mode.CURSOR_PREVIOUS;
+        if (previousQuery) {
+            pageRows = pageRows.reversed();
+        }
+        boolean hasPrevious = previousQuery ? hasMore : pageRequest.cursor().isPresent();
+        boolean hasNext = previousQuery ? pageRequest.cursor().isPresent() : hasMore;
+        List<?> self = pageRows.isEmpty() ? null : cursorValues(pageRows.getFirst());
+        List<?> prev =
+                hasPrevious && !pageRows.isEmpty() ? cursorValues(pageRows.getFirst()) : null;
+        List<?> next = hasNext && !pageRows.isEmpty() ? cursorValues(pageRows.getLast()) : null;
+        return CursorPageResponse.withCursorValues(pageRows, limit, self, prev, next, null, null);
+    }
+
+    private List<?> cursorValues(Map<String, Object> row) {
+        Object createdAt = rowValue(row, "createdAt");
+        Object id = rowValue(row, "id");
+        if (!(createdAt instanceof LocalDateTime localDateTime) || !(id instanceof Number number)) {
+            throw new IllegalStateException("规则追踪缺少创建时间或数值 ID");
+        }
+        return List.of(localDateTime, number.longValue());
     }
 
     private Map<String, Object> redactSensitiveParams(Map<String, Object> params) {
@@ -173,18 +236,22 @@ public class ArchiveRuleTraceService {
         return redactSensitiveValue(key, item);
     }
 
-    private @Nullable String string(Map<String, Object> row, String key) {
-        Object value = rowValue(row, key);
-        return value == null ? null : String.valueOf(value);
-    }
-
-    private @Nullable Long longOrNull(Map<String, Object> row, String key) {
-        Object value = rowValue(row, key);
-        return value instanceof Number number ? number.longValue() : null;
-    }
-
     private @Nullable Object rowValue(Map<String, Object> row, String key) {
         Object value = row.get(key);
         return value != null ? value : row.get(JdbcUtils.convertPropertyNameToUnderscoreName(key));
+    }
+
+    private record TraceScopes(
+            List<ArchiveRuleTraceTargetScope> itemScopes,
+            List<ArchiveRuleTraceTargetScope> volumeScopes) {
+
+        private TraceScopes {
+            itemScopes = List.copyOf(itemScopes);
+            volumeScopes = List.copyOf(volumeScopes);
+        }
+
+        private static TraceScopes empty() {
+            return new TraceScopes(List.of(), List.of());
+        }
     }
 }

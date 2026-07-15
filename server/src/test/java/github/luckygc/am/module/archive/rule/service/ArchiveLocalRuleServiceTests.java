@@ -3,28 +3,37 @@ package github.luckygc.am.module.archive.rule.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+
+import jakarta.data.page.PageRequest;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
 
+import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.archive.ArchiveLevel;
+import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeResolutionTypes.ArchiveDataScopeFilter;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeResolutionTypes.ResolvedArchiveDataScope;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
-import github.luckygc.am.module.archive.item.service.ArchiveItemReadService;
-import github.luckygc.am.module.archive.item.service.ArchiveVolumeService;
+import github.luckygc.am.module.archive.item.ArchiveItemQueryOperator;
+import github.luckygc.am.module.archive.mapper.ArchiveDataScopeSqlGroup;
 import github.luckygc.am.module.archive.mapper.ArchiveRuleMapper;
+import github.luckygc.am.module.archive.mapper.ArchiveRuleTraceSearchCriteria;
+import github.luckygc.am.module.archive.mapper.ArchiveSqlCondition;
+import github.luckygc.am.module.archive.metadata.ArchiveManagementMode;
+import github.luckygc.am.module.archive.metadata.ArchiveTableStatus;
+import github.luckygc.am.module.archive.metadata.service.ArchiveCategoryService;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveCategoryDto;
 import github.luckygc.am.module.archive.ontology.repository.ArchiveOntologyAttributeTypeDataRepository;
 import github.luckygc.am.module.archive.rule.ArchiveRuleDecision;
 import github.luckygc.am.module.archive.rule.ArchiveRuleDefinition;
@@ -48,8 +57,7 @@ class ArchiveLocalRuleServiceTests {
     private ArchiveRuleMapper ruleMapper;
     private ArchiveOntologyAttributeTypeDataRepository attributeTypeRepository;
     private ArchiveDataScopeService dataScopeService;
-    private ArchiveItemReadService archiveItemRoutingService;
-    private ArchiveVolumeService archiveVolumeService;
+    private ArchiveCategoryService categoryService;
     private ArchiveLocalRuleService service;
 
     @BeforeEach
@@ -60,15 +68,10 @@ class ArchiveLocalRuleServiceTests {
         ruleMapper = mock(ArchiveRuleMapper.class);
         attributeTypeRepository = mock(ArchiveOntologyAttributeTypeDataRepository.class);
         dataScopeService = mock(ArchiveDataScopeService.class);
-        archiveItemRoutingService = mock(ArchiveItemReadService.class);
-        archiveVolumeService = mock(ArchiveVolumeService.class);
+        categoryService = mock(ArchiveCategoryService.class);
         ArchiveRuleTraceService traceService =
                 new ArchiveRuleTraceService(
-                        traceRepository,
-                        ruleMapper,
-                        dataScopeService,
-                        archiveItemRoutingService,
-                        archiveVolumeService);
+                        traceRepository, ruleMapper, dataScopeService, categoryService);
         service =
                 new ArchiveLocalRuleService(
                         ruleRepository,
@@ -225,66 +228,153 @@ class ArchiveLocalRuleServiceTests {
     }
 
     @Test
-    @DisplayName("查询规则追踪时过滤非本人创建的非档案对象追踪")
-    void listRuleTracesShouldFilterProcessTracesCreatedByOtherUsers() {
+    @DisplayName("规则追踪一次编译分类范围并使用 limit 加一查询")
+    void listRuleTracesShouldCompileScopeBeforePaging() {
         when(dataScopeService.resolveUserDataScope(7L)).thenReturn(ResolvedArchiveDataScope.none());
-        when(ruleMapper.listRuleTraces(any()))
-                .thenReturn(
-                        List.of(
-                                Map.of("id", 1L, "objectTypeCode", "FILING_BATCH", "createdBy", 8L),
-                                Map.of(
-                                        "id",
-                                        2L,
-                                        "objectTypeCode",
-                                        "FILING_BATCH",
-                                        "createdBy",
-                                        7L)));
+        when(categoryService.listCategories(null)).thenReturn(List.of(category(11L, "DOC")));
+        when(dataScopeService.buildItemFilter(7L, 11L, null))
+                .thenReturn(ArchiveDataScopeFilter.fondsCodes(List.of("F001")));
+        when(ruleMapper.listRuleTraces(any())).thenReturn(List.of(trace(3L), trace(2L), trace(1L)));
 
-        List<Map<String, Object>> traces =
+        CursorPageResponse<Map<String, Object>> page =
                 service.listRuleTraces(
                         new ArchiveLocalRuleService.SearchArchiveRuleTracesRequest(
-                                null, null, "FILING_BATCH", null, null, 100, 7L));
+                                null, null, null, null, null, 7L),
+                        PageRequest.ofSize(2));
 
-        assertThat(traces).extracting(trace -> trace.get("id")).containsExactly(2L);
+        assertThat(page.items()).extracting(row -> row.get("id")).containsExactly(3L, 2L);
+        ArgumentCaptor<ArchiveRuleTraceSearchCriteria> captor =
+                ArgumentCaptor.forClass(ArchiveRuleTraceSearchCriteria.class);
+        verify(ruleMapper).listRuleTraces(captor.capture());
+        assertThat(captor.getValue().page().rowLimit()).isEqualTo(3);
+        assertThat(captor.getValue().itemScopes()).hasSize(1);
+        verify(dataScopeService).buildItemFilter(7L, 11L, null);
     }
 
     @Test
-    @DisplayName("查询档案条目规则追踪时按数据范围过滤")
-    void listRuleTracesShouldFilterArchiveItemTracesByDataScope() {
+    @DisplayName("动态条件仅进入条目范围而不进入案卷范围")
+    void listRuleTracesShouldExcludeDynamicConditionsFromVolumeScopes() {
         when(dataScopeService.resolveUserDataScope(7L)).thenReturn(ResolvedArchiveDataScope.none());
-        doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "数据范围不足"))
-                .when(archiveItemRoutingService)
-                .assertItemInDataScope(200L, 7L);
-        when(ruleMapper.listRuleTraces(any()))
-                .thenReturn(
+        when(categoryService.listCategories(null)).thenReturn(List.of(category(11L, "DOC")));
+        ArchiveDataScopeSqlGroup dynamicGroup =
+                new ArchiveDataScopeSqlGroup(
+                        List.of(),
+                        List.of(),
+                        List.of(),
                         List.of(
-                                Map.of(
-                                        "id",
-                                        1L,
-                                        "objectTypeCode",
-                                        "ARCHIVE_ITEM",
-                                        "objectId",
-                                        100L,
-                                        "createdBy",
-                                        8L),
-                                Map.of(
-                                        "id",
-                                        2L,
-                                        "objectTypeCode",
-                                        "ARCHIVE_ITEM",
-                                        "objectId",
-                                        200L,
-                                        "createdBy",
-                                        7L)));
+                                new ArchiveSqlCondition(
+                                        "status", ArchiveItemQueryOperator.EQ, "A")));
+        when(dataScopeService.buildItemFilter(7L, 11L, null))
+                .thenReturn(ArchiveDataScopeFilter.groups(List.of(dynamicGroup)));
+        when(ruleMapper.listRuleTraces(any())).thenReturn(List.of());
 
-        List<Map<String, Object>> traces =
+        service.listRuleTraces(searchRequest(7L), PageRequest.ofSize(20));
+
+        ArgumentCaptor<ArchiveRuleTraceSearchCriteria> captor =
+                ArgumentCaptor.forClass(ArchiveRuleTraceSearchCriteria.class);
+        verify(ruleMapper).listRuleTraces(captor.capture());
+        assertThat(captor.getValue().itemScopes().getFirst().groups())
+                .containsExactly(dynamicGroup);
+        assertThat(captor.getValue().volumeScopes()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("全量数据权限不枚举分类")
+    void listRuleTracesShouldNotEnumerateCategoriesForAllData() {
+        when(dataScopeService.resolveUserDataScope(7L)).thenReturn(ResolvedArchiveDataScope.all());
+        when(ruleMapper.listRuleTraces(any())).thenReturn(List.of());
+
+        service.listRuleTraces(searchRequest(7L), PageRequest.ofSize(20));
+
+        verify(categoryService, never()).listCategories(null);
+        ArgumentCaptor<ArchiveRuleTraceSearchCriteria> captor =
+                ArgumentCaptor.forClass(ArchiveRuleTraceSearchCriteria.class);
+        verify(ruleMapper).listRuleTraces(captor.capture());
+        assertThat(captor.getValue().allData()).isTrue();
+    }
+
+    @Test
+    @DisplayName("规则追踪解析创建时间和 ID 双字段 cursor")
+    void listRuleTracesShouldParseStableCursor() {
+        LocalDateTime createdAt = LocalDateTime.of(2026, 7, 15, 10, 30);
+        when(dataScopeService.resolveUserDataScope(7L)).thenReturn(ResolvedArchiveDataScope.all());
+        when(ruleMapper.listRuleTraces(any())).thenReturn(List.of());
+
+        service.listRuleTraces(
+                searchRequest(7L),
+                PageRequest.ofSize(20).afterCursor(PageRequest.Cursor.forKey(createdAt, 99L)));
+
+        ArgumentCaptor<ArchiveRuleTraceSearchCriteria> captor =
+                ArgumentCaptor.forClass(ArchiveRuleTraceSearchCriteria.class);
+        verify(ruleMapper).listRuleTraces(captor.capture());
+        assertThat(captor.getValue().page().cursorCreatedAt()).isEqualTo(createdAt);
+        assertThat(captor.getValue().page().cursorId()).isEqualTo(99L);
+    }
+
+    @Test
+    @DisplayName("上一页查询反转数据库升序结果并恢复展示顺序")
+    void listRuleTracesShouldReversePreviousPageRows() {
+        LocalDateTime cursorTime = LocalDateTime.of(2026, 7, 15, 9, 0);
+        when(dataScopeService.resolveUserDataScope(7L)).thenReturn(ResolvedArchiveDataScope.all());
+        when(ruleMapper.listRuleTraces(any())).thenReturn(List.of(trace(1L), trace(2L), trace(3L)));
+
+        CursorPageResponse<Map<String, Object>> page =
                 service.listRuleTraces(
-                        new ArchiveLocalRuleService.SearchArchiveRuleTracesRequest(
-                                null, null, "ARCHIVE_ITEM", null, null, 100, 7L));
+                        searchRequest(7L),
+                        PageRequest.ofSize(2)
+                                .beforeCursor(PageRequest.Cursor.forKey(cursorTime, 99L)));
 
-        assertThat(traces).extracting(trace -> trace.get("id")).containsExactly(1L);
-        verify(archiveItemRoutingService).assertItemInDataScope(100L, 7L);
-        verify(archiveItemRoutingService).assertItemInDataScope(200L, 7L);
+        assertThat(page.items()).extracting(row -> row.get("id")).containsExactly(2L, 1L);
+        ArgumentCaptor<ArchiveRuleTraceSearchCriteria> captor =
+                ArgumentCaptor.forClass(ArchiveRuleTraceSearchCriteria.class);
+        verify(ruleMapper).listRuleTraces(captor.capture());
+        assertThat(captor.getValue().page().previous()).isTrue();
+    }
+
+    @Test
+    @DisplayName("规则追踪拒绝结构无效的 cursor")
+    void listRuleTracesShouldRejectInvalidCursor() {
+        when(dataScopeService.resolveUserDataScope(7L)).thenReturn(ResolvedArchiveDataScope.all());
+
+        assertThatThrownBy(
+                        () ->
+                                service.listRuleTraces(
+                                        searchRequest(7L),
+                                        PageRequest.ofSize(20)
+                                                .afterCursor(
+                                                        PageRequest.Cursor.forKey("bad", 99L))))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("分页 cursor 无效");
+    }
+
+    private ArchiveLocalRuleService.SearchArchiveRuleTracesRequest searchRequest(Long userId) {
+        return new ArchiveLocalRuleService.SearchArchiveRuleTracesRequest(
+                null, null, null, null, null, userId);
+    }
+
+    private Map<String, Object> trace(Long id) {
+        return Map.of("id", id, "createdAt", LocalDateTime.of(2026, 7, 15, 10, 0).plusSeconds(id));
+    }
+
+    private ArchiveCategoryDto category(Long id, String code) {
+        LocalDateTime time = LocalDateTime.of(2026, 7, 1, 10, 0);
+        return new ArchiveCategoryDto(
+                id,
+                1L,
+                null,
+                code,
+                code + "档案",
+                ArchiveManagementMode.VOLUME_ITEM,
+                null,
+                "am_archive_item_data_" + code.toLowerCase(),
+                null,
+                null,
+                ArchiveTableStatus.BUILT,
+                time,
+                true,
+                0,
+                time,
+                time);
     }
 
     private ArchiveRuleDefinition rule(Long id) {

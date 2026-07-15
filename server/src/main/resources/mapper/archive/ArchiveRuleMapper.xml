@@ -46,40 +46,158 @@
     </select>
 
     <select id="listRuleTraces" resultType="map">
-        select id,
-               scheme_version_id,
-               trigger_code,
-               object_type_code,
-               object_id,
-               rule_id,
-               rule_code,
-               rule_type,
-               matched_flag,
-               blocking_flag,
-               effect_json,
-               message,
-               severity,
-               skipped_reason,
-               created_by,
-               created_at
-        from am_archive_rule_trace
+        select t.id,
+               t.scheme_version_id,
+               t.trigger_code,
+               t.object_type_code,
+               t.object_id,
+               t.rule_id,
+               t.rule_code,
+               t.rule_type,
+               t.matched_flag,
+               t.blocking_flag,
+               t.effect_json,
+               t.message,
+               t.severity,
+               t.skipped_reason,
+               t.created_by,
+               t.created_at
+        from am_archive_rule_trace t
+        left join am_archive_item i on i.id = t.object_id
+          and t.object_type_code = 'ARCHIVE_ITEM'
+          and i.deleted_flag = false
+        left join am_archive_volume v on v.id = t.object_id
+          and t.object_type_code = 'ARCHIVE_VOLUME'
+          and v.deleted_flag = false
         where 1 = 1
         <if test="criteria.schemeVersionId != null">
-            and scheme_version_id = #{criteria.schemeVersionId}
+            and t.scheme_version_id = #{criteria.schemeVersionId}
         </if>
         <if test="criteria.triggerCode != null and criteria.triggerCode != ''">
-            and trigger_code = #{criteria.triggerCode}
+            and t.trigger_code = #{criteria.triggerCode}
         </if>
         <if test="criteria.objectTypeCode != null and criteria.objectTypeCode != ''">
-            and object_type_code = #{criteria.objectTypeCode}
+            and t.object_type_code = #{criteria.objectTypeCode}
         </if>
         <if test="criteria.objectId != null">
-            and object_id = #{criteria.objectId}
+            and t.object_id = #{criteria.objectId}
         </if>
         <if test="criteria.ruleType != null and criteria.ruleType != ''">
-            and rule_type = #{criteria.ruleType}
+            and t.rule_type = #{criteria.ruleType}
         </if>
-        order by created_at desc, id desc
-        limit #{criteria.limit}
+        <if test="!criteria.allData">
+            and (
+              (t.object_type_code = 'ARCHIVE_ITEM' and (
+                <foreach collection="criteria.itemScopes" item="scope" separator=" or ">
+                  (i.category_code = #{scope.categoryCode} and (
+                    <foreach collection="scope.groups" item="group" separator=" or ">
+                      (
+                        <if test="group.fondsCodes != null and group.fondsCodes.size > 0">
+                          i.fonds_code in
+                          <foreach collection="group.fondsCodes" item="fondsCode"
+                                   open="(" separator="," close=")">#{fondsCode}</foreach>
+                        </if>
+                        <if test="group.securityLevelIds != null and group.securityLevelIds.size > 0">
+                          <if test="group.fondsCodes != null and group.fondsCodes.size > 0">and</if>
+                          i.security_level_id in
+                          <foreach collection="group.securityLevelIds" item="securityLevelId"
+                                   open="(" separator="," close=")">#{securityLevelId}</foreach>
+                        </if>
+                        <if test="group.retentionPeriodIds != null and group.retentionPeriodIds.size > 0">
+                          <if test="(group.fondsCodes != null and group.fondsCodes.size > 0)
+                              or (group.securityLevelIds != null and group.securityLevelIds.size > 0)">and</if>
+                          i.retention_period_id in
+                          <foreach collection="group.retentionPeriodIds" item="retentionPeriodId"
+                                   open="(" separator="," close=")">#{retentionPeriodId}</foreach>
+                        </if>
+                        <if test="group.conditions != null and group.conditions.size > 0">
+                          <if test="(group.fondsCodes != null and group.fondsCodes.size > 0)
+                              or (group.securityLevelIds != null and group.securityLevelIds.size > 0)
+                              or (group.retentionPeriodIds != null and group.retentionPeriodIds.size > 0)">and</if>
+                          exists (
+                            select 1 from ${scope.tableName} d
+                            where d.id = i.id and d.deleted_flag = false
+                            <foreach collection="group.conditions" item="condition">
+                              and d.${condition.columnName}
+                              <choose>
+                                <when test="condition.operatorName == 'EQ'">
+                                  = #{condition.value}
+                                </when>
+                                <when test="condition.operatorName == 'IN'">
+                                  in
+                                  <foreach collection="condition.values" item="conditionValue"
+                                           open="(" separator="," close=")">#{conditionValue}</foreach>
+                                </when>
+                                <when test="condition.operatorName == 'IS_NULL'">
+                                  is null
+                                </when>
+                                <when test="condition.operatorName == 'IS_NOT_NULL'">
+                                  is not null
+                                </when>
+                              </choose>
+                            </foreach>
+                          )
+                        </if>
+                        <if test="(group.fondsCodes == null or group.fondsCodes.size == 0)
+                            and (group.securityLevelIds == null or group.securityLevelIds.size == 0)
+                            and (group.retentionPeriodIds == null or group.retentionPeriodIds.size == 0)
+                            and (group.conditions == null or group.conditions.size == 0)">true</if>
+                      )
+                    </foreach>
+                  ))
+                </foreach>
+                <if test="criteria.itemScopes == null or criteria.itemScopes.size == 0">false</if>
+              ))
+              or (t.object_type_code = 'ARCHIVE_VOLUME' and (
+                <foreach collection="criteria.volumeScopes" item="scope" separator=" or ">
+                  (v.category_code = #{scope.categoryCode} and (
+                    <foreach collection="scope.groups" item="group" separator=" or ">
+                      (
+                        <if test="group.fondsCodes != null and group.fondsCodes.size > 0">
+                          v.fonds_code in
+                          <foreach collection="group.fondsCodes" item="fondsCode"
+                                   open="(" separator="," close=")">#{fondsCode}</foreach>
+                        </if>
+                        <if test="group.securityLevelIds != null and group.securityLevelIds.size > 0">
+                          <if test="group.fondsCodes != null and group.fondsCodes.size > 0">and</if>
+                          v.security_level_id in
+                          <foreach collection="group.securityLevelIds" item="securityLevelId"
+                                   open="(" separator="," close=")">#{securityLevelId}</foreach>
+                        </if>
+                        <if test="group.retentionPeriodIds != null and group.retentionPeriodIds.size > 0">
+                          <if test="(group.fondsCodes != null and group.fondsCodes.size > 0)
+                              or (group.securityLevelIds != null and group.securityLevelIds.size > 0)">and</if>
+                          v.retention_period_id in
+                          <foreach collection="group.retentionPeriodIds" item="retentionPeriodId"
+                                   open="(" separator="," close=")">#{retentionPeriodId}</foreach>
+                        </if>
+                        <if test="(group.fondsCodes == null or group.fondsCodes.size == 0)
+                            and (group.securityLevelIds == null or group.securityLevelIds.size == 0)
+                            and (group.retentionPeriodIds == null or group.retentionPeriodIds.size == 0)">true</if>
+                      )
+                    </foreach>
+                  ))
+                </foreach>
+                <if test="criteria.volumeScopes == null or criteria.volumeScopes.size == 0">false</if>
+              ))
+              or (t.object_type_code not in ('ARCHIVE_ITEM', 'ARCHIVE_VOLUME')
+                  and t.created_by = #{criteria.userId})
+            )
+        </if>
+        <if test="criteria.page.cursorCreatedAt != null and criteria.page.cursorId != null">
+          <choose>
+            <when test="criteria.page.previous">
+              and (t.created_at, t.id) &gt; (#{criteria.page.cursorCreatedAt}, #{criteria.page.cursorId})
+            </when>
+            <otherwise>
+              and (t.created_at, t.id) &lt; (#{criteria.page.cursorCreatedAt}, #{criteria.page.cursorId})
+            </otherwise>
+          </choose>
+        </if>
+        order by t.created_at
+        <choose><when test="criteria.page.previous">asc</when><otherwise>desc</otherwise></choose>,
+                 t.id
+        <choose><when test="criteria.page.previous">asc</when><otherwise>desc</otherwise></choose>
+        limit #{criteria.page.rowLimit}
     </select>
 </mapper>

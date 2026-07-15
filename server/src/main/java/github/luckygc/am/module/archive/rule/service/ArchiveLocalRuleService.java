@@ -8,6 +8,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
 
+import jakarta.data.page.PageRequest;
+
 import org.apache.commons.lang3.StringUtils;
 import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
@@ -15,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.mapper.ArchiveRuleExecutionCriteria;
@@ -159,6 +162,12 @@ public class ArchiveLocalRuleService {
             decisions.forEach(decision -> traceService.saveTrace(request, decision));
         }
         return decisions;
+    }
+
+    @Transactional(readOnly = true)
+    public CursorPageResponse<Map<String, Object>> listRuleTraces(
+            SearchArchiveRuleTracesRequest request, PageRequest pageRequest) {
+        return traceService.listRuleTraces(request, pageRequest);
     }
 
     @Transactional(readOnly = true)
@@ -483,6 +492,21 @@ public class ArchiveLocalRuleService {
             @Nullable String objectTypeCode,
             @Nullable Long objectId,
             @Nullable ArchiveRuleType ruleType,
-            @Nullable Integer limit,
-            Long userId) {}
+            @Nullable Long userId) {
+
+        public SearchArchiveRuleTracesRequest(
+                @Nullable Long schemeVersionId,
+                @Nullable String triggerCode,
+                @Nullable String objectTypeCode,
+                @Nullable Long objectId,
+                @Nullable ArchiveRuleType ruleType,
+                @Nullable Integer ignoredLimit,
+                @Nullable Long userId) {
+            this(schemeVersionId, triggerCode, objectTypeCode, objectId, ruleType, userId);
+        }
+
+        public @Nullable Integer limit() {
+            return null;
+        }
+    }
 }
