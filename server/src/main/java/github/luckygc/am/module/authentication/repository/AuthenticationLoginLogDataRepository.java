@@ -1,8 +1,10 @@
 package github.luckygc.am.module.authentication.repository;
 
+import jakarta.annotation.Nonnull;
 import jakarta.data.page.CursoredPage;
 import jakarta.data.page.PageRequest;
 import jakarta.data.repository.Find;
+import jakarta.data.repository.Insert;
 import jakarta.data.repository.OrderBy;
 import jakarta.data.repository.Repository;
 import jakarta.data.restrict.Restriction;
@@ -10,13 +12,14 @@ import jakarta.data.restrict.Restriction;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
-import github.luckygc.am.common.repository.DataRepository;
 import github.luckygc.am.module.authentication.AuthenticationLoginLog;
 
 @Transactional(rollbackFor = Throwable.class, isolation = Isolation.READ_COMMITTED)
 @Repository
-public interface AuthenticationLoginLogDataRepository
-        extends DataRepository<AuthenticationLoginLog, Long> {
+public interface AuthenticationLoginLogDataRepository {
+
+    @Insert
+    AuthenticationLoginLog insert(@Nonnull AuthenticationLoginLog entity);
 
     @Transactional(readOnly = true)
     @Find

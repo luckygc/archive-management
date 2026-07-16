@@ -76,8 +76,7 @@ public class ArchiveItemLineTableService {
                         tableCode,
                         tableName,
                         physicalName,
-                        request.sortOrder() == null ? 0 : request.sortOrder(),
-                        userId);
+                        request.sortOrder() == null ? 0 : request.sortOrder());
         return getLineTableInternal(id, userId);
     }
 
@@ -139,8 +138,7 @@ public class ArchiveItemLineTableService {
                         fieldType.value(),
                         columnName,
                         request.exactSearchable(),
-                        request.sortOrder() == null ? 0 : request.sortOrder(),
-                        userId);
+                        request.sortOrder() == null ? 0 : request.sortOrder());
         return listLineFieldsInternal(lineTableId, userId).stream()
                 .filter(field -> field.id().equals(id))
                 .findFirst()
@@ -197,8 +195,7 @@ public class ArchiveItemLineTableService {
                 }
             }
         }
-        archiveMapper.updateItemLineTablePhysicalName(
-                lineTableId, table.physicalTableName(), userId);
+        archiveMapper.updateItemLineTablePhysicalName(lineTableId, table.physicalTableName());
         return getLineTableInternal(lineTableId, userId);
     }
 

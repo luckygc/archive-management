@@ -1,163 +1,95 @@
 # Jakarta Data Repository 参考
 
-## 仓库接口
+## 直接声明窄接口
 
-- Jakarta Data 仓库接口使用 `@Repository` 标注。
-- 固定实体表优先继承 `CrudRepository<Entity, Id>`，复用更完整的固定实体生命周期操作。
-- 抽象方法主要分为实体生命周期方法、注解查询方法、自动查询方法和资源访问方法。
-- 实体类型通常由泛型父接口确定，例如 `CrudRepository<Product, Long>`。
-- 当前项目 `server/pom.xml` 使用 `jakarta.data-api 1.1.0-M3`，并配置 `hibernate-processor`，可利用 Jakarta Data 1.1 的 `Restriction<T>` / `Restrict` 动态条件和生成的静态元模型。
+为每个固定实体直接声明 `@Repository` 接口，只加入当前 Service 已有用例调用的方法。不要继承通用 Repository，也不要为了可能出现的用例提前暴露列表、计数、删除或批量能力。
 
-## 查询风格
-
-本项目仓库规则：
-
-1. 优先使用 `@Find`，让参数名直接匹配实体属性名，依赖 Jakarta Data 的编译时检查。
-2. 只有参数名和实体属性名不一致、或需要显式字段路径映射时，才使用 `@By`。
-3. 严格禁止 Query by Method Name。不要写 `findBy...`、`deleteBy...`、`countBy...` 这类按方法名派生查询的方法。
-4. 固定实体写入不要默认使用 `save` / `@Save`；新增、修改、删除分别用语义明确的 `insert` / `@Insert`、`update` / `@Update`、`delete` / `@Delete`，只有明确需要 upsert 时才使用 `save`。
-5. 动态分页、排序、限制结果数使用 Jakarta Data 的 `PageRequest`、`Order<T>`、`Sort<?>`、`Limit` 等特殊参数。
-6. 固定实体字段上的动态条件优先使用 `Restriction<T>` / `Restrict`，并优先用 `hibernate-processor` 生成的 Jakarta Data 静态元模型属性，例如 `_ArchiveCategory.categoryCode`。
-7. 稳定的部分字段返回优先用 Jakarta Data 投影，返回 record 或接口式稳定投影，不照搬 Spring Data/JPA 的构造函数投影写法。
-8. 固定实体查询需要手写表达式时，使用 Jakarta Data `@Query` 写实体查询语义，避免数据库原生 SQL。
-9. 一旦查询需要动态表名、动态列名、PostgreSQL DDL、执行计划控制、全文索引或批处理 SQL，退出 Jakarta Data，交给 MyBatis。
-
-示例：
+每个方法必须使用 `@Find`、`@Insert`、`@Update`、`@Delete`、`@Query` 或 Hibernate `@HQL` 等显式操作注解。方法名可以表达业务意图，但不能作为查询生成合同。参数和返回值使用具体实体类型；Jakarta Data provider 要求的可空返回与非空参数分别使用 `jakarta.annotation.Nullable`、`jakarta.annotation.Nonnull`。
 
 ```java
-@Transactional(rollbackFor = Throwable.class, isolation = Isolation.READ_COMMITTED)
+import jakarta.annotation.Nonnull;
+import jakarta.data.repository.By;
+import jakarta.data.repository.Delete;
+import jakarta.data.repository.Find;
+import jakarta.data.repository.Insert;
+import jakarta.data.repository.Repository;
+import jakarta.data.repository.Update;
+
 @Repository
-public interface ArchiveFieldLayoutDataRepository
-        extends CrudRepository<ArchiveFieldLayout, Long> {
+public interface ArchiveCategoryDataRepository {
 
-    @Transactional(readOnly = true)
     @Find
-    List<ArchiveFieldLayout> find(
-            Long categoryId,
-            ArchiveLayoutSurface surface,
-            boolean deletedFlag,
-            Order<ArchiveFieldLayout> order);
+    Optional<ArchiveCategory> findById(@By(By.ID) @Nonnull Long id);
 
-    @Transactional(readOnly = true)
-    @Find
-    List<ArchiveFieldLayout> search(
-            Restriction<ArchiveFieldLayout> restriction,
-            Order<ArchiveFieldLayout> order,
-            Limit limit);
+    @Insert
+    ArchiveCategory insert(@Nonnull ArchiveCategory entity);
 
-    record LayoutSummary(Long fieldId, boolean visible, int rowOrder, int colOrder) {}
+    @Update
+    ArchiveCategory update(@Nonnull ArchiveCategory entity);
 
-    @Transactional(readOnly = true)
-    @Find
-    List<LayoutSummary> summarize(
-            Long categoryId,
-            ArchiveLayoutSurface surface,
-            boolean deletedFlag,
-            Order<ArchiveFieldLayout> order);
+    @Delete
+    void delete(@Nonnull ArchiveCategory entity);
 }
 ```
 
-`@By` 的例外示例：
+让 Service 在写入前明确选择新增、修改或删除分支，完成权限、状态、校验和异常映射；Repository 不提供可同时代表多个生命周期的写入入口。固定实体写入继续通过 Hibernate `StatelessSession` / `EntityAgent` 执行，不依赖一级缓存或脏检查。
+
+## 固定字段查询
+
+- 参数名与实体属性一致时直接使用 `@Find`；只有名称无法一致、嵌套路径或需要消除歧义时才加 `@By`。
+- 固定实体表达式使用 `@Query` 或 `@HQL`，保持实体查询语义；动态标识符、原生 PostgreSQL SQL、DDL 和动态列结果交给 MyBatis。
+- 只为真实用例声明 `Restriction<T>`、`Order<T>`、`Sort<?>`、`Limit`、分页或投影方法。
+- 优先使用 `hibernate-processor` 生成的 `_Entity` 属性构造动态条件和排序，避免字符串字段名。
 
 ```java
-@Transactional(readOnly = true)
 @Find
-List<Person> find(@By("address.zipCode") int zipCode);
+List<ArchiveFieldLayout> search(
+        Restriction<ArchiveFieldLayout> restriction,
+        Order<ArchiveFieldLayout> order,
+        Limit limit);
 ```
 
-## 动态条件
-
-Jakarta Data 1.1 提供 `Restrict` 和 `Restriction<T>`，可程序化组合固定实体字段上的动态条件。项目里这类动态条件优先走 Repository，不要直接降级到 MyBatis。
+`Restriction<T>` 只组合固定实体字段：
 
 ```java
 Restriction<ArchiveFieldLayout> restriction =
         Restrict.all(
                 _ArchiveFieldLayout.categoryId.equalTo(categoryId),
                 _ArchiveFieldLayout.surface.equalTo(ArchiveLayoutSurface.table),
-                _ArchiveFieldLayout.deletedFlag.equalTo(false));
-
-if (visibleOnly) {
-    restriction = Restrict.all(restriction, _ArchiveFieldLayout.visible.equalTo(true));
-}
+                _ArchiveFieldLayout.visible.equalTo(true));
 
 List<ArchiveFieldLayout> rows =
         repository.search(
                 restriction,
-                Order.by(_ArchiveFieldLayout.rowOrder.asc(), _ArchiveFieldLayout.colOrder.asc()),
+                Order.by(
+                        _ArchiveFieldLayout.rowOrder.asc(),
+                        _ArchiveFieldLayout.id.asc()),
                 Limit.of(200));
 ```
 
-可用组合：
+可按真实条件使用 `Restrict.all(...)`、`Restrict.any(...)`、`Restrict.not(...)` 和 `Restrict.unrestricted()`。字段编码来自分类配置、需要拼接表列名或返回动态 `Map` 时，不要使用该能力。
 
-- `Restrict.all(...)` 表示 AND。
-- `Restrict.any(...)` 表示 OR。
-- `Restrict.not(...)` 表示 NOT。
-- `Restrict.unrestricted()` 表示无筛选，可用于可选条件起点。
+## 投影与分页
 
-## 投影
-
-Jakarta Data 的 `@Find` 支持部分属性投影，返回 Java record 这类稳定投影类型。Hibernate 实现下不需要按 Spring Data 或 JPA 构造函数投影思路组织查询；投影类型列出需要的字段即可。
+稳定、固定的少量字段可由 `@Find` 返回 record 或接口式投影：
 
 ```java
 record ArchiveLayoutSummary(Long fieldId, boolean visible, int rowOrder, int colOrder) {}
 
-@Transactional(readOnly = true)
 @Find
 List<ArchiveLayoutSummary> summarize(
         Long categoryId,
         ArchiveLayoutSurface surface,
-        boolean deletedFlag,
         Order<ArchiveFieldLayout> order);
 ```
 
-适用场景：
+分页和游标查询必须提供稳定全序，最后追加实体 ID 或其他唯一且不可变的键。Service 将 Repository 的实体、投影或分页结果转换为业务结果和 HTTP 响应，不把 provider 类型直接作为外部合同。
 
-- 列表页、选择器、配置页只需要固定少量字段。
-- 返回字段集合稳定，可用 record 表达。
-- 不需要动态列名，也不需要 `Map`。
+固定实体标注 `@SoftDelete` 时，Hibernate Repository 查询自动施加软删除条件，不在实体签名、`Restriction` 或生成元模型中重复声明软删除属性。MyBatis SQL 仍需显式过滤物理列 `deleted_flag = false`。
 
-不适用场景：
+## 更新与资源边界
 
-- 档案动态字段结果列由分类配置决定。
-- 查询输出字段集合不稳定。
-- 查询必须返回动态列 `Map`。
-
-这些场景仍然用 MyBatis。
-
-## 动态条件边界
-
-Jakarta Data 的动态能力适合这些情况：
-
-- 固定实体字段上的可选筛选。
-- 固定实体字段上的 AND/OR/NOT 动态组合。
-- 固定字段上的分页、排序、limit。
-- 固定实体查询里的静态排序叠加调用方传入排序。
-
-不适合这些情况：
-
-- 字段编码来自档案分类配置，并要拼成列名。
-- 查询要跨动态档案表。
-- 查询要组合 PostgreSQL 特有全文检索、动态索引或 DDL。
-- 查询输出不是实体或稳定 DTO，而是动态列 `Map`。
-
-这些不适合项默认用 MyBatis。
-
-## 生命周期、更新与并发
-
-Jakarta Data 1.1 文档包含生命周期事件：
-
-- `PreInsertEvent` / `PostInsertEvent`
-- `PreUpdateEvent` / `PostUpdateEvent`
-- `PreDeleteEvent` / `PostDeleteEvent`
-- `PreUpsertEvent` / `PostUpsertEvent`
-
-这些事件可用于固定实体的校验、补充审计字段或触发领域内副作用。项目使用时必须注意：MyBatis 写入路径不会触发这些 Repository 生命周期事件。
-
-`CrudRepository` 的显式更新方法会区分 insert/update；`update(entity)` 可在实体不存在、已被修改或已被删除时抛 `OptimisticLockingFailureException`。因此固定实体更新优先走“读取实体 -> 应用变更 -> Repository/Hibernate 显式 update”的闭环，避免使用 `save` 模糊新增和更新语义。
-
-局部更新规则：
-
-- PATCH 不能构造只带部分字段的稀疏实体直接 update。
-- 先读取当前实体，再只修改请求中出现的字段。
-- 请求模型要能区分字段未出现和显式置空。
-- 更新固定实体时优先带 `@Version`，并把乐观锁异常转换成 API 冲突响应。
+- 局部修改先读取当前实体，校验状态与版本，只应用请求中出现的字段，再调用显式 `@Update` 方法；不要提交稀疏实体。
+- 需要并发保护的固定可编辑实体使用整数 `@Version`，并由 Service 转换乐观锁异常。
+- Repository 不返回 `Stream`、底层资源或依赖会话生命周期的对象；如第三方能力确需流式消费，在事务内完成消费并转换为稳定结果。
+- MyBatis 写入不会触发 Hibernate 实体路径；通用审计按 `hibernate-auditing.md` 处理。

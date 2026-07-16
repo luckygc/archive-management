@@ -162,8 +162,7 @@ public class ArchiveItemCommandService {
                             request.securityLevelId(),
                             request.retentionPeriodId(),
                             archiveYear,
-                            governanceSchemeVersionId,
-                            userId);
+                            governanceSchemeVersionId);
         } catch (DuplicateKeyException exception) {
             throw duplicateArchiveNo();
         }
@@ -254,8 +253,7 @@ public class ArchiveItemCommandService {
                             request.retentionPeriodId() == null
                                     ? before.item().retentionPeriodId()
                                     : request.retentionPeriodId(),
-                            archiveYear,
-                            userId);
+                            archiveYear);
         } catch (DuplicateKeyException exception) {
             throw duplicateArchiveNo();
         }

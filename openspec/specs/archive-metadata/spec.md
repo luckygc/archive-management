@@ -3,9 +3,7 @@
 ## Purpose
 
 定义档案元数据、分类动态表、动态字段、唯一规则、项目自有表命名和逻辑删除相关业务数据合同，作为档案条目建表、保存、删除和约束维护的验收真相源。
-
 ## Requirements
-
 ### Requirement: 项目自有数据库对象命名
 
 项目自有数据库对象 SHALL 带有模块语义并使用小写 snake_case。
@@ -64,15 +62,51 @@
 - **THEN** 系统 SHALL 将记录标记为已逻辑删除
 - **AND** 系统 SHALL 允许后续记录重新使用该唯一值
 
-### Requirement: 动态表固定删除标记和维护时间
+### Requirement: 分类动态表边界和路由
 
-系统 SHALL 在每张分类动态数据表中固定保存动态表删除标记和动态行维护时间。
+系统 SHALL 按 item/volume 对象类型和字段域创建分类动态表，并只保存对象关联、动态业务字段和固定行维护列。
 
-#### Scenario: 创建分类动态表固定列
+#### Scenario: 分类动态表不复制主表系统字段
 
 - **WHEN** 系统创建分类动态数据表
-- **THEN** 动态表 SHALL 固定包含 `deleted_flag`、`deleted_at`、`deleted_by`、`created_at` 和 `updated_at`
-- **AND** 业务动态字段 SHALL NOT 复用这些固定维护列名
+- **THEN** 动态表 SHALL 固定包含对象 ID、`deleted_flag`、`deleted_at`、`deleted_by`、`created_at` 和 `updated_at`
+- **AND** 动态表 SHALL NOT 复制主表的全宗、分类、档号、状态、锁定和随机分桶字段
+- **AND** 业务动态字段 SHALL NOT 复用固定维护列名
+
+#### Scenario: 按对象类型和字段域路由动态表
+
+- **WHEN** 系统为分类的某个对象类型和字段域创建动态表
+- **THEN** item 动态表 SHALL 使用 `id` 引用 `am_archive_item`
+- **AND** volume 动态表 SHALL 使用 `id` 引用 `am_archive_volume`
+- **AND** `METADATA` 与 `PHYSICAL` 字段 SHALL 分别进入该对象的元数据表和实物信息表
+- **AND** 系统 SHALL NOT 将 item、volume、元数据和实物信息混写到同一张动态表
+
+#### Scenario: 动态表名使用稳定业务键
+
+- **WHEN** 系统为档案分类、对象类型和字段域生成默认动态表名
+- **THEN** 表名 SHALL 基于分类编码、item/volume 对象类型和 `field_scope` 这些稳定业务键生成
+- **AND** 表名 SHALL NOT 使用数据库自增 ID 作为必要组成部分
+- **AND** 表名 SHALL 使用小写 snake_case 且不超过 PostgreSQL 63 字节标识符限制
+- **AND** 当稳定业务键过长时，系统 SHALL 使用稳定哈希后缀生成可重复的短表名
+
+#### Scenario: 分层创建电子和实物动态表
+
+- **WHEN** 档案分类启用 `ITEM_ONLY` 管理模式
+- **THEN** 系统 SHALL 至少支持卷内条目的元数据表
+- **AND** 系统 SHALL 在存在卷内实物字段时支持独立的卷内实物信息表
+- **WHEN** 档案分类启用 `VOLUME_ITEM` 管理模式
+- **THEN** 系统 SHALL 支持案卷元数据、案卷实物、卷内元数据和卷内实物四类动态表
+- **AND** 系统 SHALL NOT 强制案卷和卷内共用同一套实物字段
+
+#### Scenario: 逻辑删除条目及其动态数据
+
+- **WHEN** 客户端删除档案条目
+- **THEN** 系统 SHALL 将 `am_archive_item.deleted_flag` 标记为 `true`
+- **AND** 系统 SHALL 写入 `am_archive_item.deleted_at` 和 `am_archive_item.deleted_by`
+- **AND** 系统 SHALL 将该条目已建元数据表和实物信息表对应行的 `deleted_flag` 标记为 `true`
+- **AND** 系统 SHALL 写入对应动态行的 `deleted_at` 和 `deleted_by`
+- **AND** 系统 SHALL 允许动态表部分唯一索引释放该记录占用的唯一值
+- **AND** 回收站查询 SHALL 使用 `deleted_at DESC, id DESC` 作为稳定默认排序
 
 ### Requirement: 条目与案卷分对象
 
@@ -127,41 +161,15 @@
 - **THEN** 系统 SHALL 创建动态明细表
 - **AND** 动态明细表 SHALL 使用 `item_id` 引用 `am_archive_item`
 - **AND** 动态明细表 SHALL 支持同一条目下多行明细
+- **AND** 动态明细表 SHALL 固定包含 `id`、`item_id`、`line_order`、`deleted_flag`、`deleted_at`、`deleted_by`、`created_at` 和 `updated_at`
+- **AND** 系统 SHALL 为未删除明细行提供按 `item_id`、`line_order` 和 `id` 查询的索引
 
-#### Scenario: 动态表名使用稳定业务键
+#### Scenario: 逻辑删除条目明细行
 
-- **WHEN** 系统为档案分类、档案层级和字段域生成默认动态表名
-- **THEN** 表名 SHALL 基于分类编码、item/volume 对象类型和 `field_scope` 这些稳定业务键生成
-- **AND** 表名 SHALL NOT 使用数据库自增 ID 作为必要组成部分
-- **AND** 表名 SHALL 使用小写 snake_case 且不超过 PostgreSQL 63 字节标识符限制
-- **AND** 当稳定业务键过长时，系统 SHALL 使用稳定哈希后缀生成可重复的短表名
-
-#### Scenario: 首次创建分类动态表
-
-- **WHEN** 客户端对有启用字段的档案分类执行建表动作
-- **THEN** 系统 SHALL 创建该分类对应的动态数据表
-- **AND** 动态表 SHALL 固定包含 `id`、`deleted_flag`、`deleted_at`、`deleted_by`、`created_at` 和 `updated_at`
-- **AND** 动态表 SHALL 使用 `id` 作为主键并引用 `am_archive_item` 或 `am_archive_volume` 对象 ID
-
-#### Scenario: 分层创建电子和实物动态表
-
-- **WHEN** 档案分类启用 `ITEM_ONLY` 管理模式
-- **THEN** 系统 SHALL 至少支持卷内条目的电子字段动态表
-- **AND** 系统 SHALL 在存在卷内实物字段时支持独立的卷内实物信息动态表
-- **WHEN** 档案分类启用 `VOLUME_ITEM` 管理模式
-- **THEN** 系统 SHALL 支持案卷电子、案卷实物、卷内电子和卷内实物四类动态表
-- **AND** 系统 SHALL NOT 将案卷和卷内数据混写到同一张分类动态表
-- **AND** 系统 SHALL NOT 强制案卷和卷内共用同一套实物字段
-
-#### Scenario: 逻辑删除释放动态表唯一值
-
-- **WHEN** 客户端删除档案条目
-- **THEN** 系统 SHALL 将`am_archive_item.deleted_flag` 标记为 `true`
-- **AND** 系统 SHALL 写入 `am_archive_item.deleted_at` 和 `am_archive_item.deleted_by`
-- **AND** 系统 SHALL 将该条目对应分类动态表行的 `deleted_flag` 标记为 `true`
-- **AND** 系统 SHALL 写入该条目对应分类动态表行的 `deleted_at` 和 `deleted_by`
-- **AND** 系统 SHALL 允许动态表部分唯一索引释放该记录占用的唯一值
-- **AND** 回收站查询 SHALL 使用 `deleted_at DESC, id DESC` 作为稳定默认排序
+- **WHEN** 客户端删除一条档案条目明细行
+- **THEN** 系统 SHALL 将该明细行的 `deleted_flag` 标记为 `true`
+- **AND** 系统 SHALL 写入该明细行的 `deleted_at` 和 `deleted_by`
+- **AND** 未删除明细行 SHALL 按 `line_order` 和 `id` 稳定排序
 
 ### Requirement: 字段检索标记
 
@@ -184,8 +192,9 @@
 
 #### Scenario: 全文投影字段来源
 
-- **WHEN** 系统维护全文检索投影
-- **THEN** 系统 SHALL 固定读取该分类下所有启用动态字段
+- **WHEN** 系统维护条目全文检索投影
+- **THEN** 系统 SHALL 固定读取该分类下所有启用的 `field_scope=METADATA` item 动态字段名称和值
+- **AND** 系统 SHALL 读取该条目未删除明细行的字段名称和值
 - **AND** 系统 SHALL NOT 要求客户端为字段配置全文检索开关
 
 #### Scenario: 使用固定记录字段编码创建动态字段
@@ -267,3 +276,199 @@
 - **WHEN** 客户端创建档案条目导致分类动态表唯一索引冲突
 - **THEN** 系统 SHALL 拒绝保存
 - **AND** 响应 SHALL 说明违反唯一规则
+
+### Requirement: 全宗管理
+
+系统 SHALL 提供全宗管理能力，全宗作为档案记录归属维度，不作为档案分类字段模板的一部分。
+
+#### Scenario: 创建全宗
+
+- **WHEN** 客户端提交全宗编码和全宗名称
+- **THEN** 系统 SHALL 创建一条全宗记录
+- **AND** 全宗编码 SHALL 在未删除记录中唯一
+
+#### Scenario: 查询启用全宗
+
+- **WHEN** 客户端查询全宗列表
+- **THEN** 系统 SHALL 返回未删除全宗
+- **AND** 系统 SHALL 支持按启用状态筛选
+
+#### Scenario: 禁用全宗
+
+- **WHEN** 客户端禁用一个全宗
+- **THEN** 系统 SHALL 保留历史档案记录上的全宗编码和名称
+- **AND** 系统 SHALL NOT 删除该全宗关联的档案记录
+
+### Requirement: 档案分类管理
+
+系统 SHALL 提供多层级档案分类管理能力，档案分类作为字段模板和动态表路由源，不绑定具体全宗，不单独维护门类或分类分组。
+
+#### Scenario: 创建档案分类
+
+- **WHEN** 客户端提交分类编码和分类名称
+- **THEN** 系统 SHALL 创建一条档案分类记录
+- **AND** 分类编码 SHALL 在全部历史分类中永久唯一
+- **AND** 分类编码长度 SHALL 不超过 100 个字符
+- **AND** 分类名称长度 SHALL 不超过 255 个字符
+- **AND** 系统 SHALL NOT 要求选择全宗
+- **AND** 系统 SHALL 允许选择一个未删除档案分类作为父级分类
+
+#### Scenario: 拒绝修改分类编码
+
+- **WHEN** 客户端修改已有分类并提交与当前值不同的分类编码
+- **THEN** 系统 SHALL 拒绝保存
+- **AND** 响应 SHALL 使用 `400 Bad Request` 和 `INVALID_ARGUMENT` ProblemDetail
+
+#### Scenario: 拒绝复用分类编码
+
+- **WHEN** 客户端创建分类并提交任一历史分类已使用的编码
+- **THEN** 系统 SHALL 拒绝保存
+- **AND** 响应 SHALL 使用 `409 Conflict` 和 `ALREADY_EXISTS` ProblemDetail
+- **AND** 已逻辑删除分类 SHALL 继续占用分类编码
+
+#### Scenario: 查询档案分类
+
+- **WHEN** 客户端查询档案分类列表
+- **THEN** 系统 SHALL 返回分类编码、分类名称和父级分类 ID
+- **AND** 系统 SHALL 分别返回案卷元数据表名 `volumeTableName`、卷内元数据表名 `itemTableName`、案卷实物表名 `volumePhysicalTableName` 和卷内实物表名 `itemPhysicalTableName`
+- **AND** 系统 SHALL 返回建表状态 `tableStatus` 和更新时间
+
+#### Scenario: 禁止分类循环
+
+- **WHEN** 客户端创建或修改档案分类父级
+- **THEN** 系统 SHALL 拒绝将分类自身设置为父级
+- **AND** 系统 SHALL 拒绝将分类子孙设置为父级
+
+#### Scenario: 删除存在子分类的分类
+
+- **WHEN** 客户端删除仍存在未删除子分类的档案分类
+- **THEN** 系统 SHALL 拒绝删除该分类
+
+### Requirement: 档案字段定义
+
+系统 SHALL 允许在档案分类下维护字段定义，用于驱动动态数据表和档案库列表。
+
+#### Scenario: 创建字段定义
+
+- **WHEN** 客户端为档案分类新增字段
+- **THEN** 字段编码 SHALL 只允许小写字母、数字和下划线
+- **AND** 字段类型 SHALL 只允许 `TEXT`、`INTEGER`、`DECIMAL`、`DATE`、`DATETIME`
+- **AND** 同一分类下字段编码 SHALL 在未删除记录中唯一
+
+#### Scenario: 配置字段展示
+
+- **WHEN** 客户端修改字段名称、排序、是否列表显示或是否搜索
+- **THEN** 系统 SHALL 更新字段定义运行时配置
+- **AND** 系统 SHALL NOT 因展示配置变更修改物理列类型
+
+#### Scenario: 枚举动态选项
+
+- **WHEN** 某个字段需要枚举选项
+- **THEN** 系统 SHALL 将枚举作为运行时动态选项处理
+- **AND** 系统 SHALL NOT 将枚举作为独立物理列类型
+
+### Requirement: 自动建表
+
+系统 SHALL 按设置了字段定义的档案分类自动创建或增量维护动态数据表。
+
+#### Scenario: 首次建表
+
+- **WHEN** 客户端对某个对象类型和字段域中有启用字段且未建表的档案分类执行建表动作
+- **THEN** 系统 SHALL 创建该分类对应的 item 或 volume 元数据表或实物信息表
+- **AND** 动态表 SHALL 符合“分类动态表边界和路由”Requirement 的固定列和字段隔离合同
+- **AND** 动态表主键 `id` SHALL 按对象类型引用 `am_archive_item.id` 或 `am_archive_volume.id`
+
+#### Scenario: 增量加列
+
+- **WHEN** 客户端对已建表分类执行建表动作且存在未建物理列的启用字段
+- **THEN** 系统 SHALL 只追加缺失物理列
+- **AND** 系统 SHALL NOT 删除或修改已存在物理列类型
+
+#### Scenario: 无字段建表
+
+- **WHEN** 客户端对没有启用字段的分类执行建表动作
+- **THEN** 系统 SHALL 拒绝建表
+- **AND** 响应 SHALL 说明该分类没有可建表字段
+
+### Requirement: 字段编辑控件配置
+
+系统 SHALL 在档案字段定义中保存编辑控件配置，并校验控件与字段类型兼容。
+
+#### Scenario: 创建文本字段并配置多行文本
+
+- **WHEN** 客户端为档案分类创建 `TEXT` 类型字段且编辑控件为 `TEXTAREA`
+- **THEN** 系统 SHALL 保存该字段的编辑控件配置
+- **AND** 后续字段查询 SHALL 返回该编辑控件配置
+
+#### Scenario: 创建数字字段并配置非数字控件
+
+- **WHEN** 客户端为 `INTEGER` 或 `DECIMAL` 类型字段配置 `INPUT`、`TEXTAREA`、`DATE` 或 `DATETIME` 控件
+- **THEN** 系统 SHALL 拒绝保存
+- **AND** 响应 SHALL 指出该字段类型只能使用数字控件
+
+#### Scenario: 创建日期字段并配置错误控件
+
+- **WHEN** 客户端为 `DATE` 类型字段配置非 `DATE` 控件，或为 `DATETIME` 类型字段配置非 `DATETIME` 控件
+- **THEN** 系统 SHALL 拒绝保存
+- **AND** 响应 SHALL 指出该字段类型可用的编辑控件
+
+### Requirement: 独立布局配置
+
+系统 SHALL 为档案分类提供独立公共布局配置，表格、详情和编辑布局 SHALL 分别维护字段顺序、显示状态和布局属性。
+
+#### Scenario: 保存表格布局配置
+
+- **WHEN** 客户端在表格布局中拖拽字段顺序并配置字段是否显示或列宽
+- **THEN** 系统 SHALL 保存表格布局顺序、显示状态和列宽
+- **AND** 系统 SHALL NOT 要求同时修改字段定义语义
+
+#### Scenario: 保存详情和编辑布局配置
+
+- **WHEN** 客户端在详情或编辑布局中拖拽字段顺序并配置字段是否显示或跨列
+- **THEN** 系统 SHALL 保存对应布局的顺序、显示状态和跨列数
+- **AND** 系统 SHALL NOT 因布局配置变更修改动态表物理列类型
+
+#### Scenario: 公共布局兜底
+
+- **WHEN** 当前分类和场景存在公共布局
+- **THEN** 系统 SHALL 返回该公共布局作为有效布局
+- **AND** 如果公共布局也不存在，系统 SHALL 使用字段定义中的默认展示配置生成有效布局
+
+#### Scenario: 配置非法跨列值
+
+- **WHEN** 客户端提交的详情跨列或编辑跨列不在系统允许范围内
+- **THEN** 系统 SHALL 拒绝保存
+- **AND** 响应 SHALL 指出跨列值不合法
+
+#### Scenario: 配置非法列表列宽
+
+- **WHEN** 客户端提交的列表列宽超出系统允许范围
+- **THEN** 系统 SHALL 拒绝保存
+- **AND** 响应 SHALL 指出列表列宽不合法
+
+### Requirement: 唯一规则字段可筛选
+
+系统 SHALL 将唯一规则中的案卷或卷内电子字段作为档案记录精确筛选字段维护。
+
+#### Scenario: 创建唯一规则
+
+- **WHEN** 客户端为档案分类创建唯一规则并选择字段
+- **THEN** 系统 SHALL 将这些字段标记为允许精确筛选
+- **AND** 系统 SHALL 为已建表分类维护这些字段的精确筛选索引
+
+#### Scenario: 修改唯一规则字段
+
+- **WHEN** 客户端修改唯一规则选择的字段
+- **THEN** 系统 SHALL 将新选择字段标记为允许精确筛选
+- **AND** 系统 SHALL 为已建表分类维护这些字段的精确筛选索引
+
+### Requirement: 动态字段数据范围能力标记
+
+系统 SHALL 支持将动态字段标记为是否允许用于档案数据范围条件。
+
+#### Scenario: 启用字段作为数据范围条件
+
+- **WHEN** 管理员更新档案动态字段配置并启用数据范围条件能力
+- **THEN** 系统 SHALL 校验字段类型支持范围条件
+- **AND** 系统 SHALL 保存该字段允许用于数据范围
+- **AND** 系统 SHALL 确保该字段能够被后端查询条件安全引用

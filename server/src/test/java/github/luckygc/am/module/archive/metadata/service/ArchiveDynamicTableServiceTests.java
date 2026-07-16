@@ -54,7 +54,7 @@ class ArchiveDynamicTableServiceTests {
         verify(mapper).executeSql(contains("create index"));
         verify(mapper)
                 .updateCategoryTableStatus(
-                        eq(1L), eq("ITEM"), eq("METADATA"), eq(tableName), eq("BUILT"), eq(9L));
+                        eq(1L), eq("ITEM"), eq("METADATA"), eq(tableName), eq("BUILT"));
     }
 
     @Test

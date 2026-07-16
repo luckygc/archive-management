@@ -34,8 +34,7 @@ public interface ArchiveMapper {
             @Param("archiveLevel") String archiveLevel,
             @Param("fieldScope") String fieldScope,
             @Param("tableName") String tableName,
-            @Param("tableStatus") String tableStatus,
-            @Param("userId") Long userId);
+            @Param("tableStatus") String tableStatus);
 
     List<Map<String, Object>> listItemOverview();
 
@@ -72,8 +71,7 @@ public interface ArchiveMapper {
             @Param("securityLevelId") Long securityLevelId,
             @Param("retentionPeriodId") Long retentionPeriodId,
             @Param("archiveYear") int archiveYear,
-            @Param("governanceSchemeVersionId") Long governanceSchemeVersionId,
-            @Param("userId") Long userId);
+            @Param("governanceSchemeVersionId") Long governanceSchemeVersionId);
 
     int countArchiveItemsByArchiveNo(
             @Param("categoryCode") String categoryCode,
@@ -94,8 +92,7 @@ public interface ArchiveMapper {
             @Param("electronicStatus") String electronicStatus,
             @Param("securityLevelId") Long securityLevelId,
             @Param("retentionPeriodId") Long retentionPeriodId,
-            @Param("archiveYear") int archiveYear,
-            @Param("userId") Long userId);
+            @Param("archiveYear") int archiveYear);
 
     int updateDynamicRecord(
             @Param("tableName") String tableName,
@@ -105,7 +102,7 @@ public interface ArchiveMapper {
     int markDynamicRecordDeleted(
             @Param("tableName") String tableName,
             @Param("id") Long id,
-            @Param("userId") Long userId);
+            @Param("deletedBy") Long deletedBy);
 
     Map<String, Object> loadDynamicRecord(
             @Param("tableName") String tableName, @Param("id") Long id);
@@ -125,8 +122,7 @@ public interface ArchiveMapper {
             @Param("archiveNo") String archiveNo,
             @Param("electronicStatus") String electronicStatus,
             @Param("archiveYear") int archiveYear,
-            @Param("governanceSchemeVersionId") Long governanceSchemeVersionId,
-            @Param("userId") Long userId);
+            @Param("governanceSchemeVersionId") Long governanceSchemeVersionId);
 
     int countArchiveVolumesByArchiveNo(
             @Param("categoryCode") String categoryCode,
@@ -140,8 +136,7 @@ public interface ArchiveMapper {
             @Param("archiveItemId") Long archiveItemId,
             @Param("storageObjectId") Long storageObjectId,
             @Param("usageType") String usageType,
-            @Param("displayOrder") int displayOrder,
-            @Param("userId") Long userId);
+            @Param("displayOrder") int displayOrder);
 
     int deleteArchiveItemElectronicFile(
             @Param("archiveItemId") Long archiveItemId,
@@ -151,14 +146,14 @@ public interface ArchiveMapper {
             @Param("archiveItemId") Long archiveItemId,
             @Param("electronicFileId") Long electronicFileId);
 
-    int markArchiveItemDeleted(@Param("id") Long id, @Param("userId") Long userId);
+    int markArchiveItemDeleted(@Param("id") Long id, @Param("deletedBy") Long deletedBy);
 
     int lockArchiveItem(
             @Param("id") Long id,
             @Param("lockReason") String lockReason,
             @Param("lockedBy") Long lockedBy);
 
-    int unlockArchiveItem(@Param("id") Long id, @Param("userId") Long userId);
+    int unlockArchiveItem(@Param("id") Long id);
 
     int insertSearchProjection(
             @Param("archiveItemId") Long archiveItemId,
@@ -186,8 +181,7 @@ public interface ArchiveMapper {
             @Param("constraintCode") String constraintCode,
             @Param("constraintName") String constraintName,
             @Param("indexName") String indexName,
-            @Param("enabled") boolean enabled,
-            @Param("userId") Long userId);
+            @Param("enabled") boolean enabled);
 
     int updateUniqueConstraint(
             @Param("id") Long id,
@@ -196,13 +190,9 @@ public interface ArchiveMapper {
             @Param("constraintCode") String constraintCode,
             @Param("constraintName") String constraintName,
             @Param("indexName") String indexName,
-            @Param("enabled") boolean enabled,
-            @Param("userId") Long userId);
+            @Param("enabled") boolean enabled);
 
-    int deleteUniqueConstraint(
-            @Param("id") Long id,
-            @Param("categoryId") Long categoryId,
-            @Param("userId") Long userId);
+    int deleteUniqueConstraint(@Param("id") Long id, @Param("categoryId") Long categoryId);
 
     int deleteUniqueConstraintFields(@Param("constraintId") Long constraintId);
 
@@ -214,15 +204,12 @@ public interface ArchiveMapper {
     List<Map<String, Object>> listUniqueConstraintFields(@Param("constraintId") Long constraintId);
 
     int markFieldsExactSearchable(
-            @Param("categoryId") Long categoryId,
-            @Param("fieldIds") List<Long> fieldIds,
-            @Param("userId") Long userId);
+            @Param("categoryId") Long categoryId, @Param("fieldIds") List<Long> fieldIds);
 
     int moveItemToVolume(
             @Param("volumeId") Long volumeId,
             @Param("archiveItemId") Long archiveItemId,
-            @Param("displayOrder") int displayOrder,
-            @Param("userId") Long userId);
+            @Param("displayOrder") int displayOrder);
 
     List<Map<String, Object>> listItemRelations(
             @Param("archiveItemId") Long archiveItemId,
@@ -246,13 +233,10 @@ public interface ArchiveMapper {
             @Param("tableCode") String tableCode,
             @Param("tableName") String tableName,
             @Param("physicalTableName") String physicalTableName,
-            @Param("sortOrder") int sortOrder,
-            @Param("userId") Long userId);
+            @Param("sortOrder") int sortOrder);
 
     int updateItemLineTablePhysicalName(
-            @Param("id") Long id,
-            @Param("physicalTableName") String physicalTableName,
-            @Param("userId") Long userId);
+            @Param("id") Long id, @Param("physicalTableName") String physicalTableName);
 
     List<Map<String, Object>> listItemLineFields(@Param("lineTableId") Long lineTableId);
 
@@ -263,8 +247,7 @@ public interface ArchiveMapper {
             @Param("fieldType") String fieldType,
             @Param("columnName") String columnName,
             @Param("exactSearchable") boolean exactSearchable,
-            @Param("sortOrder") int sortOrder,
-            @Param("userId") Long userId);
+            @Param("sortOrder") int sortOrder);
 
     List<Map<String, Object>> listItemLineRows(@Param("query") ArchiveItemLineRowPageQuery query);
 

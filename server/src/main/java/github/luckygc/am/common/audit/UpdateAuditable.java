@@ -1,14 +1,10 @@
 package github.luckygc.am.common.audit;
 
-import java.time.LocalDateTime;
+import org.jspecify.annotations.Nullable;
 
-public interface UpdateAuditable {
+public interface UpdateAuditable extends UpdateTimeAuditable {
 
-    Long getUpdatedBy();
+    @Nullable Long getUpdatedBy();
 
-    void setUpdatedBy(Long updatedBy);
-
-    LocalDateTime getUpdatedAt();
-
-    void setUpdatedAt(LocalDateTime updatedAt);
+    void setUpdatedBy(@Nullable Long updatedBy);
 }

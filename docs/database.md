@@ -180,6 +180,6 @@ select extname from pg_extension order by extname;
 最小恢复顺序：
 
 1. 恢复 PostgreSQL。
-2. 恢复本地文件目录或对象存储 bucket。
+2. 恢复 S3 兼容对象存储 bucket。
 3. 恢复部署配置。
 4. 启动应用并检查 Flyway、健康端点和核心页面。

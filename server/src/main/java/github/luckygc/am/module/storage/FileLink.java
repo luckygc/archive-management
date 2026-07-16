@@ -11,17 +11,16 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
-import org.hibernate.annotations.CreationTimestamp;
 import org.jspecify.annotations.Nullable;
 
-import github.luckygc.am.common.audit.CreationAuditable;
+import github.luckygc.am.common.audit.CreationTimeAuditable;
 
 import lombok.Data;
 
 @Data
 @Entity
 @Table(name = "am_file_link")
-public class FileLink implements CreationAuditable {
+public class FileLink implements CreationTimeAuditable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -53,6 +52,5 @@ public class FileLink implements CreationAuditable {
     private @Nullable Long createdBy;
 
     @Column(name = "created_at", nullable = false)
-    @CreationTimestamp
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private LocalDateTime createdAt;
 }

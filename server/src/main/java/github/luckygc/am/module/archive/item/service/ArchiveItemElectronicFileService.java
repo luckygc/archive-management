@@ -90,7 +90,7 @@ public class ArchiveItemElectronicFileService {
         try {
             electronicFileId =
                     archiveMapper.insertArchiveItemElectronicFile(
-                            archiveItemId, storageObject.id(), usageType, displayOrder, userId);
+                            archiveItemId, storageObject.id(), usageType, displayOrder);
         } catch (DataIntegrityViolationException exception) {
             throw new BadRequestException("档案电子文件已存在");
         }

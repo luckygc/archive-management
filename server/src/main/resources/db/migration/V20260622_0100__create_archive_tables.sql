@@ -106,9 +106,8 @@ create table am_archive_category
     updated_at        timestamp    not null default localtimestamp
 );
 
-create unique index uk_am_archive_category_scheme_code_active
-    on am_archive_category (scheme_id, category_code)
-    where deleted_flag = false;
+create unique index uk_am_archive_category_code
+    on am_archive_category (category_code);
 create index idx_am_archive_category_sort_active
     on am_archive_category (parent_id, sort_order, id)
     where deleted_flag = false;

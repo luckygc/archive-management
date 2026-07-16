@@ -1,101 +1,53 @@
 # 部署手册
 
-本文面向测试、预生产和生产环境部署。项目当前由三个运行面组成：Spring Boot 主应用、PC 前端静态资源、独立文件预览服务。
+本文面向测试、预生产和生产环境。系统运行面为 Spring Boot 主应用、PC 前端静态资源和独立文件预览服务；PostgreSQL 与 S3 兼容对象存储由部署环境提供。
 
 ## 部署组件
 
-| 组件 | 目录 | 运行方式 | 说明 |
-| --- | --- | --- | --- |
-| 主应用 | `server/` | Spring Boot JAR | 提供 `/api/v1/**`、静态资源、安全、会话、迁移和业务能力 |
-| PC 前端 | `web/` | 构建为静态资源 | Vue 3 + Element Plus PC 管理界面 |
-| 前端共享包 | `frontend-core/` | 构建产物被 `web` 消费 | 不独立部署 |
-| 文件预览服务 | `preview/` | 独立 Go HTTP 服务 | 提供同步预览转换能力，默认端口 `8088` |
-| PostgreSQL | 外部服务 | 数据库 | 唯一优先数据库目标 |
-| 对象存储 | 外部 S3 兼容服务 | 文件内容存储 | 生产使用成熟对象存储，开发 Compose 提供单节点端点 |
+| 组件 | 构建来源 | 部署形态 |
+| --- | --- | --- |
+| 主应用 | `server/` | Spring Boot JAR |
+| PC 前端 | `web/` | 静态资源；`frontend-core/` 随前端构建，不独立部署 |
+| 文件预览服务 | `preview/` | 独立 Go HTTP 服务 |
+| 数据库 | 外部 PostgreSQL | 项目唯一优先数据库目标 |
+| 文件内容 | 外部 S3 兼容对象存储 | 业务统一通过 `FileStorageService` 访问 |
 
-## 构建
+## 构建与验证
 
-后端打包：
+构建发布产物：
 
 ```bash
 task server-package
-```
-
-前端构建：
-
-```bash
 task frontend-build
-```
-
-预览服务构建：
-
-```bash
 task preview-build
 ```
 
-发布前建议至少运行：
-
-```bash
-task server-test
-task frontend-ready
-task preview-test
-```
+发布前按范围运行 `task server-test`、`task frontend-ready`、`task preview-test`，并运行 `task governance-check`。所有任务均以根 [`Taskfile.yml`](../Taskfile.yml) 为准。
 
 ## 配置来源
 
-主应用默认配置在 `server/src/main/resources/application.yaml`。部署环境不要修改该文件，应通过以下方式覆盖：
+主应用默认配置真相源是 [`server/src/main/resources/application.yaml`](../server/src/main/resources/application.yaml)。部署环境不修改仓库默认文件，通过 Spring Boot 标准优先级使用外部 `application.yaml`、profile 配置、环境变量、JVM 参数以及 Secret/ConfigMap 覆盖。
 
-- 外部 `application.yaml` 或 `application-<profile>.yaml`。
-- 环境变量。
-- 容器编排平台的 Secret 和 ConfigMap。
-- JVM 参数或 Spring Boot 标准配置优先级。
+必须外部提供或确认：
 
-不得把密钥、数据库密码和对象存储密钥写入 Git。
+- PostgreSQL 地址、数据库、用户名、密码和连接池容量。
+- S3 endpoint、region、bucket、access key、secret key 和 path-style 行为。
+- 可信前端 Origin、请求签名策略、管理员初始化策略和 Actuator 暴露范围。
+- 预览服务监听地址、上传限制和可选外部转换工具。
 
-## 必需外部依赖
+密钥、生产连接串、客户环境参数和管理员口令不得写入 Git。
 
-### PostgreSQL
+## PostgreSQL 与迁移
 
-默认配置：
+项目自有 SQL 和迁移只面向 PostgreSQL。Flyway 随主应用启动执行结构迁移；共享环境必须保持 `spring.flyway.clean-disabled=true`，不得启用 `archive.flyway.clean-before-migrate`。
 
-```yaml
-spring:
-    datasource:
-        url: jdbc:postgresql://localhost:5433/archive_management
-        username: postgres
-        password:
-```
+Spring Session、Quartz 和 Flowable 原生表由仓库 Flyway 迁移管理并保留上游命名；Spring Modulith JDBC Event Publication Registry 按当前框架配置初始化。具体表名和开关以 `application.yaml` 与迁移脚本为准。
 
-生产环境必须显式配置数据库地址、用户名、密码和连接池容量。项目自有 SQL、迁移脚本和查询按 PostgreSQL 优先设计，不维护其他数据库兼容分支。
+发布前备份数据库并核对迁移兼容性；应用启动后先确认迁移成功，再放入业务流量。
 
-### Flyway
+## S3 兼容对象存储
 
-结构迁移默认开启：
-
-```yaml
-spring:
-    flyway:
-        enabled: true
-        locations:
-            - classpath:db/migration
-        validate-on-migrate: true
-        clean-disabled: true
-```
-
-发布时由应用启动过程执行迁移。共享环境保持 `clean-disabled=true`，不要开启 `archive.flyway.clean-before-migrate`。
-
-### 会话、调度和流程表
-
-- Spring Session 表名为 `SPRING_SESSION`，由 Flyway 管理。
-- Quartz 表名为 `QRTZ_*`，由 Flyway 管理。
-- Flowable 原生 `ACT_*` 表由 Flyway 管理，运行期 `flowable.database-schema-update=false`。
-- Spring Modulith 事件发布注册表由框架 JDBC 初始化管理。
-
-这些第三方表保留上游命名，不改成 `am_` 前缀。
-
-## 存储配置
-
-文件内容统一使用 S3 兼容对象存储：
+文件内容只部署到成熟的外部 S3 兼容服务。示例外部配置：
 
 ```yaml
 archive:
@@ -108,62 +60,26 @@ archive:
         path-style-access: false
 ```
 
-生产建议：
+接入前验证签名、path-style、Put/Get/Head/Delete 和 multipart 行为。对象存储的高可用、版本控制、备份和异地灾备由部署环境负责。更换 endpoint 或 bucket 前先迁移并校验对象，再切换应用配置；不要把仓库 Compose 的单节点开发服务用于生产。
 
-- 使用 AWS S3、OSS、COS、OBS、Ceph RGW 等成熟外部 S3 兼容服务，不把开发 Compose 的单节点服务用于生产。
-- endpoint 仅在 AWS S3 SDK 默认地址不适用时配置；接入前验证 path-style、签名、Put/Get/Head/Delete 和 multipart 行为。
-- 文件记录中的 `bucket_name` 和 object key 是下载、删除、审计的依据。
-- 更换 endpoint 或 bucket 前必须先迁移并校验文件内容，再切换应用配置；应用不同时挂载新旧存储。
-- 对象存储自身的高可用、版本控制、备份和异地灾备由部署环境负责。
+## 安全与初始化
 
-## 安全配置
+生产环境必须把 CORS Origin 改为实际可信前端地址，并按风险决定是否启用请求签名；启用时通过外部 Secret 提供至少 32 个字符的密钥。Actuator 不向公网暴露全部端点，并结合监控角色、网关、网络策略或安全组限制来源。完整配置指引见 [`security.md`](security.md)。
 
-生产环境至少确认：
-
-```yaml
-archive:
-    security:
-        cors:
-            allowed-origins:
-                - https://your-web-origin.example
-        request-signature:
-            enabled: true
-            secret: "<至少 32 个字符的密钥>"
-```
-
-说明：
-
-- `/api/**` 默认要求登录，登录、CAP 和公开文件短链除外。
-- 请求签名开启后，除 OPTIONS 预检外的 `/api/**` 请求必须携带 `X-AM-Timestamp`、`X-AM-Nonce` 和 `X-AM-Signature`。
-- Actuator 端点需要 `系统监控` 角色，角色名可通过 `archive.security.authorization.actuator-role-name` 覆盖。
-- 生产环境不应暴露全部 Actuator 端点给公网。
-
-## 管理员初始化
-
-管理员初始化默认关闭：
-
-```yaml
-archive:
-    authentication:
-        bootstrap-admin:
-            enabled: false
-```
-
-首次部署可在受控窗口临时开启，并通过外部 Secret 提供密码。初始化完成后关闭该开关，避免重复初始化口令成为长期风险。
+管理员初始化默认关闭。首次部署可在受控窗口临时启用 `archive.authentication.bootstrap-admin.enabled` 并通过外部 Secret 提供密码；初始化完成后立即关闭。
 
 ## 部署顺序
 
-1. 准备 PostgreSQL、存储目录或对象存储 bucket。
-2. 配置主应用外部配置和密钥。
-3. 启动主应用，让 Flyway 完成迁移。
-4. 检查 `/actuator/health` 和日志。
-5. 部署前端静态资源，确认后端 API 地址、Cookie 和 CORS 策略一致。
-6. 部署预览服务，检查 `/healthz` 和 `/v1/capabilities`。
-7. 使用管理员账号登录 PC 端，检查工作台、当前用户、权限和基础字典。
+1. 准备 PostgreSQL、备份策略和 S3 兼容 bucket。
+2. 配置主应用、前端和预览服务的外部参数与 Secret。
+3. 启动主应用，确认 Flyway 成功并检查 `/actuator/health` 与日志。
+4. 部署前端静态资源，确认 API 地址、Cookie 和 CORS 策略一致。
+5. 部署预览服务，检查 `/healthz` 和 `/v1/capabilities`。
+6. 使用受控管理员账号检查登录、当前用户、权限和基础业务入口。
 
 ## 回滚原则
 
-- 代码回滚前先确认数据库迁移是否可兼容旧版本。
-- 当前项目未正式发布前，迁移脚本按目标结构直接维护；进入正式发布后，已发布迁移不得修改历史内容。
-- 文件存储和数据库状态要一起评估，避免数据库回滚后文件内容孤立或短链失效。
-- 生产环境不通过 Flyway clean 回滚。
+- 代码回滚前确认数据库迁移是否兼容旧版本；生产环境不使用 Flyway clean 回滚。
+- 当前项目未正式发布前，迁移脚本按目标结构维护；正式发布后不得修改已经发布的迁移历史。
+- 数据库与 S3 对象状态一起评估和恢复，避免记录与文件内容不一致。
+- 保留发布产物、配置版本、数据库备份和对象存储恢复点，使回滚路径可验证。

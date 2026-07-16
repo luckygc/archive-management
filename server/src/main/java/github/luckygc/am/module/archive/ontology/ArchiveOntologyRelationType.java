@@ -12,9 +12,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 
-import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.SoftDelete;
-import org.hibernate.annotations.UpdateTimestamp;
 import org.jspecify.annotations.Nullable;
 
 import github.luckygc.am.common.audit.CreationAuditable;
@@ -67,13 +65,11 @@ public class ArchiveOntologyRelationType implements CreationAuditable, UpdateAud
     private @Nullable Long createdBy;
 
     @Column(name = "created_at", nullable = false)
-    @CreationTimestamp
     private LocalDateTime createdAt;
 
     @Column(name = "updated_by")
     private @Nullable Long updatedBy;
 
     @Column(name = "updated_at", nullable = false)
-    @UpdateTimestamp
     private LocalDateTime updatedAt;
 }

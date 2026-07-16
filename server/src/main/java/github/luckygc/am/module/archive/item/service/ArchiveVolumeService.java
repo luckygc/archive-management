@@ -277,8 +277,7 @@ public class ArchiveVolumeService {
                             archiveNo,
                             StringUtils.defaultIfBlank(request.electronicStatus(), "DRAFT"),
                             archiveYear,
-                            governanceSchemeVersionId,
-                            userId);
+                            governanceSchemeVersionId);
         } catch (DuplicateKeyException exception) {
             throw duplicateArchiveNo();
         }
@@ -319,7 +318,7 @@ public class ArchiveVolumeService {
         }
         int updated =
                 archiveMapper.moveItemToVolume(
-                        volumeId, archiveItemId, displayOrder == null ? 0 : displayOrder, userId);
+                        volumeId, archiveItemId, displayOrder == null ? 0 : displayOrder);
         if (updated == 0) {
             throw new BadRequestException("档案条目已锁定或不存在，不能加入案卷");
         }

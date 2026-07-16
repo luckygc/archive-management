@@ -1,99 +1,41 @@
 # 贡献指南
 
-本文说明普通协作流程。更细的仓库规则以 `AGENTS.md` 为准。
+本文说明普通贡献流程。仓库协作、架构强边界和技能路由以 [`AGENTS.md`](AGENTS.md) 为准；本文不复制该手册。
 
-## 基本原则
+## 开始前
 
-- 使用中文交流、写文档和写注释。
-- 默认按最小闭环推进，不顺手扩展相邻模块。
-- 优先使用现有框架、组件、数据模型和工具链。
-- 不为未来假设新增抽象、适配层、配置开关或兼容分支。
-- 不提交密钥、密码、客户数据或本地私有配置。
+- 拉取远程变更后运行 `task frontend-install`。
+- 阅读 `AGENTS.md`、相关当前文档、对应 OpenSpec 和已有实现。
+- 先确认改动 owner；业务字段、状态机、权限和验收场景进入对应 OpenSpec，通用 API 合同进入 `openspec/specs/api-contract/spec.md`。
+- 不提交密钥、密码、客户数据、构建产物或本地私有配置。
 
 ## 开发流程
 
-1. 拉取远程变更。
-2. 运行 `task frontend-install` 安装或刷新前端依赖。
-3. 阅读相关 OpenSpec、`AGENTS.md` 和已有模块代码。
-4. 小步实现改动。
-5. 运行对应验证命令。
-6. 更新受影响文档。
-7. 提交前检查工作树，只包含本次改动。
+1. 按最小闭环实现当前需求，不顺手扩展相邻模块。
+2. 同步更新受影响的合同或说明文档。
+3. 运行 `task governance-check`。
+4. 运行与改动范围匹配的构建和测试任务。
+5. 运行 `git diff --check`，确认工作树只包含预期改动。
 
-## 文档变更
+## 范围验证
 
-文档落点：
+以下命令均来自 [`Taskfile.yml`](Taskfile.yml)；按实际范围选择，不能用较窄检查代替受影响模块的验证。
 
-- 工程、部署、运维、API、安全和用户说明放在 `docs/`。
-- 业务合同、接口字段、状态机、权限边界和验收场景放在 `openspec/specs/` 或对应 change。
-- 行业背景、规范理解和项目采纳建议放在 `docs/archive-knowledge/`。
-- 产品定位和设计原则分别维护在 `PRODUCT.md` 和 `DESIGN.md`。
+| 改动范围 | 至少执行 |
+| --- | --- |
+| 当前规范、OpenSpec 或工程文档 | `task governance-check` |
+| 前端 | `task frontend-check`、`task frontend-test`；影响构建或发布时再运行 `task frontend-build` |
+| 后端 Java | `task server-format-check`、`task server-compile` 和相关 `task server-test` |
+| 文件预览服务 | `task preview-test`、`task preview-build` |
 
-如果说明文档和 OpenSpec 冲突，先修正 OpenSpec 或澄清业务合同，再更新说明文档。
+后端 Maven 项目根目录是 `server/`；需要直接运行 Maven 时先进入该目录。前端使用项目依赖提供的 Vite+，直接调用时使用 `pnpm exec vp ...`。完整本地开发入口见 [`docs/development.md`](docs/development.md)。
 
-## 前端验证
+## 文档 owner
 
-前端改动至少运行相关命令：
-
-```bash
-task frontend-check
-task frontend-test
-```
-
-影响构建、路由、依赖或发布时运行：
-
-```bash
-task frontend-build
-```
-
-本项目使用 Vite+，日常通过根目录 `package.json` 和 `Taskfile.yml` 的脚本执行。直接调用时使用 `pnpm exec vp ...`。
-
-## 后端验证
-
-后端 Maven 项目根目录是 `server/`。推荐通过任务运行：
-
-```bash
-task server-format-check
-task server-compile
-task server-test
-```
-
-只运行 Maven 时必须进入 `server/`：
-
-```bash
-cd server
-mise exec -- mvn -q -DskipTests test-compile
-```
-
-Java 格式以 Spotless + google-java-format AOSP 风格为准。
-
-## 预览服务验证
-
-预览服务位于 `preview/`：
-
-```bash
-task preview-test
-task preview-build
-```
-
-## 数据库和迁移
-
-- PostgreSQL 是唯一优先目标。
-- 项目自有表使用 `am_模块_表名`。
-- 第三方表保留上游命名。
-- SQL 标识符使用小写 snake_case。
-- 迁移脚本不假定 schema 固定为 `public`。
-- 生产环境不使用 Flyway clean。
-
-## API 变更
-
-设计或修改项目自有 HTTP API 时：
-
-1. 先查 `openspec/specs/api-contract/spec.md`。
-2. 按业务模块更新对应 OpenSpec。
-3. Controller 请求 DTO 使用具体动作命名，例如 `CreateArchiveCategoryRequest`。
-4. 响应 DTO 使用前端视图语义命名，例如 `ArchiveCategoryListItemResponse`。
-5. 不直接把持久化实体作为 HTTP 响应合同。
+- 产品定位维护在 `PRODUCT.md`，Element Plus 设计系统维护在 `DESIGN.md`。
+- 稳定技术边界维护在 `docs/architecture.md`；开发、部署、API、安全和运维说明维护在对应 `docs/` 文档。
+- 业务合同和验收场景维护在 `openspec/specs/` 或活动 change；发生冲突时先校准合同 owner。
+- `docs/superpowers/**` 是历史资料，不作为当前规范。
 
 ## 许可证
 

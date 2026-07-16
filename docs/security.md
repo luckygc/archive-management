@@ -1,187 +1,90 @@
-# 安全文档
+# 安全架构与配置指引
 
-本文说明当前项目的认证、会话、权限、数据范围、请求签名和审计边界。安全能力以服务端实现为准，前端状态只改善体验，不能替代服务端校验。
+本文记录认证、会话、授权、数据范围、跨域、请求签名、公开下载和审计的稳定安全边界。安全能力以服务端合同与实现为准；前端状态、路由和按钮可见性只改善体验，不能替代服务端校验。
 
-## 认证入口
+## 真相源
 
-公开认证相关接口：
+- 当前默认值和可覆盖配置：[`server/src/main/resources/application.yaml`](../server/src/main/resources/application.yaml)
+- 通用 HTTP、错误和 ID 合同：[`api-contract`](../openspec/specs/api-contract/spec.md)
+- 登录、会话和认证验收：[`login-authentication`](../openspec/specs/login-authentication/spec.md)
+- 功能权限：[`authorization-permissions`](../openspec/specs/authorization-permissions/spec.md)
+- 档案数据范围：[`archive-data-scope`](../openspec/specs/archive-data-scope/spec.md)
+- 文件与短链：[`file-storage`](../openspec/specs/file-storage/spec.md)
+- API 使用入口：[`api.md`](api.md)
 
-| 方法 | 路径 | 说明 |
-| --- | --- | --- |
-| `POST` | `/api/v1/cap-challenges` | 创建登录前安全验证 challenge |
-| `POST` | `/api/v1/cap-tokens` | 兑换 CAP token |
-| `POST` | `/api/v1/cap-tokens:validate` | 校验 CAP token |
-| `POST` | `/api/v1/login-sessions` | 账号密码登录 |
+具体接口清单、字段、状态机和验收场景由上述规格承担，本文不维护页面或 Controller 快照。
 
-登录成功后，Spring Security 将认证状态写入服务端 HTTP Session。项目显式使用 `HttpSessionSecurityContextRepository` 保存 SecurityContext，并由 Spring Session JDBC 持久化会话；浏览器只通过名为 `am_session` 的 session cookie 关联服务端会话。
+## 威胁边界
 
-当前主体查询：
+- 浏览器、前端状态、请求参数、上传文件和任何客户端声明均不可信。
+- Spring Boot 主应用负责认证、功能授权、数据范围、参数校验和业务不变量；数据库约束继续守住持久化不变量。
+- PostgreSQL、外部 S3 兼容对象存储、预览服务和部署平台是独立运行边界，使用最小权限账号和受控网络访问。
+- CORS 不是认证机制；允许跨域不代表允许业务访问。
+- 公开下载、Actuator、管理员初始化和请求签名密钥是高风险入口，必须由部署环境显式收敛。
 
-```http
-GET /api/v1/me
-```
+## 认证与会话
 
-退出或踢下线：
+登录前安全验证和账号密码登录按 `login-authentication` 执行。登录成功后，Spring Security 把认证状态保存在服务端 HTTP Session，Spring Session JDBC 持久化会话；浏览器只持有配置的 session cookie。
 
-```http
-DELETE /api/v1/login-sessions/{session}
-```
+会话超时、cookie 名称和 JDBC 表配置以 `application.yaml` 为准。Spring Session 表由 Flyway 管理，不由运行期自动建表。退出、踢下线、失败限制和认证审计属于认证业务合同，不在本文复制接口表。
 
-## 会话
+部署时确认：
 
-默认配置：
+- cookie 只在预期域和路径发送，并按 HTTPS 部署策略设置安全属性。
+- 代理或网关不记录密码、CAP token、session cookie、CSRF token 或签名密钥。
+- 管理员初始化只在受控窗口启用，完成后立即关闭。
 
-```yaml
-spring:
-    session:
-        timeout: 30m
-        jdbc:
-            initialize-schema: never
-            table-name: SPRING_SESSION
+## 功能权限与数据范围
 
-server:
-    servlet:
-        session:
-            cookie:
-                name: am_session
-```
+服务端对读取、创建、修改、删除、锁定、导入导出、文件访问和管理操作校验精确权限；涉及档案数据时同时应用用户数据范围。角色、用户和组织部门绑定的范围合同以 `archive-data-scope` 为准。
 
-会话表由 Flyway 管理，不由 Spring Session 自动建表。PC 前端收到 401 后会清理本地当前用户状态并跳转登录页。
+前端可以隐藏或禁用无权操作，但所有写入和敏感读取仍由后端重新校验。当前 Spring Security 过滤链遇到未认证的项目 API 请求时，通过 `HttpStatusEntryPoint` 返回 `401 Unauthorized` 状态，不承诺 ProblemDetail 响应体。项目自有 API 错误的目标合同以 [`api-contract`](../openspec/specs/api-contract/spec.md) 为准；若要让该入口返回统一响应体，必须另行提出实现变更并补充测试。其他权限与数据范围错误避免暴露异常类名、堆栈、SQL、内部拓扑或非必要实现细节，具体状态码和业务语义以对应 OpenSpec 为准。
 
-## 登录失败限制
+## CORS 与 CSRF
 
-登录失败限制用于抑制暴力尝试。管理员可通过认证审计和失败限制重置接口处理误锁定：
+当前本地 CORS 默认值在 `application.yaml`。生产环境必须把 `archive.security.cors.allowed-origins` 替换为实际可信前端 Origin；允许凭证时不得使用宽泛 Origin，并只开放业务需要的方法、请求头和响应头。
 
-```http
-POST /api/v1/login-failure-limits/{username}:reset
-```
-
-认证审计接口：
-
-```http
-GET /api/v1/authentication-events
-```
-
-## 功能权限
-
-功能权限由后端权限点和角色绑定控制。
-
-| 接口 | 说明 |
-| --- | --- |
-| `GET /api/v1/authorization-permissions` | 查询系统权限点 |
-| `GET /api/v1/me/permissions` | 查询当前用户权限点 |
-| `GET /api/v1/authorization-roles` | 查询角色目录；角色、用户、功能权限或数据范围管理员可读 |
-| `GET /api/v1/authentication-users` | 查询用户管理列表；仅用户管理员可读 |
-| `GET /api/v1/authentication-user-options` | 查询数据范围授权用户选项；仅数据范围管理员可读，只返回 ID、用户名和显示名 |
-| `GET /api/v1/authorization-roles/{role}/permissions` | 查询角色权限 |
-| `PUT /api/v1/authorization-roles/{role}/permissions` | 覆盖角色权限 |
-
-授权管理是能力聚合页：具备 `authorization:permission:manage` 时只显示并请求角色功能权限，具备 `archive:data-scope:manage` 时只显示并请求角色、最小用户选项、部门数据范围。用户选项不暴露邮箱、手机、部门、启用状态和创建时间；角色/用户详情以及创建、修改、删除、分配角色、覆盖功能权限和覆盖数据范围仍要求对应精确管理权限。
-
-前端可以根据权限隐藏或禁用操作。权限摘要是不可由页面改写的深度只读快照，最新刷新成功后才原子替换。快照有效期为五分钟；AppShell 每 60 秒以及窗口 focus、页面 visible 时检查，并在最后 60 秒内预刷新，同时为当前 `validUntil` 维护单个可取消 timeout。续期会取消旧 timeout 并按新到期点重排，重置或卸载会清理它，因此 interval 与 TTL 错相也不会延迟失败关闭。有效期内失败保留上一成功版本；`validUntil` 到点仍失败则权限判断立即失败关闭、停止渲染受保护内容并显示可重试的“权限校验失败”，不会误报为 403。页面从后台恢复可见时会先同步提交过期状态，即使自动请求仍在 60 秒节流窗口；自动触发共享单一在途请求，卸载后停止调度。撤权时立即隐藏无权缓存内容；导航失败时保留页签并显示内联 403，离开该路由后清理页签和缓存。所有写入、删除、导出、下载和管理操作仍必须由后端重新校验权限。
-
-## 数据范围
-
-数据范围用于约束用户可见和可操作的档案集合。当前支持按角色、用户和组织部门绑定档案数据范围。
-
-| 接口 | 说明 |
-| --- | --- |
-| `GET /api/v1/archive-data-scopes` | 查询数据范围 |
-| `POST /api/v1/archive-data-scopes` | 创建数据范围 |
-| `PUT /api/v1/archive-data-scopes/{archiveDataScope}` | 更新数据范围 |
-| `GET /api/v1/authorization-roles/{role}/archive-data-scopes` | 查询角色数据范围 |
-| `PUT /api/v1/authorization-roles/{role}/archive-data-scopes` | 覆盖角色数据范围 |
-| `GET /api/v1/authorization-users/{user}/archive-data-scopes` | 查询用户数据范围 |
-| `PUT /api/v1/authorization-users/{user}/archive-data-scopes` | 覆盖用户数据范围 |
-| `GET /api/v1/organization-departments/{organizationDepartment}/archive-data-scopes` | 查询部门数据范围 |
-| `PUT /api/v1/organization-departments/{organizationDepartment}/archive-data-scopes` | 覆盖部门数据范围 |
-
-档案查询、管理查询、详情、导出和电子文件访问都应共享服务端数据范围判断。不要用前端筛选替代数据权限。
-
-## CORS
-
-默认本地允许：
-
-```yaml
-archive:
-    security:
-        cors:
-            allowed-origins:
-                - http://localhost:5173
-                - http://127.0.0.1:5173
-            allow-credentials: true
-```
-
-生产环境必须替换为实际可信前端 Origin。允许凭证时，不应使用宽泛 Origin。
-
-## CSRF
-
-Spring Security 使用 SPA CSRF 配置。CAP 相关接口被排除：
-
-- `/api/v1/cap-challenges`
-- `/api/v1/cap-tokens`
-- `/api/v1/cap-tokens:validate`
-
-前端请求需要按 Spring Security 约定携带 CSRF token。CORS 配置中已允许 `X-XSRF-TOKEN`。
+Spring Security 使用 SPA CSRF 保护。前端按框架约定读取并回传 CSRF token；只有认证规格明确的登录前安全验证适配入口可以排除。CORS 预检和 CSRF 豁免应保持最小，不因开发便利扩大到全部 `/api/**`。
 
 ## 请求签名
 
-请求签名用于保护 `/api/**` 请求，默认关闭：
+`archive.security.request-signature.enabled` 默认关闭。部署环境按威胁模型决定是否开启。开启后，请求签名覆盖项目 `/api/**` 请求，但以下稳定类别不进入签名校验：
 
-```yaml
-archive:
-    security:
-        request-signature:
-            enabled: false
-            secret:
-            clock-skew: 5m
-```
+- OPTIONS 预检请求。
+- 登录和 CAP 安全验证所需的引导类公开请求。
+- 通过登录文件短链或公开文件短链执行的 GET 下载请求。
 
-开启后，除 OPTIONS 预检外，请求需要携带：
+其余 `/api/**` 请求携带：
 
 - `X-AM-Timestamp`
 - `X-AM-Nonce`
 - `X-AM-Signature`
 
-nonce 使用 Spring Cache 保存，默认缓存名为 `archive.security.request-signature.nonce`，默认 Caffeine 过期时间为 10 分钟。签名密钥长度至少 32 个字符，必须通过外部安全配置提供。
+签名密钥至少 32 个字符，只通过 Secret 提供。时间偏移、nonce 缓存和过期策略以 `application.yaml` 为准；nonce 通过 Spring Cache 防重放。集群部署时必须使用满足共享一致性要求的 `CacheManager`，不能让不同节点各自接受同一 nonce。
 
-## 公开下载
+## 文件、上传与公开下载
 
-文件短链有两类下载入口：
+文件内容只进入外部 S3 兼容对象存储，业务通过服务端 `FileStorageService` 访问。对象 key、bucket、短链状态和业务对象权限由服务端校验，客户端不能直接指定未验证的存储位置。
 
-| 路径 | 认证要求 |
-| --- | --- |
-| `/api/v1/file-links/{code}:download` | 需要登录 |
-| `/api/v1/public-file-links/{code}:download` | 公开下载 |
+登录下载与公开下载是不同信任边界。公开短链只用于业务明确允许公开的对象，并由服务端校验随机性、有效期、目标状态和撤销条件。网关、对象存储策略和日志不得把公开入口扩大为 bucket 级匿名读取。
 
-公开下载路径只应用于业务明确允许公开访问的短链。短链过期时间由服务端生成和校验。
+上传链路至少限制请求大小、文件数量和内容处理资源；需要预览或格式探测时，把文件视为不可信输入，在独立预览服务边界内限制超时、内存、外部工具和输出。
 
-## Actuator
+## Actuator 与运行面
 
-Actuator 路径为 `/actuator/**`，默认暴露端点由配置控制。访问需要具备配置的监控角色：
+Actuator 的基础路径、端点暴露和监控角色以 `application.yaml` 为准。生产环境通过角色、网关、网络策略或安全组限制访问来源，不向公网暴露全部端点，也不在健康和环境输出中泄露密钥、连接串或内部拓扑。
 
-```yaml
-archive:
-    security:
-        authorization:
-            actuator-role-name: 系统监控
-```
+预览服务是独立运行面，应单独限制网络来源、上传大小和外部转换工具权限。PostgreSQL 与 S3 服务只允许应用和受控运维入口访问。
 
-生产环境应通过网关、网络策略或安全组限制访问来源。
+## 密码、密钥与本机配置
 
-## 密码和密钥
+- 用户密码由 Spring Security `DelegatingPasswordEncoder` 处理，不记录明文或可逆密文。
+- 数据库密码、S3 凭证、管理员初始化密码和请求签名密钥不提交到 Git。
+- `application-local.yaml` 只用于本机覆盖，不是交付配置或 Secret 管理方案。
+- 生产 Secret 应支持最小权限、轮换、撤销和审计；轮换前验证旧新凭证切换与回滚路径。
 
-- 用户密码使用 Spring Security `DelegatingPasswordEncoder`。
-- 管理员初始化密码、对象存储密钥和请求签名密钥不提交到 Git。
-- `application-local.yaml` 仅用于本机差异配置，不进入构建产物。
+## 审计与排障
 
-## 审计
+认证事件、权限变更、档案关键操作、文件访问、短链和规则执行应保留可追踪审计。排障至少关联 `traceId`、认证主体、请求路径、业务对象 ID、结果和时间；日志避免记录密码、cookie、token、签名原文、文件正文或客户敏感字段。
 
-当前审计重点：
-
-- 登录、退出、踢下线和失败限制事件。
-- 档案条目审计。
-- 文件下载和短链访问相关记录。
-- 规则执行追踪。
-
-排障时保留 `traceId`、用户、请求路径和业务对象 ID。
+安全配置变更后运行 `task governance-check` 和与改动范围匹配的后端测试，并在预生产验证认证失败、权限不足、数据范围、CSRF、CORS、签名重放、短链过期和 Actuator 隔离路径。

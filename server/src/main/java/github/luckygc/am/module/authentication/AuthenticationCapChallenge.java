@@ -7,14 +7,14 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
-import org.hibernate.annotations.CreationTimestamp;
+import github.luckygc.am.common.audit.CreationTimeAuditable;
 
 import lombok.Data;
 
 @Data
 @Entity
 @Table(name = "am_authentication_cap_challenge")
-public class AuthenticationCapChallenge {
+public class AuthenticationCapChallenge implements CreationTimeAuditable {
 
     @Id
     @Column(length = 50)
@@ -33,6 +33,5 @@ public class AuthenticationCapChallenge {
     private LocalDateTime expiresAt;
 
     @Column(name = "created_at", nullable = false)
-    @CreationTimestamp
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private LocalDateTime createdAt;
 }

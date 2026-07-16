@@ -10,6 +10,7 @@ import java.util.List;
 
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.builder.xml.XMLMapperBuilder;
+import org.apache.ibatis.mapping.MappedStatement;
 import org.apache.ibatis.session.Configuration;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -167,24 +168,35 @@ class ArchiveMapperXmlContractTests {
     @Test
     @DisplayName("档案 Mapper XML 能被 MyBatis 解析")
     void archiveMapperXmlShouldBeParseable() throws Exception {
-        Configuration configuration = new Configuration();
-        try (InputStream input =
-                getClass()
-                        .getClassLoader()
-                        .getResourceAsStream("mapper/archive/ArchiveMapper.xml")) {
-            new XMLMapperBuilder(
-                            input,
-                            configuration,
-                            "mapper/archive/ArchiveMapper.xml",
-                            configuration.getSqlFragments())
-                    .parse();
-        }
+        Configuration configuration = archiveMapperConfiguration();
 
         assertThat(
                         configuration.hasStatement(
                                 "github.luckygc.am.module.archive.mapper.ArchiveMapper"
                                         + ".listDynamicItems"))
                 .isTrue();
+    }
+
+    @Test
+    @DisplayName("INSERT RETURNING 声明影响数据并刷新 MyBatis 缓存")
+    void returningWritesShouldDeclareAffectDataAndFlushCache() throws Exception {
+        Configuration configuration = archiveMapperConfiguration();
+        String namespace = "github.luckygc.am.module.archive.mapper.ArchiveMapper.";
+
+        for (String statementId :
+                List.of(
+                        "insertArchiveItem",
+                        "insertArchiveVolume",
+                        "insertArchiveItemElectronicFile",
+                        "insertUniqueConstraint",
+                        "insertItemRelation",
+                        "insertItemLineTable",
+                        "insertItemLineField",
+                        "insertItemLineRow")) {
+            MappedStatement statement = configuration.getMappedStatement(namespace + statementId);
+            assertThat(statement.isDirtySelect()).as(statementId + " affectData").isTrue();
+            assertThat(statement.isFlushCacheRequired()).as(statementId + " flushCache").isTrue();
+        }
     }
 
     private List<String> mapperParamNames(String methodName) {
@@ -206,6 +218,22 @@ class ArchiveMapperXmlContractTests {
                         .getResourceAsStream("mapper/archive/ArchiveMapper.xml")
                         .readAllBytes(),
                 StandardCharsets.UTF_8);
+    }
+
+    private Configuration archiveMapperConfiguration() throws Exception {
+        Configuration configuration = new Configuration();
+        try (InputStream input =
+                getClass()
+                        .getClassLoader()
+                        .getResourceAsStream("mapper/archive/ArchiveMapper.xml")) {
+            new XMLMapperBuilder(
+                            input,
+                            configuration,
+                            "mapper/archive/ArchiveMapper.xml",
+                            configuration.getSqlFragments())
+                    .parse();
+        }
+        return configuration;
     }
 
     private String dynamicItemFromWhere(String xml) {

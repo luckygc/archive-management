@@ -18,5 +18,5 @@ public interface LoginFailureLimitMapper {
 
     @Nullable LoginFailureLimit findByUsernameForUpdate(@Param("username") String username);
 
-    int update(LoginFailureLimit limit);
+    int update(@Param("limit") LoginFailureLimit limit);
 }

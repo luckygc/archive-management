@@ -10,15 +10,15 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
+import github.luckygc.am.common.audit.CreationTimeAuditable;
+import github.luckygc.am.common.audit.UpdateTimeAuditable;
 
 import lombok.Data;
 
 @Data
 @Entity
 @Table(name = "am_archive_security_level")
-public class ArchiveSecurityLevel {
+public class ArchiveSecurityLevel implements CreationTimeAuditable, UpdateTimeAuditable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -38,10 +38,8 @@ public class ArchiveSecurityLevel {
     private int version;
 
     @Column(name = "created_at", nullable = false)
-    @CreationTimestamp
     private LocalDateTime createdAt;
 
     @Column(name = "updated_at", nullable = false)
-    @UpdateTimestamp
     private LocalDateTime updatedAt;
 }

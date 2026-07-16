@@ -48,9 +48,9 @@
             volume_physical_table_name = case when #{archiveLevel} = 'VOLUME' and #{fieldScope} = 'PHYSICAL' then #{tableName} else volume_physical_table_name end,
             table_status = #{tableStatus},
             built_at = localtimestamp,
-            updated_by = #{userId},
+            updated_by = #{_audit.userId},
             version = version + 1,
-            updated_at = localtimestamp
+            updated_at = #{_audit.now}
         where id = #{id} and deleted_flag = false
     </update>
 
@@ -386,15 +386,16 @@
         order by i.id
     </select>
 
-    <select id="insertArchiveItem" resultType="long">
+    <select id="insertArchiveItem" resultType="long" affectData="true" flushCache="true">
         insert into am_archive_item
             (volume_id, fonds_code, fonds_name, category_code, category_name,
              archive_no, electronic_status, security_level_id, retention_period_id,
-             archive_year, governance_scheme_version_id, created_by, updated_by)
+             archive_year, governance_scheme_version_id, created_by, created_at, updated_by, updated_at)
         values
             (#{volumeId}, #{fondsCode}, #{fondsName}, #{categoryCode}, #{categoryName},
              #{archiveNo}, #{electronicStatus}, #{securityLevelId}, #{retentionPeriodId},
-             #{archiveYear}, #{governanceSchemeVersionId}, #{userId}, #{userId})
+             #{archiveYear}, #{governanceSchemeVersionId}, #{_audit.userId}, #{_audit.now},
+             #{_audit.userId}, #{_audit.now})
         returning id
     </select>
 
@@ -410,11 +411,12 @@
     </select>
 
     <insert id="insertDynamicRecord">
-        insert into ${tableName} (${columns})
-        values
-        <foreach collection="values" item="value" open="(" separator="," close=")">
+        insert into ${tableName} (${columns}, created_at, updated_at)
+        values (
+        <foreach collection="values" item="value" separator=",">
             #{value}
         </foreach>
+            , #{_audit.now}, #{_audit.now})
     </insert>
 
     <update id="updateArchiveItem">
@@ -427,9 +429,9 @@
             security_level_id = #{securityLevelId},
             retention_period_id = #{retentionPeriodId},
             archive_year = #{archiveYear},
-            updated_by = #{userId},
+            updated_by = #{_audit.userId},
             version = version + 1,
-            updated_at = localtimestamp
+            updated_at = #{_audit.now}
         where id = #{id} and deleted_flag = false and locked_flag = false
     </update>
 
@@ -439,7 +441,7 @@
         <foreach collection="assignments" item="assignment" separator=",">
             ${assignment.columnName} = #{assignment.value}
         </foreach>
-            , updated_at = localtimestamp
+            , updated_at = #{_audit.now}
         where id = #{id} and deleted_flag = false
     </update>
 
@@ -447,8 +449,8 @@
         update ${tableName}
         set deleted_flag = true,
             deleted_at = localtimestamp,
-            deleted_by = #{userId},
-            updated_at = localtimestamp
+            deleted_by = #{deletedBy},
+            updated_at = #{_audit.now}
         where id = #{id} and deleted_flag = false
     </update>
 
@@ -523,13 +525,15 @@
         where id = #{id} and deleted_flag = false
     </select>
 
-    <select id="insertArchiveVolume" resultType="long">
+    <select id="insertArchiveVolume" resultType="long" affectData="true" flushCache="true">
         insert into am_archive_volume
             (fonds_code, fonds_name, category_code, category_name,
-             archive_no, electronic_status, archive_year, governance_scheme_version_id, created_by, updated_by)
+             archive_no, electronic_status, archive_year, governance_scheme_version_id,
+             created_by, created_at, updated_by, updated_at)
         values
             (#{fondsCode}, #{fondsName}, #{categoryCode}, #{categoryName},
-             #{archiveNo}, #{electronicStatus}, #{archiveYear}, #{governanceSchemeVersionId}, #{userId}, #{userId})
+             #{archiveNo}, #{electronicStatus}, #{archiveYear}, #{governanceSchemeVersionId},
+             #{_audit.userId}, #{_audit.now}, #{_audit.userId}, #{_audit.now})
         returning id
     </select>
 
@@ -562,11 +566,12 @@
         order by ef.display_order, ef.id
     </select>
 
-    <select id="insertArchiveItemElectronicFile" resultType="long">
+    <select id="insertArchiveItemElectronicFile" resultType="long" affectData="true" flushCache="true">
         insert into am_archive_item_electronic_file
-            (archive_item_id, storage_object_id, usage_type, display_order, created_by)
+            (archive_item_id, storage_object_id, usage_type, display_order, created_by, created_at)
         values
-            (#{archiveItemId}, #{storageObjectId}, #{usageType}, #{displayOrder}, #{userId})
+            (#{archiveItemId}, #{storageObjectId}, #{usageType}, #{displayOrder},
+             #{_audit.userId}, #{_audit.now})
         returning id
     </select>
 
@@ -587,10 +592,10 @@
         update am_archive_item
         set deleted_flag = true,
             deleted_at = localtimestamp,
-            deleted_by = #{userId},
-            updated_by = #{userId},
+            deleted_by = #{deletedBy},
+            updated_by = #{_audit.userId},
             version = version + 1,
-            updated_at = localtimestamp
+            updated_at = #{_audit.now}
         where id = #{id} and deleted_flag = false and locked_flag = false
     </update>
 
@@ -600,9 +605,9 @@
             lock_reason = #{lockReason},
             locked_by = #{lockedBy},
             locked_at = localtimestamp,
-            updated_by = #{lockedBy},
+            updated_by = #{_audit.userId},
             version = version + 1,
-            updated_at = localtimestamp
+            updated_at = #{_audit.now}
         where id = #{id} and deleted_flag = false
     </update>
 
@@ -612,21 +617,21 @@
             lock_reason = null,
             locked_by = null,
             locked_at = null,
-            updated_by = #{userId},
+            updated_by = #{_audit.userId},
             version = version + 1,
-            updated_at = localtimestamp
+            updated_at = #{_audit.now}
         where id = #{id} and deleted_flag = false
     </update>
 
     <insert id="insertSearchProjection">
         insert into am_archive_item_search
-            (archive_item_id, search_text, index_version)
+            (archive_item_id, search_text, index_version, created_at, updated_at)
         values
-            (#{archiveItemId}, #{searchText}, #{indexVersion})
+            (#{archiveItemId}, #{searchText}, #{indexVersion}, #{_audit.now}, #{_audit.now})
         on conflict (archive_item_id)
         do update set search_text = excluded.search_text,
                       index_version = excluded.index_version,
-                      updated_at = localtimestamp
+                      updated_at = #{_audit.now}
     </insert>
 
     <delete id="deleteSearchProjection">
@@ -635,8 +640,10 @@
     </delete>
 
     <insert id="insertSearchOutbox">
-        insert into am_archive_item_search_outbox (archive_item_id, event_type)
-        values (#{archiveItemId}, #{eventType})
+        insert into am_archive_item_search_outbox
+            (archive_item_id, event_type, created_at, updated_at)
+        values
+            (#{archiveItemId}, #{eventType}, #{_audit.now}, #{_audit.now})
     </insert>
 
     <select id="listPendingSearchOutbox" resultType="map">
@@ -654,7 +661,7 @@
         update am_archive_item_search_outbox
         set status = 'PROCESSED',
             processed_at = localtimestamp,
-            updated_at = localtimestamp
+            updated_at = #{_audit.now}
         where id = #{id}
     </update>
 
@@ -664,7 +671,7 @@
             attempts = attempts + 1,
             last_error = #{lastError},
             next_retry_at = localtimestamp + interval '1 minute',
-            updated_at = localtimestamp
+            updated_at = #{_audit.now}
         where id = #{id}
     </update>
 
@@ -697,11 +704,13 @@
         where id = #{id} and deleted_flag = false
     </select>
 
-    <select id="insertUniqueConstraint" resultType="long">
+    <select id="insertUniqueConstraint" resultType="long" affectData="true" flushCache="true">
         insert into am_archive_unique_constraint
-            (category_id, archive_level, constraint_code, constraint_name, index_name, enabled, created_by, updated_by)
+            (category_id, archive_level, constraint_code, constraint_name, index_name, enabled,
+             created_by, created_at, updated_by, updated_at)
         values
-            (#{categoryId}, #{archiveLevel}, #{constraintCode}, #{constraintName}, #{indexName}, #{enabled}, #{userId}, #{userId})
+            (#{categoryId}, #{archiveLevel}, #{constraintCode}, #{constraintName}, #{indexName}, #{enabled},
+             #{_audit.userId}, #{_audit.now}, #{_audit.userId}, #{_audit.now})
         returning id
     </select>
 
@@ -712,18 +721,18 @@
             constraint_name = #{constraintName},
             index_name = #{indexName},
             enabled = #{enabled},
-            updated_by = #{userId},
+            updated_by = #{_audit.userId},
             version = version + 1,
-            updated_at = localtimestamp
+            updated_at = #{_audit.now}
         where id = #{id} and category_id = #{categoryId} and deleted_flag = false
     </update>
 
     <update id="deleteUniqueConstraint">
         update am_archive_unique_constraint
         set deleted_flag = true,
-            updated_by = #{userId},
+            updated_by = #{_audit.userId},
             version = version + 1,
-            updated_at = localtimestamp
+            updated_at = #{_audit.now}
         where id = #{id} and category_id = #{categoryId} and deleted_flag = false
     </update>
 
@@ -754,9 +763,9 @@
     <update id="markFieldsExactSearchable">
         update am_archive_field
         set exact_searchable = true,
-            updated_by = #{userId},
+            updated_by = #{_audit.userId},
             version = version + 1,
-            updated_at = localtimestamp
+            updated_at = #{_audit.now}
         where category_id = #{categoryId}
           and deleted_flag = false
           and id in
@@ -769,9 +778,9 @@
         update am_archive_item
         set volume_id = #{volumeId},
             display_order = #{displayOrder},
-            updated_by = #{userId},
+            updated_by = #{_audit.userId},
             version = version + 1,
-            updated_at = localtimestamp
+            updated_at = #{_audit.now}
         where id = #{archiveItemId}
           and deleted_flag = false
           and locked_flag = false
@@ -909,11 +918,11 @@
                or rel.target_item_id = #{archiveItemId})
     </select>
 
-    <select id="insertItemRelation" resultType="long">
+    <select id="insertItemRelation" resultType="long" affectData="true" flushCache="true">
         insert into am_archive_item_relation
-            (source_item_id, target_item_id)
+            (source_item_id, target_item_id, created_at)
         values
-            (#{sourceItemId}, #{targetItemId})
+            (#{sourceItemId}, #{targetItemId}, #{_audit.now})
         returning id
     </select>
 
@@ -954,20 +963,22 @@
           and lt.deleted_flag = false
     </select>
 
-    <select id="insertItemLineTable" resultType="long">
+    <select id="insertItemLineTable" resultType="long" affectData="true" flushCache="true">
         insert into am_archive_item_line_table
-            (category_id, table_code, table_name, physical_table_name, sort_order, created_by, updated_by)
+            (category_id, table_code, table_name, physical_table_name, sort_order,
+             created_by, created_at, updated_by, updated_at)
         values
-            (#{categoryId}, #{tableCode}, #{tableName}, #{physicalTableName}, #{sortOrder}, #{userId}, #{userId})
+            (#{categoryId}, #{tableCode}, #{tableName}, #{physicalTableName}, #{sortOrder},
+             #{_audit.userId}, #{_audit.now}, #{_audit.userId}, #{_audit.now})
         returning id
     </select>
 
     <update id="updateItemLineTablePhysicalName">
         update am_archive_item_line_table
         set physical_table_name = #{physicalTableName},
-            updated_by = #{userId},
+            updated_by = #{_audit.userId},
             version = version + 1,
-            updated_at = localtimestamp
+            updated_at = #{_audit.now}
         where id = #{id}
           and deleted_flag = false
     </update>
@@ -988,13 +999,14 @@
         order by sort_order, id
     </select>
 
-    <select id="insertItemLineField" resultType="long">
+    <select id="insertItemLineField" resultType="long" affectData="true" flushCache="true">
         insert into am_archive_item_line_field
             (line_table_id, field_code, field_name, field_type, column_name,
-             exact_searchable, sort_order, created_by, updated_by)
+             exact_searchable, sort_order, created_by, created_at, updated_by, updated_at)
         values
             (#{lineTableId}, #{fieldCode}, #{fieldName}, #{fieldType}, #{columnName},
-             #{exactSearchable}, #{sortOrder}, #{userId}, #{userId})
+             #{exactSearchable}, #{sortOrder}, #{_audit.userId}, #{_audit.now},
+             #{_audit.userId}, #{_audit.now})
         returning id
     </select>
 
@@ -1059,17 +1071,19 @@
         order by line_order, id
     </select>
 
-    <select id="insertItemLineRow" resultType="long">
+    <select id="insertItemLineRow" resultType="long" affectData="true" flushCache="true">
         insert into ${command.tableName}
             (item_id, line_order
             <foreach collection="command.assignments" item="assignment">
                 , ${assignment.columnName}
-            </foreach>)
+            </foreach>
+            , created_at, updated_at)
         values
             (#{command.itemId}, #{command.lineOrder}
             <foreach collection="command.assignments" item="assignment">
                 , #{assignment.value}
-            </foreach>)
+            </foreach>
+            , #{_audit.now}, #{_audit.now})
         returning id
     </select>
 
@@ -1082,7 +1096,7 @@
             <foreach collection="command.assignments" item="assignment">
                 ${assignment.columnName} = #{assignment.value},
             </foreach>
-            updated_at = localtimestamp
+            updated_at = #{_audit.now}
         </set>
         where id = #{command.rowId}
           and item_id = #{command.itemId}
@@ -1094,7 +1108,7 @@
         set deleted_flag = true,
             deleted_at = localtimestamp,
             deleted_by = #{command.userId},
-            updated_at = localtimestamp
+            updated_at = #{_audit.now}
         where id = #{command.rowId}
           and item_id = #{command.itemId}
           and deleted_flag = false

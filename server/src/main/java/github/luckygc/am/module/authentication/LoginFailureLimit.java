@@ -7,15 +7,15 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
+import github.luckygc.am.common.audit.CreationTimeAuditable;
+import github.luckygc.am.common.audit.UpdateTimeAuditable;
 
 import lombok.Data;
 
 @Data
 @Entity
 @Table(name = "am_login_failure_limit")
-public class LoginFailureLimit {
+public class LoginFailureLimit implements CreationTimeAuditable, UpdateTimeAuditable {
 
     @Id
     @Column(length = 100)
@@ -40,10 +40,8 @@ public class LoginFailureLimit {
     private LocalDateTime cleanupAfter;
 
     @Column(name = "created_at", nullable = false)
-    @CreationTimestamp
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private LocalDateTime createdAt;
 
     @Column(name = "updated_at", nullable = false)
-    @UpdateTimestamp
-    private LocalDateTime updatedAt = LocalDateTime.now();
+    private LocalDateTime updatedAt;
 }

@@ -51,6 +51,25 @@ class GlobalExceptionHandlerTests {
     }
 
     @Test
+    @DisplayName("资源冲突异常输出已存在 ProblemDetail")
+    void conflictUsesAlreadyExistsProblemDetail() {
+        MockHttpServletRequest request =
+                new MockHttpServletRequest("POST", "/api/v1/archive-categories");
+
+        var response =
+                handler.handleResponseStatusException(
+                        new ResponseStatusException(HttpStatus.CONFLICT, "分类编码已存在"), request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getStatus()).isEqualTo(409);
+        assertThat(response.getBody().getProperties())
+                .containsEntry("code", "ALREADY_EXISTS")
+                .containsEntry("reason", "ALREADY_EXISTS_ERROR")
+                .containsEntry("path", "/api/v1/archive-categories");
+    }
+
+    @Test
     @DisplayName("BadRequestException 输出字段级错误明细")
     void badRequestExceptionIncludesFieldViolations() {
         MockHttpServletRequest request =

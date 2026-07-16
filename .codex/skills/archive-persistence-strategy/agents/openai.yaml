@@ -1,4 +1,4 @@
 interface:
   display_name: "档案持久化策略"
-  short_description: "为 archive-management 选择 Jakarta Data、Hibernate 和 MyBatis 持久化入口"
-  default_prompt: "Use $archive-persistence-strategy to decide or refactor archive-management persistence code between Jakarta Data Repository, Hibernate entity mapping, and MyBatis."
+  short_description: "为 archive-management 选择 Jakarta Data 与 MyBatis 持久化入口"
+  default_prompt: "Use $archive-persistence-strategy to choose between Jakarta Data and MyBatis in archive-management, treating Hibernate as the Jakarta Data provider and entity mechanism."

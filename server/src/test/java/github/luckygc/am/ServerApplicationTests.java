@@ -2,6 +2,7 @@ package github.luckygc.am;
 
 import static org.mockito.Mockito.mock;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,17 +22,23 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.caffeine.CaffeineCacheManager;
 import org.springframework.context.annotation.Bean;
+import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.session.SessionRepository;
 import org.springframework.session.jdbc.JdbcIndexedSessionRepository;
 import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.web.server.ResponseStatusException;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import github.luckygc.am.app.ArchiveManagementApplication;
 import github.luckygc.am.module.archive.metadata.ArchiveFonds;
+import github.luckygc.am.module.archive.metadata.ArchiveManagementMode;
+import github.luckygc.am.module.archive.metadata.repository.ArchiveCategoryDataRepository;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveFondsDataRepository;
+import github.luckygc.am.module.archive.metadata.service.ArchiveCategoryService;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes;
 import github.luckygc.am.module.authentication.ArchiveUserDetails;
 import github.luckygc.am.module.authentication.service.PowChallengeService;
 import github.luckygc.am.test.PostgreSqlContainerTest;
@@ -56,6 +63,8 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
     @Autowired private JdbcTemplate jdbcTemplate;
     @Autowired private PowChallengeService powChallengeService;
     @Autowired private ArchiveFondsDataRepository archiveFondsDataRepository;
+    @Autowired private ArchiveCategoryDataRepository archiveCategoryDataRepository;
+    @Autowired private ArchiveCategoryService archiveCategoryService;
     @Autowired private JsonMapper jsonMapper;
     @Autowired private SessionRepository<?> sessionRepository;
     @Autowired private CacheManager cacheManager;
@@ -126,6 +135,19 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
         Assertions.assertTrue(
                 uniqueIndexUsesActiveRowsOnly("uk_am_archive_item_category_archive_no_active"));
         Assertions.assertEquals(
+                "uk_am_archive_category_code",
+                jdbcTemplate.queryForObject(
+                        "select to_regclass('uk_am_archive_category_code')::text", String.class));
+        Assertions.assertNull(
+                jdbcTemplate.queryForObject(
+                        "select to_regclass('uk_am_archive_category_scheme_code_active')::text",
+                        String.class));
+        Assertions.assertNull(
+                jdbcTemplate.queryForObject(
+                        "select to_regclass('uk_am_archive_category_code_active')::text",
+                        String.class));
+        Assertions.assertFalse(uniqueIndexUsesActiveRowsOnly("uk_am_archive_category_code"));
+        Assertions.assertEquals(
                 "am_archive_item_line_table",
                 jdbcTemplate.queryForObject(
                         "select to_regclass('am_archive_item_line_table')::text", String.class));
@@ -195,6 +217,81 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
         return indexDefinition != null
                 && indexDefinition.contains("UNIQUE")
                 && indexDefinition.contains("WHERE (deleted_flag = false)");
+    }
+
+    @Test
+    @DisplayName("分类编码跨方案且跨逻辑删除历史永久全局唯一")
+    void categoryCodeRemainsGloballyUniqueAfterSoftDelete() {
+        String categoryCode = "GLOBAL_UNIQUE_TEST";
+        String firstSchemeCode = "GLOBAL_UNIQUE_SCHEME_1";
+        String secondSchemeCode = "GLOBAL_UNIQUE_SCHEME_2";
+        deleteCategoryUniquenessFixtures(categoryCode, firstSchemeCode, secondSchemeCode);
+        try {
+            Long firstSchemeId = insertClassificationScheme(firstSchemeCode);
+            Long secondSchemeId = insertClassificationScheme(secondSchemeCode);
+            jdbcTemplate.update(
+                    "insert into am_archive_category "
+                            + "(scheme_id, category_code, category_name, management_mode) "
+                            + "values (?, ?, '全局唯一测试分类', 'ITEM_ONLY')",
+                    firstSchemeId,
+                    categoryCode);
+
+            Assertions.assertThrows(
+                    org.springframework.dao.DataIntegrityViolationException.class,
+                    () ->
+                            jdbcTemplate.update(
+                                    "insert into am_archive_category "
+                                            + "(scheme_id, category_code, category_name, "
+                                            + "management_mode) "
+                                            + "values (?, ?, '重复分类', 'ITEM_ONLY')",
+                                    secondSchemeId,
+                                    categoryCode));
+
+            jdbcTemplate.update(
+                    "update am_archive_category set deleted_flag = true "
+                            + "where scheme_id = ? and category_code = ?",
+                    firstSchemeId,
+                    categoryCode);
+            Assertions.assertNull(archiveCategoryDataRepository.findByCategoryCode(categoryCode));
+
+            ResponseStatusException exception =
+                    Assertions.assertThrows(
+                            ResponseStatusException.class,
+                            () ->
+                                    archiveCategoryService.createCategory(
+                                            new ArchiveMetadataTypes.ArchiveCategoryRequest(
+                                                    secondSchemeId,
+                                                    categoryCode,
+                                                    "历史编码不可复用",
+                                                    null,
+                                                    ArchiveManagementMode.ITEM_ONLY,
+                                                    true,
+                                                    0),
+                                            9L));
+            Assertions.assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+        } finally {
+            deleteCategoryUniquenessFixtures(categoryCode, firstSchemeCode, secondSchemeCode);
+        }
+    }
+
+    private Long insertClassificationScheme(String schemeCode) {
+        return jdbcTemplate.queryForObject(
+                "insert into am_archive_classification_scheme "
+                        + "(scheme_code, scheme_name, enabled, default_flag, sort_order) "
+                        + "values (?, ?, true, false, 0) returning id",
+                Long.class,
+                schemeCode,
+                schemeCode);
+    }
+
+    private void deleteCategoryUniquenessFixtures(
+            String categoryCode, String firstSchemeCode, String secondSchemeCode) {
+        jdbcTemplate.update(
+                "delete from am_archive_category where category_code = ?", categoryCode);
+        jdbcTemplate.update(
+                "delete from am_archive_classification_scheme where scheme_code in (?, ?)",
+                firstSchemeCode,
+                secondSchemeCode);
     }
 
     @Test
@@ -276,6 +373,9 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
     @Test
     @DisplayName("无状态 Repository 从安全上下文填充审计字段")
     void statelessRepositoryFillsAuditFieldsFromSecurityContext() {
+        LocalDateTime forgedCreatedAt = LocalDateTime.of(2000, 1, 1, 0, 0);
+        LocalDateTime forgedInsertedUpdatedAt = LocalDateTime.of(2001, 1, 1, 0, 0);
+        LocalDateTime forgedUpdatedAt = LocalDateTime.of(2002, 1, 1, 0, 0);
         SecurityContextHolder.getContext()
                 .setAuthentication(
                         new UsernamePasswordAuthenticationToken(
@@ -294,6 +394,10 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
             fonds.setFondsName("审计测试全宗");
             fonds.setEnabled(true);
             fonds.setSortOrder(0);
+            fonds.setCreatedAt(forgedCreatedAt);
+            fonds.setCreatedBy(-1L);
+            fonds.setUpdatedAt(forgedInsertedUpdatedAt);
+            fonds.setUpdatedBy(-2L);
 
             archiveFondsDataRepository.insert(fonds);
 
@@ -305,8 +409,10 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
                     jdbcTemplate.queryForObject(
                             "select updated_at from am_archive_fonds where fonds_code = 'AUDIT_TEST'",
                             LocalDateTime.class);
-            Assertions.assertNotNull(createdAt);
-            Assertions.assertNotNull(updatedAt);
+            Assertions.assertNotEquals(forgedCreatedAt, createdAt);
+            Assertions.assertNotEquals(forgedInsertedUpdatedAt, updatedAt);
+            assertSameTimeWithinPostgreSqlPrecision(createdAt, fonds.getCreatedAt());
+            assertSameTimeWithinPostgreSqlPrecision(updatedAt, fonds.getUpdatedAt());
             Assertions.assertEquals(
                     99L,
                     jdbcTemplate.queryForObject(
@@ -332,6 +438,8 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
                                     java.util.List.of()));
             ArchiveFonds saved = archiveFondsDataRepository.find("AUDIT_TEST").orElseThrow();
             saved.setFondsName("审计测试全宗-更新");
+            saved.setUpdatedAt(forgedUpdatedAt);
+            saved.setUpdatedBy(-3L);
             archiveFondsDataRepository.update(saved);
 
             Assertions.assertEquals(
@@ -343,7 +451,8 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
                     jdbcTemplate.queryForObject(
                             "select updated_at from am_archive_fonds where fonds_code = 'AUDIT_TEST'",
                             LocalDateTime.class);
-            Assertions.assertFalse(updatedAtAfterUpdate.isBefore(updatedAt));
+            Assertions.assertNotEquals(forgedUpdatedAt, updatedAtAfterUpdate);
+            assertSameTimeWithinPostgreSqlPrecision(updatedAtAfterUpdate, saved.getUpdatedAt());
             Assertions.assertEquals(
                     99L,
                     jdbcTemplate.queryForObject(
@@ -357,6 +466,13 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
         } finally {
             SecurityContextHolder.clearContext();
         }
+    }
+
+    private static void assertSameTimeWithinPostgreSqlPrecision(
+            LocalDateTime persistedTime, LocalDateTime entityTime) {
+        Assertions.assertTrue(
+                Duration.between(persistedTime, entityTime).abs().compareTo(Duration.ofNanos(1_000))
+                        < 0);
     }
 
     @TestConfiguration

@@ -136,7 +136,6 @@ class ArchiveNoUniquenessTests {
                         any(),
                         any(),
                         anyInt(),
-                        any(),
                         any());
     }
 
@@ -160,7 +159,6 @@ class ArchiveNoUniquenessTests {
                         any(),
                         any(),
                         anyInt(),
-                        any(),
                         any()))
                 .thenThrow(new DuplicateKeyException("duplicate archive_no"));
 
@@ -211,8 +209,7 @@ class ArchiveNoUniquenessTests {
                         anyString(),
                         any(),
                         any(),
-                        anyInt(),
-                        any());
+                        anyInt());
     }
 
     @Test
@@ -238,8 +235,7 @@ class ArchiveNoUniquenessTests {
                         anyString(),
                         any(),
                         any(),
-                        anyInt(),
-                        any()))
+                        anyInt()))
                 .thenThrow(new DuplicateKeyException("duplicate archive_no"));
 
         assertThatThrownBy(
@@ -280,7 +276,6 @@ class ArchiveNoUniquenessTests {
                         any(),
                         anyString(),
                         anyInt(),
-                        any(),
                         any());
     }
 
@@ -299,7 +294,6 @@ class ArchiveNoUniquenessTests {
                         any(),
                         anyString(),
                         anyInt(),
-                        any(),
                         any()))
                 .thenThrow(new DuplicateKeyException("duplicate archive_no"));
 

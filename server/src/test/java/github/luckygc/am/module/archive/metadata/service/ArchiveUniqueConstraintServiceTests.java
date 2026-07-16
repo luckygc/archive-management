@@ -88,7 +88,7 @@ class ArchiveUniqueConstraintServiceTests {
                 List.of(1L),
                 9L);
 
-        verify(mapper).markFieldsExactSearchable(eq(1L), anyList(), eq(9L));
+        verify(mapper).markFieldsExactSearchable(eq(1L), anyList());
     }
 
     private static ArchiveCategoryDto category() {

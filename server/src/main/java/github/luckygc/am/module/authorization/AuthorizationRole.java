@@ -9,15 +9,15 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
+import github.luckygc.am.common.audit.CreationTimeAuditable;
+import github.luckygc.am.common.audit.UpdateTimeAuditable;
 
 import lombok.Data;
 
 @Data
 @Entity
 @Table(name = "am_authorization_role")
-public class AuthorizationRole {
+public class AuthorizationRole implements CreationTimeAuditable, UpdateTimeAuditable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -31,10 +31,8 @@ public class AuthorizationRole {
     private boolean enabled = true;
 
     @Column(name = "created_at", nullable = false)
-    @CreationTimestamp
     private LocalDateTime createdAt;
 
     @Column(name = "updated_at", nullable = false)
-    @UpdateTimestamp
     private LocalDateTime updatedAt;
 }

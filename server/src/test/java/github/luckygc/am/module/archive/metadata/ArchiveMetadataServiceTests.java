@@ -1,14 +1,18 @@
 package github.luckygc.am.module.archive.metadata;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -147,6 +151,351 @@ class ArchiveMetadataServiceTests {
     }
 
     @Test
+    @DisplayName("拒绝跨分类方案创建重复分类编码")
+    void createCategoryShouldRejectGloballyDuplicateCode() {
+        ArchiveClassificationScheme scheme = scheme(8L, "enterprise_project", true);
+        ArchiveCategory existing = category(12L, ArchiveManagementMode.ITEM_ONLY);
+        existing.setSchemeId(7L);
+        when(classificationSchemeRepository.findById(8L)).thenReturn(Optional.of(scheme));
+        when(categoryRepository.findByCategoryCode("contract")).thenReturn(existing);
+
+        assertThatThrownBy(
+                        () ->
+                                categoryService.createCategory(
+                                        new ArchiveMetadataTypes.ArchiveCategoryRequest(
+                                                8L,
+                                                " contract ",
+                                                "合同档案",
+                                                null,
+                                                ArchiveManagementMode.ITEM_ONLY,
+                                                true,
+                                                0),
+                                        9L))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(
+                        exception ->
+                                assertThat(((ResponseStatusException) exception).getStatusCode())
+                                        .isEqualTo(org.springframework.http.HttpStatus.CONFLICT))
+                .hasMessageContaining("分类编码已存在");
+
+        verify(categoryRepository, never()).insert(any(ArchiveCategory.class));
+    }
+
+    @Test
+    @DisplayName("修改分类时允许保留自身编码")
+    void updateCategoryShouldAllowKeepingOwnCode() {
+        ArchiveClassificationScheme scheme = scheme(8L, "enterprise_project", true);
+        ArchiveCategory current = category(12L, ArchiveManagementMode.ITEM_ONLY);
+        current.setSchemeId(8L);
+        when(classificationSchemeRepository.findById(8L)).thenReturn(Optional.of(scheme));
+        when(categoryRepository.findById(12L)).thenReturn(Optional.of(current));
+        when(categoryRepository.update(any(ArchiveCategory.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        ArchiveMetadataTypes.ArchiveCategoryDto response =
+                categoryService.updateCategory(
+                        12L,
+                        new ArchiveMetadataTypes.ArchiveCategoryRequest(
+                                8L,
+                                " contract ",
+                                "合同档案",
+                                null,
+                                ArchiveManagementMode.ITEM_ONLY,
+                                true,
+                                0),
+                        9L);
+
+        assertThat(response.id()).isEqualTo(12L);
+        assertThat(response.categoryCode()).isEqualTo("contract");
+    }
+
+    @Test
+    @DisplayName("拒绝修改分类编码")
+    void updateCategoryShouldRejectCategoryCodeChange() {
+        ArchiveCategory current = category(12L, ArchiveManagementMode.ITEM_ONLY);
+        current.setSchemeId(8L);
+        when(categoryRepository.findById(12L)).thenReturn(Optional.of(current));
+
+        assertThatThrownBy(
+                        () ->
+                                categoryService.updateCategory(
+                                        12L,
+                                        new ArchiveMetadataTypes.ArchiveCategoryRequest(
+                                                8L,
+                                                "project",
+                                                "项目档案",
+                                                null,
+                                                ArchiveManagementMode.ITEM_ONLY,
+                                                true,
+                                                0),
+                                        9L))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(
+                        exception ->
+                                assertThat(((ResponseStatusException) exception).getStatusCode())
+                                        .isEqualTo(org.springframework.http.HttpStatus.BAD_REQUEST))
+                .hasMessageContaining("分类编码创建后不可修改");
+
+        verify(categoryRepository, never()).update(any(ArchiveCategory.class));
+    }
+
+    @Test
+    @DisplayName("修改不存在分类时优先返回资源不存在")
+    void updateCategoryShouldLoadTargetBeforeValidatingCode() {
+        when(categoryRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(
+                        () ->
+                                categoryService.updateCategory(
+                                        99L,
+                                        new ArchiveMetadataTypes.ArchiveCategoryRequest(
+                                                8L,
+                                                "occupied",
+                                                "不存在分类",
+                                                null,
+                                                ArchiveManagementMode.ITEM_ONLY,
+                                                true,
+                                                0),
+                                        9L))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(
+                        exception ->
+                                assertThat(((ResponseStatusException) exception).getStatusCode())
+                                        .isEqualTo(org.springframework.http.HttpStatus.NOT_FOUND));
+    }
+
+    @Test
+    @DisplayName("创建分类时拒绝超长编码和名称")
+    void createCategoryShouldRejectOversizedCodeAndName() {
+        ArchiveClassificationScheme scheme = scheme(8L, "enterprise_project", true);
+        when(classificationSchemeRepository.findById(8L)).thenReturn(Optional.of(scheme));
+
+        assertThatThrownBy(
+                        () ->
+                                categoryService.createCategory(
+                                        new ArchiveMetadataTypes.ArchiveCategoryRequest(
+                                                8L,
+                                                "c".repeat(101),
+                                                "合同档案",
+                                                null,
+                                                ArchiveManagementMode.ITEM_ONLY,
+                                                true,
+                                                0),
+                                        9L))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("分类编码长度不能超过 100");
+
+        assertThatThrownBy(
+                        () ->
+                                categoryService.createCategory(
+                                        new ArchiveMetadataTypes.ArchiveCategoryRequest(
+                                                8L,
+                                                "contract",
+                                                "名".repeat(256),
+                                                null,
+                                                ArchiveManagementMode.ITEM_ONLY,
+                                                true,
+                                                0),
+                                        9L))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("分类名称长度不能超过 255");
+
+        verify(categoryRepository, never()).insert(any(ArchiveCategory.class));
+    }
+
+    @Test
+    @DisplayName("创建分类时拒绝仅包含 Unicode 空白的编码")
+    void createCategoryShouldRejectUnicodeBlankCode() {
+        ArchiveClassificationScheme scheme = scheme(8L, "enterprise_project", true);
+        when(classificationSchemeRepository.findById(8L)).thenReturn(Optional.of(scheme));
+        when(categoryRepository.insert(any(ArchiveCategory.class)))
+                .thenAnswer(invocation -> withCategoryId(invocation.getArgument(0), 12L));
+
+        assertThatThrownBy(
+                        () ->
+                                categoryService.createCategory(
+                                        new ArchiveMetadataTypes.ArchiveCategoryRequest(
+                                                8L,
+                                                "\u2003",
+                                                "合同档案",
+                                                null,
+                                                ArchiveManagementMode.ITEM_ONLY,
+                                                true,
+                                                0),
+                                        9L))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("分类编码不能为空");
+
+        verify(categoryRepository, never()).insert(any(ArchiveCategory.class));
+    }
+
+    @Test
+    @DisplayName("创建分类时拒绝仅包含 Unicode 空白的名称")
+    void createCategoryShouldRejectUnicodeBlankName() {
+        ArchiveClassificationScheme scheme = scheme(8L, "enterprise_project", true);
+        when(classificationSchemeRepository.findById(8L)).thenReturn(Optional.of(scheme));
+        when(categoryRepository.insert(any(ArchiveCategory.class)))
+                .thenAnswer(invocation -> withCategoryId(invocation.getArgument(0), 12L));
+
+        assertThatThrownBy(
+                        () ->
+                                categoryService.createCategory(
+                                        new ArchiveMetadataTypes.ArchiveCategoryRequest(
+                                                8L,
+                                                "contract",
+                                                "\u2003",
+                                                null,
+                                                ArchiveManagementMode.ITEM_ONLY,
+                                                true,
+                                                0),
+                                        9L))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("分类名称不能为空");
+
+        verify(categoryRepository, never()).insert(any(ArchiveCategory.class));
+    }
+
+    @Test
+    @DisplayName("分类编码长度按 Unicode code point 校验")
+    void createCategoryShouldValidateCodeLengthByUnicodeCodePoint() {
+        ArchiveClassificationScheme scheme = scheme(8L, "enterprise_project", true);
+        when(classificationSchemeRepository.findById(8L)).thenReturn(Optional.of(scheme));
+        when(categoryRepository.insert(any(ArchiveCategory.class)))
+                .thenAnswer(invocation -> withCategoryId(invocation.getArgument(0), 12L));
+        String maximumCode = "😀".repeat(100);
+
+        assertThatCode(
+                        () ->
+                                categoryService.createCategory(
+                                        new ArchiveMetadataTypes.ArchiveCategoryRequest(
+                                                8L,
+                                                maximumCode,
+                                                "合同档案",
+                                                null,
+                                                ArchiveManagementMode.ITEM_ONLY,
+                                                true,
+                                                0),
+                                        9L))
+                .doesNotThrowAnyException();
+        assertThatThrownBy(
+                        () ->
+                                categoryService.createCategory(
+                                        new ArchiveMetadataTypes.ArchiveCategoryRequest(
+                                                8L,
+                                                "😀".repeat(101),
+                                                "合同档案",
+                                                null,
+                                                ArchiveManagementMode.ITEM_ONLY,
+                                                true,
+                                                0),
+                                        9L))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("分类编码长度不能超过 100");
+    }
+
+    @Test
+    @DisplayName("分类名称长度按 Unicode code point 校验")
+    void createCategoryShouldValidateNameLengthByUnicodeCodePoint() {
+        ArchiveClassificationScheme scheme = scheme(8L, "enterprise_project", true);
+        when(classificationSchemeRepository.findById(8L)).thenReturn(Optional.of(scheme));
+        when(categoryRepository.insert(any(ArchiveCategory.class)))
+                .thenAnswer(invocation -> withCategoryId(invocation.getArgument(0), 12L));
+        String maximumName = "😀".repeat(255);
+
+        assertThatCode(
+                        () ->
+                                categoryService.createCategory(
+                                        new ArchiveMetadataTypes.ArchiveCategoryRequest(
+                                                8L,
+                                                "contract",
+                                                maximumName,
+                                                null,
+                                                ArchiveManagementMode.ITEM_ONLY,
+                                                true,
+                                                0),
+                                        9L))
+                .doesNotThrowAnyException();
+        assertThatThrownBy(
+                        () ->
+                                categoryService.createCategory(
+                                        new ArchiveMetadataTypes.ArchiveCategoryRequest(
+                                                8L,
+                                                "contract-other",
+                                                "😀".repeat(256),
+                                                null,
+                                                ArchiveManagementMode.ITEM_ONLY,
+                                                true,
+                                                0),
+                                        9L))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("分类名称长度不能超过 255");
+    }
+
+    @Test
+    @DisplayName("指定分类编码唯一约束冲突返回资源已存在")
+    void createCategoryShouldMapNamedUniqueConstraint() {
+        ArchiveClassificationScheme scheme = scheme(8L, "enterprise_project", true);
+        when(classificationSchemeRepository.findById(8L)).thenReturn(Optional.of(scheme));
+        when(categoryRepository.findByCategoryCode("contract")).thenReturn(null);
+        var constraintViolation =
+                new org.hibernate.exception.ConstraintViolationException(
+                        "duplicate", new SQLException("duplicate"), "uk_am_archive_category_code");
+        when(categoryRepository.insert(any(ArchiveCategory.class)))
+                .thenThrow(
+                        new org.springframework.dao.DataIntegrityViolationException(
+                                "duplicate", constraintViolation));
+
+        assertThatThrownBy(
+                        () ->
+                                categoryService.createCategory(
+                                        new ArchiveMetadataTypes.ArchiveCategoryRequest(
+                                                8L,
+                                                "contract",
+                                                "合同档案",
+                                                null,
+                                                ArchiveManagementMode.ITEM_ONLY,
+                                                true,
+                                                0),
+                                        9L))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(
+                        exception ->
+                                assertThat(((ResponseStatusException) exception).getStatusCode())
+                                        .isEqualTo(org.springframework.http.HttpStatus.CONFLICT))
+                .hasMessageContaining("分类编码已存在");
+    }
+
+    @Test
+    @DisplayName("非分类编码约束的完整性异常保持原样")
+    void createCategoryShouldRethrowUnrelatedIntegrityViolation() {
+        ArchiveClassificationScheme scheme = scheme(8L, "enterprise_project", true);
+        when(classificationSchemeRepository.findById(8L)).thenReturn(Optional.of(scheme));
+        when(categoryRepository.findByCategoryCode("contract")).thenReturn(null);
+        var unrelated =
+                new org.springframework.dao.DataIntegrityViolationException(
+                        "other",
+                        new org.hibernate.exception.ConstraintViolationException(
+                                "other",
+                                new SQLException("other"),
+                                "fk_am_archive_category_scheme"));
+        when(categoryRepository.insert(any(ArchiveCategory.class))).thenThrow(unrelated);
+
+        assertThatThrownBy(
+                        () ->
+                                categoryService.createCategory(
+                                        new ArchiveMetadataTypes.ArchiveCategoryRequest(
+                                                8L,
+                                                "contract",
+                                                "合同档案",
+                                                null,
+                                                ArchiveManagementMode.ITEM_ONLY,
+                                                true,
+                                                0),
+                                        9L))
+                .isSameAs(unrelated);
+    }
+
+    @Test
     @DisplayName("拒绝把不同分类方案下的分类设置为父级")
     void createCategoryShouldRejectParentFromDifferentScheme() {
         ArchiveClassificationScheme scheme = scheme(8L, "default_classification", true);
@@ -261,8 +610,7 @@ class ArchiveMetadataServiceTests {
                         eq("doc_no_unique"),
                         eq("文号唯一"),
                         anyString(),
-                        eq(true),
-                        eq(9L)))
+                        eq(true)))
                 .thenReturn(21L);
         when(archiveMapper.getUniqueConstraint(21L))
                 .thenReturn(uniqueConstraintRow(21L, 1L, ArchiveLevel.ITEM));
@@ -278,7 +626,7 @@ class ArchiveMetadataServiceTests {
 
         assertThat(result.archiveLevel()).isEqualTo(ArchiveLevel.ITEM);
         assertThat(result.fields()).extracting("fieldId").containsExactly(11L);
-        verify(archiveMapper).markFieldsExactSearchable(1L, List.of(11L), 9L);
+        verify(archiveMapper).markFieldsExactSearchable(1L, List.of(11L));
     }
 
     @Test

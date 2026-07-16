@@ -224,7 +224,6 @@ class ArchiveVolumePermissionTests {
                         any(),
                         anyString(),
                         anyInt(),
-                        any(),
                         any());
     }
 
@@ -257,7 +256,7 @@ class ArchiveVolumePermissionTests {
 
         verify(permissionService, never()).hasPermission(anyLong(), anyString());
         verify(archiveMapper, never()).getArchiveVolume(anyLong());
-        verify(archiveMapper, never()).moveItemToVolume(anyLong(), anyLong(), anyInt(), anyLong());
+        verify(archiveMapper, never()).moveItemToVolume(anyLong(), anyLong(), anyInt());
     }
 
     @Test
@@ -294,7 +293,6 @@ class ArchiveVolumePermissionTests {
                         org.mockito.ArgumentMatchers.any(),
                         anyString(),
                         org.mockito.ArgumentMatchers.anyInt(),
-                        org.mockito.ArgumentMatchers.any(),
                         org.mockito.ArgumentMatchers.any());
     }
 
@@ -318,8 +316,7 @@ class ArchiveVolumePermissionTests {
                         eq("V-001"),
                         eq("DRAFT"),
                         eq(2026),
-                        eq(77L),
-                        eq(9L)))
+                        eq(77L)))
                 .thenReturn(31L);
         when(archiveMapper.getArchiveVolume(31L)).thenReturn(volumeRow());
 
