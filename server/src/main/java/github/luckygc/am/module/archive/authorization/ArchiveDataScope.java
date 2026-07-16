@@ -12,18 +12,19 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 
-import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.type.SqlTypes;
 import org.jspecify.annotations.Nullable;
+
+import github.luckygc.am.common.audit.CreationTimeAuditable;
+import github.luckygc.am.common.audit.UpdateTimeAuditable;
 
 import lombok.Data;
 
 @Data
 @Entity
 @Table(name = "am_archive_data_scope")
-public class ArchiveDataScope {
+public class ArchiveDataScope implements CreationTimeAuditable, UpdateTimeAuditable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -54,10 +55,8 @@ public class ArchiveDataScope {
     private int version;
 
     @Column(name = "created_at", nullable = false)
-    @CreationTimestamp
     private LocalDateTime createdAt;
 
     @Column(name = "updated_at", nullable = false)
-    @UpdateTimestamp
     private LocalDateTime updatedAt;
 }

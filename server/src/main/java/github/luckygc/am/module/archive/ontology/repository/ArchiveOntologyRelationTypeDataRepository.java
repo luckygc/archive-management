@@ -1,24 +1,39 @@
 package github.luckygc.am.module.archive.ontology.repository;
 
 import java.util.List;
+import java.util.Optional;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import jakarta.data.repository.By;
+import jakarta.data.repository.Delete;
 import jakarta.data.repository.Find;
+import jakarta.data.repository.Insert;
 import jakarta.data.repository.OrderBy;
 import jakarta.data.repository.Repository;
+import jakarta.data.repository.Update;
 
 import org.hibernate.annotations.processing.HQL;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
-import github.luckygc.am.common.repository.DataRepository;
 import github.luckygc.am.module.archive.ontology.ArchiveOntologyRelationType;
 
 @Transactional(rollbackFor = Throwable.class, isolation = Isolation.READ_COMMITTED)
 @Repository
-public interface ArchiveOntologyRelationTypeDataRepository
-        extends DataRepository<ArchiveOntologyRelationType, Long> {
+public interface ArchiveOntologyRelationTypeDataRepository {
+
+    @Find
+    Optional<ArchiveOntologyRelationType> findById(@By(By.ID) @Nonnull Long id);
+
+    @Insert
+    ArchiveOntologyRelationType insert(@Nonnull ArchiveOntologyRelationType entity);
+
+    @Update
+    ArchiveOntologyRelationType update(@Nonnull ArchiveOntologyRelationType entity);
+
+    @Delete
+    void delete(@Nonnull ArchiveOntologyRelationType entity);
 
     @Transactional(readOnly = true)
     @Find

@@ -1,14 +1,10 @@
 package github.luckygc.am.common.audit;
 
-import java.time.LocalDateTime;
+import org.jspecify.annotations.Nullable;
 
-public interface CreationAuditable {
+public interface CreationAuditable extends CreationTimeAuditable {
 
-    Long getCreatedBy();
+    @Nullable Long getCreatedBy();
 
-    void setCreatedBy(Long createdBy);
-
-    LocalDateTime getCreatedAt();
-
-    void setCreatedAt(LocalDateTime createdAt);
+    void setCreatedBy(@Nullable Long createdBy);
 }

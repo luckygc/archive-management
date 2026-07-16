@@ -2,6 +2,7 @@ package github.luckygc.am;
 
 import static org.mockito.Mockito.mock;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -372,6 +373,9 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
     @Test
     @DisplayName("无状态 Repository 从安全上下文填充审计字段")
     void statelessRepositoryFillsAuditFieldsFromSecurityContext() {
+        LocalDateTime forgedCreatedAt = LocalDateTime.of(2000, 1, 1, 0, 0);
+        LocalDateTime forgedInsertedUpdatedAt = LocalDateTime.of(2001, 1, 1, 0, 0);
+        LocalDateTime forgedUpdatedAt = LocalDateTime.of(2002, 1, 1, 0, 0);
         SecurityContextHolder.getContext()
                 .setAuthentication(
                         new UsernamePasswordAuthenticationToken(
@@ -390,6 +394,10 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
             fonds.setFondsName("审计测试全宗");
             fonds.setEnabled(true);
             fonds.setSortOrder(0);
+            fonds.setCreatedAt(forgedCreatedAt);
+            fonds.setCreatedBy(-1L);
+            fonds.setUpdatedAt(forgedInsertedUpdatedAt);
+            fonds.setUpdatedBy(-2L);
 
             archiveFondsDataRepository.insert(fonds);
 
@@ -401,8 +409,10 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
                     jdbcTemplate.queryForObject(
                             "select updated_at from am_archive_fonds where fonds_code = 'AUDIT_TEST'",
                             LocalDateTime.class);
-            Assertions.assertNotNull(createdAt);
-            Assertions.assertNotNull(updatedAt);
+            Assertions.assertNotEquals(forgedCreatedAt, createdAt);
+            Assertions.assertNotEquals(forgedInsertedUpdatedAt, updatedAt);
+            assertSameTimeWithinPostgreSqlPrecision(createdAt, fonds.getCreatedAt());
+            assertSameTimeWithinPostgreSqlPrecision(updatedAt, fonds.getUpdatedAt());
             Assertions.assertEquals(
                     99L,
                     jdbcTemplate.queryForObject(
@@ -428,6 +438,8 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
                                     java.util.List.of()));
             ArchiveFonds saved = archiveFondsDataRepository.find("AUDIT_TEST").orElseThrow();
             saved.setFondsName("审计测试全宗-更新");
+            saved.setUpdatedAt(forgedUpdatedAt);
+            saved.setUpdatedBy(-3L);
             archiveFondsDataRepository.update(saved);
 
             Assertions.assertEquals(
@@ -439,7 +451,8 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
                     jdbcTemplate.queryForObject(
                             "select updated_at from am_archive_fonds where fonds_code = 'AUDIT_TEST'",
                             LocalDateTime.class);
-            Assertions.assertFalse(updatedAtAfterUpdate.isBefore(updatedAt));
+            Assertions.assertNotEquals(forgedUpdatedAt, updatedAtAfterUpdate);
+            assertSameTimeWithinPostgreSqlPrecision(updatedAtAfterUpdate, saved.getUpdatedAt());
             Assertions.assertEquals(
                     99L,
                     jdbcTemplate.queryForObject(
@@ -453,6 +466,13 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
         } finally {
             SecurityContextHolder.clearContext();
         }
+    }
+
+    private static void assertSameTimeWithinPostgreSqlPrecision(
+            LocalDateTime persistedTime, LocalDateTime entityTime) {
+        Assertions.assertTrue(
+                Duration.between(persistedTime, entityTime).abs().compareTo(Duration.ofNanos(1_000))
+                        < 0);
     }
 
     @TestConfiguration

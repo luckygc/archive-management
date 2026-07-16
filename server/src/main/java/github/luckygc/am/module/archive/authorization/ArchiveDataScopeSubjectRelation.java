@@ -11,14 +11,14 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
-import org.hibernate.annotations.CreationTimestamp;
+import github.luckygc.am.common.audit.CreationTimeAuditable;
 
 import lombok.Data;
 
 @Data
 @Entity
 @Table(name = "am_archive_data_scope_subject_rel")
-public class ArchiveDataScopeSubjectRelation {
+public class ArchiveDataScopeSubjectRelation implements CreationTimeAuditable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -35,6 +35,5 @@ public class ArchiveDataScopeSubjectRelation {
     private Long scopeId;
 
     @Column(name = "created_at", nullable = false)
-    @CreationTimestamp
     private LocalDateTime createdAt;
 }

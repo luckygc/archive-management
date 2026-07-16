@@ -1,171 +1,100 @@
 # 架构总览
 
-Archive Management 当前按单 Spring Boot 主应用起步，配套 PC 前端和独立文件预览服务。架构目标是让档案业务能力、基础设施适配和前端工作台边界清楚，避免在未出现真实需求前引入额外平台层。
+Archive Management 由单 Spring Boot 主应用、PC 前端和独立文件预览服务组成。本文只记录稳定技术边界；业务合同、运行参数和页面实现分别由 OpenSpec、配置文件和源码承担。
 
-## 顶层目录
+## 顶层组件
 
-| 路径 | 职责 |
+| 路径 | 稳定职责 |
 | --- | --- |
-| `server/` | Spring Boot 后端主应用，承载 HTTP API、业务模块、迁移、认证、权限和文件存储适配 |
-| `web/` | PC 主应用，Vue 3 + Element Plus 管理界面 |
-| `frontend-core/` | 框架无关的前端共享基础能力，包含 Axios API client、CAP 校验和共享类型 |
-| `preview/` | 独立 Go 文件预览服务 |
-| `openspec/` | API 和业务能力合同 |
-| `docs/` | 工程、使用、部署、运维和行业知识文档 |
+| `server/` | Spring Boot 后端主应用，承载项目 HTTP API、业务模块、认证授权、迁移和基础设施接入 |
+| `web/` | Vue 3 + Element Plus PC 管理工作台 |
+| `frontend-core/` | 框架无关的 API client、安全验证和共享类型 |
+| `preview/` | 独立部署的 Go 文件预览服务，不嵌入主应用进程 |
+| `openspec/` | 通用 API 与业务能力合同 |
+| `docs/` | 开发、部署、运维、使用和稳定架构说明 |
 
-## 后端分层
+## 后端包与模块边界
 
-后端 Java 包根为 `github.luckygc.am`。
+后端 Java 包根为 `github.luckygc.am`：
 
 | 包 | 职责 |
 | --- | --- |
-| `app` | 应用启动类、应用级装配和启动期编排 |
-| `module` | 业务模块集合 |
-| `infrastructure` | Spring Security、Hibernate、MyBatis、Flyway、缓存、存储、Web 基础设施等技术适配 |
-| `common` | 跨业务模块共享的基础约定，不放认证、用户、权限、档案等业务语义 |
+| `app` | 启动类、应用级装配和启动期编排，不承载业务逻辑或具体技术适配 |
+| `module` | 按业务边界组织的业务模块集合 |
+| `infrastructure` | Spring Security、Hibernate、MyBatis、存储、缓存和其他技术适配 |
+| `common` | 跨业务模块共享的基础约定，不放业务语义或外部技术适配 |
 
-业务模块位于 `server/src/main/java/github/luckygc/am/module`：
-
-| 模块 | 当前职责 |
-| --- | --- |
-| `archive` | 档案元数据、档案条目、案卷、电子文件、导入导出、搜索、治理、本体、规则和数据范围 |
-| `authentication` | CAP、登录、会话、用户、登录失败限制和认证审计 |
-| `authorization` | 角色和功能权限 |
-| `intake` | 归档接收入口 |
-| `organization` | 组织部门 |
-| `storage` | 文件元数据、短链和下载入口 |
-
-模块内默认依赖方向：
+业务子域内默认依赖方向为：
 
 ```text
 web -> service -> manager -> repository/mapper
 ```
 
-Controller 不直接依赖 Repository 或 Mapper。跨业务模块复用能力时优先依赖目标模块已有 Service，不绕过目标模块操作底层表。
+Controller 不直接依赖 Repository 或 Mapper。跨模块协作优先调用目标模块已有 Service，不绕过其业务边界操作 Repository、Mapper 或底层表。模块包依赖由 ArchUnit 测试固化。
 
-Spring Bean 的 public 方法表示可由 Controller、事件监听器或其他 Bean 调用的业务入口。本 Bean 内部共享逻辑使用 private 方法；跨事务、权限或业务边界的协作通过构造器注入另一个具体 Bean。项目不使用 Bean 自调用来复用 public 方法，也不为单实现业务能力预留接口。Jakarta Data Repository、MyBatis Mapper、稳定基础设施端口和已有多实现策略继续使用接口合同。
+Service、Manager 和领域协作只有一个实现时直接使用具体 Spring Bean；Jakarta Data Repository、MyBatis Mapper、稳定基础设施端口和已有多实现策略保留接口合同。同一 Bean 的 public 方法不得调用本类另一 public 方法：共享实现提取为 private 方法，独立事务、权限或业务边界拆到另一具体 Bean 并通过构造器注入，不使用 self 注入或代理绕过。
+
+## Java 工程约定
+
+- 字符串空白判断统一使用 Apache Commons Lang `StringUtils`；已弃用的 `StringUtils.removeStart` 使用 `Strings.CS.removeStart` 替代。
+- 摘要、编码和 Hex 等通用能力优先使用 Apache Commons Codec 等成熟库，不手写通用算法封装。
+- 新增或修改业务方法超过 5 个业务参数时，收敛为语义明确的 request、command、condition 等对象；框架回调、简单构造器和少数稳定底层工具方法除外。
+- 内部对象只在真实跨边界或复用收益出现时引入，并使用语义明确的 `Command`、`Summary`、`Option`、`TreeNode` 等名称；不在实现层之间机械复制对象，不使用泛化 `DO/BO/VO/DTO/Model/Info` 作为默认分层命名。
+- 纯参数或请求校验不包事务；只有原子写入、状态变化、令牌消费、锁定等场景才开启事务。
+
+HTTP 边界类型的命名与拆分以 [`openspec/specs/api-contract/spec.md`](../openspec/specs/api-contract/spec.md) 为准，本节不重复 API DTO 规则。
 
 ## 持久化边界
 
-项目当前持久化入口是 Jakarta Data Repository 和 MyBatis：
+固定项目表使用直接、窄的 Jakarta Data `@Repository`。每个 Repository 只声明当前业务真实需要的方法，并为自定义方法显式标注 `@Find`、`@Insert`、`@Update`、`@Delete`、`@Query` 或 Hibernate `@HQL` 等操作；不继承项目级 Repository 基类，不暴露通用 CRUD，也不使用 `save` 或 upsert 语义代替明确的 insert、update、delete 生命周期。
 
-| 场景 | 入口 |
-| --- | --- |
-| 固定 CRUD 表 | Jakarta Data Repository |
-| 动态表、复杂 SQL、批处理、报表、认证适配查询 | MyBatis |
-| 文件内容 | `FileStorageService`，统一使用 S3 兼容对象存储 |
+Repository 通过 Hibernate `StatelessSession` / `EntityAgent` 执行，不依赖一级缓存、脏检查或延迟会话生命周期，也不向业务层返回 `Stream`、游标或其他依赖会话生命周期的对象。
 
-固定实体的 `created_by`、`updated_by` 由无状态 Hibernate 会话上的安全审计拦截器统一维护，Service 不再重复赋值。MyBatis 写入不会经过该拦截器，仍须在 SQL 或调用条件中显式维护审计字段。`ArchiveRuleTrace.createdBy` 表示规则执行请求中的业务操作人，`StorageObject.createdBy` 与 `FileLink.createdBy` 同时参与文件所有权和链接归属判断，因此保留显式赋值；这些字段不是固定实体通用审计的第二套来源。
+以下场景由 MyBatis 承担：
 
-档案 PC 闭环中的具体选择保持单一且可追踪：
+- 动态档案表或动态列，以及必须经过白名单校验的动态标识符。
+- 复杂搜索、数据范围连接、认证适配查询和 PostgreSQL 专用 SQL。
+- 批处理、导入导出、报表、DDL 和需要显式执行计划的路径。
 
-- 案卷是固定实体，列表使用 `ArchiveVolumeDataRepository` 和 Jakarta Data `CursoredPage`；Service 在事务内转换为项目游标响应。
-- 档案动态字段查询、关系分页、明细行和工作台聚合需要动态表、复杂连接或数据范围 SQL，继续由 MyBatis 承担。
-- 关系和工作台在 SQL 内应用数据范围，不能先分页或聚合后再由 Service 过滤。
-- 明细行的动态表名和列名只来自已校验元数据，值通过参数绑定；逻辑删除、审计字段和时间字段由 MyBatis 写入路径显式维护。
+项目不使用 Spring Data JPA，也不把 `JdbcClient` 作为业务持久化入口。
 
-约束：
+## 统一审计
 
-- 不使用 Spring Data JPA。
-- 不把 JdbcClient 作为项目持久化入口。
-- 固定实体写入使用语义明确的 insert、update、delete 方法，不使用 Repository save 或 upsert 语义。
-- Jakarta Data Repository 通过 Hibernate `StatelessSession` / `EntityAgent` 执行，不依赖一级缓存、脏检查或延迟会话生命周期。
-- Repository 不返回 Stream、游标等依赖会话生命周期的对象。
+`AuditContextProvider` 是持久化写入统一的当前时间和用户来源：时间始终存在，未认证、匿名或无法识别的用户 ID 可以为 `null`。
 
-## 数据模型
-
-档案实例数据分为：
-
-- 固定主表：保存全宗、分类、档号、层级、治理版本、状态、锁定、审计等稳定字段。
-- 分类动态表：保存不同档案分类的动态字段。
-- 明细表：保存档案条目的重复明细行。
-- 文件组件表：保存档案电子文件和短链相关记录。
-- 治理表：保存治理方案、版本、适用范围、本体、规则和绑定关系。
-
-本体和规则解释语义与行为，不替代档案主数据存储。
+- Hibernate 无状态会话审计拦截器为固定实体统一维护通用 `created_at`、`updated_at`、`created_by`、`updated_by`。
+- MyBatis 审计插件向参数 Map 注入 `_audit`；Mapper XML 必须显式通过 `#{_audit.now}`、`#{_audit.userId}` 引用所需审计值，插件不隐式改写 SQL。
+- `deletedBy`、`lockedBy`、`owner`、`requestedBy` 等表达业务动作、归属或责任人的字段继续由业务用例显式维护，不与通用审计字段混为一套来源。
 
 ## HTTP API
 
-项目自有 API 统一使用 `/api/v1/**`。通用 API 风格、分页、错误响应、ID 合同和异步任务口径以 `openspec/specs/api-contract/spec.md` 为准。
+项目自有 API 的资源建模、URL、HTTP 方法、DTO、分页、过滤、排序、ID、异步任务和 ProblemDetail 错误合同只以 [`openspec/specs/api-contract/spec.md`](../openspec/specs/api-contract/spec.md) 为准。具体业务字段、状态机、权限和验收场景由相应业务 OpenSpec 承担；[`api.md`](api.md) 仅提供使用入口和规格索引。
 
-当前实现中：
+会话认证由 Spring Security 与 Spring Session 承担，浏览器端状态不能替代服务端认证、授权和数据范围判断。
 
-- 普通资源使用标准 HTTP 方法。
-- 标准 CRUD 难以表达的动作使用 Google AIP-136 custom method 形式，例如 `POST /api/v1/archive-rules/{ruleId}:publish`。
-- 错误响应使用 Spring `ProblemDetail` / RFC 9457，并追加 `code`、`reason`、`traceId`、`path` 和 `fieldViolations`。
-- 会话认证使用 Spring Security + Spring Session JDBC。
+## 前端边界
 
-## 前端结构
+`web/` 是 PC 高密度档案工作台，产品方向与 Element Plus 设计系统分别以 [`PRODUCT.md`](../PRODUCT.md) 和 [`DESIGN.md`](../DESIGN.md) 为准。页面使用服务端合同作为数据和权限边界；前端校验、按钮状态和路由可见性只改善体验。
 
-`web/` 是 PC 管理界面，核心约束来自 `PRODUCT.md` 和 `DESIGN.md`。
+`frontend-core/` 只提供框架无关的共享能力，不承载业务页面或 UI 壳层。具体路由、页面组织和请求流程属于源码实现，不写入稳定架构文档。
 
-主要技术：
+## 文件与预览
 
-- Vue 3 + TypeScript。
-- Element Plus。
-- Vue Router。
-- Pinia，仅承载登录态、权限摘要和页签等全局客户端状态。
-- Axios API client。
-- Zod。
-- Vitest + Vue Testing Library。
-- Vite+ 工具链。
+文件内容只使用 S3 兼容对象存储，业务模块统一通过 `FileStorageService` 使用存储能力。endpoint、bucket、凭证和 path-style 等参数以 [`application.yaml`](../server/src/main/resources/application.yaml) 及部署环境外部配置为准。
 
-页面路由由 `web/src/app/routes.ts` 定义，业务页面放在 `web/src/pages`。菜单递归渲染路由树，面包屑使用匹配路由链，页签标题和缓存策略也来自同一路由树。路由元数据使用 `permission` 表达单一必需权限，使用 `permissionsAnyOf` 表达聚合页的任一能力；菜单、守卫和页签清理共享同一判断。权限摘要以带版本、校验时间和五分钟有效期的深度只读快照原子提交；AppShell 作为唯一调度点，每 60 秒及 focus/visible 时检查并在最后 60 秒预刷新，还按当前 `validUntil` 维护单个可取消 timeout，续期重排、重置和卸载清理。路由守卫在受保护导航前确保快照有效；到期 timeout 或恢复 visible 会先同步提交过期状态，因此 interval 错相和请求节流不会延迟失败关闭。有效期届满且刷新失败时显示权限校验错误，不进入 403 流程。撤权时立即隐藏当前无权 `KeepAlive` 内容并清理其他无权页签，当前页签只在最新 403 导航成功后移除；导航失败时显示内联 403，离开后清理被保留的无权页签。页面服务端数据和表单状态默认保留在页面组件内；当查询、编辑、电子文件、审计、适用范围或绑定已经形成稳定业务闭环时，使用页面同目录的组件或 composable 集中该区域的状态和副作用，不引入通用 CRUD 层或第二套状态源。页签按 `fullPath` 区分同组件多实例，通过只承载 VNode slot 的实例包装组件获得独立缓存名称，由打开页签计算 `KeepAlive include`，并以 `version` key 执行单页签刷新。
-
-当前档案管理页复用高级查询、结果表格和动态字段组件，并由 `useArchiveItemResources` 集中电子文件与审计抽屉的加载、上传、下载和解绑状态；治理页由 `useArchiveGovernanceWorkbench` 集中版本适用范围、装配绑定和默认解析状态。其余大页面已按职责检查，分类、本体、授权、数据范围和用户页面当前仍是单一强关联工作台，暂不为减少文件行数机械拆分。
-
-档案管理和全文发现分别显式维护自己的草稿条件、已提交查询、`orderBy`、页大小、当前游标和响应游标。提交筛选、修改排序或页大小会清除旧游标；翻页、刷新和生命周期操作后的刷新只重放已提交查询，不读取尚未提交的表单草稿。案卷页维护草稿条件、已提交筛选、`limit`、当前游标和响应游标，排序由服务端固定为 `createdAt DESC, id DESC`，前端不维护 `orderBy` 状态。不同业务查询不共享参数化 loader，也不增加第二套列表状态源。
-
-读取失败由所属页面保存失败请求快照并原位恢复。共享 `RequestErrorState` 只展示错误和发出重试事件，不发请求也不持有页面状态；普通失败重放原请求，结构化 `fieldViolations.cursor` 表示游标失效时保留旧结果和查询上下文、清除分页链接，并从相同查询第一页重试。错误反馈保留服务端 `traceId`，字段错误继续回填对应表单，保存、锁定和删除等瞬时命令继续使用消息反馈。
-
-工作台通过 `GET /api/v1/workspace-summary` 读取真实聚合。无档案读取权限的已认证用户获得全零摘要；有权限时后端按启用分类复用档案查询的数据范围和逻辑删除语义汇总，前端不维护演示统计或虚构待办。
-
-`frontend-core/` 不承载页面、UI 壳层或框架 Store，只提供框架无关的共享基础能力。
-
-## 文件预览服务
-
-`preview/` 是独立 Go module，运行时作为单独 HTTP 服务部署。它不嵌入 Spring Boot 主进程，避免把 Office、音视频、CAD 等重转换依赖带入主应用。
-
-当前能力：
-
-- `GET /healthz`
-- `GET /v1/capabilities`
-- `POST /v1/preview:convert`
-
-首版同步转换只覆盖低风险闭环，复杂格式返回明确不支持或外部工具缺失。
-
-当前 PC 电子文件 Drawer 尚未接入该服务，因此“预览服务可运行”和“产品文件预览闭环”是两个独立状态；后者仍需单独的 OpenSpec 与端到端验收。
+`preview/` 作为独立 HTTP 服务部署，与主应用保持进程和重转换依赖隔离。其接口和能力合同以 [`file-preview-service`](../openspec/specs/file-preview-service/spec.md) 及 [`preview/README.md`](../preview/README.md) 为准。
 
 ## 运行时基础设施
 
-| 能力 | 使用方式 |
-| --- | --- |
-| 会话 | Spring Session JDBC，表名 `SPRING_SESSION` |
-| 缓存 | Spring Cache，默认 Caffeine |
-| 调度 | Spring Quartz JDBC JobStore，表名 `QRTZ_*` |
-| 模块事件 | Spring Modulith JDBC Event Publication Registry |
-| 流程 | Flowable process engine，禁用 IDM 和 Event Registry |
-| 数据库迁移 | Flyway |
-| 文件存储 | 本地文件系统或 S3 兼容对象存储 |
+- Spring Session JDBC 管理 HTTP 会话。
+- Spring Cache 是缓存抽象；当前默认 `spring.cache.type=caffeine`，配置真相源为 [`server/src/main/resources/application.yaml`](../server/src/main/resources/application.yaml)，本文不复制 provider 矩阵。
+- Spring Quartz 管理调度和 JDBC JobStore。
+- Flowable process engine 承担流程能力。
+- Spring Modulith 与 JDBC Event Publication Registry 承担可靠模块事件发布。
+- Flyway 管理数据库结构迁移和框架原生表。
 
-基础设施优先使用 Spring Boot AutoConfiguration 和框架标准 Bean，不维护项目级统一 adapter 或自研队列。
+这些组件优先使用 Spring Boot AutoConfiguration、标准 Bean 和组件自身配置，不维护项目级会话、缓存、调度 adapter 或自研通用队列。具体开关、表名、线程、端点和超时参数以 `application.yaml`、迁移脚本及相应运维文档为准。
 
-## 测试和约束
+## 工程约束
 
-后端：
-
-- ArchUnit 固化模块边界。
-- Maven Enforcer 要求 JDK 25。
-- Spotless + google-java-format AOSP 风格统一格式。
-- Testcontainers 用于 PostgreSQL 相关测试。
-
-前端：
-
-- `pnpm check` 执行格式、lint 和类型检查。
-- `pnpm test` 执行前端测试。
-- `pnpm build` 执行构建。
-
-预览服务：
-
-- `go test ./...`。
-- `go build ./cmd/preview-service`。
+Java 格式由 Spotless + AOSP `google-java-format` 统一，模块边界由 ArchUnit 固化，PostgreSQL 相关集成测试可使用 Testcontainers。真实开发和验证入口以 [`Taskfile.yml`](../Taskfile.yml) 与 [`development.md`](development.md) 为准。

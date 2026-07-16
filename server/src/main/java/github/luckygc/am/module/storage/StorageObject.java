@@ -9,16 +9,16 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
-import org.hibernate.annotations.CreationTimestamp;
+import org.jspecify.annotations.Nullable;
 
-import github.luckygc.am.common.audit.CreationAuditable;
+import github.luckygc.am.common.audit.CreationTimeAuditable;
 
 import lombok.Data;
 
 @Data
 @Entity
 @Table(name = "am_storage_object")
-public class StorageObject implements CreationAuditable {
+public class StorageObject implements CreationTimeAuditable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -51,10 +51,9 @@ public class StorageObject implements CreationAuditable {
     private String etag;
 
     @Column(name = "created_by")
-    private Long createdBy;
+    private @Nullable Long createdBy;
 
     @Column(name = "created_at", nullable = false)
-    @CreationTimestamp
     private LocalDateTime createdAt;
 
     @Column(name = "expires_at")

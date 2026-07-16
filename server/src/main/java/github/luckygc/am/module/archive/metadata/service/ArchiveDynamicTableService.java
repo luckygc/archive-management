@@ -104,8 +104,7 @@ public class ArchiveDynamicTableService {
                 archiveLevel.value(),
                 fieldScope.value(),
                 tableName,
-                ArchiveTableStatus.BUILT.value(),
-                userId);
+                ArchiveTableStatus.BUILT.value());
         for (ArchiveUniqueConstraintDto constraint : constraints) {
             if (fieldScope == ArchiveFieldScope.METADATA
                     && constraint.enabled()

@@ -79,7 +79,7 @@ class ArchiveItemElectronicFileServiceTests {
         when(storageObjectService.storeObject(
                         any(StorageObjectService.StoreStorageObjectCommand.class), eq(9L)))
                 .thenReturn(storageObject());
-        when(archiveMapper.insertArchiveItemElectronicFile(10L, 20L, "ORIGINAL", 7, 9L))
+        when(archiveMapper.insertArchiveItemElectronicFile(10L, 20L, "ORIGINAL", 7))
                 .thenReturn(30L);
 
         ArchiveItemElectronicFileResponse response =
@@ -101,7 +101,7 @@ class ArchiveItemElectronicFileServiceTests {
         assertThat(response.displayOrder()).isEqualTo(7);
         assertThat(response.originalFilename()).isEqualTo("demo.pdf");
         verify(storageObjectService, never()).getActiveObjectForOwner(20L, 9L);
-        verify(archiveMapper).insertArchiveItemElectronicFile(10L, 20L, "ORIGINAL", 7, 9L);
+        verify(archiveMapper).insertArchiveItemElectronicFile(10L, 20L, "ORIGINAL", 7);
     }
 
     @Test
@@ -111,13 +111,13 @@ class ArchiveItemElectronicFileServiceTests {
         when(storageObjectService.storeObject(
                         any(StorageObjectService.StoreStorageObjectCommand.class), eq(9L)))
                 .thenReturn(storageObject());
-        when(archiveMapper.insertArchiveItemElectronicFile(10L, 20L, "ORIGINAL", 7, 9L))
+        when(archiveMapper.insertArchiveItemElectronicFile(10L, 20L, "ORIGINAL", 7))
                 .thenReturn(30L);
 
         electronicFileService.uploadFile(10L, uploadCommand(), 9L);
 
         verify(archiveItemRoutingService).assertItemInDataScope(10L, 9L);
-        verify(archiveMapper).insertArchiveItemElectronicFile(10L, 20L, "ORIGINAL", 7, 9L);
+        verify(archiveMapper).insertArchiveItemElectronicFile(10L, 20L, "ORIGINAL", 7);
     }
 
     @Test
@@ -128,12 +128,12 @@ class ArchiveItemElectronicFileServiceTests {
         when(storageObjectService.storeObject(
                         any(StorageObjectService.StoreStorageObjectCommand.class), eq(9L)))
                 .thenReturn(storageObject());
-        when(archiveMapper.insertArchiveItemElectronicFile(10L, 20L, "ORIGINAL", 7, 9L))
+        when(archiveMapper.insertArchiveItemElectronicFile(10L, 20L, "ORIGINAL", 7))
                 .thenReturn(30L);
 
         electronicFileService.uploadFile(10L, uploadCommand(), 9L);
 
-        verify(archiveMapper).insertArchiveItemElectronicFile(10L, 20L, "ORIGINAL", 7, 9L);
+        verify(archiveMapper).insertArchiveItemElectronicFile(10L, 20L, "ORIGINAL", 7);
     }
 
     @Test

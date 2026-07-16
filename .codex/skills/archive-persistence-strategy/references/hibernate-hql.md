@@ -4,28 +4,29 @@
 
 - 固定项目表使用 Jakarta Persistence 注解建模：`@Entity`、`@Table`、`@Id`、`@Column`。
 - 主键自增字段按项目现有风格使用 `@GeneratedValue(strategy = GenerationType.IDENTITY)`。
-- 枚举字段默认用 `@Enumerated(EnumType.STRING)`，和仓库规则中的小写 snake_case enum 常量持久化保持一致。
-- `@CreationTimestamp`、`@UpdateTimestamp` 可以继续沿用项目现有实体风格，但不要因此把审计字段语义挪到 `common`。
+- 枚举字段默认用 `@Enumerated(EnumType.STRING)`；enum 常量名使用对外和入库一致的大写可读字符串，多个英文单词用下划线分隔。
+- 通用创建/更新时间由 `AuditContextProvider` 和 Hibernate 无状态会话审计拦截器统一维护，不在实体映射中另设生成来源。
 
 ## HQL 不是 SQL
 
-Jakarta Data Repository 中如果需要 `@Query`，优先写 HQL/JPQL 风格的实体查询，不写数据库原生 SQL。
+Jakarta Data Repository 中需要固定实体表达式时，直接在窄接口方法上显式标注 `@HQL`，不写数据库原生 SQL。
 
 允许：
 
 ```java
-@Query("""
+@HQL("""
        where categoryId = ?1
          and surface = ?2
-         and deletedFlag = false
        """)
 List<ArchiveFieldLayout> listActive(Long categoryId, ArchiveLayoutSurface surface);
 ```
 
+实体标注 `@SoftDelete` 后，Hibernate 会为固定实体查询自动施加软删除条件；HQL 不增加虚构的 Java 属性。MyBatis SQL 不经过该机制，仍须显式过滤物理列 `deleted_flag = false`。
+
 避免：
 
 ```java
-@Query("select * from am_archive_field_layout where category_id = ?1")
+@HQL("select * from am_archive_field_layout where category_id = ?1")
 List<ArchiveFieldLayout> listActive(Long categoryId);
 ```
 
@@ -42,16 +43,6 @@ record IsbnTitle(String isbn, String title) {}
 
 @HQL("select isbn, title from Book")
 List<IsbnTitle> listIsbnAndTitleForEachBook(Page page);
-```
-
-或在普通 HQL 查询里指定结果类型：
-
-```java
-record IsbnTitle(String isbn, String title) {}
-
-List<IsbnTitle> rows =
-        entityManager.createQuery("select isbn, title from Book", IsbnTitle.class)
-                .getResultList();
 ```
 
 避免把 Spring Data/JPA 构造函数投影习惯带进来：
@@ -89,5 +80,5 @@ from Tree
 
 ## Hibernate API 边界
 
-- 业务模块不要直接暴露 Hibernate `Session`、有状态 `Query`、游标、`Stream` 等依赖 persistence context 生命周期的对象。
+- 业务模块只通过直接、窄的 Jakarta Data Repository 使用 HQL，不直接创建或暴露 Hibernate `Session`、`Query`、游标、`Stream` 等会话资源。
 - 如确需 Hibernate 底层能力，封装在 `infrastructure`，不要把它变成 archive 模块公开合同。

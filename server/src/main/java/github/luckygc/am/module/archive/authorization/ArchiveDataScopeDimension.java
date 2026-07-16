@@ -11,15 +11,16 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
-import org.hibernate.annotations.CreationTimestamp;
 import org.jspecify.annotations.Nullable;
+
+import github.luckygc.am.common.audit.CreationTimeAuditable;
 
 import lombok.Data;
 
 @Data
 @Entity
 @Table(name = "am_archive_data_scope_dimension")
-public class ArchiveDataScopeDimension {
+public class ArchiveDataScopeDimension implements CreationTimeAuditable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -45,6 +46,5 @@ public class ArchiveDataScopeDimension {
     private int sortOrder;
 
     @Column(name = "created_at", nullable = false)
-    @CreationTimestamp
     private LocalDateTime createdAt;
 }

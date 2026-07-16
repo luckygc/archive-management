@@ -14,7 +14,7 @@
 
 ## Jakarta Data / Hibernate Repository
 
-项目固定实体仓库默认继承 `CrudRepository<Entity, Id>`；需要批量插入时，在该仓库上补充显式生命周期方法。
+项目固定实体仓库直接声明 `@Repository` 窄接口；只有真实批量新增用例出现时，才补充显式生命周期方法。
 
 Hibernate Data Repositories 文档给出的批量插入形式：
 
@@ -26,11 +26,11 @@ void add(Book... books);
 官方说明该生命周期方法映射到 `StatelessSession.insert()`。项目使用时：
 
 - 只用于固定实体表和稳定列。
-- 放在 Repository 或 Service 内部，由 Service 维护事务、校验、审计字段和错误映射。
+- 放在 Repository 或 Service 内部，由 Service 维护事务、校验和错误映射，通用审计仍由统一基础设施维护。
 - 不把 `StatelessSession`、Hibernate `Session` 或依赖 session 生命周期的对象暴露为业务模块合同。
 
 ## 选择边界
 
-- 少量固定实体批量新增：优先 Jakarta Data Repository `@Insert`，保持 Service 事务边界；不要用 `save` 做默认批量新增入口，除非业务明确要求 upsert。
+- 少量固定实体批量新增：按需声明 Jakarta Data Repository `@Insert` 方法，保持 Service 事务边界和明确的新增语义。
 - 大批量导入、动态表、动态列、报表、全文检索投影、PostgreSQL 特化 SQL：继续 MyBatis。
 - PostgreSQL 批量路径可以按场景评估 multi-values、`unnest`、临时表或 `COPY`，不要为了“统一 Repository”牺牲 SQL 可控性。

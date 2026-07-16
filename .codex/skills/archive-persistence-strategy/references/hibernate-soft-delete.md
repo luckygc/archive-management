@@ -30,8 +30,11 @@ class ArchiveFieldLayout {
 - 逻辑删除不是回收站。用户明确要求回收站、恢复、保留删除原因、删除批次或独立列表时，应单独设计业务回收站表/流程。
 - 带逻辑删除的唯一性仍然按仓库规则使用部分唯一索引：`where deleted_flag = false`，只约束未删除记录。
 - MyBatis 查询不会自动获得 Hibernate `@SoftDelete` 过滤；动态 SQL 必须显式包含 `deleted_flag = false`。
-- MyBatis 删除路径也不会自动执行 Hibernate soft delete；必须显式 `update ... set deleted_flag = true`，并维护 `updated_by` / `updated_at` / version 或状态条件。
+- MyBatis 删除路径也不会自动执行 Hibernate soft delete；必须显式 `update ... set deleted_flag = true`，并维护 version 或状态条件。
 - Repository 删除路径是否使用 Hibernate `@SoftDelete`，必须通过真实实现验证后再大规模使用。
+- 当前 `SecurityAuditingInterceptor` 只验证了明确新增和修改回调；不要假设 `@SoftDelete` 的 Repository 删除会触发修改回调或自动维护通用更新时间与更新人。
+- 若删除必须维护通用更新时间与更新人，先用集成测试证明具体 Repository 删除路径；否则设计显式业务删除更新或 MyBatis SQL，并继续从 `AuditContextProvider` 取值。每组通用字段只能有一个来源。
+- `deletedBy`、`deletedAt`、删除原因等是业务删除字段，由 Service 按业务合同显式维护，不与通用审计字段合并。
 
 ## 何时不用 @SoftDelete
 
@@ -48,7 +51,7 @@ class ArchiveFieldLayout {
 
 1. 读取实体。
 2. 校验 version、业务状态和是否已删除。
-3. 标记删除或调用经过验证的 Repository 删除方法。
-4. 填充 `updated_by` / `updated_at`。
+3. 选择已经集成验证的 Repository 删除路径，或显式业务删除更新/MyBatis SQL。
+4. 按业务合同显式维护 `deletedBy`、`deletedAt`、删除原因等业务字段。
 5. 写业务审计表，前提是删除有业务动作语义。
-6. 捕获乐观锁异常，转换成冲突响应。
+6. 捕获乐观锁异常，转换成冲突响应；不要由 Service 预填通用审计字段。

@@ -9,14 +9,14 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
-import org.hibernate.annotations.CreationTimestamp;
+import github.luckygc.am.common.audit.CreationTimeAuditable;
 
 import lombok.Data;
 
 @Data
 @Entity
 @Table(name = "am_authentication_event")
-public class AuthenticationLoginLog {
+public class AuthenticationLoginLog implements CreationTimeAuditable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -80,6 +80,20 @@ public class AuthenticationLoginLog {
     private String deviceType;
 
     @Column(name = "occurred_at", nullable = false)
-    @CreationTimestamp
     private LocalDateTime occurredAt;
+
+    @Override
+    public LocalDateTime getCreatedAt() {
+        return occurredAt;
+    }
+
+    @Override
+    public void setCreatedAt(LocalDateTime createdAt) {
+        occurredAt = createdAt;
+    }
+
+    @Override
+    public String createdAtPropertyName() {
+        return "occurredAt";
+    }
 }

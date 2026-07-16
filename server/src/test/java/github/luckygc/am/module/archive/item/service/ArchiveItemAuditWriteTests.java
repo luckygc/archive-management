@@ -118,8 +118,7 @@ class ArchiveItemAuditWriteTests {
                         isNull(),
                         isNull(),
                         eq(2026),
-                        eq(77L),
-                        eq(9L)))
+                        eq(77L)))
                 .thenReturn(10L);
         when(archiveMapper.getArchiveItem(10L)).thenReturn(itemRow(false));
 
@@ -148,8 +147,7 @@ class ArchiveItemAuditWriteTests {
                         eq("DRAFT"),
                         isNull(),
                         isNull(),
-                        eq(2026),
-                        eq(9L)))
+                        eq(2026)))
                 .thenReturn(1);
 
         archiveItemRoutingService.updateItem(
@@ -189,7 +187,7 @@ class ArchiveItemAuditWriteTests {
     @Test
     @DisplayName("解锁档案条目后写入解锁审计")
     void unlockItemShouldWriteAudit() {
-        when(archiveMapper.unlockArchiveItem(10L, 9L)).thenReturn(1);
+        when(archiveMapper.unlockArchiveItem(10L)).thenReturn(1);
         when(archiveMapper.getArchiveItem(10L)).thenReturn(itemRow(false));
         when(archiveCategoryService.listCategories(null)).thenReturn(List.of(category()));
 

@@ -447,8 +447,7 @@ class ArchiveItemDataScopeQueryTests {
                         any(),
                         any(),
                         anyInt(),
-                        any(),
-                        anyLong());
+                        any());
     }
 
     private ArchiveCategoryDto category() {

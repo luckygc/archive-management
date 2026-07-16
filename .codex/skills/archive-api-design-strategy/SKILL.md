@@ -1,102 +1,36 @@
 ---
 name: archive-api-design-strategy
-description: Use when designing, reviewing, or refactoring archive-management HTTP APIs, controller mappings, request/response DTOs, resource names, pagination, filtering, sorting, field masks, custom methods, ProblemDetail errors, or frontend-facing ID fields. Trigger before changing project-owned API contracts, OpenSpec API sections, DTO records, or controller URLs.
+description: Use when archive-management work involves project-owned HTTP APIs, Controller URLs or methods, Request/Response DTOs, pagination, search, filtering, sorting, custom methods, LRO/long-running operations, ProblemDetail errors, frontend-facing IDs, or third-party protocol boundaries.
 ---
 
 # Archive API Design Strategy
 
-## Overview
+## 真相源顺序
 
-Use this skill before changing archive-management API contracts. The project default is Zalando RESTful API Guidelines for project-owned HTTP API resources, URLs, methods, success responses, pagination, filtering, sorting, and compatibility, adapted to Spring MVC JSON APIs. Google AIP-136 is used only as the custom method extension for complex business actions. Error responses use Spring ProblemDetail / RFC 9457 with project extension fields.
+1. 读取最近的 `AGENTS.md`。
+2. 读取 `openspec/specs/api-contract/spec.md`。
+3. 读取对应业务主规格与活动 change delta；业务资源、字段、权限、状态或验收尚未定义时，先补 OpenSpec，再继续设计。
+4. 检查当前 Controller、Request/Response、Service 公开边界、前端 types 与 API client、测试；涉及第三方协议时同时检查适配层。
 
-## First Checks
+## 决策流程
 
-- Read the nearest `AGENTS.md` before editing API code or specs.
-- If the task asks about Google AIP, Zalando RESTful API Guidelines, or another framework/API behavior, verify the referenced docs first.
-- Inspect the relevant OpenSpec change, Controller, DTO, frontend type, and API client before changing a contract.
-- Keep third-party callback protocols isolated as adapter exceptions; do not let their URL style become project-owned API style.
+1. 先确认项目自有资源以及标准 CRUD 能否表达用例；仅在资源语义无法自然表达时，按 `api-contract` 选择 custom method；长耗时任务按合同选择 LRO/job。
+2. 由 `api-contract` 决定请求/响应命名、分页、筛选、排序、ID 与错误合同；由业务规格决定业务字段、状态机、权限、数据范围与验收。
+3. 仅在真实 HTTP 视图差异或字段出现语义需要时拆分 DTO，并回查合同确定具体命名，保持层间对象最少。
+4. 将第三方固定路径或字段隔离在 adapter，由项目 API 继续遵循通用合同。
+5. 合同变化时，同步 OpenSpec、Controller/DTO、Service 公开边界、前端 types/client、错误映射与测试。
 
-## Resource Model
+## 输出模板
 
-- Model APIs around resources first, then choose standard methods or AIP-136 custom methods.
-- Use `/api/v1` as the project-owned REST API prefix. Do not introduce minor or patch versions in the URL.
-- Prefer standard CRUD methods:
-    - `GET /api/v1/archive-categories/{archiveCategory}`
-    - `GET /api/v1/archive-categories`
-    - `POST /api/v1/archive-categories`
-    - `PATCH /api/v1/archive-categories/{archiveCategory}`
-    - `DELETE /api/v1/archive-categories/{archiveCategory}`
-- Use AIP-136 custom methods only when standard methods do not fit: `POST /api/v1/archive-records/{archiveRecord}:lock`.
-- Custom method verbs use lower camelCase after the colon. Do not use extra action path segments such as `/lock`, `/_lock`, `/validate_token`, or `/validateToken`.
-- Collection custom methods use the collection path plus the colon verb, for example `POST /api/v1/archive-records:search` or `POST /api/v1/archive-records:batchArchive`.
-- Spring MVC mappings must write the complete URL on each Controller method; do not rely on class-level `@RequestMapping` plus relative method paths.
+先用一句话给出结论，再按真实内容填以下四个 slot。各 slot 只设协调上限，命令使用行内代码；每条直接承载 owner、决策、影响、风险或验证。
 
-## Names and IDs
+1. **Owner（至多 4 条）**：只列本需求需要读取或修改的通用合同、业务规格与 change owner。
+2. **Decision（至多 4 条）**：第一条写“其余遵循 `api-contract`”；再写至多 3 条本需求特有的资源/方法/视图决策或推断，并标记事实与推断。通用默认值、字段和 JSON 保留在 owner；仅当本需求明确改变它们时写出改变项。
+3. **Impact（至多 5 条）**：列出预计修改项与确需继续查找的“待定位”项，范围限于合同、Controller、DTO、Service 公开边界、前端 client/types、测试或 adapter，并合并同类文件。相关共享基础设施保持不变时，统一收敛为一条“复用现有，无修改证据”。
+4. **Gaps & verification（至多 5 条）**：先消去需求与 owner 已定义的事实，再列出仍阻塞的业务语义，以及本需求涉及的兼容性、权限、失败/恢复风险；每条配对对应 owner 或验证命令。没有新增 gap 时，输出一条明确结论并结束本 slot。
 
-- Resource representations may expose a stable string `name` field when a concrete business spec requires it, but `name` is not mandatory for every DTO.
-- Use collection-style resource paths, for example `/api/v1/archive-categories/{archiveCategory}` and `/api/v1/archive-records/{archiveRecord}`.
-- DTO can expose `id`, `categoryId`, `fieldId`, `createdBy`, `updatedBy`, and similar fields when they are the natural API contract.
-- Project-owned IDs default to JSON numbers. Do not introduce Long-to-string serialization for speculative JavaScript precision risk in this archive system.
-- Only external protocols or resources explicitly identified by a concrete OpenSpec as exceeding the safe integer range may use string IDs.
+最终内容从结论直接进入四个 slot，呈现审查结果而非仓库调查过程。
 
-## Pagination and Lists
+## 内部检查
 
-- Large or user-facing collection APIs must be paginated. Do not return unbounded bare lists unless the resource set is intentionally tiny and documented.
-- Do not serialize Jakarta Data, Hibernate, MyBatis, or other persistence pagination objects directly as HTTP responses. Define project-owned response records/types.
-- Use parallel project-owned records instead of inheritance or polymorphic JSON contracts: `CollectionResponse<T>` for small unpaged collections, `CursorPageResponse<T>` for default paged collections, and `OffsetPageResponse<T>` only when a concrete business spec explicitly permits offset pagination.
-- Default to keyset/cursor pagination for growing collection APIs. Do not add `offset` or default `total` unless the business spec explicitly requires offset/page-jump/count-oriented behavior.
-- Offset pagination is only for explicitly specified bounded or count-oriented lists: request `pageSize`, `pageNo`; response fixed `items`, `pageSize`, `pageNo`, and `total`. `pageSize`, `pageNo`, and offset sorting controls are URL query parameters. Run `total` as a separate count query.
-- Keyset/cursor pagination is for the default paged list shape and for large or complex lists: request `limit`, `cursor`; response `self`, optional `prev`, optional `next`, optional `first`, rarely `last`, and fixed `items`. These navigation fields are opaque tokens, not URLs. Do not return `total` and do not run count by default.
-- If a cursor endpoint explicitly supports `requestTotal=true`, run count only on the first request without `cursor`. Follow-up requests with `cursor` must not count and must not return `total`.
-- Treat list and count as separate concerns. For expensive totals, expose a separate `:count` method or async job instead of making the default list request wait for count. `requestTotal=true` is only for explicitly allowed first-page count cases.
-- Cursor pagination defaults to `limit=100`, common frontend options are `100`, `200`, `500`, and `1000`, and the default maximum is `1000` unless a concrete spec declares a special limit.
-- When the user changes page size, start a fresh first-page query with the committed query state and no old cursor.
-- Cursor page turns must repeat the first request's effective filters, search terms, sorting, page size, and business scope; only `cursor` changes to the returned `next` or `prev` token. Cursor pagination controls `limit`, `cursor`, and `requestTotal` are URL query parameters; cursor search `orderBy` stays with the JSON request body. Changing any of those parameters requires a fresh search without the old cursor.
-- Frontend search forms must separate draft input state from the committed query state used by the current result list. Typing a new keyword updates only the draft; pagination and refresh continue using the committed query and cursor until the user explicitly submits a new search.
-- Cursor tokens must bind a signed query fingerprint. Reject requests whose body/query parameters do not match the cursor fingerprint in a common request-processing component; argument resolvers parse paging parameters, and business services must not duplicate HTTP request-consistency validation.
-- Search endpoints such as `POST /api/v1/archive-records:search` may include `query` in the page response to echo the applied query body.
-- Do not use AIP cursor pagination fields such as `pageToken` and `nextPageToken` for new project-owned collection APIs.
-- Do not create per-resource list response shapes with `archives`, `tasks`, or other resource-specific array fields. Use fixed `items`.
-- Provide two project-level page response contracts: keyset/cursor without `total`, and offset with `total`.
-- If a keyset/cursor endpoint needs a total, prefer a separate `:count` custom method. Indicate whether the total is exact when the API returns it.
-- Every collection API must use the project page response contract. Do not expose framework, persistence, or internal pagination types as HTTP contracts.
-- Define deterministic ordering for every paged API. Apply user ordering first, then append `createdAt DESC` and `id DESC` as fallback ordering; do not duplicate a fallback field already supplied by the user.
-- Filtering and sorting names should use API field names, not database column names. Validate any dynamic field or sort expression before it reaches SQL.
-- Cursor/page tokens are API contracts. Treat token format as opaque to clients.
-
-## Async Jobs
-
-- Long-running operations follow Microsoft Azure REST API Guidelines style: return `202 Accepted`, include an operation monitor location, and expose a pollable job resource.
-- Use `JobAcceptedResponse` for accepted async starts and `JobStatusResponse` for job status reads.
-- Prefer `Operation-Location` and optional `Retry-After` headers for async job starts.
-- Do not return `202 Accepted` for actions that have already completed synchronously.
-
-## Errors
-
-- Project-owned errors use Spring ProblemDetail / RFC 9457 JSON shape with project extension fields:
-
-```json
-{
-    "type": "about:blank",
-    "title": "请求参数无效",
-    "status": 400,
-    "detail": "...",
-    "code": "INVALID_ARGUMENT",
-    "reason": "FIELD_VIOLATION",
-    "fieldViolations": [{ "field": "displayName", "message": "不能为空" }],
-    "traceId": "..."
-}
-```
-
-- Use top-level `fieldViolations: [{field, message}]` for field-level validation.
-- Prefer stable project error code names such as `INVALID_ARGUMENT`, `NOT_FOUND`, `ALREADY_EXISTS`, `FAILED_PRECONDITION`, `ABORTED`, and `INTERNAL`.
-- Do not make frontend code parse exception class names, stack traces, HTML error pages, or free-form validation text.
-
-## Review Checklist
-
-1. Identify the resource and whether the operation is standard CRUD or a custom method.
-2. Verify the URL includes `/api/v1`, follows Zalando REST style for normal resources, and each Controller method declares the complete path.
-3. Ensure response DTO IDs use numeric contracts unless a concrete spec explicitly requires string IDs.
-4. Ensure growing collection APIs default to keyset/cursor pagination; use offset only when a concrete spec explicitly permits it. Offset returns `items` plus `total`, keyset/cursor returns `items` and cursors without `total`.
-5. Map validation, not-found, conflict, and precondition failures to ProblemDetail error bodies.
-6. Update OpenSpec, frontend types, and API clients together when changing a contract.
+完成模板后，在内部核对 owner 一致性、完整 URL 与资源语义、HTTP DTO 隔离、分页/错误/ID 合同、前后端与测试联动、第三方适配边界。

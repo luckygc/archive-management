@@ -10,9 +10,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 
-import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.SoftDelete;
-import org.hibernate.annotations.UpdateTimestamp;
+import org.jspecify.annotations.Nullable;
 
 import github.luckygc.am.common.audit.CreationAuditable;
 import github.luckygc.am.common.audit.UpdateAuditable;
@@ -52,16 +51,14 @@ public class ArchiveClassificationScheme implements CreationAuditable, UpdateAud
     private int version;
 
     @Column(name = "created_by")
-    private Long createdBy;
+    private @Nullable Long createdBy;
 
     @Column(name = "created_at", nullable = false)
-    @CreationTimestamp
     private LocalDateTime createdAt;
 
     @Column(name = "updated_by")
-    private Long updatedBy;
+    private @Nullable Long updatedBy;
 
     @Column(name = "updated_at", nullable = false)
-    @UpdateTimestamp
     private LocalDateTime updatedAt;
 }

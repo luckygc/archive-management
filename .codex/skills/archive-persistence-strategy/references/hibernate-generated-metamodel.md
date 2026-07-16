@@ -1,10 +1,10 @@
 # Hibernate 生成实体辅助类参考
 
-参考依据包括本仓库 `server/target/generated-sources/annotations` 当前编译产物。
+参考依据包括本仓库 `server/target/generated-sources/hibernate-processor` 当前编译产物。
 
 ## 生成物类型
 
-项目 `server/pom.xml` 已配置 `hibernate-processor`，编译后会在 `server/target/generated-sources/annotations` 生成多类辅助代码：
+项目 `server/pom.xml` 已配置独立的 `generate-main-sources` 注解处理执行，编译后会在 `server/target/generated-sources/hibernate-processor` 生成多类辅助代码：
 
 - `Entity_`：Jakarta Persistence / JPA 静态元模型，例如 `ArchiveCategory_`。
 - `_Entity`：Jakarta Data 静态元模型，例如 `_ArchiveCategory`。
@@ -27,12 +27,12 @@
 ```java
 // Jakarta Data metamodel
 _ArchiveCategory.categoryCode
-_ArchiveCategory.deletedFlag
+_ArchiveCategory.enabled
 _ArchiveCategory.id.asc()
 
 // Jakarta Persistence metamodel
 ArchiveCategory_.categoryCode
-ArchiveCategory_.deletedFlag
+ArchiveCategory_.enabled
 ```
 
 ## 动态条件与排序
@@ -43,7 +43,7 @@ ArchiveCategory_.deletedFlag
 Restriction<ArchiveCategory> restriction =
         Restrict.all(
                 _ArchiveCategory.categoryCode.equalTo(categoryCode),
-                _ArchiveCategory.deletedFlag.equalTo(false));
+                _ArchiveCategory.enabled.equalTo(true));
 
 Order<ArchiveCategory> order =
         Order.by(_ArchiveCategory.sortOrder.asc(), _ArchiveCategory.id.asc());
@@ -69,20 +69,30 @@ Order.by(Sort.asc("categoryCode"));
 新增或修改实体、Repository、`@Find`、投影、`Restriction<T>`、`Order<T>` 后，至少运行后端编译，让 `hibernate-processor` 重新生成并校验：
 
 ```bash
-mvn -pl server compile
+task server-compile
+```
+
+需要直接运行 Maven 时，先进入 `server/`，再按项目 JDK 约定执行：
+
+```bash
+cd server
+mise exec -- mvn compile
 ```
 
 需要核对生成物时查看：
 
 ```bash
-server/target/generated-sources/annotations
+server/target/generated-sources/hibernate-processor
 ```
+
+当前 POM 为 Hibernate Processor 8.0.0.Beta1 保留两阶段编译 workaround：生成前清理上一轮生成源和 `_*.class`，再精确修补 5 个 `CursoredPage` Repository 实现缺失的 `java.util.List` 导入；版本变化时 POM 会 fail-fast，届时先验证生成器并删除 workaround。不要手工修补 `target/`。
 
 只把生成物作为诊断输入，不把它们变成源码依赖之外的手写合同。
 
 ## 边界
 
 - 生成 metamodel 只覆盖固定实体字段；档案动态字段、动态表名、动态列名仍然归 MyBatis 和显式 SQL 标识符校验。
+- `@SoftDelete` 管理的物理软删除列不是实体属性，不会生成对应元模型属性。固定实体 Hibernate 查询自动施加软删除条件；MyBatis SQL 继续显式使用 `deleted_flag`。
 - 不要用 `_Repository` 生成实现绕过 Repository 接口或 Service。
-- 不要把 `target/generated-sources` 里的类名硬编码到文档外的业务约定；以实体和 Repository 源码为真相，生成类是编译期辅助。
+- 不要把 `target/generated-sources/hibernate-processor` 里的类名硬编码到业务约定；以实体和 Repository 源码为真相，生成类是编译期辅助。
 - 如果生成类不存在，先检查实体是否被 annotation processor 识别、Maven 编译是否成功、`hibernate-processor` 是否仍在 annotation processor path 中。

@@ -65,8 +65,7 @@ public class ArchiveUniqueConstraintService {
                         values.constraintCode(),
                         values.constraintName(),
                         indexName,
-                        values.enabled(),
-                        userId);
+                        values.enabled());
         replaceUniqueConstraintFields(id, values.fieldIds());
         markUniqueConstraintFieldsSearchable(category, fields, values.fieldIds(), userId);
         ArchiveUniqueConstraintDto constraint = findRequired(id);
@@ -91,8 +90,7 @@ public class ArchiveUniqueConstraintService {
                         values.constraintCode(),
                         values.constraintName(),
                         indexName,
-                        values.enabled(),
-                        userId);
+                        values.enabled());
         if (updated == 0) {
             throw notFound("唯一约束不存在");
         }
@@ -105,7 +103,7 @@ public class ArchiveUniqueConstraintService {
 
     void delete(ArchiveUniqueConstraintDto constraint, Long categoryId, Long userId) {
         dynamicTableService.dropIndexIfExists(constraint.indexName());
-        int updated = archiveMapper.deleteUniqueConstraint(constraint.id(), categoryId, userId);
+        int updated = archiveMapper.deleteUniqueConstraint(constraint.id(), categoryId);
         if (updated == 0) {
             throw notFound("唯一约束不存在");
         }
@@ -140,7 +138,7 @@ public class ArchiveUniqueConstraintService {
         if (fieldIds.isEmpty()) {
             return;
         }
-        archiveMapper.markFieldsExactSearchable(category.id(), fieldIds, userId);
+        archiveMapper.markFieldsExactSearchable(category.id(), fieldIds);
         fields.stream()
                 .filter(field -> fieldIds.contains(field.id()))
                 .filter(

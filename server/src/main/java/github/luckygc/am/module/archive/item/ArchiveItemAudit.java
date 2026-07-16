@@ -9,14 +9,14 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
-import org.hibernate.annotations.CreationTimestamp;
+import github.luckygc.am.common.audit.CreationTimeAuditable;
 
 import lombok.Data;
 
 @Data
 @Entity
 @Table(name = "am_archive_item_audit")
-public class ArchiveItemAudit {
+public class ArchiveItemAudit implements CreationTimeAuditable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -47,6 +47,20 @@ public class ArchiveItemAudit {
     private Long operatedBy;
 
     @Column(name = "operated_at", nullable = false)
-    @CreationTimestamp
     private LocalDateTime operatedAt;
+
+    @Override
+    public LocalDateTime getCreatedAt() {
+        return operatedAt;
+    }
+
+    @Override
+    public void setCreatedAt(LocalDateTime createdAt) {
+        operatedAt = createdAt;
+    }
+
+    @Override
+    public String createdAtPropertyName() {
+        return "operatedAt";
+    }
 }

@@ -23,31 +23,18 @@ private LocalDateTime lastUpdated;
 - 需要并发保护的配置表、元数据表、用户可编辑表应优先加 `@Version`。
 - 动态档案表和复杂批处理仍按 MyBatis 语义单独设计并发条件。
 
-Jakarta Data `CrudRepository.update(entity)` 在未找到实体、被修改或被删除时可抛 `OptimisticLockingFailureException`。因此固定实体更新优先走 Repository 读改写闭环，而不是手写无版本条件的 SQL。
+Jakarta Data 显式 `@Update` 方法在未找到实体、被修改或被删除时可抛 `OptimisticLockingFailureException`。因此固定实体更新优先走 Repository 读改写闭环，而不是手写无版本条件的 SQL。
 
 ## 局部更新
 
-Hibernate 默认通过 persistence context 的 dirty checking 识别实体属性变更；`@DynamicUpdate` 可让生成的 SQL UPDATE 只包含已修改列。
-
-```java
-@Entity
-@DynamicUpdate
-class ArchiveFieldLayout {
-    @Id
-    private Long id;
-
-    @Version
-    private int version;
-}
-```
+当前 Repository 使用 `StatelessSession` / `EntityAgent`。局部更新采用固定闭环：读取完整实体，应用请求中出现的字段，再调用显式 `@Update` Repository 方法。不要依赖有状态会话行为自动提交变更。
 
 使用规则：
 
-- 局部更新固定实体时，先加载实体，再按 PATCH 命令修改明确出现的字段，最后由 Hibernate/Jakarta Data 提交。
-- 不要用“只填了部分字段的新实体”直接 `update/save`，这会把未出现字段覆盖成 `null` 或默认值；其中 `save` 还会模糊新增和更新语义，默认不作为固定实体写入入口。
+- 局部更新固定实体时，先加载实体，再按 PATCH 命令修改明确出现的字段，最后调用显式 Repository `@Update` 方法。
+- 不要用“只填了部分字段的新实体”直接 `update`，这会把未出现字段覆盖成 `null` 或默认值。
 - 如果 API 允许显式置空，PATCH command 必须能区分“字段未出现”和“字段出现且为 null”；不能只靠 Java `null` 表达两种语义。
-- 对列多、索引多、更新字段少的固定实体，可考虑 `@DynamicUpdate`。
-- `@DynamicUpdate` 应与 `@Version` 一起评估；文档提示缺少 version 时，动态更新可能带来并发下列值不一致风险。
+- 当前无状态写入路径尚未证明 `@DynamicUpdate` 能缩减 SQL 列集合或带来性能收益，不把它作为默认优化。只有集成测试确认实际 SQL、执行计划或基准证明收益，并同时验证版本与审计语义后才采用。
 
 ## PATCH 请求建模
 
@@ -71,7 +58,7 @@ if (request.visible().isPresent()) {
 if (request.rowOrder().isPresent()) {
     entity.setRowOrder(request.rowOrder().orElseThrow());
 }
-entity.setUpdatedBy(currentUserId);
+repository.update(entity);
 ```
 
 反模式：
@@ -107,6 +94,6 @@ where categoryId = :categoryId
 2. 校验业务状态、删除状态、权限和调用方传入的 version；如果版本不匹配，返回冲突错误。
 3. 只应用请求中出现的字段；未出现字段保持原值。
 4. 对每个出现字段执行字段级校验；如果字段显式置空，必须确认业务允许置空。
-5. 填充 `updated_by` / `updated_at`；若用 Hibernate 时间戳，至少显式填充 `updated_by`。
-6. 调用 Repository `update`；只有明确需要 upsert 语义时才使用 `save`，且必须说明并发和审计影响。
+5. 调用 Repository `update`；通用更新时间和更新人由 Hibernate 无状态会话审计拦截器统一维护。
+6. 不使用可同时代表新增和修改的模糊写入入口。
 7. 捕获 optimistic locking 异常并转换成 API 冲突响应。

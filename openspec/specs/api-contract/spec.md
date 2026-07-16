@@ -45,6 +45,29 @@ Controller SHALL 显式声明完整 URL。
 - **AND** 系统 SHALL NOT 通过类级 `@RequestMapping` 叠加方法级相对路径生成项目自有 API
 - **AND** 冒号动作 SHALL NOT 通过类级路径和 `@PostMapping(":action")` 拼接
 
+### Requirement: Java HTTP 边界类型命名
+
+项目自有 Java HTTP 边界类型 SHALL 按单一动作或真实响应视图命名。
+
+#### Scenario: 命名请求类型
+
+- **WHEN** 系统新增项目自有 HTTP 请求类型
+- **THEN** 类型名 SHALL 以 `Request` 结尾并表达单一动作或场景
+- **AND** 新增请求 SHALL 使用 `CreateXxxRequest`，修改请求 SHALL 使用 `UpdateXxxRequest`
+- **AND** 只有部分更新需要区分字段是否出现时，类型名 SHALL 使用 `PatchXxxRequest`
+- **AND** 搜索或复杂条件请求 SHALL 使用 `SearchXxxRequest`，普通列表筛选请求 MAY 使用 `ListXxxRequest`
+- **AND** 只有少量参数的简单 `GET` 请求 MAY 直接使用请求参数，无需机械创建请求类型
+- **AND** 批量、导入、导出、预览和校验请求 SHALL 使用对应动作前缀
+- **AND** 系统 SHALL NOT 使用泛化 `XxxRequest`、`SaveXxxRequest`、默认 `QueryXxxRequest`，或通过 `operationType` 加大量可选字段混合多个动作
+
+#### Scenario: 命名响应类型
+
+- **WHEN** 系统新增项目自有 HTTP 响应类型
+- **THEN** 类型名 SHALL 以 `Response` 结尾
+- **AND** 列表项、详情、选择项、树节点等存在真实视图差异时，系统 SHALL 按视图语义命名和拆分响应类型
+- **AND** 系统 SHALL NOT 直接使用持久化实体或 `VO` 作为 HTTP 响应合同
+- **AND** 系统 SHALL NOT 使用包含大量可选字段的单一 Response 混合多个视图
+
 ### Requirement: API 成功响应
 
 项目自有 API 成功响应 SHALL 直接返回资源对象或专用响应对象。

@@ -610,8 +610,7 @@ class ArchiveMetadataServiceTests {
                         eq("doc_no_unique"),
                         eq("文号唯一"),
                         anyString(),
-                        eq(true),
-                        eq(9L)))
+                        eq(true)))
                 .thenReturn(21L);
         when(archiveMapper.getUniqueConstraint(21L))
                 .thenReturn(uniqueConstraintRow(21L, 1L, ArchiveLevel.ITEM));
@@ -627,7 +626,7 @@ class ArchiveMetadataServiceTests {
 
         assertThat(result.archiveLevel()).isEqualTo(ArchiveLevel.ITEM);
         assertThat(result.fields()).extracting("fieldId").containsExactly(11L);
-        verify(archiveMapper).markFieldsExactSearchable(1L, List.of(11L), 9L);
+        verify(archiveMapper).markFieldsExactSearchable(1L, List.of(11L));
     }
 
     @Test

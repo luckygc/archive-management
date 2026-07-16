@@ -50,6 +50,11 @@ class ArchitectureRulesTest {
     private static final class SingleImplementationServiceFixtureImpl
             implements SingleImplementationServiceFixture {}
 
+    private static final class TimestampAnnotationFixture {
+
+        @org.hibernate.annotations.CreationTimestamp private java.time.LocalDateTime createdAt;
+    }
+
     private static final Set<String> SOFT_DELETE_ENTITY_NAMES =
             Set.of(
                     "github.luckygc.am.module.archive.metadata.ArchiveFonds",
@@ -217,6 +222,41 @@ class ArchitectureRulesTest {
                     .should()
                     .dependOnClassesThat()
                     .haveFullyQualifiedName("jakarta.data.repository.Save");
+
+    @ArchTest
+    static final ArchRule production_classes_should_not_use_hibernate_timestamp_annotations =
+            noClasses()
+                    .should()
+                    .dependOnClassesThat()
+                    .haveFullyQualifiedName("org.hibernate.annotations.CreationTimestamp")
+                    .orShould()
+                    .dependOnClassesThat()
+                    .haveFullyQualifiedName("org.hibernate.annotations.UpdateTimestamp");
+
+    @ArchTest
+    static final ArchRule hibernate_auditing_should_depend_on_audit_context_provider =
+            classes()
+                    .that()
+                    .haveFullyQualifiedName(
+                            "github.luckygc.am.infrastructure.hibernate.SecurityAuditingInterceptor")
+                    .should()
+                    .dependOnClassesThat()
+                    .haveFullyQualifiedName(
+                            "github.luckygc.am.infrastructure.audit.AuditContextProvider");
+
+    @ArchTest
+    static final ArchRule hibernate_auditing_should_not_read_security_context_directly =
+            noClasses()
+                    .that()
+                    .haveFullyQualifiedName(
+                            "github.luckygc.am.infrastructure.hibernate.SecurityAuditingInterceptor")
+                    .should()
+                    .dependOnClassesThat()
+                    .haveFullyQualifiedName(
+                            "org.springframework.security.core.context.SecurityContextHolder")
+                    .orShould()
+                    .dependOnClassesThat()
+                    .haveFullyQualifiedName("github.luckygc.am.common.security.AuthenticatedUsers");
 
     @ArchTest
     static void project_repositories_should_declare_only_required_methods(JavaClasses classes) {
@@ -466,6 +506,18 @@ class ArchitectureRulesTest {
                                         violation.contains("SingleImplementationServiceFixture")
                                                 && violation.contains(
                                                         "SingleImplementationServiceFixtureImpl")));
+    }
+
+    @Test
+    @DisplayName("Hibernate 时间戳注解禁用规则覆盖非实体生产类")
+    void hibernateTimestampAnnotationRuleShouldCoverNonEntityClasses() {
+        JavaClasses classes =
+                new ClassFileImporter().importClasses(TimestampAnnotationFixture.class);
+
+        assertTrue(
+                production_classes_should_not_use_hibernate_timestamp_annotations
+                        .evaluate(classes)
+                        .hasViolation());
     }
 
     private static boolean isProjectDataRepository(JavaClass javaClass) {

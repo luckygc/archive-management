@@ -291,12 +291,14 @@
                 </configuration>
                 <executions>
                     <execution>
-                        <id>default-compile</id>
-                        <phase>compile</phase>
+                        <id>generate-main-sources</id>
+                        <phase>generate-sources</phase>
                         <goals>
                             <goal>compile</goal>
                         </goals>
                         <configuration>
+                            <proc>only</proc>
+                            <generatedSourcesDirectory>${project.build.directory}/generated-sources/hibernate-processor</generatedSourcesDirectory>
                             <annotationProcessorPaths>
                                 <path>
                                     <groupId>org.projectlombok</groupId>
@@ -314,6 +316,22 @@
                         </configuration>
                     </execution>
                     <execution>
+                        <id>default-compile</id>
+                        <phase>compile</phase>
+                        <goals>
+                            <goal>compile</goal>
+                        </goals>
+                        <configuration>
+                            <proc>full</proc>
+                            <annotationProcessorPaths>
+                                <path>
+                                    <groupId>org.projectlombok</groupId>
+                                    <artifactId>lombok</artifactId>
+                                </path>
+                            </annotationProcessorPaths>
+                        </configuration>
+                    </execution>
+                    <execution>
                         <id>default-testCompile</id>
                         <phase>test-compile</phase>
                         <goals>
@@ -326,6 +344,134 @@
                                     <artifactId>lombok</artifactId>
                                 </path>
                             </annotationProcessorPaths>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <!--
+                Hibernate Processor 8.0.0.Beta1 生成 CursoredPage 仓储实现时会使用
+                List<Comparable<?>>，但未注册 java.util.List 导入。这里在注解处理与主源码编译之间
+                精确修补受影响的 5 个生成文件。该处理器也会在增量处理时漏掉已编译的
+                查询元模型，因此处理前删除上一轮生成源和 `_*.class`，强制重建完整生成集。
+                同时删除稳定的应用入口 class 作为编译哨兵，防止无源码变化时 Maven 跳过注解处理。
+                升级到已修复该生成器缺陷的 Hibernate 版本时，
+                应删除此 Antrun 补丁，并将主源码注解处理恢复为单阶段编译。
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>3.1.0</version>
+                <executions>
+                    <execution>
+                        <id>reset-hibernate-generated-query-types</id>
+                        <phase>initialize</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <delete dir="${project.build.directory}/generated-sources/hibernate-processor"
+                                        quiet="true"/>
+                                <delete file="${project.build.outputDirectory}/github/luckygc/am/app/ArchiveManagementApplication.class"
+                                        quiet="true"/>
+                                <delete includeEmptyDirs="false" quiet="true">
+                                    <fileset dir="${project.build.outputDirectory}"
+                                             erroronmissingdir="false">
+                                        <include name="github/luckygc/am/**/_*.class"/>
+                                    </fileset>
+                                </delete>
+                            </target>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>patch-hibernate-cursored-page-list-import</id>
+                        <phase>process-sources</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <condition property="hibernate.cursor-import-workaround.supported-version">
+                                    <equals arg1="${hibernate.version}" arg2="8.0.0.Beta1"/>
+                                </condition>
+                                <fail unless="hibernate.cursor-import-workaround.supported-version"
+                                      message="Hibernate 版本已不再是 8.0.0.Beta1，请验证游标仓储生成器并删除 List 导入补丁与两阶段编译。"/>
+                                <replace file="${project.build.directory}/generated-sources/hibernate-processor/github/luckygc/am/module/archive/item/repository/_ArchiveItemAuditDataRepository.java">
+                                    <replacefilter>
+                                        <replacetoken><![CDATA[import java.util.ArrayList;
+import static java.util.Objects.requireNonNull;]]></replacetoken>
+                                        <replacevalue><![CDATA[import java.util.ArrayList;
+import java.util.List;
+import static java.util.Objects.requireNonNull;]]></replacevalue>
+                                    </replacefilter>
+                                </replace>
+                                <condition property="hibernate.cursor.archive-item-audit.import-patched">
+                                    <resourcecontains resource="${project.build.directory}/generated-sources/hibernate-processor/github/luckygc/am/module/archive/item/repository/_ArchiveItemAuditDataRepository.java"
+                                                      substring="import java.util.List;"/>
+                                </condition>
+                                <fail unless="hibernate.cursor.archive-item-audit.import-patched"
+                                      message="Hibernate 生成的 _ArchiveItemAuditDataRepository.java 未补入 java.util.List 导入，请重新核对 8.0.0.Beta1 补丁。"/>
+                                <replace file="${project.build.directory}/generated-sources/hibernate-processor/github/luckygc/am/module/archive/item/repository/_ArchiveVolumeDataRepository.java">
+                                    <replacefilter>
+                                        <replacetoken><![CDATA[import java.util.ArrayList;
+import static java.util.Objects.requireNonNull;]]></replacetoken>
+                                        <replacevalue><![CDATA[import java.util.ArrayList;
+import java.util.List;
+import static java.util.Objects.requireNonNull;]]></replacevalue>
+                                    </replacefilter>
+                                </replace>
+                                <condition property="hibernate.cursor.archive-volume.import-patched">
+                                    <resourcecontains resource="${project.build.directory}/generated-sources/hibernate-processor/github/luckygc/am/module/archive/item/repository/_ArchiveVolumeDataRepository.java"
+                                                      substring="import java.util.List;"/>
+                                </condition>
+                                <fail unless="hibernate.cursor.archive-volume.import-patched"
+                                      message="Hibernate 生成的 _ArchiveVolumeDataRepository.java 未补入 java.util.List 导入，请重新核对 8.0.0.Beta1 补丁。"/>
+                                <replace file="${project.build.directory}/generated-sources/hibernate-processor/github/luckygc/am/module/authentication/repository/_AuthenticationLoginLogDataRepository.java">
+                                    <replacefilter>
+                                        <replacetoken><![CDATA[import java.util.ArrayList;
+import static java.util.Objects.requireNonNull;]]></replacetoken>
+                                        <replacevalue><![CDATA[import java.util.ArrayList;
+import java.util.List;
+import static java.util.Objects.requireNonNull;]]></replacevalue>
+                                    </replacefilter>
+                                </replace>
+                                <condition property="hibernate.cursor.authentication-login-log.import-patched">
+                                    <resourcecontains resource="${project.build.directory}/generated-sources/hibernate-processor/github/luckygc/am/module/authentication/repository/_AuthenticationLoginLogDataRepository.java"
+                                                      substring="import java.util.List;"/>
+                                </condition>
+                                <fail unless="hibernate.cursor.authentication-login-log.import-patched"
+                                      message="Hibernate 生成的 _AuthenticationLoginLogDataRepository.java 未补入 java.util.List 导入，请重新核对 8.0.0.Beta1 补丁。"/>
+                                <replace file="${project.build.directory}/generated-sources/hibernate-processor/github/luckygc/am/module/authentication/repository/_AuthenticationUserDataRepository.java">
+                                    <replacefilter>
+                                        <replacetoken><![CDATA[import java.util.ArrayList;
+import static java.util.Objects.requireNonNull;]]></replacetoken>
+                                        <replacevalue><![CDATA[import java.util.ArrayList;
+import java.util.List;
+import static java.util.Objects.requireNonNull;]]></replacevalue>
+                                    </replacefilter>
+                                </replace>
+                                <condition property="hibernate.cursor.authentication-user.import-patched">
+                                    <resourcecontains resource="${project.build.directory}/generated-sources/hibernate-processor/github/luckygc/am/module/authentication/repository/_AuthenticationUserDataRepository.java"
+                                                      substring="import java.util.List;"/>
+                                </condition>
+                                <fail unless="hibernate.cursor.authentication-user.import-patched"
+                                      message="Hibernate 生成的 _AuthenticationUserDataRepository.java 未补入 java.util.List 导入，请重新核对 8.0.0.Beta1 补丁。"/>
+                                <replace file="${project.build.directory}/generated-sources/hibernate-processor/github/luckygc/am/module/authentication/repository/_SpringSessionRecordDataRepository.java">
+                                    <replacefilter>
+                                        <replacetoken><![CDATA[import java.util.ArrayList;
+import static java.util.Objects.requireNonNull;]]></replacetoken>
+                                        <replacevalue><![CDATA[import java.util.ArrayList;
+import java.util.List;
+import static java.util.Objects.requireNonNull;]]></replacevalue>
+                                    </replacefilter>
+                                </replace>
+                                <condition property="hibernate.cursor.spring-session-record.import-patched">
+                                    <resourcecontains resource="${project.build.directory}/generated-sources/hibernate-processor/github/luckygc/am/module/authentication/repository/_SpringSessionRecordDataRepository.java"
+                                                      substring="import java.util.List;"/>
+                                </condition>
+                                <fail unless="hibernate.cursor.spring-session-record.import-patched"
+                                      message="Hibernate 生成的 _SpringSessionRecordDataRepository.java 未补入 java.util.List 导入，请重新核对 8.0.0.Beta1 补丁。"/>
+                            </target>
                         </configuration>
                     </execution>
                 </executions>

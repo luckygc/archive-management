@@ -12,7 +12,25 @@
 
 ## 当前真相源规格
 
-当前规格以 CLI 输出为准：
+当前规格索引如下，校准时以 CLI 输出为准：
+
+- `specs/api-contract/spec.md`
+- `specs/archive-classification-scheme/spec.md`
+- `specs/archive-data-scope/spec.md`
+- `specs/archive-governance-scheme/spec.md`
+- `specs/archive-governance-workbench/spec.md`
+- `specs/archive-import-export/spec.md`
+- `specs/archive-local-rule-engine/spec.md`
+- `specs/archive-metadata/spec.md`
+- `specs/archive-ontology-core/spec.md`
+- `specs/archive-record-routing/spec.md`
+- `specs/archive-record-search/spec.md`
+- `specs/authorization-permissions/spec.md`
+- `specs/file-preview-service/spec.md`
+- `specs/file-storage/spec.md`
+- `specs/intake/spec.md`
+- `specs/login-authentication/spec.md`
+- `specs/organization-departments/spec.md`
 
 ```bash
 openspec list --specs

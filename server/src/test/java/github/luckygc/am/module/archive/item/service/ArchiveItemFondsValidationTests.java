@@ -131,7 +131,6 @@ class ArchiveItemFondsValidationTests {
                         any(),
                         any(),
                         anyInt(),
-                        any(),
                         any());
         verify(archiveMetadataReferenceService).getEnabledFondsByCode("F001");
         verify(archiveMetadataReferenceService, never()).getFondsByCode("F001");
@@ -172,8 +171,7 @@ class ArchiveItemFondsValidationTests {
                         anyString(),
                         any(),
                         any(),
-                        anyInt(),
-                        any());
+                        anyInt());
         verify(archiveMetadataReferenceService).getEnabledFondsByCode("F001");
         verify(archiveMetadataReferenceService, never()).getFondsByCode("F001");
     }
@@ -203,7 +201,6 @@ class ArchiveItemFondsValidationTests {
                         any(),
                         anyString(),
                         anyInt(),
-                        any(),
                         any());
         verify(archiveMetadataReferenceService).getEnabledFondsByCode("F001");
         verify(archiveMetadataReferenceService, never()).getFondsByCode("F001");

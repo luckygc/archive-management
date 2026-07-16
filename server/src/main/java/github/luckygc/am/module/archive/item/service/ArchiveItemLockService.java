@@ -58,7 +58,7 @@ public class ArchiveItemLockService {
         requireId(id);
         ArchiveItemDto before = archiveItemService.getItem(id);
         archiveItemService.assertItemInDataScope(before.id(), userId);
-        if (archiveMapper.unlockArchiveItem(id, userId) == 0) {
+        if (archiveMapper.unlockArchiveItem(id) == 0) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "档案条目不存在");
         }
         ArchiveItemDto after = archiveItemService.getItem(id);

@@ -6,9 +6,10 @@
 
     <insert id="insertFirstFailureIfAbsent">
         insert into am_login_failure_limit
-            (username, failure_count, lock_level, first_failed_at, last_failed_at, cleanup_after)
+            (username, failure_count, lock_level, first_failed_at, last_failed_at, cleanup_after,
+             created_at, updated_at)
         values
-            (#{username}, 1, 0, #{now}, #{now}, #{cleanupAfter})
+            (#{username}, 1, 0, #{now}, #{now}, #{cleanupAfter}, #{_audit.now}, #{_audit.now})
         on conflict (username) do nothing
     </insert>
 
@@ -29,13 +30,13 @@
 
     <update id="update">
         update am_login_failure_limit
-        set failure_count = #{failureCount},
-            lock_level = #{lockLevel},
-            first_failed_at = #{firstFailedAt},
-            last_failed_at = #{lastFailedAt},
-            locked_until = #{lockedUntil},
-            cleanup_after = #{cleanupAfter},
-            updated_at = localtimestamp
-        where username = #{username}
+        set failure_count = #{limit.failureCount},
+            lock_level = #{limit.lockLevel},
+            first_failed_at = #{limit.firstFailedAt},
+            last_failed_at = #{limit.lastFailedAt},
+            locked_until = #{limit.lockedUntil},
+            cleanup_after = #{limit.cleanupAfter},
+            updated_at = #{_audit.now}
+        where username = #{limit.username}
     </update>
 </mapper>
