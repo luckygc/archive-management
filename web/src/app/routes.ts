@@ -9,7 +9,7 @@ import {
     Collection,
     DataAnalysis,
     Document,
-    Files,
+    DocumentChecked,
     Folder,
     FolderOpened,
     HomeFilled,
@@ -101,6 +101,31 @@ export const workspaceRoutes: RouteRecordRaw[] = [
         () => import("@/pages/intake/IntakePage.vue"),
         { cache: false, menu: false },
     ),
+    group("approval", "审批工作", DocumentChecked, [
+        route(
+            "center",
+            "approval-center",
+            "审批中心",
+            DocumentChecked,
+            () => import("@/pages/approval-workflow/ApprovalCenterPage.vue"),
+        ),
+        route(
+            "definitions",
+            "approval-workflow-definitions",
+            "流程定义",
+            Setting,
+            () => import("@/pages/approval-workflow/ApprovalWorkflowDefinitionsPage.vue"),
+            { permission: "approval:definition:manage" },
+        ),
+        route(
+            "definitions/:id/design",
+            "approval-workflow-designer",
+            "流程设计器",
+            Setting,
+            () => import("@/pages/approval-workflow/ApprovalWorkflowDesignerPage.vue"),
+            { permission: "approval:definition:manage", menu: false, cache: false },
+        ),
+    ]),
     group("archive/governance", "档案治理", DataAnalysis, [
         route(
             "schemes",
@@ -179,14 +204,6 @@ export const workspaceRoutes: RouteRecordRaw[] = [
             { permission: "organization:department:manage" },
         ),
         route(
-            "storage",
-            "storage",
-            "存储配置",
-            Files,
-            () => import("@/pages/placeholder/PlaceholderPage.vue"),
-            { cache: false, menu: false, pageTitle: "存储配置" },
-        ),
-        route(
             "login-sessions",
             "login-sessions",
             "登录会话",
@@ -201,14 +218,6 @@ export const workspaceRoutes: RouteRecordRaw[] = [
             Avatar,
             () => import("@/pages/authentication-events/AuthenticationEventsPage.vue"),
             { permission: "authentication:audit:read" },
-        ),
-        route(
-            "settings",
-            "settings",
-            "系统参数",
-            Setting,
-            () => import("@/pages/placeholder/PlaceholderPage.vue"),
-            { cache: false, menu: false, pageTitle: "系统参数" },
         ),
     ]),
 ];
@@ -319,7 +328,6 @@ function route(
         affixTab?: boolean;
         cache?: boolean;
         menu?: boolean;
-        pageTitle?: string;
         permission?: string;
         permissionsAnyOf?: string[];
     } = {},

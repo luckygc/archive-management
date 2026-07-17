@@ -75,7 +75,16 @@ public class AuthorizationPermissionService {
                             "organization:department:manage",
                             "管理组织架构",
                             "organization",
-                            "维护组织架构部门树"));
+                            "维护组织架构部门树"),
+                    new PermissionDefinition(
+                            "approval:definition:manage",
+                            "管理审批流定义",
+                            "approval",
+                            "创建、修改、停用和发布审批流定义"),
+                    new PermissionDefinition(
+                            "approval:instance:start", "发起审批流程", "approval", "使用已发布审批流定义发起流程实例"),
+                    new PermissionDefinition(
+                            "approval:instance:manage", "管理审批流程实例", "approval", "查询和终止审批流程实例"));
 
     private final AuthorizationPermissionDataRepository permissionRepository;
     private final AuthorizationRoleDataRepository roleRepository;

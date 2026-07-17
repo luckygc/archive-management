@@ -17,6 +17,7 @@
         "@archive-management/frontend-core": "workspace:*",
         "@cap.js/wasm": "catalog:",
         "@element-plus/icons-vue": "catalog:",
+        "@logicflow/core": "catalog:",
         "cap-widget": "catalog:",
         "dayjs": "catalog:",
         "element-plus": "catalog:",

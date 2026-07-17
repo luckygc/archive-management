@@ -15,6 +15,7 @@ lerna-debug.log*
 /preview/build/
 /dist/
 /dist-ssr/
+/data/
 /.vite-hooks/
 *.local
 /server/src/main/resources/application-local.yaml

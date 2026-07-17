@@ -16,7 +16,10 @@ public enum AuthorizationPermissionCode {
     ARCHIVE_DATA_SCOPE_MANAGE("archive:data-scope:manage"),
     AUTHENTICATION_USER_MANAGE("authentication:user:manage"),
     AUTHORIZATION_ROLE_MANAGE("authorization:role:manage"),
-    ORGANIZATION_DEPARTMENT_MANAGE("organization:department:manage");
+    ORGANIZATION_DEPARTMENT_MANAGE("organization:department:manage"),
+    APPROVAL_DEFINITION_MANAGE("approval:definition:manage"),
+    APPROVAL_INSTANCE_START("approval:instance:start"),
+    APPROVAL_INSTANCE_MANAGE("approval:instance:manage");
 
     private final String code;
 

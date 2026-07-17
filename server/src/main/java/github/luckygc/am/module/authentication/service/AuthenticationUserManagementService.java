@@ -71,8 +71,15 @@ public class AuthenticationUserManagementService {
     @Transactional(readOnly = true)
     public CursorPageResponse<AuthenticationUserOptionResponse> listUserOptions(
             PageRequest pageRequest, Long operatorUserId) {
-        permissionService.requirePermission(
-                operatorUserId, AuthorizationPermissionCode.ARCHIVE_DATA_SCOPE_MANAGE);
+        if (!permissionService.hasPermission(
+                        operatorUserId,
+                        AuthorizationPermissionCode.ARCHIVE_DATA_SCOPE_MANAGE.code())
+                && !permissionService.hasPermission(
+                        operatorUserId,
+                        AuthorizationPermissionCode.APPROVAL_DEFINITION_MANAGE.code())) {
+            permissionService.requirePermission(
+                    operatorUserId, AuthorizationPermissionCode.ARCHIVE_DATA_SCOPE_MANAGE);
+        }
         CursoredPage<AuthenticationUser> page =
                 userRepository.filterBy(Restrict.unrestricted(), pageRequest);
         return CursorPageResponse.from(
@@ -425,6 +432,22 @@ public class AuthenticationUserManagementService {
                     user.isEnabled(),
                     user.getCreatedAt() != null ? user.getCreatedAt().toString() : "",
                     List.copyOf(roles));
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public void requireEnabledUsers(List<Long> userIds) {
+        for (Long userId : userIds.stream().distinct().toList()) {
+            AuthenticationUser user =
+                    userRepository
+                            .findById(userId)
+                            .filter(AuthenticationUser::isEnabled)
+                            .orElseThrow(
+                                    () ->
+                                            new BadRequestException(
+                                                    "审批候选用户不存在或已停用",
+                                                    "candidateUserIds",
+                                                    "审批候选用户不存在或已停用: " + userId));
         }
     }
 

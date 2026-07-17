@@ -2,6 +2,7 @@ package github.luckygc.am.infrastructure.flowable;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
 import java.util.Map;
 
 import org.flowable.engine.RepositoryService;
@@ -18,6 +19,15 @@ import org.springframework.test.annotation.DirtiesContext;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import github.luckygc.am.app.ArchiveManagementApplication;
+import github.luckygc.am.module.approval.ApprovalAction;
+import github.luckygc.am.module.approval.ApprovalCandidateStrategy;
+import github.luckygc.am.module.approval.ApprovalNodeType;
+import github.luckygc.am.module.approval.port.ApprovalProcessEngine;
+import github.luckygc.am.module.approval.port.ApprovalProcessEngine.ProcessAction;
+import github.luckygc.am.module.approval.service.ApprovalBpmnXmlGenerator;
+import github.luckygc.am.module.approval.service.ApprovalWorkflowTypes.ApprovalFlowEdge;
+import github.luckygc.am.module.approval.service.ApprovalWorkflowTypes.ApprovalFlowNode;
+import github.luckygc.am.module.approval.service.ApprovalWorkflowTypes.ApprovalWorkflowGraph;
 import github.luckygc.am.test.PostgreSqlContainerTest;
 
 @Testcontainers(disabledWithoutDocker = true)
@@ -39,6 +49,10 @@ class FlowableCompatibilityTests extends PostgreSqlContainerTest {
     @Autowired private RuntimeService runtimeService;
 
     @Autowired private TaskService taskService;
+
+    @Autowired private ApprovalProcessEngine approvalProcessEngine;
+
+    @Autowired private ApprovalBpmnXmlGenerator bpmnXmlGenerator;
 
     @Test
     @DisplayName("流程定义可以部署、启动并查询候选用户任务")
@@ -87,5 +101,84 @@ class FlowableCompatibilityTests extends PostgreSqlContainerTest {
                 .isZero();
         assertThat(taskService.createTaskQuery().processInstanceId(processInstanceId).count())
                 .isZero();
+    }
+
+    @Test
+    @DisplayName("项目适配层可以部署、推进并结束顺序审批")
+    void approvalAdapterShouldDeployStartAndCompleteSequentialProcess() {
+        ApprovalProcessEngine.Deployment deployment =
+                approvalProcessEngine.deploy(
+                        "approval_adapter_test",
+                        "适配层测试",
+                        bpmnXmlGenerator.generate(
+                                "approval_adapter_test",
+                                "适配层测试",
+                                new ApprovalWorkflowGraph(
+                                        List.of(
+                                                new ApprovalFlowNode(
+                                                        "start",
+                                                        "开始",
+                                                        ApprovalNodeType.START,
+                                                        100,
+                                                        100,
+                                                        null,
+                                                        List.of(),
+                                                        List.of()),
+                                                new ApprovalFlowNode(
+                                                        "review",
+                                                        "审核",
+                                                        ApprovalNodeType.APPROVAL,
+                                                        200,
+                                                        100,
+                                                        ApprovalCandidateStrategy.SPECIFIED_USERS,
+                                                        List.of(99L),
+                                                        List.of(
+                                                                ApprovalAction.APPROVE,
+                                                                ApprovalAction.REJECT)),
+                                                new ApprovalFlowNode(
+                                                        "end",
+                                                        "结束",
+                                                        ApprovalNodeType.END,
+                                                        300,
+                                                        100,
+                                                        null,
+                                                        List.of(),
+                                                        List.of())),
+                                        List.of(
+                                                new ApprovalFlowEdge(
+                                                        "flow_start_review",
+                                                        "start",
+                                                        "review",
+                                                        false,
+                                                        null),
+                                                new ApprovalFlowEdge(
+                                                        "flow_review_end",
+                                                        "review",
+                                                        "end",
+                                                        false,
+                                                        null)))));
+        try {
+            ApprovalProcessEngine.ProcessInstance instance =
+                    approvalProcessEngine.start(
+                            deployment.processDefinitionId(), "test:1", Map.of());
+            ApprovalProcessEngine.ActiveTask task =
+                    approvalProcessEngine.findActiveTask(instance.processInstanceId());
+
+            assertThat(task).isNotNull();
+            assertThat(task.candidateUserIds()).containsExactly(99L);
+
+            approvalProcessEngine.addComment(
+                    task.taskId(), instance.processInstanceId(), ProcessAction.APPROVE, 99L, "同意");
+            approvalProcessEngine.completeTask(task.taskId(), 99L, Map.of("approved", true));
+
+            assertThat(approvalProcessEngine.findActiveTask(instance.processInstanceId())).isNull();
+            assertThat(approvalProcessEngine.findHistoricTasks(instance.processInstanceId()))
+                    .hasSize(1);
+            assertThat(approvalProcessEngine.findComments(instance.processInstanceId()))
+                    .extracting("message")
+                    .containsExactly("同意");
+        } finally {
+            repositoryService.deleteDeployment(deployment.deploymentId(), true);
+        }
     }
 }

@@ -145,6 +145,12 @@ class ArchiveItemImportExportServiceTests {
                 .contains("archive-import-template-contract");
         assertThat(commandCaptor.getValue().contentLength()).isPositive();
         assertThat(commandCaptor.getValue().inputStream()).isInstanceOf(ByteArrayInputStream.class);
+        List<Map<Integer, String>> templateRows =
+                FesodSheet.read(commandCaptor.getValue().inputStream())
+                        .headRowNumber(1)
+                        .sheet()
+                        .doReadSync();
+        assertThat(templateRows).isEmpty();
         assertThat(commandCaptor.getValue().expiresAt())
                 .isEqualTo(LocalDateTime.of(2026, 7, 15, 10, 10));
         verify(fileLinkService)

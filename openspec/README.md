@@ -15,6 +15,8 @@
 当前规格索引如下，校准时以 CLI 输出为准：
 
 - `specs/api-contract/spec.md`
+- `specs/approval-workflow/spec.md`
+- `specs/unified-todo/spec.md`
 - `specs/archive-classification-scheme/spec.md`
 - `specs/archive-data-scope/spec.md`
 - `specs/archive-governance-scheme/spec.md`

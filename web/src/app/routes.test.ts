@@ -52,7 +52,7 @@ describe("workspaceRoutes", () => {
         expect(typeof route?.component).toBe("function");
     });
 
-    it("为已交付业务页和系统页标注服务端权限并隐藏占位入口", () => {
+    it("为已交付业务页和系统页标注服务端权限且不注册未交付入口", () => {
         expect(router.resolve("/archive/library").meta.permission).toBe("archive:item:read");
         expect(router.resolve("/archive/items").meta.permission).toBe("archive:item:read");
         expect(router.resolve("/archive/catalog/categories").meta.permission).toBe(
@@ -61,6 +61,16 @@ describe("workspaceRoutes", () => {
         expect(router.resolve("/archive/governance/schemes").meta.permission).toBe(
             "archive:governance:manage",
         );
+        expect(router.resolve("/approval/center").meta.title).toBe("审批中心");
+        expect(router.resolve("/approval/definitions").meta.permission).toBe(
+            "approval:definition:manage",
+        );
+        expect(router.resolve("/approval/definitions/new/design").meta).toMatchObject({
+            title: "流程设计器",
+            menu: false,
+            cache: false,
+            permission: "approval:definition:manage",
+        });
         expect(router.resolve("/system/users").meta.permission).toBe("authentication:user:manage");
         expect(router.resolve("/system/authorization").meta.permissionsAnyOf).toEqual([
             "authorization:permission:manage",
@@ -80,8 +90,8 @@ describe("workspaceRoutes", () => {
             "authentication:audit:read",
         );
         expect(router.resolve("/intake").meta.menu).toBe(false);
-        expect(router.resolve("/system/storage").meta.menu).toBe(false);
-        expect(router.resolve("/system/settings").meta.menu).toBe(false);
+        expect(router.resolve("/system/storage").matched).toHaveLength(0);
+        expect(router.resolve("/system/settings").matched).toHaveLength(0);
     });
 
     it("隐藏无权限叶子和没有可见子项的菜单分组", () => {

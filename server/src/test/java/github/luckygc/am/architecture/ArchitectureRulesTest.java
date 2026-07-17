@@ -97,9 +97,51 @@ class ArchitectureRulesTest {
             noClasses()
                     .that()
                     .resideInAPackage("..infrastructure..")
+                    .and()
+                    .resideOutsideOfPackage("..infrastructure.flowable..")
                     .should()
                     .dependOnClassesThat()
                     .resideInAnyPackage("github.luckygc.am.module..");
+
+    @ArchTest
+    static final ArchRule flowable_api_should_stay_in_flowable_infrastructure =
+            noClasses()
+                    .that()
+                    .resideOutsideOfPackage("..infrastructure.flowable..")
+                    .should()
+                    .dependOnClassesThat()
+                    .resideInAnyPackage("org.flowable..");
+
+    @ArchTest
+    static void flowable_infrastructure_should_only_depend_on_approval_port(JavaClasses classes) {
+        List<String> violations =
+                classes.stream()
+                        .filter(
+                                javaClass ->
+                                        javaClass
+                                                .getPackageName()
+                                                .startsWith(
+                                                        "github.luckygc.am.infrastructure.flowable"))
+                        .flatMap(javaClass -> javaClass.getDirectDependenciesFromSelf().stream())
+                        .filter(
+                                dependency ->
+                                        dependency
+                                                .getTargetClass()
+                                                .getPackageName()
+                                                .startsWith("github.luckygc.am.module"))
+                        .filter(
+                                dependency ->
+                                        !dependency
+                                                .getTargetClass()
+                                                .getPackageName()
+                                                .startsWith(
+                                                        "github.luckygc.am.module.approval.port"))
+                        .map(Object::toString)
+                        .sorted()
+                        .toList();
+
+        assertTrue(violations.isEmpty(), () -> "Flowable 基础设施只能依赖审批模块稳定端口: " + violations);
+    }
 
     @ArchTest
     static final ArchRule rest_controllers_should_not_use_class_level_request_mapping =

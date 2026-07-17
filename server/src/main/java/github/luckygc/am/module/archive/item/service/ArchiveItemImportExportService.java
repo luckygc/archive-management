@@ -11,7 +11,6 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.Year;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -119,11 +118,9 @@ public class ArchiveItemImportExportService {
         List<ArchiveFieldDto> fields =
                 archiveMetadataService.listEnabledFields(categoryId, ArchiveLevel.ITEM);
         List<List<String>> head = importHead(fields);
-        List<List<@Nullable Object>> rows = new ArrayList<>();
-        rows.add(List.of("FONDS001", "A-2026-001", Year.now().getValue(), "DRAFT"));
         return new ArchiveExcelFile(
                 "archive-import-template-" + category.categoryCode() + ".xlsx",
-                writeExcel(head, rows, "导入模板"));
+                writeExcel(head, List.of(), "导入模板"));
     }
 
     @Transactional
