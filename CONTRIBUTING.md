@@ -28,7 +28,7 @@
 | 后端 Java | `task server-format-check`、`task server-compile` 和相关 `task server-test` |
 | 文件预览服务 | `task preview-test`、`task preview-build` |
 
-后端 Maven 项目根目录是 `backend/archive-server/`；需要直接运行 Maven 时先进入该目录。前端使用项目依赖提供的 Vite+，直接调用时使用 `pnpm exec vp ...`。完整本地开发入口见 [`docs/development.md`](docs/development.md)。
+后端 Maven 项目根目录是 `backend/archive-server/`；需要直接运行 Maven 时先进入该目录。前端工作区根目录是 `frontend/`，使用项目依赖提供的 Vite+，直接调用时先进入该目录再使用 `pnpm exec vp ...`。完整本地开发入口见 [`docs/development.md`](docs/development.md)。
 
 ## 文档 owner
 

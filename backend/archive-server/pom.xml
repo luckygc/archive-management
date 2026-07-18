@@ -517,7 +517,7 @@ import static java.util.Objects.requireNonNull;]]></replacevalue>
                 <artifactId>rewrite-maven-plugin</artifactId>
                 <version>${rewrite-maven-plugin.version}</version>
                 <configuration>
-                    <configLocation>${project.basedir}/../rewrite.yml</configLocation>
+                    <configLocation>${project.basedir}/rewrite.yml</configLocation>
                     <activeRecipes>
                         <recipe>github.luckygc.am.JavaDeprecatedApiMigrations</recipe>
                     </activeRecipes>

@@ -32,7 +32,7 @@ docker build -f frontend/admin/Dockerfile --target web .
 docker build backend/preview-service
 ```
 
-前两个构建使用仓库根作为上下文，以读取统一工具版本和前端 workspace；预览服务只使用自身目录作为上下文。
+前两个构建使用仓库根作为上下文，以读取统一工具版本和 `frontend/` 工作区；预览服务只使用自身目录作为上下文。
 
 ## 配置来源
 

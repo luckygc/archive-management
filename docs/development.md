@@ -1,6 +1,6 @@
 # 本地开发手册
 
-本文面向本地开发、运行和验证。除明确标注外，命令均从仓库根目录执行；后端 Maven 项目根目录是 `backend/archive-server/`，仓库根目录没有聚合 POM。真实任务入口以 [`Taskfile.yml`](../Taskfile.yml)、各 `package.json` 和构建配置为准。
+本文面向本地开发、运行和验证。除明确标注外，命令均从仓库根目录执行；后端 Maven 项目根目录是 `backend/archive-server/`，前端工作区根目录是 `frontend/`，仓库根目录没有聚合 POM 或 pnpm 工作区。真实任务入口以 [`Taskfile.yml`](../Taskfile.yml)、各 `package.json` 和构建配置为准。
 
 ## 工具版本
 
@@ -15,7 +15,7 @@
 | pnpm | 11 |
 | Task | 3 |
 
-优先通过 `task` 执行仓库任务；需要直接调用工具时使用 `mise exec -- <command>`。根 `package.json` 声明 Node.js 最低版本为 `>=22.12.0`。
+优先通过 `task` 执行仓库任务；需要直接调用工具时使用 `mise exec -- <command>`。[`frontend/package.json`](../frontend/package.json) 声明 Node.js 最低版本为 `>=22.12.0`。
 
 ## 首次准备
 
@@ -31,7 +31,7 @@ task frontend-install
 task infra-up
 ```
 
-该任务由 `compose.yaml` 和 `Taskfile.yml` 定义，等待两个服务健康后通过 AWS SigV4 幂等创建 bucket。本地默认端口、账号和临时数据策略以这两个文件为准；Compose 环境只用于开发，不提供生产持久化、高可用或灾备。
+该任务由 [`deploy/compose.dev.yaml`](../deploy/compose.dev.yaml) 和 `Taskfile.yml` 定义，等待两个服务健康后通过 AWS SigV4 幂等创建 bucket。本地默认端口、账号和临时数据策略以这两个文件为准；Compose 环境只用于开发，不提供生产持久化、高可用或灾备。
 
 已有 PostgreSQL 和 S3 兼容服务时，无需启动 Compose，可通过本机覆盖配置连接现有服务。停止仓库提供的本地基础设施使用：
 
@@ -98,7 +98,7 @@ task preview-run
 | 后端发布包 | `task server-package` |
 | 文件预览服务 | `task preview-test`、`task preview-build` |
 
-后端需要直接运行 Maven 时，先 `cd backend/archive-server` 再执行 Maven 命令。前端直接调用 Vite+ 时使用项目依赖提供的 `pnpm exec vp ...`；可用子命令以 `pnpm exec vp help` 为准。
+后端需要直接运行 Maven 时，先 `cd backend/archive-server` 再执行 Maven 命令。前端需要直接运行 pnpm 或 Vite+ 时先 `cd frontend`，再使用项目依赖提供的 `pnpm ...` 或 `pnpm exec vp ...`；可用子命令以 `pnpm exec vp help` 为准。
 
 ## 工具链排障
 
@@ -106,6 +106,7 @@ task preview-run
 
 ```bash
 mise doctor
+cd frontend
 pnpm --version
 pnpm exec vp --version
 ```

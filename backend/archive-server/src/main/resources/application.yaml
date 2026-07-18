@@ -241,7 +241,7 @@ archive:
             # 全文检索结果上限。
             result-limit: 1000
     storage:
-        # 文件内容统一使用 S3 兼容协议；默认值对应根 compose.yaml 的开发对象存储。
+        # 文件内容统一使用 S3 兼容协议；默认值对应 deploy/compose.dev.yaml 的开发对象存储。
         # 生产环境必须通过外部配置覆盖 endpoint、bucket 和凭证。
         endpoint: ${ARCHIVE_STORAGE_ENDPOINT:http://localhost:9000}
         region: ${ARCHIVE_STORAGE_REGION:us-east-1}

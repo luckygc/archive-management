@@ -17,6 +17,7 @@ lerna-debug.log*
 /dist-ssr/
 /data/
 /.vite-hooks/
+/frontend/.vite-hooks/_/
 *.local
 /backend/archive-server/src/main/resources/application-local.yaml
 /backend/archive-server/src/main/resources/application-local.yml

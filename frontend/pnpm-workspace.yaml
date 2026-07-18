@@ -1,6 +1,6 @@
 packages:
-    - "frontend/admin"
-    - "frontend/packages/core"
+    - "admin"
+    - "packages/core"
 
 catalogMode: prefer
 
@@ -44,4 +44,4 @@ catalog:
     zod: ^4.4.3
 
 patchedDependencies:
-    cap-widget@0.1.56: tooling/patches/cap-widget@0.1.56.patch
+    cap-widget@0.1.56: ../tooling/patches/cap-widget@0.1.56.patch

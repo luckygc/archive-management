@@ -1,6 +1,6 @@
 # Vue 3 前端选型
 
-PC 主应用使用 Vue 3 + TypeScript，并继续以 Vite+ 作为统一工具链入口。运行和验证通过根目录 `package.json` 的 `pnpm` 脚本执行；需要直接调用 Vite+ 时使用 `pnpm exec vp`。
+PC 主应用使用 Vue 3 + TypeScript，并继续以 Vite+ 作为统一工具链入口。运行和验证通过 `frontend/package.json` 的 `pnpm` 脚本执行；需要直接调用 Vite+ 时先进入 `frontend/` 再使用 `pnpm exec vp`。
 
 ## 核心库
 

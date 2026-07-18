@@ -35,7 +35,7 @@
 5. 项目 SQL 和 Flyway 迁移只面向 PostgreSQL；标识符使用小写 snake_case，不得硬编码 `public` schema。
 6. Java 默认使用 JSpecify `@NullMarked`；可空类型使用 `org.jspecify.annotations.Nullable`。Jakarta Data Repository 方法签名按 provider 要求使用 `jakarta.annotation.Nullable` / `jakarta.annotation.Nonnull`。
 7. Java 格式和 import 以 Spotless + AOSP `google-java-format` 为唯一真相源，不另行维护手写格式口径。
-8. Vite+ 通过项目脚本或 `pnpm exec vp` 使用；自动化贡献者不得主动启动 dev server，预览只告知用户命令。
+8. 前端工作区根目录是 `frontend/`；Vite+ 通过该目录的项目脚本或 `pnpm exec vp` 使用。自动化贡献者不得主动启动 dev server，预览只告知用户命令。
 9. 后端 Maven 根目录是 `backend/archive-server/`；前端应用和共享包分别位于 `frontend/admin/`、`frontend/packages/core/`。前后端具体命令以 `Taskfile.yml` 和构建配置为准，不在本文件复制命令矩阵。
 
 ## 技能与文档查询

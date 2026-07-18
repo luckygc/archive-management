@@ -79,7 +79,7 @@ importers:
         specifier: 'catalog:'
         version: 0.2.4(@types/node@24.13.3)(jsdom@29.1.1)(typescript@6.0.3)(vite@8.1.3(@types/node@24.13.3)(yaml@2.9.0))(yaml@2.9.0)
 
-  frontend/admin:
+  admin:
     dependencies:
       '@archive-management/frontend-core':
         specifier: workspace:*
@@ -149,7 +149,7 @@ importers:
         specifier: 'catalog:'
         version: 3.3.7(typescript@6.0.3)
 
-  frontend/packages/core:
+  packages/core:
     dependencies:
       axios:
         specifier: 'catalog:'

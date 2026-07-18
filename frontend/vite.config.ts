@@ -4,28 +4,10 @@ import { defineConfig } from "vite-plus";
 export default defineConfig({
     plugins: [workspaceAliasPlugin()],
     lint: {
-        ignorePatterns: [
-            ".agents/**",
-            ".codex/**",
-            "docs/**",
-            "openspec/**",
-            "backend/**",
-            "frontend/admin/src/components.d.ts",
-            "*.md",
-            "AGENTS.md",
-        ],
+        ignorePatterns: ["admin/src/components.d.ts", "*.md"],
     },
     fmt: {
-        ignorePatterns: [
-            ".agents/**",
-            ".codex/**",
-            "docs/**",
-            "openspec/**",
-            "backend/**",
-            "frontend/admin/src/components.d.ts",
-            "*.md",
-            "AGENTS.md",
-        ],
+        ignorePatterns: ["admin/src/components.d.ts", "*.md"],
     },
     staged: {
         "*": "pnpm exec vp check --fix",
@@ -41,7 +23,7 @@ export default defineConfig({
 });
 
 function workspaceAliasPlugin() {
-    const webSrc = fileURLToPath(new URL("./frontend/admin/src", import.meta.url));
+    const webSrc = fileURLToPath(new URL("./admin/src", import.meta.url));
     return {
         name: "archive-management-workspace-alias",
         async resolveId(source: string, importer?: string) {

@@ -29,7 +29,7 @@
 ## 维护规则
 
 - 文档中涉及接口字段、状态机、权限边界或验收场景时，先更新对应 OpenSpec，再更新说明文档。
-- 文档中涉及命令、端口、环境变量或配置项时，以 `Taskfile.yml`、`package.json`、`backend/archive-server/src/main/resources/application.yaml` 和实际源码为准。
+- 文档中涉及命令、端口、环境变量或配置项时，以 `Taskfile.yml`、`frontend/package.json`、`backend/archive-server/src/main/resources/application.yaml` 和实际源码为准。
 - 当前规范或 OpenSpec 变更必须运行 `task governance-check`；其他验证按改动范围从 `Taskfile.yml` 选择。
 - 不把未实现能力写成已交付能力；未接入的功能写成边界、限制或规划说明。
 - 不在文档里提交密钥、口令、连接串中的真实密码或客户环境信息。

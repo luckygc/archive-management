@@ -1,8 +1,10 @@
 version: "3"
 
 vars:
+    FRONTEND_DIR: frontend
     SERVER_DIR: backend/archive-server
     PREVIEW_DIR: backend/preview-service
+    COMPOSE_FILE: deploy/compose.dev.yaml
     JAVA: mise exec -- java
     PNPM: mise exec -- pnpm
     MVN: mise exec -- mvn
@@ -26,7 +28,7 @@ tasks:
         desc: 启动本地 PostgreSQL 和 RustFS 并初始化开发 bucket
         silent: true
         cmds:
-            - docker compose up -d --wait
+            - docker compose -f "{{.COMPOSE_FILE}}" up -d --wait
             - |
                 bucket_url="http://localhost:${ARCHIVE_STORAGE_PORT:-9000}/${ARCHIVE_STORAGE_BUCKET:-archive}"
                 sigv4="aws:amz:${ARCHIVE_STORAGE_REGION:-us-east-1}:s3"
@@ -49,76 +51,90 @@ tasks:
         desc: 停止本地 PostgreSQL 和 RustFS
         silent: true
         cmds:
-            - docker compose down
+            - docker compose -f "{{.COMPOSE_FILE}}" down
 
     frontend-install:
         desc: 安装前端依赖
+        dir: "{{.FRONTEND_DIR}}"
         cmds:
             - "{{.PNPM}} install"
 
     frontend-check:
         desc: 检查全部前端包
+        dir: "{{.FRONTEND_DIR}}"
         cmds:
             - "{{.PNPM}} run check"
 
     frontend-check-fix:
         desc: 自动修复全部前端包 lint 问题
+        dir: "{{.FRONTEND_DIR}}"
         cmds:
             - "{{.PNPM}} run check:fix"
 
     frontend-deprecated-check:
         desc: 检查前端过时 API 使用
+        dir: "{{.FRONTEND_DIR}}"
         cmds:
             - "{{.PNPM}} --filter @archive-management/frontend-core run check:deprecated"
             - "{{.PNPM}} --filter @archive-management/web run check:deprecated"
 
     frontend-test:
         desc: 测试全部前端包
+        dir: "{{.FRONTEND_DIR}}"
         cmds:
             - "{{.PNPM}} run test"
 
     frontend-build:
         desc: 构建全部前端包
+        dir: "{{.FRONTEND_DIR}}"
         cmds:
             - "{{.PNPM}} run build"
 
     frontend-ready:
         desc: 前端检查、测试并构建
+        dir: "{{.FRONTEND_DIR}}"
         cmds:
             - "{{.PNPM}} run ready"
 
     web-check:
         desc: 检查 PC 前端
+        dir: "{{.FRONTEND_DIR}}"
         cmds:
             - "{{.PNPM}} --filter @archive-management/web run check"
 
     web-test:
         desc: 测试 PC 前端
+        dir: "{{.FRONTEND_DIR}}"
         cmds:
             - "{{.PNPM}} --filter @archive-management/web run test"
 
     web-build:
         desc: 构建 PC 前端
+        dir: "{{.FRONTEND_DIR}}"
         cmds:
             - "{{.PNPM}} --filter @archive-management/web run build"
 
     web-dev:
         desc: 启动 PC 前端开发服务
+        dir: "{{.FRONTEND_DIR}}"
         cmds:
             - "{{.PNPM}} run dev:web"
 
     frontend-core-check:
         desc: 检查前端共享包
+        dir: "{{.FRONTEND_DIR}}"
         cmds:
             - "{{.PNPM}} --filter @archive-management/frontend-core run check"
 
     frontend-core-test:
         desc: 测试前端共享包
+        dir: "{{.FRONTEND_DIR}}"
         cmds:
             - "{{.PNPM}} --filter @archive-management/frontend-core run test"
 
     frontend-core-build:
         desc: 构建前端共享包
+        dir: "{{.FRONTEND_DIR}}"
         cmds:
             - "{{.PNPM}} --filter @archive-management/frontend-core run build"
 

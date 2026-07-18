@@ -28,15 +28,17 @@ FROM mise-base AS web-build
 
 RUN mise install node pnpm
 
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml vite.config.ts ./
-COPY tooling/patches/ ./tooling/patches/
-COPY frontend/packages/core/package.json ./frontend/packages/core/package.json
-COPY frontend/admin/package.json ./frontend/admin/package.json
+WORKDIR /workspace/frontend
+
+COPY frontend/package.json frontend/pnpm-lock.yaml frontend/pnpm-workspace.yaml frontend/vite.config.ts ./
+COPY tooling/patches/ /workspace/tooling/patches/
+COPY frontend/packages/core/package.json ./packages/core/package.json
+COPY frontend/admin/package.json ./admin/package.json
 
 RUN "$(mise which pnpm)" install --frozen-lockfile
 
-COPY frontend/packages/core/ ./frontend/packages/core/
-COPY frontend/admin/ ./frontend/admin/
+COPY frontend/packages/core/ ./packages/core/
+COPY frontend/admin/ ./admin/
 
 RUN "$(mise which pnpm)" build
 
