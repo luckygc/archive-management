@@ -7,6 +7,7 @@
 | 主题 | 入口 |
 | --- | --- |
 | 产品定位与原则 | [`PRODUCT.md`](PRODUCT.md) |
+| 领域词汇与概念关系 | [`CONTEXT.md`](CONTEXT.md) |
 | Element Plus 设计系统 | [`DESIGN.md`](DESIGN.md) |
 | 仓库协作规则 | [`AGENTS.md`](AGENTS.md) |
 | 稳定技术边界 | [`docs/architecture.md`](docs/architecture.md) |
