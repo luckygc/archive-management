@@ -1,12 +1,12 @@
 version: "3"
 
 vars:
-    SERVER_DIR: server
-    PREVIEW_DIR: preview
+    SERVER_DIR: backend/archive-server
+    PREVIEW_DIR: backend/preview-service
     JAVA: mise exec -- java
     PNPM: mise exec -- pnpm
     MVN: mise exec -- mvn
-    GO: go
+    GO: mise exec -- go
 
 tasks:
     default:
@@ -19,8 +19,8 @@ tasks:
         desc: 检查 OpenSpec 与项目规范治理状态
         cmds:
             - openspec validate --all --strict --no-interactive
-            - prove -v scripts/governance-check.t
-            - perl scripts/governance-check.pl
+            - prove -v tooling/scripts/governance-check.t
+            - perl tooling/scripts/governance-check.pl
 
     infra-up:
         desc: 启动本地 PostgreSQL 和 RustFS 并初始化开发 bucket

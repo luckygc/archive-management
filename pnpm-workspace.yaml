@@ -1,47 +1,47 @@
 packages:
-  - "web"
-  - "frontend-core"
+    - "frontend/admin"
+    - "frontend/packages/core"
 
 catalogMode: prefer
 
 overrides:
-  vite: "catalog:"
-  vitest: "catalog:"
+    vite: "catalog:"
+    vitest: "catalog:"
 
 peerDependencyRules:
-  allowAny:
-    - vite
-    - vitest
-  allowedVersions:
-    vite: "*"
-    vitest: "*"
+    allowAny:
+        - vite
+        - vitest
+    allowedVersions:
+        vite: "*"
+        vitest: "*"
 
 allowBuilds:
-  "@logicflow/core": false
-  "@parcel/watcher": true
+    "@logicflow/core": false
+    "@parcel/watcher": true
 
 catalog:
-  "@cap.js/wasm": ^0.0.7
-  "@element-plus/icons-vue": ^2.3.2
-  "@logicflow/core": 2.2.4
-  "@testing-library/jest-dom": ^6.9.1
-  "@testing-library/vue": ^8.1.0
-  "@types/node": 24.13.3
-  "@vitejs/plugin-vue": ^6.0.7
-  axios: ^1.18.1
-  cap-widget: ^0.1.56
-  dayjs: ^1.11.19
-  element-plus: ^2.14.3
-  jsdom: ^29.1.1
-  pinia: ^3.0.4
-  unplugin-vue-components: ^32.1.0
-  vite: "npm:@voidzero-dev/vite-plus-core@0.2.4"
-  vite-plus: 0.2.4
-  vitest: 4.1.10
-  vue: ^3.5.39
-  vue-router: ^5.1.0
-  vue-tsc: ^3.3.7
-  zod: ^4.4.3
+    "@cap.js/wasm": ^0.0.7
+    "@element-plus/icons-vue": ^2.3.2
+    "@logicflow/core": 2.2.4
+    "@testing-library/jest-dom": ^6.9.1
+    "@testing-library/vue": ^8.1.0
+    "@types/node": 24.13.3
+    "@vitejs/plugin-vue": ^6.0.7
+    axios: ^1.18.1
+    cap-widget: ^0.1.56
+    dayjs: ^1.11.19
+    element-plus: ^2.14.3
+    jsdom: ^29.1.1
+    pinia: ^3.0.4
+    unplugin-vue-components: ^32.1.0
+    vite: "npm:@voidzero-dev/vite-plus-core@0.2.4"
+    vite-plus: 0.2.4
+    vitest: 4.1.10
+    vue: ^3.5.39
+    vue-router: ^5.1.0
+    vue-tsc: ^3.3.7
+    zod: ^4.4.3
 
 patchedDependencies:
-  cap-widget@0.1.56: patches/cap-widget@0.1.56.patch
+    cap-widget@0.1.56: tooling/patches/cap-widget@0.1.56.patch

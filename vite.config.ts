@@ -9,7 +9,8 @@ export default defineConfig({
             ".codex/**",
             "docs/**",
             "openspec/**",
-            "server/**",
+            "backend/**",
+            "frontend/admin/src/components.d.ts",
             "*.md",
             "AGENTS.md",
         ],
@@ -20,7 +21,8 @@ export default defineConfig({
             ".codex/**",
             "docs/**",
             "openspec/**",
-            "server/**",
+            "backend/**",
+            "frontend/admin/src/components.d.ts",
             "*.md",
             "AGENTS.md",
         ],
@@ -39,7 +41,7 @@ export default defineConfig({
 });
 
 function workspaceAliasPlugin() {
-    const webSrc = fileURLToPath(new URL("./web/src", import.meta.url));
+    const webSrc = fileURLToPath(new URL("./frontend/admin/src", import.meta.url));
     return {
         name: "archive-management-workspace-alias",
         async resolveId(source: string, importer?: string) {

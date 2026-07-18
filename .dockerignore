@@ -6,9 +6,9 @@
 .codex
 node_modules
 **/node_modules
-web/dist
-server/target
-preview
+frontend/admin/dist
+backend/archive-server/target
+backend/preview-service
 docs
 openspec
 logs

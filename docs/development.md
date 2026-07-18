@@ -1,6 +1,6 @@
 # 本地开发手册
 
-本文面向本地开发、运行和验证。除明确标注外，命令均从仓库根目录执行；后端 Maven 项目根目录是 `server/`，仓库根目录没有聚合 POM。真实任务入口以 [`Taskfile.yml`](../Taskfile.yml)、各 `package.json` 和构建配置为准。
+本文面向本地开发、运行和验证。除明确标注外，命令均从仓库根目录执行；后端 Maven 项目根目录是 `backend/archive-server/`，仓库根目录没有聚合 POM。真实任务入口以 [`Taskfile.yml`](../Taskfile.yml)、各 `package.json` 和构建配置为准。
 
 ## 工具版本
 
@@ -10,6 +10,7 @@
 | --- | --- |
 | Java | 25 |
 | Maven | 3 |
+| Go | 1.22 |
 | Node.js | 24 |
 | pnpm | 11 |
 | Task | 3 |
@@ -40,7 +41,7 @@ task infra-down
 
 ## 本机覆盖配置
 
-[`server/src/main/resources/application.yaml`](../server/src/main/resources/application.yaml) 可选导入 classpath 下的 `application-local.yaml`。该文件只用于本机差异，不是交付或部署真相源，也不得提交密钥。
+[`application.yaml`](../backend/archive-server/src/main/resources/application.yaml) 可选导入 classpath 下的 `application-local.yaml`。该文件只用于本机差异，不是交付或部署真相源，也不得提交密钥。
 
 最小本机覆盖示例：
 
@@ -84,7 +85,7 @@ task web-dev
 task preview-run
 ```
 
-默认端口和运行参数分别以 `application.yaml`、Vite+ 配置和 [`preview/README.md`](../preview/README.md) 为准，本文不复制运行参数表。
+默认端口和运行参数分别以 `application.yaml`、Vite+ 配置和 [`backend/preview-service/README.md`](../backend/preview-service/README.md) 为准，本文不复制运行参数表。
 
 ## 按范围验证
 
@@ -97,7 +98,7 @@ task preview-run
 | 后端发布包 | `task server-package` |
 | 文件预览服务 | `task preview-test`、`task preview-build` |
 
-后端需要直接运行 Maven 时，先 `cd server` 再执行 Maven 命令。前端直接调用 Vite+ 时使用项目依赖提供的 `pnpm exec vp ...`；可用子命令以 `pnpm exec vp help` 为准。
+后端需要直接运行 Maven 时，先 `cd backend/archive-server` 再执行 Maven 命令。前端直接调用 Vite+ 时使用项目依赖提供的 `pnpm exec vp ...`；可用子命令以 `pnpm exec vp help` 为准。
 
 ## 工具链排障
 

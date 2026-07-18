@@ -28,6 +28,7 @@
 - `specs/archive-record-search/spec.md`
 - `specs/archive-runtime-check-portability/spec.md`
 - `specs/authorization-permissions/spec.md`
+- `specs/cursor-pagination-summary/spec.md`
 - `specs/file-preview-service/spec.md`
 - `specs/file-storage/spec.md`
 - `specs/intake/spec.md`

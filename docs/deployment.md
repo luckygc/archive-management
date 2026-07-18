@@ -6,9 +6,9 @@
 
 | 组件 | 构建来源 | 部署形态 |
 | --- | --- | --- |
-| 主应用 | `server/` | Spring Boot JAR |
-| PC 前端 | `web/` | 静态资源；`frontend-core/` 随前端构建，不独立部署 |
-| 文件预览服务 | `preview/` | 独立 Go HTTP 服务 |
+| 主应用 | `backend/archive-server/` | Spring Boot JAR |
+| PC 前端 | `frontend/admin/` | 静态资源；`frontend/packages/core/` 随前端构建，不独立部署 |
+| 文件预览服务 | `backend/preview-service/` | 独立 Go HTTP 服务 |
 | 数据库 | 外部 PostgreSQL | 项目唯一优先数据库目标 |
 | 文件内容 | 外部 S3 兼容对象存储 | 业务统一通过 `FileStorageService` 访问 |
 
@@ -24,9 +24,19 @@ task preview-build
 
 发布前按范围运行 `task server-test`、`task frontend-ready`、`task preview-test`，并运行 `task governance-check`。所有任务均以根 [`Taskfile.yml`](../Taskfile.yml) 为准。
 
+三个可部署应用分别拥有自己的容器构建定义。需要构建镜像时从仓库根目录执行：
+
+```bash
+docker build -f backend/archive-server/Dockerfile --target server .
+docker build -f frontend/admin/Dockerfile --target web .
+docker build backend/preview-service
+```
+
+前两个构建使用仓库根作为上下文，以读取统一工具版本和前端 workspace；预览服务只使用自身目录作为上下文。
+
 ## 配置来源
 
-主应用默认配置真相源是 [`server/src/main/resources/application.yaml`](../server/src/main/resources/application.yaml)。部署环境不修改仓库默认文件，通过 Spring Boot 标准优先级使用外部 `application.yaml`、profile 配置、环境变量、JVM 参数以及 Secret/ConfigMap 覆盖。
+主应用默认配置真相源是 [`application.yaml`](../backend/archive-server/src/main/resources/application.yaml)。部署环境不修改仓库默认文件，通过 Spring Boot 标准优先级使用外部 `application.yaml`、profile 配置、环境变量、JVM 参数以及 Secret/ConfigMap 覆盖。
 
 必须外部提供或确认：
 

@@ -4,7 +4,7 @@
 
 ## 真相源
 
-- 当前默认值和可覆盖配置：[`server/src/main/resources/application.yaml`](../server/src/main/resources/application.yaml)
+- 当前默认值和可覆盖配置：[`application.yaml`](../backend/archive-server/src/main/resources/application.yaml)
 - 通用 HTTP、错误和 ID 合同：[`api-contract`](../openspec/specs/api-contract/spec.md)
 - 登录、会话和认证验收：[`login-authentication`](../openspec/specs/login-authentication/spec.md)
 - 功能权限：[`authorization-permissions`](../openspec/specs/authorization-permissions/spec.md)

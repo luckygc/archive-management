@@ -8,7 +8,7 @@
 | --- | --- |
 | 资源建模、URL、HTTP 方法、成功响应、DTO 命名、分页、过滤、排序、ID、异步任务和 ProblemDetail | [`api-contract`](../openspec/specs/api-contract/spec.md) |
 | 业务字段、状态机、权限边界和验收场景 | [`openspec/specs/`](../openspec/specs/) 下对应业务规格 |
-| 当前默认端口、Session cookie、CORS 和请求签名配置 | [`application.yaml`](../server/src/main/resources/application.yaml) |
+| 当前默认端口、Session cookie、CORS 和请求签名配置 | [`application.yaml`](../backend/archive-server/src/main/resources/application.yaml) |
 | 认证、授权、数据范围和公开入口的安全指引 | [`security.md`](security.md) |
 
 项目自有 API 使用 `/api/v1` 前缀，默认由 Spring Boot 主应用提供。登录态保存在服务端 HTTP Session，浏览器使用配置的 session cookie 关联会话。除业务明确声明的公开入口和预检请求外，客户端应按服务端认证、授权、CSRF、CORS 和可选请求签名要求访问。
@@ -51,7 +51,7 @@ OpenSpec 总览与活动 change 状态见 [`openspec/README.md`](../openspec/REA
 
 CAP 等第三方固定协议只作为适配层例外，不反向改变项目自有 API 风格。
 
-文件预览服务是独立运行面，不使用主应用 `/api/v1` 前缀。其接口、默认监听和运行方式以 [文件预览规格](../openspec/specs/file-preview-service/spec.md) 与 [`preview/README.md`](../preview/README.md) 为准。
+文件预览服务是独立运行面，不使用主应用 `/api/v1` 前缀。其接口、默认监听和运行方式以 [文件预览规格](../openspec/specs/file-preview-service/spec.md) 与 [`backend/preview-service/README.md`](../backend/preview-service/README.md) 为准。
 
 ## 变更流程
 

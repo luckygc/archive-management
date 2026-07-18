@@ -2,13 +2,13 @@
 
 ## Purpose
 
-定义 `preview/` Go 文件预览服务的运行边界、文件类型识别、同步预览转换和根任务命令合同。
+定义 `backend/preview-service/` Go 文件预览服务的运行边界、文件类型识别、同步预览转换和根任务命令合同。
 
 ## Requirements
 
 ### Requirement: 预览服务运行边界
 
-系统 SHALL 在 `preview/` 下提供可独立构建和运行的 Go 文件预览服务。
+系统 SHALL 在 `backend/preview-service/` 下提供可独立构建和运行的 Go 文件预览服务。
 
 #### Scenario: 检查服务存活状态
 
@@ -65,9 +65,9 @@
 #### Scenario: 从仓库根目录运行预览测试
 
 - **WHEN** 开发者运行 `task preview-test`
-- **THEN** 该任务 SHALL 执行 `preview/` 模块的 Go 测试
+- **THEN** 该任务 SHALL 执行 `backend/preview-service/` 模块的 Go 测试
 
 #### Scenario: 从仓库根目录构建预览服务
 
 - **WHEN** 开发者运行 `task preview-build`
-- **THEN** 该任务 SHALL 从 `preview/cmd/preview-service` 构建预览服务二进制文件
+- **THEN** 该任务 SHALL 从 `backend/preview-service/cmd/preview-service` 构建预览服务二进制文件
