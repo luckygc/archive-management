@@ -42,3 +42,17 @@
 
 - 任务命中项目技能时，先完整读取对应 `SKILL.md`；前端任务还必须先读 `PRODUCT.md` 和 `DESIGN.md`。
 - Ant Design、Ant Design Pro、Pro Components 或 `@ant-design/cli` 问题优先查询项目内 Ant Design CLI、本地 `llms.txt` 和已安装文档；仅在缺失或不足时回退官方文档。
+
+## Agent skills
+
+### Issue tracker
+
+本仓库使用 GitHub Issues 跟踪需求、规格和实施任务。详见 `docs/agents/issue-tracker.md`。
+
+### Triage labels
+
+使用 `needs-triage`、`needs-info`、`ready-for-agent`、`ready-for-human` 和 `wontfix` 五个默认角色标签。详见 `docs/agents/triage-labels.md`。
+
+### Domain docs
+
+采用 single-context 布局：领域上下文位于根 `CONTEXT.md`，架构决策位于 `docs/adr/`。详见 `docs/agents/domain.md`。
