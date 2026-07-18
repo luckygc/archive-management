@@ -25,6 +25,7 @@ import github.luckygc.am.module.archive.governance.repository.ArchiveGovernanceB
 import github.luckygc.am.module.archive.governance.repository.ArchiveGovernanceSchemeDataRepository;
 import github.luckygc.am.module.archive.governance.repository.ArchiveGovernanceSchemeVersionDataRepository;
 import github.luckygc.am.module.archive.governance.repository.ArchiveGovernanceScopeDataRepository;
+import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeDefinitionService;
 
 @Service
 public class ArchiveGovernanceService {
@@ -35,16 +36,19 @@ public class ArchiveGovernanceService {
     private final ArchiveGovernanceSchemeVersionDataRepository versionRepository;
     private final ArchiveGovernanceScopeDataRepository scopeRepository;
     private final ArchiveGovernanceBindingDataRepository bindingRepository;
+    private final ArchiveRuntimeDefinitionService runtimeDefinitionService;
 
     public ArchiveGovernanceService(
             ArchiveGovernanceSchemeDataRepository schemeRepository,
             ArchiveGovernanceSchemeVersionDataRepository versionRepository,
             ArchiveGovernanceScopeDataRepository scopeRepository,
-            ArchiveGovernanceBindingDataRepository bindingRepository) {
+            ArchiveGovernanceBindingDataRepository bindingRepository,
+            ArchiveRuntimeDefinitionService runtimeDefinitionService) {
         this.schemeRepository = schemeRepository;
         this.versionRepository = versionRepository;
         this.scopeRepository = scopeRepository;
         this.bindingRepository = bindingRepository;
+        this.runtimeDefinitionService = runtimeDefinitionService;
     }
 
     @Transactional(readOnly = true)
@@ -150,6 +154,7 @@ public class ArchiveGovernanceService {
         if (version.getStatus() != ArchiveGovernanceSchemeVersionStatus.DRAFT) {
             throw new BadRequestException("只有草稿治理方案版本可以发布");
         }
+        runtimeDefinitionService.validateAllForGovernancePublish(versionId);
         validateBindings(versionId);
         version.setStatus(ArchiveGovernanceSchemeVersionStatus.PUBLISHED);
         version.setPublishedBy(userId);

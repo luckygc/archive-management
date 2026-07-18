@@ -32,6 +32,11 @@ import github.luckygc.am.module.archive.item.repository.ArchiveItemDataRepositor
 import github.luckygc.am.module.archive.item.service.ArchiveItemElectronicFileService.ArchiveItemElectronicFileResponse;
 import github.luckygc.am.module.archive.item.service.ArchiveItemElectronicFileService.UploadArchiveItemElectronicFileCommand;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
+import github.luckygc.am.module.archive.metadata.ArchiveManagementMode;
+import github.luckygc.am.module.archive.metadata.ArchiveTableStatus;
+import github.luckygc.am.module.archive.metadata.service.ArchiveCategoryService;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveCategoryDto;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
 import github.luckygc.am.module.storage.service.StorageObjectService;
 import github.luckygc.am.module.storage.service.StorageObjectService.StorageObjectDownload;
@@ -56,12 +61,18 @@ class ArchiveItemElectronicFileServiceTests {
         archiveItemAuditRepository = mock(ArchiveItemAuditDataRepository.class);
         permissionService = mock(AuthorizationPermissionService.class);
         archiveItemRoutingService = mock(ArchiveItemReadService.class);
+        ArchiveMetadataService metadataService = mock(ArchiveMetadataService.class);
+        ArchiveCategoryService categoryService = mock(ArchiveCategoryService.class);
         when(permissionService.hasPermission(9L, "archive:item:create")).thenReturn(true);
         when(permissionService.hasPermission(9L, "archive:item:update")).thenReturn(true);
         when(permissionService.hasPermission(9L, "archive:item:read")).thenReturn(true);
         when(permissionService.hasPermission(9L, "archive:item:delete")).thenReturn(true);
         when(permissionService.hasPermission(9L, "archive:item:download-electronic-file"))
                 .thenReturn(true);
+        when(archiveItemRepository.findById(10L)).thenReturn(Optional.of(archiveItem()));
+        when(categoryService.listCategories(null)).thenReturn(List.of(category()));
+        when(metadataService.listEnabledFields(any(), any())).thenReturn(List.of());
+        when(metadataService.listEnabledFields(any(), any(), any())).thenReturn(List.of());
         electronicFileService =
                 new ArchiveItemElectronicFileService(
                         archiveMapper,
@@ -69,7 +80,11 @@ class ArchiveItemElectronicFileServiceTests {
                         archiveItemRepository,
                         archiveItemAuditRepository,
                         permissionService,
-                        archiveItemRoutingService);
+                        archiveItemRoutingService,
+                        metadataService,
+                        categoryService,
+                        ArchiveRuntimeTestSupport.passthroughExecutionService(),
+                        ArchiveRuntimeTestSupport.traceService());
     }
 
     @Test
@@ -299,8 +314,35 @@ class ArchiveItemElectronicFileServiceTests {
         ArchiveItem archiveItem = new ArchiveItem();
         archiveItem.setId(10L);
         archiveItem.setFondsCode("F001");
+        archiveItem.setFondsName("测试全宗");
         archiveItem.setCategoryCode("contract");
+        archiveItem.setCategoryName("合同档案");
+        archiveItem.setArchiveNo("A-001");
+        archiveItem.setArchiveYear(2026);
+        archiveItem.setElectronicStatus("DRAFT");
+        archiveItem.setGovernanceSchemeVersionId(11L);
         return archiveItem;
+    }
+
+    private ArchiveCategoryDto category() {
+        LocalDateTime now = LocalDateTime.of(2026, 7, 18, 10, 0);
+        return new ArchiveCategoryDto(
+                1L,
+                1L,
+                null,
+                "contract",
+                "合同档案",
+                ArchiveManagementMode.ITEM_ONLY,
+                null,
+                null,
+                null,
+                null,
+                ArchiveTableStatus.NOT_BUILT,
+                null,
+                true,
+                0,
+                now,
+                now);
     }
 
     private UploadArchiveItemElectronicFileCommand uploadCommand() {

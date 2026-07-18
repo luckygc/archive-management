@@ -46,7 +46,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                         HttpStatus.BAD_REQUEST,
                         "请求参数无效",
                         message,
-                        "INVALID_ARGUMENT",
+                        StringUtils.defaultIfBlank(exception.errorCode(), "INVALID_ARGUMENT"),
                         reason(exception),
                         request);
         withFieldViolations(problem, exception.fieldViolations());
@@ -278,6 +278,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     private String reason(BadRequestException exception) {
+        if (StringUtils.isNotBlank(exception.reason())) {
+            return exception.reason();
+        }
         if (!exception.fieldViolations().isEmpty()) {
             return "FIELD_VIOLATION";
         }

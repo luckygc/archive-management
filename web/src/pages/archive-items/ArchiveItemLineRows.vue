@@ -436,6 +436,7 @@ function setFormValue(fieldCode: string, value: unknown) {
                     <CursorPagination
                         v-if="states[table.id].page"
                         :limit="states[table.id].limit"
+                        :total="states[table.id].page?.total"
                         :prev="states[table.id].page?.prev"
                         :next="states[table.id].page?.next"
                         :loading="states[table.id].loading"

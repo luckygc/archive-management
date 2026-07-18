@@ -105,7 +105,15 @@ class ArchiveItemImportExportServiceTests {
                         auditRepository,
                         storageObjectService,
                         fileLinkService,
-                        clock);
+                        clock,
+                        ArchiveRuntimeTestSupport.passthroughExecutionService(),
+                        ArchiveRuntimeTestSupport.traceService());
+        ArchiveItem exportItem = new ArchiveItem();
+        exportItem.setId(10L);
+        exportItem.setFondsCode("F001");
+        exportItem.setCategoryCode("contract");
+        exportItem.setGovernanceSchemeVersionId(11L);
+        when(archiveItemRepository.findById(10L)).thenReturn(java.util.Optional.of(exportItem));
     }
 
     @Test
@@ -347,7 +355,9 @@ class ArchiveItemImportExportServiceTests {
                         auditRepository,
                         storageObjectService,
                         realFileLinkService,
-                        advancingClock);
+                        advancingClock,
+                        ArchiveRuntimeTestSupport.passthroughExecutionService(),
+                        ArchiveRuntimeTestSupport.traceService());
         when(permissionService.hasPermission(9L, "archive:export")).thenReturn(true);
         when(archiveItemQueryService.searchItems(any(), eq(9L)))
                 .thenReturn(

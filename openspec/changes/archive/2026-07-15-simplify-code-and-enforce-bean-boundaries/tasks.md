@@ -27,7 +27,7 @@
 ## 5. 前端共享代码精简
 
 - [x] 5.1 删除 ArchiveItemManagementPage 的重复 errorMessage 实现并使用 frontend-core
-- [x] 5.2 按元数据、档案记录、治理、本体和规则拆分档案 API 与类型
+- [x] 5.2 按元数据、档案记录、治理和规则拆分档案 API 与类型
 - [x] 5.3 按认证、授权和组织拆分非档案 API 与类型
 - [x] 5.4 更新页面导入并删除旧 archive.ts 聚合文件
 

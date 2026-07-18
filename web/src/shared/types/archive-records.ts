@@ -81,6 +81,7 @@ export interface ListArchiveItemRelationsQuery {
     depth?: number;
     limit?: number;
     cursor?: string;
+    requestTotal?: boolean;
 }
 
 export interface ArchiveItemRelationResponse {
@@ -170,6 +171,7 @@ export interface ArchiveRecordListDto {
     prev?: string;
     next?: string;
     first?: string;
+    total?: number;
     items: Record<string, unknown>[];
 }
 

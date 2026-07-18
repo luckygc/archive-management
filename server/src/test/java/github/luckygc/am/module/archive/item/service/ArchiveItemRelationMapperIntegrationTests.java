@@ -57,13 +57,15 @@ class ArchiveItemRelationMapperIntegrationTests extends PostgreSqlContainerTest 
                                         List.of(
                                                 new ArchiveDataScopeSqlGroup(
                                                         List.of(), List.of(), List.of(),
-                                                        List.of())))));
+                                                        List.of())))),
+                        true);
 
         var rows =
                 archiveMapper.listItemRelations(
                         sourceItemId, criteria, new ArchiveItemRelationPageWindow(false, null, 10));
 
         assertThat(rows).extracting(row -> row.get("id")).containsExactly(relationId);
+        assertThat(rows).extracting(row -> row.get("total")).containsExactly(1L);
     }
 
     @Test
@@ -79,7 +81,7 @@ class ArchiveItemRelationMapperIntegrationTests extends PostgreSqlContainerTest 
         var rows =
                 archiveMapper.listItemRelations(
                         sourceItemId,
-                        new ArchiveItemRelationCriteria(false, List.of()),
+                        new ArchiveItemRelationCriteria(false, List.of(), false),
                         new ArchiveItemRelationPageWindow(false, null, 10));
 
         assertThat(rows).isEmpty();

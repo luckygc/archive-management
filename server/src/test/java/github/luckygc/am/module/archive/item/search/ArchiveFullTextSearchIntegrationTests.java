@@ -336,9 +336,15 @@ class ArchiveFullTextSearchIntegrationTests {
                 jdbcTemplate.queryForObject(
                         """
                         insert into am_archive_item
-                            (fonds_code, fonds_name, category_code, category_name, archive_no, electronic_status, archive_year)
+                            (fonds_code, fonds_name, category_code, category_name, archive_no,
+                             electronic_status, archive_year, governance_scheme_version_id)
                         values
-                            ('Z000', '集团全宗', 'GW', '公文档案', 'GW-DELETE-META', 'DRAFT', 2026)
+                            ('Z000', '集团全宗', 'GW', '公文档案', 'GW-DELETE-META', 'DRAFT', 2026,
+                             (select version.id
+                              from am_archive_governance_scheme scheme
+                              join am_archive_governance_scheme_version version on version.scheme_id = scheme.id
+                              where scheme.scheme_code = 'default_governance'
+                                and version.version_code = 'v1'))
                         returning id
                         """,
                         Long.class);

@@ -1,8 +1,6 @@
 export type ArchiveGovernanceSchemeVersionStatus = "DRAFT" | "PUBLISHED" | "FROZEN" | "RETIRED";
 export type ArchiveGovernanceScopeType = "GLOBAL" | "FONDS" | "CATEGORY";
 export type ArchiveGovernanceBindingType =
-    | "ONTOLOGY"
-    | "RULE_SET"
     | "CLASSIFICATION_SCHEME"
     | "DESCRIPTION_PROFILE"
     | "REFERENCE_CODE_RULE";

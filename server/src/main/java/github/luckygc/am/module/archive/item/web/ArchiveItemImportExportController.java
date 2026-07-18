@@ -23,6 +23,7 @@ import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService.Arc
 import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService.ArchiveItemRelatedGroup;
 import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService.ArchiveItemWhere;
 import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService.SearchArchiveItemsRequest;
+import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeExecutionService.ArchiveRuntimeWarning;
 
 @RestController
 public class ArchiveItemImportExportController {
@@ -75,10 +76,13 @@ public class ArchiveItemImportExportController {
 
     private ArchiveItemDownloadLinkResponse toResponse(DownloadLinkCreated link) {
         return new ArchiveItemDownloadLinkResponse(
-                "/api/v1/file-links/" + link.code() + ":download", link.expiresAt());
+                "/api/v1/file-links/" + link.code() + ":download",
+                link.expiresAt(),
+                link.warnings());
     }
 
-    public record ArchiveItemDownloadLinkResponse(String url, LocalDateTime expiresAt) {}
+    public record ArchiveItemDownloadLinkResponse(
+            String url, LocalDateTime expiresAt, List<ArchiveRuntimeWarning> warnings) {}
 
     public record ExportArchiveRecordsRequest(
             @Nullable Long categoryId,

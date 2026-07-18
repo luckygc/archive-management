@@ -85,7 +85,9 @@ class ArchiveItemFondsValidationTests {
                         permissionService,
                         auditRepository,
                         archiveItemReadService,
-                        new ArchiveItemFieldValueConverter());
+                        new ArchiveItemFieldValueConverter(),
+                        ArchiveRuntimeTestSupport.passthroughExecutionService(),
+                        ArchiveRuntimeTestSupport.traceService());
         archiveVolumeService =
                 new ArchiveVolumeService(
                         archiveMapper,
@@ -96,7 +98,9 @@ class ArchiveItemFondsValidationTests {
                         governanceService,
                         archiveItemReadService,
                         permissionService,
-                        dataScopeService);
+                        dataScopeService,
+                        ArchiveRuntimeTestSupport.passthroughExecutionService(),
+                        ArchiveRuntimeTestSupport.traceService());
     }
 
     @Test

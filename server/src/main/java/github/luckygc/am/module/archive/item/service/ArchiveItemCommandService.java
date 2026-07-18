@@ -1,5 +1,6 @@
 package github.luckygc.am.module.archive.item.service;
 
+import java.time.LocalDateTime;
 import java.time.Year;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -37,6 +38,11 @@ import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveCategoryDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFieldDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFondsDto;
+import github.luckygc.am.module.archive.rule.ArchiveRuntimeTriggerPoint;
+import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeExecutionService;
+import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeExecutionService.ArchiveRuntimeExecutionRequest;
+import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeExecutionService.ArchiveRuntimeExecutionResult;
+import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeTraceService;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
 
 @Service
@@ -60,6 +66,8 @@ public class ArchiveItemCommandService {
     private final ArchiveItemAuditDataRepository auditRepository;
     private final ArchiveItemReadService archiveItemReadService;
     private final ArchiveItemFieldValueConverter fieldValueConverter;
+    private final ArchiveRuntimeExecutionService runtimeExecutionService;
+    private final ArchiveRuntimeTraceService runtimeTraceService;
 
     public ArchiveItemCommandService(
             ArchiveMetadataService archiveMetadataService,
@@ -72,7 +80,9 @@ public class ArchiveItemCommandService {
             AuthorizationPermissionService permissionService,
             ArchiveItemAuditDataRepository auditRepository,
             ArchiveItemReadService archiveItemReadService,
-            ArchiveItemFieldValueConverter fieldValueConverter) {
+            ArchiveItemFieldValueConverter fieldValueConverter,
+            ArchiveRuntimeExecutionService runtimeExecutionService,
+            ArchiveRuntimeTraceService runtimeTraceService) {
         this.archiveMetadataService = archiveMetadataService;
         this.archiveMetadataReferenceService = archiveMetadataReferenceService;
         this.archiveCategoryService = archiveCategoryService;
@@ -84,6 +94,8 @@ public class ArchiveItemCommandService {
         this.auditRepository = auditRepository;
         this.archiveItemReadService = archiveItemReadService;
         this.fieldValueConverter = fieldValueConverter;
+        this.runtimeExecutionService = runtimeExecutionService;
+        this.runtimeTraceService = runtimeTraceService;
     }
 
     @Transactional
@@ -123,9 +135,7 @@ public class ArchiveItemCommandService {
         Map<String, @Nullable Object> requestPhysicalFields = request.physicalFields();
         int archiveYear =
                 request.archiveYear() == null ? Year.now().getValue() : request.archiveYear();
-        validateArchiveYear(archiveYear);
         String archiveNo = StringUtils.trimToNull(request.archiveNo());
-        ensureItemArchiveNoUnique(category.categoryCode(), archiveNo, null);
         Map<String, @Nullable Object> convertedDynamicFields =
                 fieldValueConverter.convertFields(fields, dynamicFields, "dynamicFields");
         Map<String, @Nullable Object> convertedPhysicalFields =
@@ -133,19 +143,47 @@ public class ArchiveItemCommandService {
                         ? Map.of()
                         : fieldValueConverter.convertFields(
                                 physicalFields, requestPhysicalFields, "physicalFields");
-        assertProposedItemInDataScope(
-                userId,
-                category,
-                fonds.fondsCode(),
-                request.securityLevelId(),
-                request.retentionPeriodId(),
-                fields,
-                convertedDynamicFields);
         Long governanceSchemeVersionId =
                 governanceService
                         .requireDefaultVersionForNewArchive(
                                 fonds.fondsCode(), category.categoryCode())
                         .getId();
+        ItemPolicyExecution policyExecution =
+                enforceItemPolicy(
+                        governanceSchemeVersionId,
+                        ArchiveRuntimeTriggerPoint.ITEM_BEFORE_CREATE,
+                        null,
+                        volumeId,
+                        fonds.fondsCode(),
+                        fonds.fondsName(),
+                        category,
+                        archiveNo,
+                        archiveYear,
+                        StringUtils.defaultIfBlank(request.electronicStatus(), "DRAFT"),
+                        request.securityLevelId(),
+                        request.retentionPeriodId(),
+                        fields,
+                        convertedDynamicFields,
+                        physicalFields,
+                        convertedPhysicalFields,
+                        userId);
+        ArchiveRuntimeExecutionResult runtimeResult = policyExecution.result();
+        ItemCandidate candidate =
+                finalItemCandidate(runtimeResult, fields, physicalFields, "DRAFT");
+        archiveNo = candidate.archiveNo();
+        archiveYear = candidate.archiveYear();
+        convertedDynamicFields = candidate.dynamicFields();
+        convertedPhysicalFields = candidate.physicalFields();
+        validateArchiveYear(archiveYear);
+        ensureItemArchiveNoUnique(category.categoryCode(), archiveNo, null);
+        assertProposedItemInDataScope(
+                userId,
+                category,
+                fonds.fondsCode(),
+                candidate.securityLevelId(),
+                candidate.retentionPeriodId(),
+                fields,
+                convertedDynamicFields);
 
         Long recordId;
         try {
@@ -158,9 +196,9 @@ public class ArchiveItemCommandService {
                             category.categoryCode(),
                             category.categoryName(),
                             archiveNo,
-                            StringUtils.defaultIfBlank(request.electronicStatus(), "DRAFT"),
-                            request.securityLevelId(),
-                            request.retentionPeriodId(),
+                            candidate.electronicStatus(),
+                            candidate.securityLevelId(),
+                            candidate.retentionPeriodId(),
                             archiveYear,
                             governanceSchemeVersionId);
         } catch (DuplicateKeyException exception) {
@@ -171,13 +209,15 @@ public class ArchiveItemCommandService {
         } catch (DuplicateKeyException | MyBatisSystemException exception) {
             throw badRequest("档案条目违反唯一约束");
         }
-        if (requestPhysicalFields != null) {
+        if (requestPhysicalFields != null || hasAssignment(runtimeResult, "physical.")) {
             upsertPhysicalFieldsIfPresent(
                     category, archiveLevel, recordId, physicalFields, convertedPhysicalFields);
         }
         searchProjectionService.upsert(recordId, category, fields, convertedDynamicFields);
         ArchiveItemDto record = archiveItemReadService.getItem(recordId);
         insertItemAudit(AUDIT_OPERATION_CREATE, record, null, userId);
+        runtimeTraceService.saveSuccessfulExecution(
+                policyExecution.request(), runtimeResult, recordId);
         return record;
     }
 
@@ -210,31 +250,81 @@ public class ArchiveItemCommandService {
                         fonds.fondsCode());
         int archiveYear =
                 request.archiveYear() == null ? before.item().archiveYear() : request.archiveYear();
-        validateArchiveYear(archiveYear);
         String archiveNo = StringUtils.trimToNull(request.archiveNo());
-        ensureItemArchiveNoUnique(before.item().categoryCode(), archiveNo, id);
+        List<ArchiveFieldDto> allFields =
+                archiveMetadataService.listEnabledFields(category.id(), ArchiveLevel.ITEM);
+        List<ArchiveFieldDto> allPhysicalFields =
+                archiveMetadataService.listEnabledFields(
+                        category.id(), ArchiveLevel.ITEM, ArchiveFieldScope.PHYSICAL);
+        Map<String, @Nullable Object> currentDynamicFields =
+                loadFieldsByCode(tableName, id, allFields);
         Map<String, @Nullable Object> requestDynamicFields =
-                request.dynamicFields() == null ? before.dynamicFields() : request.dynamicFields();
+                request.dynamicFields() == null ? Map.of() : request.dynamicFields();
+        Map<String, @Nullable Object> convertedRequestDynamicFields =
+                request.dynamicFields() == null
+                        ? Map.of()
+                        : fieldValueConverter.convertFields(
+                                before.fields(), requestDynamicFields, "dynamicFields");
         Map<String, @Nullable Object> convertedDynamicFields =
-                fieldValueConverter.convertFields(
-                        before.fields(), requestDynamicFields, "dynamicFields");
+                mergeFields(currentDynamicFields, convertedRequestDynamicFields);
         Map<String, @Nullable Object> requestPhysicalFields = request.physicalFields();
-        Map<String, @Nullable Object> convertedPhysicalFields =
+        Map<String, @Nullable Object> currentPhysicalFields =
+                loadFieldsByCode(
+                        dynamicTableName(category, ArchiveLevel.ITEM, ArchiveFieldScope.PHYSICAL),
+                        id,
+                        allPhysicalFields);
+        Map<String, @Nullable Object> convertedRequestPhysicalFields =
                 requestPhysicalFields == null
                         ? Map.of()
                         : fieldValueConverter.convertFields(
                                 before.physicalFields(), requestPhysicalFields, "physicalFields");
+        Map<String, @Nullable Object> convertedPhysicalFields =
+                mergeFields(currentPhysicalFields, convertedRequestPhysicalFields);
+        Long governanceSchemeVersionId = requireGovernanceVersionId(before.item());
+        ItemPolicyExecution policyExecution =
+                enforceItemPolicy(
+                        governanceSchemeVersionId,
+                        ArchiveRuntimeTriggerPoint.ITEM_BEFORE_UPDATE,
+                        id,
+                        volumeId,
+                        fonds.fondsCode(),
+                        fonds.fondsName(),
+                        category,
+                        archiveNo,
+                        archiveYear,
+                        StringUtils.defaultIfBlank(
+                                request.electronicStatus(), before.item().electronicStatus()),
+                        request.securityLevelId() == null
+                                ? before.item().securityLevelId()
+                                : request.securityLevelId(),
+                        request.retentionPeriodId() == null
+                                ? before.item().retentionPeriodId()
+                                : request.retentionPeriodId(),
+                        allFields,
+                        convertedDynamicFields,
+                        allPhysicalFields,
+                        convertedPhysicalFields,
+                        userId);
+        ArchiveRuntimeExecutionResult runtimeResult = policyExecution.result();
+        ItemCandidate candidate =
+                finalItemCandidate(
+                        runtimeResult,
+                        allFields,
+                        allPhysicalFields,
+                        before.item().electronicStatus());
+        archiveNo = candidate.archiveNo();
+        archiveYear = candidate.archiveYear();
+        convertedDynamicFields = candidate.dynamicFields();
+        convertedPhysicalFields = candidate.physicalFields();
+        validateArchiveYear(archiveYear);
+        ensureItemArchiveNoUnique(before.item().categoryCode(), archiveNo, id);
         assertProposedItemInDataScope(
                 userId,
                 category,
                 fonds.fondsCode(),
-                request.securityLevelId() == null
-                        ? before.item().securityLevelId()
-                        : request.securityLevelId(),
-                request.retentionPeriodId() == null
-                        ? before.item().retentionPeriodId()
-                        : request.retentionPeriodId(),
-                before.fields(),
+                candidate.securityLevelId(),
+                candidate.retentionPeriodId(),
+                allFields,
                 convertedDynamicFields);
         int updated;
         try {
@@ -245,14 +335,9 @@ public class ArchiveItemCommandService {
                             fonds.fondsCode(),
                             fonds.fondsName(),
                             archiveNo,
-                            StringUtils.defaultIfBlank(
-                                    request.electronicStatus(), before.item().electronicStatus()),
-                            request.securityLevelId() == null
-                                    ? before.item().securityLevelId()
-                                    : request.securityLevelId(),
-                            request.retentionPeriodId() == null
-                                    ? before.item().retentionPeriodId()
-                                    : request.retentionPeriodId(),
+                            candidate.electronicStatus(),
+                            candidate.securityLevelId(),
+                            candidate.retentionPeriodId(),
                             archiveYear);
         } catch (DuplicateKeyException exception) {
             throw duplicateArchiveNo();
@@ -262,22 +347,19 @@ public class ArchiveItemCommandService {
         }
         try {
             archiveMapper.updateDynamicRecord(
-                    tableName, id, dynamicAssignments(before.fields(), convertedDynamicFields));
+                    tableName, id, dynamicAssignments(allFields, convertedDynamicFields));
         } catch (DuplicateKeyException | MyBatisSystemException exception) {
             throw badRequest("档案条目违反唯一约束");
         }
-        if (requestPhysicalFields != null) {
+        if (requestPhysicalFields != null || hasAssignment(runtimeResult, "physical.")) {
             upsertPhysicalFieldsIfPresent(
-                    category,
-                    ArchiveLevel.ITEM,
-                    id,
-                    before.physicalFields(),
-                    convertedPhysicalFields);
+                    category, ArchiveLevel.ITEM, id, allPhysicalFields, convertedPhysicalFields);
         }
         searchProjectionService.refreshFromDynamicRecord(id, category, ArchiveLevel.ITEM);
         ArchiveItemDetailDto after =
                 archiveItemReadService.getItemDetail(id, userId, ArchiveLayoutSurface.EDIT);
         insertItemAudit(AUDIT_OPERATION_UPDATE, after.item(), null, userId);
+        runtimeTraceService.saveSuccessfulExecution(policyExecution.request(), runtimeResult, id);
         return after;
     }
 
@@ -290,6 +372,34 @@ public class ArchiveItemCommandService {
         archiveItemReadService.assertItemInDataScope(userId, category, record);
         archiveItemReadService.ensureItemEditable(record);
         String tableName = dynamicTableName(category, ArchiveLevel.ITEM);
+        List<ArchiveFieldDto> fields =
+                archiveMetadataService.listEnabledFields(category.id(), ArchiveLevel.ITEM);
+        List<ArchiveFieldDto> physicalFields =
+                archiveMetadataService.listEnabledFields(
+                        category.id(), ArchiveLevel.ITEM, ArchiveFieldScope.PHYSICAL);
+        ItemPolicyExecution policyExecution =
+                enforceItemPolicy(
+                        requireGovernanceVersionId(record),
+                        ArchiveRuntimeTriggerPoint.ITEM_BEFORE_DELETE,
+                        id,
+                        record.volumeId(),
+                        record.fondsCode(),
+                        record.fondsName(),
+                        category,
+                        record.archiveNo(),
+                        record.archiveYear(),
+                        record.electronicStatus(),
+                        record.securityLevelId(),
+                        record.retentionPeriodId(),
+                        fields,
+                        loadFieldsByCode(tableName, id, fields),
+                        physicalFields,
+                        loadFieldsByCode(
+                                dynamicTableName(
+                                        category, ArchiveLevel.ITEM, ArchiveFieldScope.PHYSICAL),
+                                id,
+                                physicalFields),
+                        userId);
         insertItemAudit(
                 AUDIT_OPERATION_DELETE,
                 record,
@@ -308,7 +418,169 @@ public class ArchiveItemCommandService {
             throw badRequest("档案条目已锁定，不能删除");
         }
         searchProjectionService.delete(id);
+        runtimeTraceService.saveSuccessfulExecution(
+                policyExecution.request(), policyExecution.result(), id);
     }
+
+    private ItemPolicyExecution enforceItemPolicy(
+            Long governanceSchemeVersionId,
+            ArchiveRuntimeTriggerPoint triggerPoint,
+            @Nullable Long itemId,
+            @Nullable Long volumeId,
+            String fondsCode,
+            String fondsName,
+            ArchiveCategoryDto category,
+            @Nullable String archiveNo,
+            int archiveYear,
+            String electronicStatus,
+            @Nullable Long securityLevelId,
+            @Nullable Long retentionPeriodId,
+            List<ArchiveFieldDto> fields,
+            Map<String, @Nullable Object> dynamicFields,
+            List<ArchiveFieldDto> physicalFields,
+            Map<String, @Nullable Object> physicalFieldValues,
+            Long userId) {
+        Map<String, @Nullable Object> facts = new LinkedHashMap<>();
+        facts.put("item.id", itemId);
+        facts.put("item.fondsCode", fondsCode);
+        facts.put("item.fondsName", fondsName);
+        facts.put("item.categoryCode", category.categoryCode());
+        facts.put("item.categoryName", category.categoryName());
+        facts.put("item.archiveNo", archiveNo);
+        facts.put("item.archiveYear", archiveYear);
+        facts.put("item.electronicStatus", electronicStatus);
+        facts.put("item.securityLevelId", securityLevelId);
+        facts.put("item.retentionPeriodId", retentionPeriodId);
+        addFieldFacts(facts, "metadata.", fields, dynamicFields);
+        addFieldFacts(facts, "physical.", physicalFields, physicalFieldValues);
+        facts.put("context.userId", userId);
+        facts.put("context.now", LocalDateTime.now());
+        facts.put("context.operation", triggerPoint.name());
+        ArchiveRuntimeExecutionRequest request =
+                new ArchiveRuntimeExecutionRequest(
+                        governanceSchemeVersionId,
+                        triggerPoint,
+                        fondsCode,
+                        category.categoryCode(),
+                        ArchiveLevel.ITEM,
+                        "ARCHIVE_ITEM",
+                        itemId,
+                        facts,
+                        userId);
+        return new ItemPolicyExecution(request, runtimeExecutionService.enforce(request));
+    }
+
+    private void addFieldFacts(
+            Map<String, @Nullable Object> facts,
+            String prefix,
+            List<ArchiveFieldDto> fields,
+            Map<String, @Nullable Object> values) {
+        fields.forEach(
+                field -> facts.put(prefix + field.fieldCode(), values.get(field.fieldCode())));
+    }
+
+    private ItemCandidate finalItemCandidate(
+            ArchiveRuntimeExecutionResult result,
+            List<ArchiveFieldDto> fields,
+            List<ArchiveFieldDto> physicalFields,
+            String defaultElectronicStatus) {
+        Map<String, @Nullable Object> facts = result.candidateFacts();
+        Map<String, @Nullable Object> dynamicFields =
+                fieldValueConverter.convertFields(
+                        fields, fieldsFromFacts(facts, "metadata.", fields), "dynamicFields");
+        Map<String, @Nullable Object> physicalFieldValues =
+                fieldValueConverter.convertFields(
+                        physicalFields,
+                        fieldsFromFacts(facts, "physical.", physicalFields),
+                        "physicalFields");
+        return new ItemCandidate(
+                stringFact(facts, "item.archiveNo"),
+                intFact(facts, "item.archiveYear"),
+                StringUtils.defaultIfBlank(
+                        stringFact(facts, "item.electronicStatus"), defaultElectronicStatus),
+                longFact(facts, "item.securityLevelId"),
+                longFact(facts, "item.retentionPeriodId"),
+                dynamicFields,
+                physicalFieldValues);
+    }
+
+    private Map<String, @Nullable Object> fieldsFromFacts(
+            Map<String, @Nullable Object> facts, String prefix, List<ArchiveFieldDto> fields) {
+        Map<String, @Nullable Object> values = new LinkedHashMap<>();
+        fields.forEach(
+                field -> values.put(field.fieldCode(), facts.get(prefix + field.fieldCode())));
+        return values;
+    }
+
+    private Map<String, @Nullable Object> loadFieldsByCode(
+            String tableName, Long id, List<ArchiveFieldDto> fields) {
+        if (fields.isEmpty()
+                || StringUtils.isBlank(tableName)
+                || archiveMapper.tableExists(tableName) == 0) {
+            return Map.of();
+        }
+        Map<String, @Nullable Object> row = archiveMapper.loadDynamicRecord(tableName, id);
+        if (row == null) return Map.of();
+        Map<String, @Nullable Object> values = new LinkedHashMap<>();
+        fields.forEach(field -> values.put(field.fieldCode(), row.get(field.columnName())));
+        return values;
+    }
+
+    private Map<String, @Nullable Object> mergeFields(
+            Map<String, @Nullable Object> current, Map<String, @Nullable Object> requested) {
+        Map<String, @Nullable Object> merged = new LinkedHashMap<>(current);
+        merged.putAll(requested);
+        return merged;
+    }
+
+    private boolean hasAssignment(ArchiveRuntimeExecutionResult result, String prefix) {
+        return result.assignments().keySet().stream().anyMatch(field -> field.startsWith(prefix));
+    }
+
+    private Long requireGovernanceVersionId(ArchiveItemDto item) {
+        if (item.governanceSchemeVersionId() == null) {
+            throw badRequest("档案条目未绑定治理版本，不能执行运行时检查");
+        }
+        return item.governanceSchemeVersionId();
+    }
+
+    private @Nullable String stringFact(Map<String, @Nullable Object> facts, String field) {
+        Object value = facts.get(field);
+        return value == null ? null : StringUtils.trimToNull(value.toString());
+    }
+
+    private int intFact(Map<String, @Nullable Object> facts, String field) {
+        Object value = facts.get(field);
+        if (value instanceof Number number) return number.intValue();
+        try {
+            return Integer.parseInt(String.valueOf(value));
+        } catch (NumberFormatException exception) {
+            throw badRequest("运行时规则字段值类型不兼容：" + field);
+        }
+    }
+
+    private @Nullable Long longFact(Map<String, @Nullable Object> facts, String field) {
+        Object value = facts.get(field);
+        if (value == null) return null;
+        if (value instanceof Number number) return number.longValue();
+        try {
+            return Long.valueOf(value.toString());
+        } catch (NumberFormatException exception) {
+            throw badRequest("运行时规则字段值类型不兼容：" + field);
+        }
+    }
+
+    private record ItemCandidate(
+            @Nullable String archiveNo,
+            int archiveYear,
+            String electronicStatus,
+            @Nullable Long securityLevelId,
+            @Nullable Long retentionPeriodId,
+            Map<String, @Nullable Object> dynamicFields,
+            Map<String, @Nullable Object> physicalFields) {}
+
+    private record ItemPolicyExecution(
+            ArchiveRuntimeExecutionRequest request, ArchiveRuntimeExecutionResult result) {}
 
     private void upsertPhysicalFieldsIfPresent(
             ArchiveCategoryDto category,

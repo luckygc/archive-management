@@ -23,11 +23,25 @@ const children = computed(() =>
         (item) => item.meta?.menu === true && canAccessRoute(item, permissionStore),
     ),
 );
+let prefetchPromise: Promise<unknown> | undefined;
 
 function joinPath(parentPath: string, path: string) {
     if (path.startsWith("/")) return path;
     if (path === "") return parentPath || "/";
     return `/${[parentPath, path].filter(Boolean).join("/")}`.replaceAll(/\/{2,}/g, "/");
+}
+
+function prefetchRouteComponent() {
+    const component = props.routeRecord.component;
+    if (prefetchPromise || typeof component !== "function") return;
+    try {
+        const loadComponent = component as () => unknown;
+        prefetchPromise = Promise.resolve(loadComponent()).catch(() => {
+            prefetchPromise = undefined;
+        });
+    } catch {
+        prefetchPromise = undefined;
+    }
 }
 </script>
 
@@ -47,7 +61,12 @@ function joinPath(parentPath: string, path: string) {
                 :parent-path="path"
             />
         </ElSubMenu>
-        <ElMenuItem v-else :index="path">
+        <ElMenuItem
+            v-else
+            :index="path"
+            @mouseenter="prefetchRouteComponent"
+            @focusin="prefetchRouteComponent"
+        >
             <ElIcon v-if="routeRecord.meta?.icon">
                 <component :is="routeRecord.meta.icon" />
             </ElIcon>

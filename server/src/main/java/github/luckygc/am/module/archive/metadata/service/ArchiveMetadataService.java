@@ -21,6 +21,7 @@ import github.luckygc.am.module.archive.metadata.ArchiveFieldSource;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldType;
 import github.luckygc.am.module.archive.metadata.ArchiveLayoutSurface;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveFieldDataRepository;
+import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeFieldReferenceService;
 
 @Service
 public class ArchiveMetadataService extends ArchiveMetadataTypes {
@@ -59,6 +60,7 @@ public class ArchiveMetadataService extends ArchiveMetadataTypes {
     private final ArchiveFieldLayoutService fieldLayoutService;
     private final ArchiveUniqueConstraintService uniqueConstraintService;
     private final ArchiveCategoryService categoryService;
+    private final ArchiveRuntimeFieldReferenceService runtimeFieldReferenceService;
 
     public ArchiveMetadataService(
             ArchiveMapper archiveMapper,
@@ -67,7 +69,8 @@ public class ArchiveMetadataService extends ArchiveMetadataTypes {
             ArchiveDynamicTableService dynamicTableService,
             ArchiveFieldLayoutService fieldLayoutService,
             ArchiveUniqueConstraintService uniqueConstraintService,
-            ArchiveCategoryService categoryService) {
+            ArchiveCategoryService categoryService,
+            ArchiveRuntimeFieldReferenceService runtimeFieldReferenceService) {
         this.archiveMapper = archiveMapper;
         this.fieldRepository = fieldRepository;
         this.fieldDefinitionService = fieldDefinitionService;
@@ -75,6 +78,7 @@ public class ArchiveMetadataService extends ArchiveMetadataTypes {
         this.fieldLayoutService = fieldLayoutService;
         this.uniqueConstraintService = uniqueConstraintService;
         this.categoryService = categoryService;
+        this.runtimeFieldReferenceService = runtimeFieldReferenceService;
     }
 
     public List<ArchiveFieldDto> listFields(Long categoryId) {
@@ -257,6 +261,20 @@ public class ArchiveMetadataService extends ArchiveMetadataTypes {
         if (!current.categoryId().equals(categoryId)) {
             throw notFound("字段定义不存在");
         }
+        runtimeFieldReferenceService.requireUpdateAllowed(
+                category.categoryCode(),
+                current.archiveLevel(),
+                current.fieldScope(),
+                current.fieldCode(),
+                current.fieldType(),
+                current.enabled(),
+                current.editVisible(),
+                values.archiveLevel(),
+                values.fieldScope(),
+                values.fieldCode(),
+                values.fieldType(),
+                values.enabled(),
+                values.editVisible());
         if (!current.fieldType().equals(values.fieldType())) {
             throw badRequest("已建字段不允许修改字段类型");
         }
@@ -281,6 +299,9 @@ public class ArchiveMetadataService extends ArchiveMetadataTypes {
         if (!field.getCategoryId().equals(categoryId)) {
             throw notFound("字段定义不存在");
         }
+        ArchiveCategoryDto category = categoryService.getCategory(categoryId);
+        runtimeFieldReferenceService.requireDeleteAllowed(
+                category.categoryCode(), field.getFieldScope(), field.getFieldCode());
         fieldRepository.update(field);
         fieldRepository.delete(field);
     }

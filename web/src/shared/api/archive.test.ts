@@ -53,7 +53,7 @@ describe("archive API", () => {
         });
 
         expect(httpClientMock.post).toHaveBeenCalledWith(
-            "/api/v1/archive-items:search?limit=100&cursor=next-token&requestTotal=true",
+            "/api/v1/archive-items:search?limit=100&cursor=next-token",
             {
                 categoryId: 1,
                 keyword: "合同",

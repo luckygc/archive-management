@@ -24,9 +24,9 @@
 - `specs/archive-import-export/spec.md`
 - `specs/archive-local-rule-engine/spec.md`
 - `specs/archive-metadata/spec.md`
-- `specs/archive-ontology-core/spec.md`
 - `specs/archive-record-routing/spec.md`
 - `specs/archive-record-search/spec.md`
+- `specs/archive-runtime-check-portability/spec.md`
 - `specs/authorization-permissions/spec.md`
 - `specs/file-preview-service/spec.md`
 - `specs/file-storage/spec.md`

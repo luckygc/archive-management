@@ -71,7 +71,9 @@ class ArchiveItemCommandFieldPathTests {
                         permissionService,
                         mock(ArchiveItemAuditDataRepository.class),
                         mock(ArchiveItemReadService.class),
-                        new ArchiveItemFieldValueConverter());
+                        new ArchiveItemFieldValueConverter(),
+                        ArchiveRuntimeTestSupport.passthroughExecutionService(),
+                        ArchiveRuntimeTestSupport.traceService());
 
         assertThatThrownBy(
                         () ->

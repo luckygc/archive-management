@@ -8,6 +8,7 @@ import { useSessionStore } from "@/stores/sessionStore";
 import {
     canAccessRoute,
     navigationGuard,
+    navigationPending,
     normalizeRedirect,
     router,
     workspaceRoutes,
@@ -61,6 +62,10 @@ describe("workspaceRoutes", () => {
         expect(router.resolve("/archive/governance/schemes").meta.permission).toBe(
             "archive:governance:manage",
         );
+        expect(router.resolve("/archive/governance/rules").meta.title).toBe("运行时规则");
+        expect(
+            router.getRoutes().filter((route) => route.path.startsWith("/archive/governance/")),
+        ).toHaveLength(3);
         expect(router.resolve("/approval/center").meta.title).toBe("审批中心");
         expect(router.resolve("/approval/definitions").meta.permission).toBe(
             "approval:definition:manage",
@@ -69,6 +74,7 @@ describe("workspaceRoutes", () => {
             title: "流程设计器",
             menu: false,
             cache: false,
+            fullBleed: true,
             permission: "approval:definition:manage",
         });
         expect(router.resolve("/system/users").meta.permission).toBe("authentication:user:manage");
@@ -190,6 +196,26 @@ describe("workspaceRoutes", () => {
         await expect(navigationGuard(router.resolve("/archive/items"))).resolves.toBe(true);
     });
 
+    it("导航等待权限和异步页面期间暴露加载状态", async () => {
+        await authenticate({ initializedPermissions: false });
+        const permissionResponse = deferred<{
+            superAdmin: boolean;
+            permissionCodes: string[];
+        }>();
+        permissionApiMocks.getCurrentUserPermissions.mockReturnValue(permissionResponse.promise);
+
+        const navigation = router.push("/archive/items?navigation-pending=true");
+        await vi.waitFor(() => expect(navigationPending.value).toBe(true));
+
+        permissionResponse.resolve({
+            superAdmin: false,
+            permissionCodes: ["archive:item:read"],
+        });
+        await navigation;
+
+        expect(navigationPending.value).toBe(false);
+    });
+
     it("权限摘要加载失败时进入会话校验失败页而不是误判 403", async () => {
         await authenticate({ initializedPermissions: false });
         permissionApiMocks.getCurrentUserPermissions.mockRejectedValue(
@@ -264,4 +290,12 @@ async function authenticate({
         await permissionStore.fetchSummary();
     }
     return { permissionStore, sessionStore };
+}
+
+function deferred<T>() {
+    let resolve!: (value: T) => void;
+    const promise = new Promise<T>((resolvePromise) => {
+        resolve = resolvePromise;
+    });
+    return { promise, resolve };
 }

@@ -17,6 +17,7 @@ const loading = ref(false);
 const limit = ref(100);
 const prev = ref<string>();
 const next = ref<string>();
+const total = ref<number>();
 
 async function loadDefinitions(cursor?: string) {
     loading.value = true;
@@ -25,6 +26,7 @@ async function loadDefinitions(cursor?: string) {
         definitions.value = response.items;
         prev.value = response.prev;
         next.value = response.next;
+        if (!cursor) total.value = response.total;
     } catch (error) {
         ElMessage.error((error as Error).message);
     } finally {
@@ -100,7 +102,9 @@ onMounted(() => void loadDefinitions());
                 </el-table-column>
                 <el-table-column label="操作" width="230" fixed="right">
                     <template #default="{ row }">
-                        <el-button link type="primary" @click="openDesigner(row.id)">设计</el-button>
+                        <el-button link type="primary" @click="openDesigner(row.id)"
+                            >设计</el-button
+                        >
                         <el-button link @click="publish(row)">发布</el-button>
                         <el-button link @click="toggleEnabled(row)">
                             {{ row.enabled ? "停用" : "启用" }}
@@ -113,6 +117,7 @@ onMounted(() => void loadDefinitions());
             </el-empty>
             <CursorPagination
                 :limit="limit"
+                :total="total"
                 :prev="prev"
                 :next="next"
                 :loading="loading"

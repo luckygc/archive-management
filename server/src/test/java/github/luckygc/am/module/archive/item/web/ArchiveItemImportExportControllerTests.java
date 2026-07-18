@@ -6,6 +6,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -32,7 +33,7 @@ class ArchiveItemImportExportControllerTests {
         when(importExportService.createImportTemplateDownloadLink(1L, 9L))
                 .thenReturn(
                         new DownloadLinkCreated(
-                                "template-code", LocalDateTime.of(2026, 7, 15, 10, 10)));
+                                "template-code", LocalDateTime.of(2026, 7, 15, 10, 10), List.of()));
 
         var response = controller.createImportTemplateDownloadLink(1L, authentication);
 
@@ -52,7 +53,7 @@ class ArchiveItemImportExportControllerTests {
         when(importExportService.createExportDownloadLink(internalRequest, 9L))
                 .thenReturn(
                         new DownloadLinkCreated(
-                                "export-code", LocalDateTime.of(2026, 7, 15, 10, 10)));
+                                "export-code", LocalDateTime.of(2026, 7, 15, 10, 10), List.of()));
 
         var response = controller.createExportDownloadLink(request, authentication);
 

@@ -46,6 +46,7 @@ import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.Ar
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveUniqueConstraintDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveUniqueConstraintRequest;
 import github.luckygc.am.module.archive.metadata.service.ArchiveUniqueConstraintService;
+import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeFieldReferenceService;
 
 @DisplayName("档案元数据服务")
 class ArchiveMetadataServiceTests {
@@ -103,7 +104,8 @@ class ArchiveMetadataServiceTests {
                         dynamicTableService,
                         fieldLayoutService,
                         uniqueConstraintService,
-                        categoryService);
+                        categoryService,
+                        mock(ArchiveRuntimeFieldReferenceService.class));
     }
 
     @Test

@@ -8,6 +8,7 @@ import {
     replaceArchiveGovernanceScopes,
     resolveDefaultArchiveGovernanceVersion,
 } from "@/shared/api/archive-governance";
+import { listArchiveRuntimeDefinitions } from "@/shared/api/archive-rules";
 import type {
     ArchiveGovernanceBindingDto,
     ArchiveGovernanceBindingRequest,
@@ -47,6 +48,9 @@ export function useArchiveGovernanceWorkbench(selectedVersionId: Ref<number | un
     const resolving = ref(false);
     const resolveForm = ref({ fondsCode: "", categoryCode: "" });
     const resolvedVersion = ref<ArchiveGovernanceSchemeVersionDto>();
+    const runtimeDefinitions = ref<
+        Awaited<ReturnType<typeof listArchiveRuntimeDefinitions>>["items"]
+    >([]);
 
     watch(selectedVersionId, () => {
         resolvedVersion.value = undefined;
@@ -57,16 +61,19 @@ export function useArchiveGovernanceWorkbench(selectedVersionId: Ref<number | un
         if (!selectedVersionId.value) {
             scopeDrafts.value = [];
             bindingDrafts.value = [];
+            runtimeDefinitions.value = [];
             return;
         }
         workbenchLoading.value = true;
         try {
-            const [scopes, bindings] = await Promise.all([
+            const [scopes, bindings, runtime] = await Promise.all([
                 listArchiveGovernanceScopes(selectedVersionId.value),
                 listArchiveGovernanceBindings(selectedVersionId.value),
+                listArchiveRuntimeDefinitions(selectedVersionId.value),
             ]);
             scopeDrafts.value = scopes.items.map(toScopeDraft);
             bindingDrafts.value = bindings.items.map(toBindingDraft);
+            runtimeDefinitions.value = runtime.items;
         } catch (error) {
             ElMessage.error((error as Error).message);
         } finally {
@@ -152,6 +159,7 @@ export function useArchiveGovernanceWorkbench(selectedVersionId: Ref<number | un
         resolveDefault,
         resolveForm,
         resolving,
+        runtimeDefinitions,
         saveBindings,
         saveScopes,
         savingBindings,

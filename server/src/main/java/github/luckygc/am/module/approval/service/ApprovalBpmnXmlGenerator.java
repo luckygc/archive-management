@@ -31,6 +31,7 @@ public class ApprovalBpmnXmlGenerator {
                                         + "xmlns:flowable=\"http://flowable.org/bpmn\" "
                                         + "targetNamespace=\"https://archive-management.local/approval\">"
                                         + "<process id=\"")
+                        .append("process_")
                         .append(escape(processKey))
                         .append("\" name=\"")
                         .append(escape(processName))

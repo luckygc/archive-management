@@ -210,3 +210,26 @@
 - **THEN** 文本字段 SHALL 使用单值输入
 - **AND** 整数、小数、日期和日期时间字段 SHALL 使用范围控件
 - **AND** 唯一规则字段 SHALL 出现在高级筛选字段集合中
+
+### Requirement: 档案写入运行时触发
+
+条目、案卷和电子文件状态变更 SHALL 在持久化前执行治理版本的用户定义运行时配置。
+
+#### Scenario: 条目创建修改删除
+
+- **WHEN** 条目创建、修改或删除通过基础权限和字段校验
+- **THEN** 系统 SHALL 分别执行 `ITEM_BEFORE_CREATE`、`ITEM_BEFORE_UPDATE` 或 `ITEM_BEFORE_DELETE`
+- **AND** `SET_FIELD` 最终候选值 SHALL 再次通过类型、数据范围和数据库约束
+- **AND** 阻断 SHALL 使主表、动态表、审计和决策追踪不产生部分写入
+
+#### Scenario: 案卷创建和条目入卷
+
+- **WHEN** 创建案卷或把条目加入案卷
+- **THEN** 系统 SHALL 在关系变化前执行 `VOLUME_BEFORE_CREATE` 或 `VOLUME_BEFORE_ADD_ITEM`
+- **AND** 阻断 SHALL 保持案卷、条目归属和排序不变
+
+#### Scenario: 电子文件上传
+
+- **WHEN** 文件通过基础权限、大小和存储请求校验
+- **THEN** 系统 SHALL 在文件元数据写入前执行 `FILE_BEFORE_UPLOAD`
+- **AND** 阻断 SHALL 不写文件元数据，并按现有补偿合同清理或过期临时对象

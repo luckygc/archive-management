@@ -4,7 +4,12 @@ import { isNavigationFailure, useRouter } from "vue-router";
 import type { TabsPaneContext, TabPaneName } from "element-plus";
 import { Collection, Refresh, User } from "@element-plus/icons-vue";
 
-import { canAccessRoute, hasRoutePermission, workspaceRoutes } from "@/app/routes";
+import {
+    canAccessRoute,
+    hasRoutePermission,
+    navigationPending,
+    workspaceRoutes,
+} from "@/app/routes";
 import RouteMenuItem from "@/layout/RouteMenuItem.vue";
 import ForbiddenPage from "@/pages/forbidden/ForbiddenPage.vue";
 import PageTabRouterView from "@/shared/tabs/PageTabRouterView.vue";
@@ -244,7 +249,19 @@ async function logout() {
                     <ElButton size="small" text @click="closeAll">关闭全部</ElButton>
                 </div>
             </div>
-            <ElMain class="am-shell__content">
+            <ElMain
+                class="am-shell__content"
+                :class="{ 'am-shell__content--full-bleed': currentRoute.meta.fullBleed }"
+                :aria-busy="navigationPending"
+            >
+                <div
+                    v-if="navigationPending"
+                    class="am-shell__navigation-progress"
+                    role="progressbar"
+                    aria-label="正在打开页面"
+                >
+                    <span />
+                </div>
                 <section
                     v-if="showPermissionVerificationError"
                     class="am-page"

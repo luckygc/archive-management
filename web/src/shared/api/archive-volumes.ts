@@ -11,7 +11,7 @@ import { queryString } from "./query-string";
 
 export function listArchiveVolumes(query: ListArchiveVolumesQuery) {
     return httpClient.get<CursorPageResponse<ArchiveVolumeResponse>>(
-        `/api/v1/archive-volumes${queryString({ ...query })}`,
+        `/api/v1/archive-volumes${queryString({ ...query, requestTotal: query.cursor ? undefined : (query.requestTotal ?? true) })}`,
     );
 }
 

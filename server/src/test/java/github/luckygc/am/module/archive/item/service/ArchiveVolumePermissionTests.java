@@ -90,7 +90,9 @@ class ArchiveVolumePermissionTests {
                         governanceService,
                         archiveItemRoutingService,
                         permissionService,
-                        dataScopeService);
+                        dataScopeService,
+                        ArchiveRuntimeTestSupport.passthroughExecutionService(),
+                        ArchiveRuntimeTestSupport.traceService());
     }
 
     @Test

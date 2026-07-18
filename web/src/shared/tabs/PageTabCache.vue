@@ -19,6 +19,7 @@ const props = defineProps<{
     activeComponent: Component;
     route: RouteLocationNormalizedLoaded;
 }>();
+const PAGE_TAB_CACHE_MAX = 8;
 const tabsStore = usePageTabsStore();
 const activeTab = computed(() =>
     tabsStore.tabs.find((tab) => tab.fullPath === props.route.fullPath),
@@ -80,7 +81,7 @@ function createTabWrapper(name: string) {
 </script>
 
 <template>
-    <KeepAlive :include="cacheIncludes">
+    <KeepAlive :include="cacheIncludes" :max="PAGE_TAB_CACHE_MAX">
         <component
             :is="activeWrapper"
             v-if="activeTab && activeWrapper"

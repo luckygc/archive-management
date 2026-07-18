@@ -8,12 +8,19 @@ export const CURSOR_PAGE_SIZE_OPTIONS = [
 </script>
 
 <script setup lang="ts">
+import { computed } from "vue";
+
 const props = defineProps<{
     limit: number;
+    total?: number;
     prev?: string | null;
     next?: string | null;
     loading?: boolean;
 }>();
+
+const pageCount = computed(() =>
+    props.total === undefined ? undefined : Math.ceil(props.total / props.limit),
+);
 
 const emit = defineEmits<{
     limitChange: [limit: number];
@@ -23,6 +30,9 @@ const emit = defineEmits<{
 
 <template>
     <div class="cursor-pagination">
+        <span v-if="props.total !== undefined" class="cursor-pagination__summary">
+            共 {{ props.total }} 条 · 共 {{ pageCount }} 页
+        </span>
         <el-select
             :model-value="props.limit"
             aria-label="每页条数"

@@ -120,13 +120,49 @@ a {
     padding-bottom: 8px;
 }
 
-.am-shell__content {
+.am-shell__content.el-main {
+    --el-main-padding: 16px;
+
+    position: relative;
     flex: 1 1 auto;
     min-width: 0;
     min-height: 0;
-    padding: 16px;
+    padding: var(--el-main-padding);
     overflow: auto;
     background: #f5f7fb;
+}
+
+.am-shell__content.el-main.am-shell__content--full-bleed {
+    --el-main-padding: 0px;
+}
+
+.am-shell__navigation-progress {
+    position: absolute;
+    z-index: 3;
+    top: 0;
+    right: 0;
+    left: 0;
+    height: 2px;
+    overflow: hidden;
+    background: var(--el-color-primary-light-8);
+}
+
+.am-shell__navigation-progress span {
+    display: block;
+    width: 40%;
+    height: 100%;
+    background: var(--el-color-primary);
+    animation: am-shell-navigation-progress 1s ease-in-out infinite;
+}
+
+@keyframes am-shell-navigation-progress {
+    from {
+        transform: translateX(-100%);
+    }
+
+    to {
+        transform: translateX(250%);
+    }
 }
 
 .am-page {
@@ -320,6 +356,11 @@ a {
 }
 
 @media (prefers-reduced-motion: reduce) {
+    .am-shell__navigation-progress span {
+        width: 100%;
+        animation: none;
+    }
+
     *,
     *::before,
     *::after {

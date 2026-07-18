@@ -6,14 +6,14 @@ import java.util.Map;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
-import github.luckygc.am.module.archive.rule.ArchiveRuleDefinition;
+import github.luckygc.am.module.archive.rule.ArchiveRuntimeDefinition;
 
 @Mapper
 public interface ArchiveRuleMapper {
 
-    List<ArchiveRuleDefinition> listExecutableRules(
-            @Param("criteria") ArchiveRuleExecutionCriteria criteria);
+    List<ArchiveRuntimeDefinition> listExecutableRuntimeDefinitions(
+            @Param("criteria") ArchiveRuntimeExecutionCriteria criteria);
 
-    List<Map<String, Object>> listRuleTraces(
-            @Param("criteria") ArchiveRuleTraceSearchCriteria criteria);
+    List<Map<String, Object>> listRuntimeTraces(
+            @Param("criteria") ArchiveRuntimeTraceSearchCriteria criteria);
 }

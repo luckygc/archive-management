@@ -25,6 +25,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.api.CursorPageResponse;
+import github.luckygc.am.common.api.CursorPageTokenCodec;
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.archive.item.service.ArchiveItemLineRowService.ArchiveItemLineRowResponse;
 import github.luckygc.am.module.archive.item.service.ArchiveItemLineRowService.ArchiveItemLineTableDefinitionResponse;
@@ -183,10 +184,11 @@ class ArchiveItemLineRowServiceTests {
     void listRowsShouldEnforceReadScopeAndBuildForwardPage() {
         stubBuiltTable(false);
         when(archiveMapper.listItemLineRows(any(ArchiveItemLineRowPageQuery.class)))
-                .thenReturn(List.of(row(9L, 0, "甲"), row(10L, 0, "乙"), row(11L, 1, "丙")));
+                .thenReturn(
+                        List.of(row(9L, 0, "甲", 3L), row(10L, 0, "乙", 3L), row(11L, 1, "丙", 3L)));
 
         CursorPageResponse<ArchiveItemLineRowResponse> response =
-                service.listRows(3L, 4L, PageRequest.ofSize(2), 8L);
+                service.listRows(3L, 4L, CursorPageTokenCodec.pageRequest(2, null, true), 8L);
 
         verify(permissionService)
                 .requirePermission(8L, AuthorizationPermissionCode.ARCHIVE_ITEM_READ);
@@ -195,6 +197,7 @@ class ArchiveItemLineRowServiceTests {
                 ArgumentCaptor.forClass(ArchiveItemLineRowPageQuery.class);
         verify(archiveMapper).listItemLineRows(captor.capture());
         assertThat(captor.getValue().rowLimit()).isEqualTo(3);
+        assertThat(captor.getValue().requestTotal()).isTrue();
         assertThat(captor.getValue().previous()).isFalse();
         assertThat(captor.getValue().selectColumns()).containsExactly("f_party_name", "f_amount");
         assertThat(response.items())
@@ -202,6 +205,7 @@ class ArchiveItemLineRowServiceTests {
                 .containsExactly(9L, 10L);
         assertThat(((CursorPageResponse.DefaultCursorPageResponse<?>) response).nextValues())
                 .isEqualTo(List.<Object>of(0, 10L));
+        assertThat(response.total()).isEqualTo(3L);
     }
 
     @Test
@@ -401,6 +405,7 @@ class ArchiveItemLineRowServiceTests {
                 null,
                 null,
                 2026,
+                11L,
                 false,
                 null,
                 null,
@@ -489,12 +494,19 @@ class ArchiveItemLineRowServiceTests {
     }
 
     private static Map<String, Object> row(Long id, int lineOrder, String partyName) {
+        return row(id, lineOrder, partyName, null);
+    }
+
+    private static Map<String, Object> row(Long id, int lineOrder, String partyName, Long total) {
         Map<String, Object> row = new LinkedHashMap<>();
         row.put("id", id);
         row.put("itemId", 3L);
         row.put("lineOrder", lineOrder);
         row.put("f_party_name", partyName);
         row.put("f_amount", new BigDecimal("12.50"));
+        if (total != null) {
+            row.put("total", total);
+        }
         return row;
     }
 }

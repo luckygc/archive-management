@@ -4,109 +4,112 @@
         "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="github.luckygc.am.module.archive.mapper.ArchiveRuleMapper">
 
-    <select id="listExecutableRules" resultType="ArchiveRuleDefinition">
-        select r.id,
-               r.scheme_version_id,
-               r.rule_code,
-               r.rule_name,
-               r.rule_type,
-               r.trigger_code,
-               r.scope_fonds_code,
-               r.scope_category_code,
-               r.scope_object_type_id,
-               r.scope_archive_level,
-               r.scope_event_type_id,
-               r.priority,
-               r.condition_json,
-               r.status,
-               r.enabled,
-               r.published_by,
-               r.published_at,
-               r.version,
-               r.created_by,
-               r.created_at,
-               r.updated_by,
-               r.updated_at
-        from am_archive_rule_definition r
-        left join am_archive_ontology_object_type ot on ot.id = r.scope_object_type_id
-          and ot.deleted_flag = false
-        left join am_archive_ontology_event_type et on et.id = r.scope_event_type_id
-          and et.deleted_flag = false
-        where r.deleted_flag = false
-          and r.scheme_version_id = #{criteria.schemeVersionId}
-          and r.trigger_code = #{criteria.triggerCode}
-          and r.status = 'PUBLISHED'
-          and r.enabled = true
-          and (r.scope_fonds_code is null or r.scope_fonds_code = #{criteria.fondsCode})
-          and (r.scope_category_code is null or r.scope_category_code = #{criteria.categoryCode})
-          and (r.scope_archive_level is null or r.scope_archive_level = #{criteria.archiveLevel})
-          and (r.scope_object_type_id is null or ot.type_code = #{criteria.objectTypeCode})
-          and (r.scope_event_type_id is null or et.event_code = #{criteria.eventCode})
-        order by r.priority, r.rule_code, r.id
+    <resultMap id="runtimeDefinitionResult" type="ArchiveRuntimeDefinition" autoMapping="true">
+        <result property="conditionJson" column="condition_json"
+                typeHandler="github.luckygc.am.infrastructure.mybatis.JsonObjectMapTypeHandler"/>
+    </resultMap>
+
+    <select id="listExecutableRuntimeDefinitions" resultMap="runtimeDefinitionResult">
+        select definition.id,
+               definition.scheme_version_id,
+               definition.definition_kind,
+               definition.definition_code,
+               definition.definition_name,
+               definition.trigger_point,
+               definition.scope_fonds_code,
+               definition.scope_category_code,
+               definition.scope_archive_level,
+               definition.priority,
+               definition.condition_json,
+               definition.constraint_action,
+               definition.constraint_message,
+               definition.status,
+               definition.enabled,
+               definition.field_catalog_signature,
+               definition.published_by,
+               definition.published_at,
+               definition.version,
+               definition.created_by,
+               definition.created_at,
+               definition.updated_by,
+               definition.updated_at
+        from am_archive_runtime_definition definition
+        where definition.deleted_flag = false
+          and definition.scheme_version_id = #{criteria.schemeVersionId}
+          and definition.trigger_point = #{criteria.triggerPoint}
+          and definition.status = 'PUBLISHED'
+          and definition.enabled = true
+          and (definition.scope_fonds_code is null
+               or definition.scope_fonds_code = #{criteria.fondsCode})
+          and (definition.scope_category_code is null
+               or definition.scope_category_code = #{criteria.categoryCode})
+          and (definition.scope_archive_level is null
+               or definition.scope_archive_level = #{criteria.archiveLevel})
+        order by definition.priority, definition.definition_code, definition.id
     </select>
 
-    <select id="listRuleTraces" resultType="map">
-        select t.id,
-               t.scheme_version_id,
-               t.trigger_code,
-               t.object_type_code,
-               t.object_id,
-               t.rule_id,
-               t.rule_code,
-               t.rule_type,
-               t.matched_flag,
-               t.blocking_flag,
-               t.effect_json,
-               t.message,
-               t.severity,
-               t.skipped_reason,
-               t.created_by,
-               t.created_at
-        from am_archive_rule_trace t
-        left join am_archive_item i on i.id = t.object_id
-          and t.object_type_code = 'ARCHIVE_ITEM'
-          and i.deleted_flag = false
-        left join am_archive_volume v on v.id = t.object_id
-          and t.object_type_code = 'ARCHIVE_VOLUME'
-          and v.deleted_flag = false
+    <select id="listRuntimeTraces" resultType="map">
+        select trace.id,
+               trace.scheme_version_id,
+               trace.trigger_point,
+               trace.object_type_code,
+               trace.object_id,
+               trace.definition_id,
+               trace.definition_code,
+               trace.definition_kind,
+               trace.matched_flag,
+               trace.blocking_flag,
+               trace.action_json,
+               trace.message,
+               trace.severity,
+               trace.skipped_reason,
+               trace.created_by,
+               trace.created_at
+        from am_archive_runtime_trace trace
+        left join am_archive_item item on item.id = trace.object_id
+          and trace.object_type_code = 'ARCHIVE_ITEM'
+          and item.deleted_flag = false
+        left join am_archive_volume volume on volume.id = trace.object_id
+          and trace.object_type_code = 'ARCHIVE_VOLUME'
+          and volume.deleted_flag = false
         where 1 = 1
         <if test="criteria.schemeVersionId != null">
-            and t.scheme_version_id = #{criteria.schemeVersionId}
+            and trace.scheme_version_id = #{criteria.schemeVersionId}
         </if>
-        <if test="criteria.triggerCode != null and criteria.triggerCode != ''">
-            and t.trigger_code = #{criteria.triggerCode}
+        <if test="criteria.triggerPoint != null and criteria.triggerPoint != ''">
+            and trace.trigger_point = #{criteria.triggerPoint}
         </if>
         <if test="criteria.objectTypeCode != null and criteria.objectTypeCode != ''">
-            and t.object_type_code = #{criteria.objectTypeCode}
+            and trace.object_type_code = #{criteria.objectTypeCode}
         </if>
         <if test="criteria.objectId != null">
-            and t.object_id = #{criteria.objectId}
+            and trace.object_id = #{criteria.objectId}
         </if>
-        <if test="criteria.ruleType != null and criteria.ruleType != ''">
-            and t.rule_type = #{criteria.ruleType}
+        <if test="criteria.definitionKind != null and criteria.definitionKind != ''">
+            and trace.definition_kind = #{criteria.definitionKind}
         </if>
         <if test="!criteria.allData">
             and (
-              (t.object_type_code = 'ARCHIVE_ITEM' and (
+              (trace.object_type_code = 'ARCHIVE_ITEM' and (
                 <foreach collection="criteria.itemScopes" item="scope" separator=" or ">
-                  (i.category_code = #{scope.categoryCode} and (
+                  (item.category_code = #{scope.categoryCode} and (
                     <foreach collection="scope.groups" item="group" separator=" or ">
                       (
                         <if test="group.fondsCodes != null and group.fondsCodes.size > 0">
-                          i.fonds_code in
+                          item.fonds_code in
                           <foreach collection="group.fondsCodes" item="fondsCode"
                                    open="(" separator="," close=")">#{fondsCode}</foreach>
                         </if>
                         <if test="group.securityLevelIds != null and group.securityLevelIds.size > 0">
                           <if test="group.fondsCodes != null and group.fondsCodes.size > 0">and</if>
-                          i.security_level_id in
+                          item.security_level_id in
                           <foreach collection="group.securityLevelIds" item="securityLevelId"
                                    open="(" separator="," close=")">#{securityLevelId}</foreach>
                         </if>
                         <if test="group.retentionPeriodIds != null and group.retentionPeriodIds.size > 0">
                           <if test="(group.fondsCodes != null and group.fondsCodes.size > 0)
                               or (group.securityLevelIds != null and group.securityLevelIds.size > 0)">and</if>
-                          i.retention_period_id in
+                          item.retention_period_id in
                           <foreach collection="group.retentionPeriodIds" item="retentionPeriodId"
                                    open="(" separator="," close=")">#{retentionPeriodId}</foreach>
                         </if>
@@ -115,10 +118,10 @@
                               or (group.securityLevelIds != null and group.securityLevelIds.size > 0)
                               or (group.retentionPeriodIds != null and group.retentionPeriodIds.size > 0)">and</if>
                           exists (
-                            select 1 from ${scope.tableName} d
-                            where d.id = i.id and d.deleted_flag = false
+                            select 1 from ${scope.tableName} dynamic_record
+                            where dynamic_record.id = item.id and dynamic_record.deleted_flag = false
                             <foreach collection="group.conditions" item="condition">
-                              and d.${condition.columnName}
+                              and dynamic_record.${condition.columnName}
                               <choose>
                                 <when test="condition.operatorName == 'EQ'">
                                   = #{condition.value}
@@ -128,12 +131,8 @@
                                   <foreach collection="condition.values" item="conditionValue"
                                            open="(" separator="," close=")">#{conditionValue}</foreach>
                                 </when>
-                                <when test="condition.operatorName == 'IS_NULL'">
-                                  is null
-                                </when>
-                                <when test="condition.operatorName == 'IS_NOT_NULL'">
-                                  is not null
-                                </when>
+                                <when test="condition.operatorName == 'IS_NULL'">is null</when>
+                                <when test="condition.operatorName == 'IS_NOT_NULL'">is not null</when>
                               </choose>
                             </foreach>
                           )
@@ -148,26 +147,26 @@
                 </foreach>
                 <if test="criteria.itemScopes == null or criteria.itemScopes.size == 0">false</if>
               ))
-              or (t.object_type_code = 'ARCHIVE_VOLUME' and (
+              or (trace.object_type_code = 'ARCHIVE_VOLUME' and (
                 <foreach collection="criteria.volumeScopes" item="scope" separator=" or ">
-                  (v.category_code = #{scope.categoryCode} and (
+                  (volume.category_code = #{scope.categoryCode} and (
                     <foreach collection="scope.groups" item="group" separator=" or ">
                       (
                         <if test="group.fondsCodes != null and group.fondsCodes.size > 0">
-                          v.fonds_code in
+                          volume.fonds_code in
                           <foreach collection="group.fondsCodes" item="fondsCode"
                                    open="(" separator="," close=")">#{fondsCode}</foreach>
                         </if>
                         <if test="group.securityLevelIds != null and group.securityLevelIds.size > 0">
                           <if test="group.fondsCodes != null and group.fondsCodes.size > 0">and</if>
-                          v.security_level_id in
+                          volume.security_level_id in
                           <foreach collection="group.securityLevelIds" item="securityLevelId"
                                    open="(" separator="," close=")">#{securityLevelId}</foreach>
                         </if>
                         <if test="group.retentionPeriodIds != null and group.retentionPeriodIds.size > 0">
                           <if test="(group.fondsCodes != null and group.fondsCodes.size > 0)
                               or (group.securityLevelIds != null and group.securityLevelIds.size > 0)">and</if>
-                          v.retention_period_id in
+                          volume.retention_period_id in
                           <foreach collection="group.retentionPeriodIds" item="retentionPeriodId"
                                    open="(" separator="," close=")">#{retentionPeriodId}</foreach>
                         </if>
@@ -180,23 +179,25 @@
                 </foreach>
                 <if test="criteria.volumeScopes == null or criteria.volumeScopes.size == 0">false</if>
               ))
-              or (t.object_type_code not in ('ARCHIVE_ITEM', 'ARCHIVE_VOLUME')
-                  and t.created_by = #{criteria.userId})
+              or (trace.object_type_code not in ('ARCHIVE_ITEM', 'ARCHIVE_VOLUME')
+                  and trace.created_by = #{criteria.userId})
             )
         </if>
         <if test="criteria.page.cursorCreatedAt != null and criteria.page.cursorId != null">
           <choose>
             <when test="criteria.page.previous">
-              and (t.created_at, t.id) &gt; (#{criteria.page.cursorCreatedAt}, #{criteria.page.cursorId})
+              and (trace.created_at, trace.id) &gt;
+                  (#{criteria.page.cursorCreatedAt}, #{criteria.page.cursorId})
             </when>
             <otherwise>
-              and (t.created_at, t.id) &lt; (#{criteria.page.cursorCreatedAt}, #{criteria.page.cursorId})
+              and (trace.created_at, trace.id) &lt;
+                  (#{criteria.page.cursorCreatedAt}, #{criteria.page.cursorId})
             </otherwise>
           </choose>
         </if>
-        order by t.created_at
+        order by trace.created_at
         <choose><when test="criteria.page.previous">asc</when><otherwise>desc</otherwise></choose>,
-                 t.id
+                 trace.id
         <choose><when test="criteria.page.previous">asc</when><otherwise>desc</otherwise></choose>
         limit #{criteria.page.rowLimit}
     </select>

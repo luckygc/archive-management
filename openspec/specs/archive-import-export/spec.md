@@ -70,3 +70,21 @@
 - **WHEN** 用户提交的导出条件只命中其数据范围外档案
 - **THEN** 系统 SHALL 返回空导出结果或拒绝请求
 - **AND** 系统 SHALL NOT 返回范围外档案数据
+
+### Requirement: 导入导出执行运行时配置
+
+档案导入和导出 SHALL 复用正常业务 Service 的运行时执行边界。
+
+#### Scenario: 预检和提交导入行
+
+- **WHEN** 系统预检或提交新增、修改导入行
+- **THEN** 系统 SHALL 使用 `ITEM_BEFORE_CREATE` 或 `ITEM_BEFORE_UPDATE` 的字段目录和执行核心
+- **AND** 提交 SHALL 调用正常条目 Service 并再次执行对应触发点
+- **AND** 导入 SHALL NOT 通过 Mapper 或批量 SQL 绕过运行时配置、权限、数据范围或数据库约束
+
+#### Scenario: 生成导出结果
+
+- **WHEN** 用户提交导出请求且权限与数据范围校验通过
+- **THEN** 系统 SHALL 在生成文件、对象和短链前执行 `EXPORT_BEFORE_CREATE`
+- **AND** 阻断 SHALL 不产生文件、对象、短链或成功审计
+- **AND** 非阻断警告 SHALL 随成功导出响应返回并进入决策追踪

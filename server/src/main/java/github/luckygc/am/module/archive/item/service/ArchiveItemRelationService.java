@@ -56,11 +56,12 @@ public class ArchiveItemRelationService {
         requirePermission(userId, "archive:item:read");
         normalizeDepth(depth);
         archiveItemReadService.assertItemInDataScope(itemId, userId);
-        ArchiveItemRelationCriteria criteria = relationCriteria(userId);
+        boolean requestTotal = shouldRequestTotal(pageRequest);
+        ArchiveItemRelationCriteria criteria = relationCriteria(userId, requestTotal);
         ArchiveItemRelationPageWindow pageWindow = pageWindow(pageRequest);
         List<Map<String, Object>> rows =
                 archiveMapper.listItemRelations(itemId, criteria, pageWindow);
-        return toCursorPage(rows, pageRequest);
+        return toCursorPage(rows, pageRequest, requestTotal);
     }
 
     @Transactional
@@ -109,13 +110,13 @@ public class ArchiveItemRelationService {
         }
     }
 
-    private ArchiveItemRelationCriteria relationCriteria(Long userId) {
+    private ArchiveItemRelationCriteria relationCriteria(Long userId, boolean requestTotal) {
         List<ArchiveItemRelationTargetScope> targetScopes = new ArrayList<>();
         for (var category : archiveCategoryService.listCategories(null)) {
             ArchiveDataScopeFilter filter =
                     dataScopeService.buildItemFilter(userId, category.id(), null);
             if (filter.allData()) {
-                return new ArchiveItemRelationCriteria(true, List.of());
+                return new ArchiveItemRelationCriteria(true, List.of(), requestTotal);
             }
             if (filter.empty()) {
                 continue;
@@ -126,7 +127,7 @@ public class ArchiveItemRelationService {
                             ArchiveDynamicTableNames.tableName(category, ArchiveLevel.ITEM),
                             filter.groups()));
         }
-        return new ArchiveItemRelationCriteria(false, targetScopes);
+        return new ArchiveItemRelationCriteria(false, targetScopes, requestTotal);
     }
 
     private ArchiveItemRelationPageWindow pageWindow(PageRequest pageRequest) {
@@ -145,7 +146,7 @@ public class ArchiveItemRelationService {
     }
 
     private CursorPageResponse<ArchiveItemRelationResponse> toCursorPage(
-            List<Map<String, Object>> rows, PageRequest pageRequest) {
+            List<Map<String, Object>> rows, PageRequest pageRequest, boolean requestTotal) {
         int limit = pageRequest.size();
         boolean hasMore = rows.size() > limit;
         List<Map<String, Object>> pageRows =
@@ -168,7 +169,17 @@ public class ArchiveItemRelationService {
                 hasNext && !pageRows.isEmpty()
                         ? List.of(number(pageRows.getLast(), "id").longValue())
                         : null;
-        return CursorPageResponse.withCursorValues(items, limit, self, prev, next, null, null);
+        Long total =
+                requestTotal
+                        ? (pageRows.isEmpty()
+                                ? 0L
+                                : number(pageRows.getFirst(), "total").longValue())
+                        : null;
+        return CursorPageResponse.withCursorValues(items, limit, self, prev, next, null, total);
+    }
+
+    private boolean shouldRequestTotal(PageRequest pageRequest) {
+        return pageRequest.requestTotal() && pageRequest.cursor().isEmpty();
     }
 
     private ArchiveItemRelationResponse toRelationResponse(Map<String, ?> row) {

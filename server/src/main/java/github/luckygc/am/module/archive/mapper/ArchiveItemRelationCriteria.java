@@ -5,7 +5,7 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 public record ArchiveItemRelationCriteria(
-        boolean allData, List<ArchiveItemRelationTargetScope> targetScopes) {
+        boolean allData, List<ArchiveItemRelationTargetScope> targetScopes, boolean requestTotal) {
 
     public ArchiveItemRelationCriteria {
         targetScopes = List.copyOf(targetScopes);

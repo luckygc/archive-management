@@ -137,7 +137,10 @@ async function save(showSuccess = true) {
         } else {
             const created = await createApprovalWorkflowDefinition(payload);
             definitionId.value = created.id;
-            await router.replace({ name: "approval-workflow-designer", params: { id: created.id } });
+            await router.replace({
+                name: "approval-workflow-designer",
+                params: { id: created.id },
+            });
         }
         dirty.value = false;
         if (showSuccess) ElMessage.success("流程草稿已保存");
@@ -258,16 +261,26 @@ onBeforeUnmount(() => window.removeEventListener("beforeunload", beforeUnload));
     <section class="designer-page" v-loading="loading">
         <header class="designer-header">
             <div class="designer-header__identity">
-                <el-button text :icon="ArrowLeft" aria-label="返回流程定义" @click="router.push({ name: 'approval-workflow-definitions' })" />
+                <el-button
+                    text
+                    :icon="ArrowLeft"
+                    aria-label="返回流程定义"
+                    @click="router.push({ name: 'approval-workflow-definitions' })"
+                />
                 <div>
                     <h1>{{ form.definitionName || "新建审批流程" }}</h1>
-                    <p>{{ definitionId ? `草稿 #${definitionId}` : "尚未保存" }}<span v-if="dirty"> · 有未保存修改</span></p>
+                    <p>
+                        {{ definitionId ? `草稿 #${definitionId}` : "尚未保存"
+                        }}<span v-if="dirty"> · 有未保存修改</span>
+                    </p>
                 </div>
             </div>
             <div class="designer-header__actions">
                 <el-button @click="openVersions">版本记录</el-button>
                 <el-button :loading="saving" @click="save()">保存草稿</el-button>
-                <el-button type="primary" :icon="Check" :loading="publishing" @click="publish">发布流程</el-button>
+                <el-button type="primary" :icon="Check" :loading="publishing" @click="publish"
+                    >发布流程</el-button
+                >
             </div>
         </header>
 
@@ -302,15 +315,31 @@ onBeforeUnmount(() => window.removeEventListener("beforeunload", beforeUnload));
             <main class="designer-stage">
                 <div class="canvas-toolbar" aria-label="画布工具栏">
                     <el-button-group>
-                        <el-button :icon="RefreshLeft" title="撤销（Ctrl+Z）" @click="designer?.undo()" />
-                        <el-button :icon="RefreshRight" title="重做（Ctrl+Y）" @click="designer?.redo()" />
+                        <el-button
+                            :icon="RefreshLeft"
+                            title="撤销（Ctrl+Z）"
+                            @click="designer?.undo()"
+                        />
+                        <el-button
+                            :icon="RefreshRight"
+                            title="重做（Ctrl+Y）"
+                            @click="designer?.redo()"
+                        />
                     </el-button-group>
                     <el-button-group>
                         <el-button :icon="ZoomOut" title="缩小" @click="designer?.zoomOut()" />
                         <el-button :icon="ZoomIn" title="放大" @click="designer?.zoomIn()" />
-                        <el-button :icon="FullScreen" title="适应画布" @click="designer?.fitView()" />
+                        <el-button
+                            :icon="FullScreen"
+                            title="适应画布"
+                            @click="designer?.fitView()"
+                        />
                     </el-button-group>
-                    <el-button :icon="Delete" title="删除选中元素" @click="designer?.deleteSelected()" />
+                    <el-button
+                        :icon="Delete"
+                        title="删除选中元素"
+                        @click="designer?.deleteSelected()"
+                    />
                 </div>
                 <ApprovalWorkflowDesigner
                     v-if="!loading"
@@ -325,11 +354,21 @@ onBeforeUnmount(() => window.removeEventListener("beforeunload", beforeUnload));
                 <template v-if="selectedNode">
                     <div class="panel-title">节点属性</div>
                     <el-form label-position="top">
-                        <el-form-item label="节点编码"><el-input :model-value="selectedNode.nodeCode" disabled /></el-form-item>
+                        <el-form-item label="节点编码"
+                            ><el-input :model-value="selectedNode.nodeCode" disabled
+                        /></el-form-item>
                         <el-form-item label="节点名称">
-                            <el-input :model-value="selectedNode.nodeName" maxlength="100" @update:model-value="updateNode({ nodeName: String($event) })" />
+                            <el-input
+                                :model-value="selectedNode.nodeName"
+                                maxlength="100"
+                                @update:model-value="updateNode({ nodeName: String($event) })"
+                            />
                         </el-form-item>
-                        <el-form-item v-if="selectedNode.nodeType === 'APPROVAL'" label="候选用户" required>
+                        <el-form-item
+                            v-if="selectedNode.nodeType === 'APPROVAL'"
+                            label="候选用户"
+                            required
+                        >
                             <el-select
                                 :model-value="selectedNode.candidateUserIds"
                                 multiple
@@ -337,9 +376,16 @@ onBeforeUnmount(() => window.removeEventListener("beforeunload", beforeUnload));
                                 collapse-tags
                                 :max-collapse-tags="2"
                                 placeholder="请选择办理人"
-                                @update:model-value="updateNode({ candidateUserIds: $event as number[] })"
+                                @update:model-value="
+                                    updateNode({ candidateUserIds: $event as number[] })
+                                "
                             >
-                                <el-option v-for="user in userOptions" :key="user.id" :label="userLabel(user.id)" :value="user.id" />
+                                <el-option
+                                    v-for="user in userOptions"
+                                    :key="user.id"
+                                    :label="userLabel(user.id)"
+                                    :value="user.id"
+                                />
                             </el-select>
                         </el-form-item>
                     </el-form>
@@ -347,17 +393,36 @@ onBeforeUnmount(() => window.removeEventListener("beforeunload", beforeUnload));
                 <template v-else-if="selectedEdge">
                     <div class="panel-title">连线属性</div>
                     <el-form label-position="top">
-                        <el-form-item label="连线编码"><el-input :model-value="selectedEdge.edgeCode" disabled /></el-form-item>
+                        <el-form-item label="连线编码"
+                            ><el-input :model-value="selectedEdge.edgeCode" disabled
+                        /></el-form-item>
                         <template v-if="selectedEdgeSource?.nodeType === 'EXCLUSIVE_GATEWAY'">
                             <el-form-item label="默认分支">
-                                <el-switch :model-value="selectedEdge.defaultFlow" @update:model-value="setDefaultFlow(Boolean($event))" />
+                                <el-switch
+                                    :model-value="selectedEdge.defaultFlow"
+                                    @update:model-value="setDefaultFlow(Boolean($event))"
+                                />
                             </el-form-item>
                             <template v-if="!selectedEdge.defaultFlow">
                                 <el-form-item label="业务字段" required>
-                                    <el-input :model-value="selectedEdge.condition?.field" placeholder="例如 archive_type" @update:model-value="updateCondition('field', String($event))" />
+                                    <el-input
+                                        :model-value="selectedEdge.condition?.field"
+                                        placeholder="例如 archive_type"
+                                        @update:model-value="
+                                            updateCondition('field', String($event))
+                                        "
+                                    />
                                 </el-form-item>
                                 <el-form-item label="运算符" required>
-                                    <el-select :model-value="selectedEdge.condition?.operator ?? 'EQUALS'" @update:model-value="updateCondition('operator', $event as ApprovalConditionOperator)">
+                                    <el-select
+                                        :model-value="selectedEdge.condition?.operator ?? 'EQUALS'"
+                                        @update:model-value="
+                                            updateCondition(
+                                                'operator',
+                                                $event as ApprovalConditionOperator,
+                                            )
+                                        "
+                                    >
                                         <el-option label="等于" value="EQUALS" />
                                         <el-option label="不等于" value="NOT_EQUALS" />
                                         <el-option label="属于任一值" value="IN" />
@@ -371,29 +436,66 @@ onBeforeUnmount(() => window.removeEventListener("beforeunload", beforeUnload));
                                         allow-create
                                         default-first-option
                                         placeholder="输入后回车，可添加多个"
-                                        @update:model-value="updateCondition('values', $event as string[])"
+                                        @update:model-value="
+                                            updateCondition('values', $event as string[])
+                                        "
                                     />
                                 </el-form-item>
                             </template>
                         </template>
-                        <el-alert v-else type="info" :closable="false" title="普通连线无需配置条件" />
+                        <el-alert
+                            v-else
+                            type="info"
+                            :closable="false"
+                            title="普通连线无需配置条件"
+                        />
                     </el-form>
                 </template>
                 <template v-else>
                     <div class="panel-title">流程信息</div>
                     <el-form label-position="top">
                         <el-form-item label="定义编码" required>
-                            <el-input v-model="form.definitionCode" :disabled="Boolean(definitionId)" placeholder="例如 archive_intake_flow" @input="markDirty" />
+                            <el-input
+                                v-model="form.definitionCode"
+                                :disabled="Boolean(definitionId)"
+                                placeholder="例如 archive_intake_flow"
+                                @input="markDirty"
+                            />
                         </el-form-item>
-                        <el-form-item label="定义名称" required><el-input v-model="form.definitionName" maxlength="100" @input="markDirty" /></el-form-item>
-                        <el-form-item label="业务类型" required><el-input v-model="form.businessType" placeholder="例如 archive_intake" @input="markDirty" /></el-form-item>
+                        <el-form-item label="定义名称" required
+                            ><el-input
+                                v-model="form.definitionName"
+                                maxlength="100"
+                                @input="markDirty"
+                        /></el-form-item>
+                        <el-form-item label="业务类型" required
+                            ><el-input
+                                v-model="form.businessType"
+                                placeholder="例如 archive_intake"
+                                @input="markDirty"
+                        /></el-form-item>
                     </el-form>
                 </template>
 
                 <div class="issue-panel">
-                    <div class="panel-title">发布检查 <el-tag :type="issues.length ? 'warning' : 'success'" size="small">{{ issues.length }}</el-tag></div>
-                    <el-empty v-if="issues.length === 0" :image-size="42" description="流程结构完整" />
-                    <button v-for="(issue, index) in issues" v-else :key="`${issue.elementId}-${index}`" class="issue-item" @click="focusIssue(issue.elementId)">
+                    <div class="panel-title">
+                        发布检查
+                        <el-tag :type="issues.length ? 'warning' : 'success'" size="small">{{
+                            issues.length
+                        }}</el-tag>
+                    </div>
+                    <el-empty
+                        v-if="issues.length === 0"
+                        :image-size="42"
+                        description="流程结构完整"
+                    />
+                    <button
+                        v-for="(issue, index) in issues"
+                        v-else
+                        :key="`${issue.elementId}-${index}`"
+                        class="issue-item"
+                        @click="focusIssue(issue.elementId)"
+                    >
                         <Connection /> <span>{{ issue.message }}</span>
                     </button>
                 </div>
@@ -417,9 +519,8 @@ onBeforeUnmount(() => window.removeEventListener("beforeunload", beforeUnload));
 .designer-page {
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 92px);
+    height: 100%;
     min-height: 680px;
-    margin: -20px;
     background: #f8fafc;
     color: #0f172a;
 }
@@ -468,8 +569,12 @@ onBeforeUnmount(() => window.removeEventListener("beforeunload", beforeUnload));
     background: #fff;
 }
 
-.designer-palette { border-right: 1px solid #e2e8f0; }
-.designer-properties { border-left: 1px solid #e2e8f0; }
+.designer-palette {
+    border-right: 1px solid #e2e8f0;
+}
+.designer-properties {
+    border-left: 1px solid #e2e8f0;
+}
 
 .panel-title {
     display: flex;
@@ -500,13 +605,39 @@ onBeforeUnmount(() => window.removeEventListener("beforeunload", beforeUnload));
     border-radius: 8px;
 }
 
-.palette-item:hover { border-color: #93c5fd; background: #f8fbff; }
-.palette-item strong { display: block; font-size: 13px; }
-.palette-item small { display: block; margin-top: 3px; color: #64748b; }
+.palette-item:hover {
+    border-color: #93c5fd;
+    background: #f8fbff;
+}
+.palette-item strong {
+    display: block;
+    font-size: 13px;
+}
+.palette-item small {
+    display: block;
+    margin-top: 3px;
+    color: #64748b;
+}
 
-.palette-shape { display: block; flex: 0 0 auto; }
-.palette-shape--task { width: 34px; height: 24px; border: 2px solid #2563eb; border-radius: 6px; background: #eff6ff; }
-.palette-shape--gateway { width: 25px; height: 25px; margin: 4px; transform: rotate(45deg); border: 2px solid #ea580c; background: #fff7ed; }
+.palette-shape {
+    display: block;
+    flex: 0 0 auto;
+}
+.palette-shape--task {
+    width: 34px;
+    height: 24px;
+    border: 2px solid #2563eb;
+    border-radius: 6px;
+    background: #eff6ff;
+}
+.palette-shape--gateway {
+    width: 25px;
+    height: 25px;
+    margin: 4px;
+    transform: rotate(45deg);
+    border: 2px solid #ea580c;
+    background: #fff7ed;
+}
 
 .palette-help {
     margin-top: 18px;
@@ -518,25 +649,94 @@ onBeforeUnmount(() => window.removeEventListener("beforeunload", beforeUnload));
     line-height: 1.65;
 }
 
-.designer-stage { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
-.canvas-toolbar { position: absolute; z-index: 3; top: 14px; left: 50%; display: flex; gap: 8px; transform: translateX(-50%); padding: 6px; border: 1px solid #e2e8f0; border-radius: 8px; background: rgb(255 255 255 / 94%); box-shadow: 0 4px 14px rgb(15 23 42 / 8%); }
-.issue-panel { margin-top: 20px; padding-top: 16px; border-top: 1px solid #e2e8f0; }
-.issue-item { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 8px; padding: 9px 10px; border-color: #fed7aa; border-radius: 6px; background: #fff7ed; color: #9a3412; font-size: 12px; line-height: 1.45; }
-.issue-item svg { width: 15px; flex: 0 0 auto; margin-top: 1px; }
-:deep(.el-select) { width: 100%; }
+.designer-stage {
+    position: relative;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+}
+.canvas-toolbar {
+    position: absolute;
+    z-index: 3;
+    top: 14px;
+    left: 50%;
+    display: flex;
+    gap: 8px;
+    transform: translateX(-50%);
+    padding: 6px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: rgb(255 255 255 / 94%);
+    box-shadow: 0 4px 14px rgb(15 23 42 / 8%);
+}
+.issue-panel {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid #e2e8f0;
+}
+.issue-item {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    margin-bottom: 8px;
+    padding: 9px 10px;
+    border-color: #fed7aa;
+    border-radius: 6px;
+    background: #fff7ed;
+    color: #9a3412;
+    font-size: 12px;
+    line-height: 1.45;
+}
+.issue-item svg {
+    width: 15px;
+    flex: 0 0 auto;
+    margin-top: 1px;
+}
+:deep(.el-select) {
+    width: 100%;
+}
 
 @media (max-width: 1180px) {
-    .designer-workspace { grid-template-columns: 176px minmax(360px, 1fr) 260px; }
+    .designer-workspace {
+        grid-template-columns: 176px minmax(360px, 1fr) 260px;
+    }
 }
 
 @media (max-width: 900px) {
-    .designer-page { height: auto; min-height: 0; margin: -12px; }
-    .designer-header { align-items: flex-start; gap: 12px; padding: 12px; }
-    .designer-header__actions { flex-wrap: wrap; justify-content: flex-end; }
-    .designer-workspace { display: flex; flex-direction: column; }
-    .designer-palette { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; border-right: 0; border-bottom: 1px solid #e2e8f0; }
-    .designer-palette .panel-title, .palette-help { grid-column: 1 / -1; }
-    .designer-stage { height: 560px; }
-    .designer-properties { border-top: 1px solid #e2e8f0; border-left: 0; }
+    .designer-page {
+        height: auto;
+        min-height: 0;
+    }
+    .designer-header {
+        align-items: flex-start;
+        gap: 12px;
+        padding: 12px;
+    }
+    .designer-header__actions {
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+    .designer-workspace {
+        display: flex;
+        flex-direction: column;
+    }
+    .designer-palette {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        border-right: 0;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    .designer-palette .panel-title,
+    .palette-help {
+        grid-column: 1 / -1;
+    }
+    .designer-stage {
+        height: 560px;
+    }
+    .designer-properties {
+        border-top: 1px solid #e2e8f0;
+        border-left: 0;
+    }
 }
 </style>

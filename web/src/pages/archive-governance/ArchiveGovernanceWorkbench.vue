@@ -17,8 +17,6 @@ const scopeTypeLabels: Record<ArchiveGovernanceScopeType, string> = {
     CATEGORY: "分类",
 };
 const bindingTypeLabels: Record<ArchiveGovernanceBindingType, string> = {
-    ONTOLOGY: "本体",
-    RULE_SET: "规则集",
     CLASSIFICATION_SCHEME: "分类方案",
     DESCRIPTION_PROFILE: "著录方案",
     REFERENCE_CODE_RULE: "档号规则",
@@ -32,6 +30,7 @@ const {
     resolveDefault,
     resolveForm,
     resolving,
+    runtimeDefinitions,
     saveBindings,
     saveScopes,
     savingBindings,
@@ -67,6 +66,37 @@ const {
                     selectedVersion.retiredAt ?? "-"
                 }}</el-descriptions-item>
             </el-descriptions>
+            <div class="runtime-summary">
+                <div>
+                    <span>运行时配置</span>
+                    <strong>{{ runtimeDefinitions.length }}</strong>
+                    <small>条定义</small>
+                </div>
+                <div>
+                    <span>约束</span>
+                    <strong>{{
+                        runtimeDefinitions.filter((item) => item.definitionKind === "CONSTRAINT")
+                            .length
+                    }}</strong>
+                </div>
+                <div>
+                    <span>规则</span>
+                    <strong>{{
+                        runtimeDefinitions.filter((item) => item.definitionKind === "RULE").length
+                    }}</strong>
+                </div>
+                <el-button
+                    type="primary"
+                    plain
+                    @click="
+                        $router.push({
+                            path: '/archive/governance/rules',
+                            query: { schemeVersionId: selectedVersion.id },
+                        })
+                    "
+                    >打开运行时规则工作区</el-button
+                >
+            </div>
             <el-divider content-position="left">适用范围</el-divider>
             <div class="am-table-toolbar">
                 <el-button
@@ -141,7 +171,7 @@ const {
                     @click="
                         bindingDrafts.push({
                             draftKey: nextDraftKey(),
-                            bindingType: 'ONTOLOGY',
+                            bindingType: 'CLASSIFICATION_SCHEME',
                             bindingOrder: 0,
                         })
                     "
@@ -239,5 +269,37 @@ const {
     display: flex;
     gap: 8px;
     margin-bottom: 12px;
+}
+.runtime-summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(90px, 1fr)) auto;
+    gap: 12px;
+    align-items: center;
+    margin-top: 14px;
+    padding: 12px 14px;
+    border: 1px solid var(--el-border-color-lighter);
+    border-radius: var(--el-border-radius-base);
+    background: var(--el-fill-color-lighter);
+}
+.runtime-summary > div {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+}
+.runtime-summary span,
+.runtime-summary small {
+    color: var(--el-text-color-secondary);
+    font-size: 12px;
+}
+.runtime-summary strong {
+    font-size: 20px;
+}
+@media (max-width: 760px) {
+    .runtime-summary {
+        grid-template-columns: 1fr 1fr 1fr;
+    }
+    .runtime-summary .el-button {
+        grid-column: 1 / -1;
+    }
 }
 </style>

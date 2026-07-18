@@ -60,6 +60,9 @@ const completedPrev = ref<string>();
 const completedNext = ref<string>();
 const startedPrev = ref<string>();
 const startedNext = ref<string>();
+const pendingTotal = ref<number>();
+const completedTotal = ref<number>();
+const startedTotal = ref<number>();
 const limit = ref(100);
 
 const detailOpen = ref(false);
@@ -86,6 +89,7 @@ async function loadTab(tab: TabName = activeTab.value, cursor?: string) {
             startedInstances.value = response.items;
             startedPrev.value = response.prev;
             startedNext.value = response.next;
+            if (!cursor) startedTotal.value = response.total;
         } else {
             const completed = tab === "completed";
             const response = await listMyUnifiedTodos({
@@ -97,10 +101,12 @@ async function loadTab(tab: TabName = activeTab.value, cursor?: string) {
                 completedTasks.value = response.items;
                 completedPrev.value = response.prev;
                 completedNext.value = response.next;
+                if (!cursor) completedTotal.value = response.total;
             } else {
                 pendingTasks.value = response.items;
                 pendingPrev.value = response.prev;
                 pendingNext.value = response.next;
+                if (!cursor) pendingTotal.value = response.total;
             }
         }
     } catch (error) {
@@ -113,7 +119,11 @@ async function loadTab(tab: TabName = activeTab.value, cursor?: string) {
 async function openStartDialog() {
     try {
         definitionOptions.value = (await listApprovalWorkflowDefinitionOptions()).items;
-        startForm.value = { definitionId: definitionOptions.value[0]?.id, businessId: "", title: "" };
+        startForm.value = {
+            definitionId: definitionOptions.value[0]?.id,
+            businessId: "",
+            title: "",
+        };
         startDialogOpen.value = true;
     } catch (error) {
         ElMessage.error((error as Error).message);
@@ -157,9 +167,15 @@ async function submitTaskAction() {
     taskSubmitting.value = true;
     try {
         if (taskAction.value === "approve") {
-            await approveApprovalWorkflowTask(selectedTask.value.id, taskComment.value.trim() || undefined);
+            await approveApprovalWorkflowTask(
+                selectedTask.value.id,
+                taskComment.value.trim() || undefined,
+            );
         } else {
-            await rejectApprovalWorkflowTask(selectedTask.value.id, taskComment.value.trim() || undefined);
+            await rejectApprovalWorkflowTask(
+                selectedTask.value.id,
+                taskComment.value.trim() || undefined,
+            );
         }
         ElMessage.success(taskAction.value === "approve" ? "审批任务已同意" : "审批任务已驳回");
         taskDialogOpen.value = false;
@@ -266,13 +282,21 @@ onMounted(() => void loadTab());
                         <el-table-column label="操作" width="210" fixed="right">
                             <template #default="{ row }">
                                 <el-button link @click="openTodoDetail(row)">详情</el-button>
-                                <el-button link type="primary" @click="openTaskAction(row, 'approve')">同意</el-button>
-                                <el-button link type="danger" @click="openTaskAction(row, 'reject')">驳回</el-button>
+                                <el-button
+                                    link
+                                    type="primary"
+                                    @click="openTaskAction(row, 'approve')"
+                                    >同意</el-button
+                                >
+                                <el-button link type="danger" @click="openTaskAction(row, 'reject')"
+                                    >驳回</el-button
+                                >
                             </template>
                         </el-table-column>
                     </el-table>
                     <CursorPagination
                         :limit="limit"
+                        :total="pendingTotal"
                         :prev="pendingPrev"
                         :next="pendingNext"
                         :loading="loading"
@@ -287,7 +311,9 @@ onMounted(() => void loadTab());
                         <el-table-column prop="businessId" label="业务标识" width="160" />
                         <el-table-column label="状态" width="110">
                             <template #default="{ row }">
-                                <el-tag :type="instanceTagType(row.status)">{{ instanceStatusLabel(row.status) }}</el-tag>
+                                <el-tag :type="instanceTagType(row.status)">{{
+                                    instanceStatusLabel(row.status)
+                                }}</el-tag>
                             </template>
                         </el-table-column>
                         <el-table-column prop="currentNodeName" label="当前节点" width="150" />
@@ -297,12 +323,19 @@ onMounted(() => void loadTab());
                         <el-table-column label="操作" width="140" fixed="right">
                             <template #default="{ row }">
                                 <el-button link @click="openDetail(row.id)">详情</el-button>
-                                <el-button v-if="row.status === 'RUNNING'" link type="danger" @click="withdraw(row)">撤回</el-button>
+                                <el-button
+                                    v-if="row.status === 'RUNNING'"
+                                    link
+                                    type="danger"
+                                    @click="withdraw(row)"
+                                    >撤回</el-button
+                                >
                             </template>
                         </el-table-column>
                     </el-table>
                     <CursorPagination
                         :limit="limit"
+                        :total="startedTotal"
                         :prev="startedPrev"
                         :next="startedNext"
                         :loading="loading"
@@ -320,14 +353,21 @@ onMounted(() => void loadTab());
                             <template #default>已完成</template>
                         </el-table-column>
                         <el-table-column label="办理时间" width="180">
-                            <template #default="{ row }">{{ formatTime(row.completedAt) }}</template>
+                            <template #default="{ row }">{{
+                                formatTime(row.completedAt)
+                            }}</template>
                         </el-table-column>
                         <el-table-column label="操作" width="80" fixed="right">
-                            <template #default="{ row }"><el-button link @click="openTodoDetail(row)">详情</el-button></template>
+                            <template #default="{ row }"
+                                ><el-button link @click="openTodoDetail(row)"
+                                    >详情</el-button
+                                ></template
+                            >
                         </el-table-column>
                     </el-table>
                     <CursorPagination
                         :limit="limit"
+                        :total="completedTotal"
                         :prev="completedPrev"
                         :next="completedNext"
                         :loading="loading"
@@ -350,12 +390,20 @@ onMounted(() => void loadTab());
                         />
                     </el-select>
                 </el-form-item>
-                <el-form-item label="业务标识" required><el-input v-model="startForm.businessId" /></el-form-item>
-                <el-form-item label="标题" required><el-input v-model="startForm.title" /></el-form-item>
+                <el-form-item label="业务标识" required
+                    ><el-input v-model="startForm.businessId"
+                /></el-form-item>
+                <el-form-item label="标题" required
+                    ><el-input v-model="startForm.title"
+                /></el-form-item>
             </el-form>
             <template #footer>
-                <el-button :disabled="startSubmitting" @click="startDialogOpen = false">取消</el-button>
-                <el-button type="primary" :loading="startSubmitting" @click="submitStart">发起</el-button>
+                <el-button :disabled="startSubmitting" @click="startDialogOpen = false"
+                    >取消</el-button
+                >
+                <el-button type="primary" :loading="startSubmitting" @click="submitStart"
+                    >发起</el-button
+                >
             </template>
         </el-dialog>
 
@@ -366,11 +414,19 @@ onMounted(() => void loadTab());
         >
             <el-form label-width="80px">
                 <el-form-item label="审批意见">
-                    <el-input v-model="taskComment" type="textarea" :rows="4" maxlength="2000" show-word-limit />
+                    <el-input
+                        v-model="taskComment"
+                        type="textarea"
+                        :rows="4"
+                        maxlength="2000"
+                        show-word-limit
+                    />
                 </el-form-item>
             </el-form>
             <template #footer>
-                <el-button :disabled="taskSubmitting" @click="taskDialogOpen = false">取消</el-button>
+                <el-button :disabled="taskSubmitting" @click="taskDialogOpen = false"
+                    >取消</el-button
+                >
                 <el-button
                     :type="taskAction === 'approve' ? 'primary' : 'danger'"
                     :loading="taskSubmitting"
@@ -384,26 +440,42 @@ onMounted(() => void loadTab());
             <div v-loading="detailLoading">
                 <template v-if="detail">
                     <el-descriptions :column="2" border>
-                        <el-descriptions-item label="标题">{{ detail.instance.title }}</el-descriptions-item>
+                        <el-descriptions-item label="标题">{{
+                            detail.instance.title
+                        }}</el-descriptions-item>
                         <el-descriptions-item label="状态">
-                            <el-tag :type="instanceTagType(detail.instance.status)">{{ instanceStatusLabel(detail.instance.status) }}</el-tag>
+                            <el-tag :type="instanceTagType(detail.instance.status)">{{
+                                instanceStatusLabel(detail.instance.status)
+                            }}</el-tag>
                         </el-descriptions-item>
-                        <el-descriptions-item label="业务类型">{{ detail.instance.businessType }}</el-descriptions-item>
-                        <el-descriptions-item label="业务标识">{{ detail.instance.businessId }}</el-descriptions-item>
-                        <el-descriptions-item label="发起时间">{{ formatTime(detail.instance.createdAt) }}</el-descriptions-item>
-                        <el-descriptions-item label="完成时间">{{ formatTime(detail.instance.completedAt) }}</el-descriptions-item>
+                        <el-descriptions-item label="业务类型">{{
+                            detail.instance.businessType
+                        }}</el-descriptions-item>
+                        <el-descriptions-item label="业务标识">{{
+                            detail.instance.businessId
+                        }}</el-descriptions-item>
+                        <el-descriptions-item label="发起时间">{{
+                            formatTime(detail.instance.createdAt)
+                        }}</el-descriptions-item>
+                        <el-descriptions-item label="完成时间">{{
+                            formatTime(detail.instance.completedAt)
+                        }}</el-descriptions-item>
                     </el-descriptions>
                     <h3>流程节点</h3>
                     <el-table :data="detail.tasks" row-key="id" border>
                         <el-table-column prop="nodeName" label="节点" />
                         <el-table-column label="状态" width="110">
-                            <template #default="{ row }">{{ taskStatusLabel(row.status) }}</template>
+                            <template #default="{ row }">{{
+                                taskStatusLabel(row.status)
+                            }}</template>
                         </el-table-column>
                         <el-table-column label="到达时间" width="180">
                             <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
                         </el-table-column>
                         <el-table-column label="完成时间" width="180">
-                            <template #default="{ row }">{{ formatTime(row.completedAt) }}</template>
+                            <template #default="{ row }">{{
+                                formatTime(row.completedAt)
+                            }}</template>
                         </el-table-column>
                     </el-table>
                     <h3>审批意见</h3>

@@ -43,6 +43,12 @@ import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataReferenc
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveCategoryDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFieldDto;
+import github.luckygc.am.module.archive.rule.ArchiveRuntimeTriggerPoint;
+import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeExecutionService;
+import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeExecutionService.ArchiveRuntimeExecutionRequest;
+import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeExecutionService.ArchiveRuntimeExecutionResult;
+import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeExecutionService.ArchiveRuntimeWarning;
+import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeTraceService;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionCode;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
 import github.luckygc.am.module.storage.FileLinkTargetType;
@@ -75,6 +81,8 @@ public class ArchiveItemImportExportService {
     private final StorageObjectService storageObjectService;
     private final FileLinkService fileLinkService;
     private final Clock clock;
+    private final ArchiveRuntimeExecutionService runtimeExecutionService;
+    private final ArchiveRuntimeTraceService runtimeTraceService;
 
     public ArchiveItemImportExportService(
             ArchiveMetadataService archiveMetadataService,
@@ -88,7 +96,9 @@ public class ArchiveItemImportExportService {
             ArchiveItemAuditDataRepository auditRepository,
             StorageObjectService storageObjectService,
             FileLinkService fileLinkService,
-            Clock clock) {
+            Clock clock,
+            ArchiveRuntimeExecutionService runtimeExecutionService,
+            ArchiveRuntimeTraceService runtimeTraceService) {
         this.archiveMetadataService = archiveMetadataService;
         this.archiveMetadataReferenceService = archiveMetadataReferenceService;
         this.archiveCategoryService = archiveCategoryService;
@@ -101,6 +111,8 @@ public class ArchiveItemImportExportService {
         this.storageObjectService = storageObjectService;
         this.fileLinkService = fileLinkService;
         this.clock = clock;
+        this.runtimeExecutionService = runtimeExecutionService;
+        this.runtimeTraceService = runtimeTraceService;
     }
 
     @Transactional
@@ -170,9 +182,72 @@ public class ArchiveItemImportExportService {
             exportedRows.addAll(page.items());
             cursor = encodedPage.next();
         } while (cursor != null && exportedRows.size() < EXPORT_MAX_ROWS);
+        List<ExportPolicyExecution> policyExecutions = enforceExportPolicies(exportedRows, userId);
         byte[] bytes = writeExcel(exportHead(fields), exportBody(fields, exportedRows), "导出结果");
         writeExportAudit(base, userId, exportedRows.size());
-        return createDownloadLink(new ArchiveExcelFile("archive-export.xlsx", bytes), userId);
+        DownloadLinkCreated link =
+                createDownloadLink(new ArchiveExcelFile("archive-export.xlsx", bytes), userId);
+        policyExecutions.forEach(
+                execution ->
+                        runtimeTraceService.saveSuccessfulExecution(
+                                execution.request(), execution.result(), null));
+        List<ArchiveRuntimeWarning> warnings =
+                policyExecutions.stream()
+                        .flatMap(execution -> execution.result().warnings().stream())
+                        .distinct()
+                        .toList();
+        return new DownloadLinkCreated(link.code(), link.expiresAt(), warnings);
+    }
+
+    private List<ExportPolicyExecution> enforceExportPolicies(
+            List<Map<String, @Nullable Object>> exportedRows, Long userId) {
+        Map<ExportScope, ArchiveItem> scopes = new LinkedHashMap<>();
+        for (Map<String, @Nullable Object> row : exportedRows) {
+            Object rawId = row.get("id");
+            if (!(rawId instanceof Number number)) {
+                throw new BadRequestException("导出结果缺少档案条目 ID");
+            }
+            ArchiveItem item =
+                    archiveItemRepository
+                            .findById(number.longValue())
+                            .orElseThrow(
+                                    () ->
+                                            new BadRequestException(
+                                                    "导出档案条目不存在：" + number.longValue()));
+            if (item.getGovernanceSchemeVersionId() == null) {
+                throw new BadRequestException("导出档案条目未绑定治理版本：" + item.getId());
+            }
+            scopes.putIfAbsent(
+                    new ExportScope(
+                            item.getGovernanceSchemeVersionId(),
+                            item.getFondsCode(),
+                            item.getCategoryCode()),
+                    item);
+        }
+        List<ExportPolicyExecution> executions = new ArrayList<>();
+        for (Map.Entry<ExportScope, ArchiveItem> entry : scopes.entrySet()) {
+            ExportScope scope = entry.getKey();
+            Map<String, @Nullable Object> facts = new LinkedHashMap<>();
+            facts.put("export.itemCount", exportedRows.size());
+            facts.put("export.format", "XLSX");
+            facts.put("context.userId", userId);
+            facts.put("context.now", LocalDateTime.now(clock));
+            facts.put("context.operation", ArchiveRuntimeTriggerPoint.EXPORT_BEFORE_CREATE.name());
+            ArchiveRuntimeExecutionRequest request =
+                    new ArchiveRuntimeExecutionRequest(
+                            scope.schemeVersionId(),
+                            ArchiveRuntimeTriggerPoint.EXPORT_BEFORE_CREATE,
+                            scope.fondsCode(),
+                            scope.categoryCode(),
+                            ArchiveLevel.ITEM,
+                            "ARCHIVE_EXPORT",
+                            null,
+                            facts,
+                            userId);
+            executions.add(
+                    new ExportPolicyExecution(request, runtimeExecutionService.enforce(request)));
+        }
+        return List.copyOf(executions);
     }
 
     private DownloadLinkCreated createDownloadLink(ArchiveExcelFile file, Long userId) {
@@ -193,7 +268,7 @@ public class ArchiveItemImportExportService {
                         storageObject.id(),
                         expiresAt,
                         userId);
-        return new DownloadLinkCreated(link.code(), link.expiresAt());
+        return new DownloadLinkCreated(link.code(), link.expiresAt(), List.of());
     }
 
     private void requirePermission(Long userId, AuthorizationPermissionCode permissionCode) {
@@ -529,5 +604,15 @@ public class ArchiveItemImportExportService {
 
     public record ArchiveExcelFile(String filename, byte[] bytes) {}
 
-    public record DownloadLinkCreated(String code, LocalDateTime expiresAt) {}
+    public record DownloadLinkCreated(
+            String code, LocalDateTime expiresAt, List<ArchiveRuntimeWarning> warnings) {
+        public DownloadLinkCreated {
+            warnings = List.copyOf(warnings);
+        }
+    }
+
+    private record ExportScope(Long schemeVersionId, String fondsCode, String categoryCode) {}
+
+    private record ExportPolicyExecution(
+            ArchiveRuntimeExecutionRequest request, ArchiveRuntimeExecutionResult result) {}
 }

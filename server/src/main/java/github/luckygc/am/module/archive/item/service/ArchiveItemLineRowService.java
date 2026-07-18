@@ -66,9 +66,11 @@ public class ArchiveItemLineRowService {
         permissionService.requirePermission(userId, AuthorizationPermissionCode.ARCHIVE_ITEM_READ);
         archiveItemReadService.assertItemInDataScope(archiveItemId, userId);
         LineTableDefinition table = loadBuiltTable(archiveItemId, lineTableId);
-        ArchiveItemLineRowPageQuery query = pageQuery(table, archiveItemId, pageRequest);
+        boolean requestTotal = shouldRequestTotal(pageRequest);
+        ArchiveItemLineRowPageQuery query =
+                pageQuery(table, archiveItemId, pageRequest, requestTotal);
         List<Map<String, Object>> rows = archiveMapper.listItemLineRows(query);
-        return toCursorPage(table, rows, pageRequest);
+        return toCursorPage(table, rows, pageRequest, requestTotal);
     }
 
     public List<ArchiveItemLineTableDefinitionResponse> listLineTables(
@@ -234,7 +236,10 @@ public class ArchiveItemLineRowService {
     }
 
     private ArchiveItemLineRowPageQuery pageQuery(
-            LineTableDefinition table, Long archiveItemId, PageRequest pageRequest) {
+            LineTableDefinition table,
+            Long archiveItemId,
+            PageRequest pageRequest,
+            boolean requestTotal) {
         @Nullable Integer cursorLineOrder = null;
         @Nullable Long cursorId = null;
         if (pageRequest.cursor().isPresent()) {
@@ -254,11 +259,15 @@ public class ArchiveItemLineRowService {
                 pageRequest.mode() == PageRequest.Mode.CURSOR_PREVIOUS,
                 cursorLineOrder,
                 cursorId,
+                requestTotal,
                 pageRequest.size() + 1);
     }
 
     private CursorPageResponse<ArchiveItemLineRowResponse> toCursorPage(
-            LineTableDefinition table, List<Map<String, Object>> rows, PageRequest pageRequest) {
+            LineTableDefinition table,
+            List<Map<String, Object>> rows,
+            PageRequest pageRequest,
+            boolean requestTotal) {
         int limit = pageRequest.size();
         boolean hasMore = rows.size() > limit;
         List<Map<String, Object>> pageRows =
@@ -273,6 +282,12 @@ public class ArchiveItemLineRowService {
         List<?> prev =
                 hasPrevious && !pageRows.isEmpty() ? cursorValues(pageRows.getFirst()) : null;
         List<?> next = hasNext && !pageRows.isEmpty() ? cursorValues(pageRows.getLast()) : null;
+        Long total =
+                requestTotal
+                        ? (pageRows.isEmpty()
+                                ? 0L
+                                : number(pageRows.getFirst(), "total").longValue())
+                        : null;
         return CursorPageResponse.withCursorValues(
                 pageRows.stream().map(row -> toResponse(table, row)).toList(),
                 limit,
@@ -280,7 +295,11 @@ public class ArchiveItemLineRowService {
                 prev,
                 next,
                 null,
-                null);
+                total);
+    }
+
+    private boolean shouldRequestTotal(PageRequest pageRequest) {
+        return pageRequest.requestTotal() && pageRequest.cursor().isEmpty();
     }
 
     private List<?> cursorValues(Map<String, Object> row) {

@@ -41,4 +41,22 @@ describe("CursorPagination", () => {
             { label: "1000 条", value: 1000 },
         ]);
     });
+
+    it("在响应提供总数时展示总条数和总页数", () => {
+        render(CursorPagination, {
+            props: { limit: 100, total: 201 },
+            global: { plugins: [ElementPlus] },
+        });
+
+        expect(screen.getByText("共 201 条 · 共 3 页")).toBeInTheDocument();
+    });
+
+    it("在响应未提供总数时不展示分页摘要", () => {
+        render(CursorPagination, {
+            props: { limit: 100 },
+            global: { plugins: [ElementPlus] },
+        });
+
+        expect(screen.queryByText(/共 .* 条/)).not.toBeInTheDocument();
+    });
 });

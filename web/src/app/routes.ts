@@ -1,9 +1,9 @@
+import { computed, ref } from "vue";
 import type { Component } from "vue";
 import type { RouteLocationNormalized, RouteMeta, RouteRecordRaw } from "vue-router";
 import { createRouter, createWebHashHistory } from "vue-router";
 
 import {
-    Aim,
     Avatar,
     Box,
     Collection,
@@ -14,7 +14,6 @@ import {
     FolderOpened,
     HomeFilled,
     UploadFilled,
-    Key,
     Lock,
     Monitor,
     OfficeBuilding,
@@ -35,6 +34,7 @@ declare module "vue-router" {
         affixTab?: boolean;
         cache?: boolean;
         public?: boolean;
+        fullBleed?: boolean;
         permission?: string;
         permissionsAnyOf?: string[];
     }
@@ -123,7 +123,12 @@ export const workspaceRoutes: RouteRecordRaw[] = [
             "流程设计器",
             Setting,
             () => import("@/pages/approval-workflow/ApprovalWorkflowDesignerPage.vue"),
-            { permission: "approval:definition:manage", menu: false, cache: false },
+            {
+                permission: "approval:definition:manage",
+                menu: false,
+                cache: false,
+                fullBleed: true,
+            },
         ),
     ]),
     group("archive/governance", "档案治理", DataAnalysis, [
@@ -136,25 +141,17 @@ export const workspaceRoutes: RouteRecordRaw[] = [
             { permission: "archive:governance:manage" },
         ),
         route(
-            "ontology",
-            "archive-ontology",
-            "本体管理",
-            Aim,
-            () => import("@/pages/archive-ontology/ArchiveOntologyPage.vue"),
-            { permission: "archive:governance:manage" },
-        ),
-        route(
             "rules",
             "archive-rules",
-            "本地规则",
-            Key,
+            "运行时规则",
+            DocumentChecked,
             () => import("@/pages/archive-rules/ArchiveRulesPage.vue"),
             { permission: "archive:governance:manage" },
         ),
         route(
             "rule-traces",
             "archive-rule-traces",
-            "规则追踪",
+            "决策追踪",
             Document,
             () => import("@/pages/archive-rule-traces/ArchiveRuleTracesPage.vue"),
             { permission: "archive:governance:manage" },
@@ -253,6 +250,19 @@ export const router = createRouter({
     ],
 });
 
+const pendingNavigationTarget = ref<string>();
+export const navigationPending = computed(() => pendingNavigationTarget.value !== undefined);
+
+router.beforeEach((to) => {
+    pendingNavigationTarget.value = to.fullPath;
+    return true;
+});
+router.afterEach((to) => {
+    if (pendingNavigationTarget.value === to.fullPath) pendingNavigationTarget.value = undefined;
+});
+router.onError(() => {
+    pendingNavigationTarget.value = undefined;
+});
 router.beforeEach(navigationGuard);
 
 export async function navigationGuard(to: Pick<RouteLocationNormalized, "fullPath" | "meta">) {
@@ -327,6 +337,7 @@ function route(
     extra: {
         affixTab?: boolean;
         cache?: boolean;
+        fullBleed?: boolean;
         menu?: boolean;
         permission?: string;
         permissionsAnyOf?: string[];
@@ -335,6 +346,7 @@ function route(
     const {
         affixTab = false,
         cache = true,
+        fullBleed = false,
         menu = true,
         permission,
         permissionsAnyOf,
@@ -345,7 +357,16 @@ function route(
         name,
         component,
         props,
-        meta: { title, icon, menu, affixTab, cache, permission, permissionsAnyOf },
+        meta: {
+            title,
+            icon,
+            menu,
+            affixTab,
+            cache,
+            fullBleed,
+            permission,
+            permissionsAnyOf,
+        },
     } as RouteRecordRaw;
 }
 

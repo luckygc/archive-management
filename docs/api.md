@@ -32,12 +32,12 @@
 - [档案记录路由](../openspec/specs/archive-record-routing/spec.md)
 - [档案导入导出](../openspec/specs/archive-import-export/spec.md)
 
-### 治理、本体和规则
+### 治理与运行时规则
 
 - [档案治理方案](../openspec/specs/archive-governance-scheme/spec.md)
 - [治理工作台](../openspec/specs/archive-governance-workbench/spec.md)
-- [档案本体核心](../openspec/specs/archive-ontology-core/spec.md)
-- [本地规则引擎](../openspec/specs/archive-local-rule-engine/spec.md)
+- [运行时规则引擎](../openspec/specs/archive-local-rule-engine/spec.md)
+- [运行时配置迁移与恢复](../openspec/specs/archive-runtime-check-portability/spec.md)
 
 ### 文件与流程
 

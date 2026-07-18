@@ -138,6 +138,7 @@ onMounted(loadSessions);
             <div class="am-table-footer">
                 <CursorPagination
                     :limit="limit"
+                    :total="total ?? undefined"
                     :loading="loading"
                     :next="next"
                     :prev="prev"

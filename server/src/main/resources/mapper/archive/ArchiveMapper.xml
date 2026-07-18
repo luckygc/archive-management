@@ -472,6 +472,7 @@
                security_level_id,
                retention_period_id,
                archive_year,
+               governance_scheme_version_id,
                locked_flag,
                lock_reason,
                locked_by,
@@ -491,6 +492,7 @@
                security_level_id,
                retention_period_id,
                archive_year,
+               governance_scheme_version_id,
                locked_flag,
                lock_reason,
                locked_by,
@@ -517,6 +519,7 @@
                security_level_id,
                retention_period_id,
                archive_year,
+               governance_scheme_version_id,
                locked_flag,
                lock_reason,
                locked_by,
@@ -787,7 +790,9 @@
     </update>
 
     <select id="listItemRelations" resultType="map">
-        select rel.id,
+        select
+        <if test="criteria.requestTotal">count(*) over () as total,</if>
+               rel.id,
                rel.source_item_id,
                rel.target_item_id,
                case when rel.source_item_id = #{archiveItemId}
@@ -1014,6 +1019,7 @@
         select id,
                item_id,
                line_order
+        <if test="query.requestTotal">, count(*) over () as total</if>
         <foreach collection="query.selectColumns" item="columnName">
                , ${columnName}
         </foreach>

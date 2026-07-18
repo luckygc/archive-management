@@ -417,6 +417,7 @@ function applyEditorFieldViolations(error: unknown) {
             <div v-if="result" class="am-table-footer">
                 <CursorPagination
                     :limit="limit"
+                    :total="result.total"
                     :prev="result.prev"
                     :next="result.next"
                     :loading="loading"

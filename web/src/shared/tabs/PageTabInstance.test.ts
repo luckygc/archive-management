@@ -77,6 +77,36 @@ describe("PageTabInstance", () => {
         await waitFor(() => expect(screen.getByText("刷新实例 2")).toBeInTheDocument());
         expect(mountCount).toBe(2);
     });
+
+    it("只保活最近八个页签实例", async () => {
+        let mountCount = 0;
+        const Page = markRaw(
+            defineComponent({
+                setup() {
+                    const instance = ++mountCount;
+                    return { instance };
+                },
+                template: "<div>缓存实例 {{ instance }}</div>",
+            }),
+        );
+        const pinia = createPinia();
+        setActivePinia(pinia);
+        const router = testRouter(Page);
+        await router.push("/");
+        await router.isReady();
+        render(cacheHarness(Page), { global: { plugins: [pinia, router] } });
+
+        for (let index = 1; index <= 8; index++) {
+            await router.push(`/items?fonds=${index}`);
+            await nextTick();
+        }
+        expect(mountCount).toBe(9);
+
+        await router.push("/");
+        await nextTick();
+
+        expect(mountCount).toBe(10);
+    });
 });
 
 function testRouter(component: ReturnType<typeof defineComponent>) {

@@ -2,157 +2,139 @@
 
 ## Purpose
 
-定义档案本地规则的结构化条件、受控 effect、发布校验、执行决策和追踪边界。作为规则定义、解析、执行和审计的长期合同，禁止自由脚本、自由 SQL 和规则引擎直接产生副作用。
+定义用户运行时约束和规则的真实字段目录、结构化条件、固定触发点、固定动作、发布边界、事务执行、试运行和决策追踪合同。
 
 ## Requirements
-### Requirement: 本地规则定义
 
-系统 SHALL 使用本地规则定义表达治理方案版本下的校验、派生、档号、保管、访问、检测、移交、归档和导出规则。
+### Requirement: 用户定义运行时约束和规则
 
-#### Scenario: 创建本地规则
+系统 SHALL 允许管理员在治理版本下定义结构化约束和规则。
 
-- **WHEN** 客户端提交规则编码、名称、规则类型、触发点、作用域、优先级、条件树、effect 和启停状态
-- **THEN** 系统 SHALL 保存本地规则
-- **AND** 规则编码 SHALL 在同一治理方案版本内唯一
-- **AND** 规则类型 SHALL 使用受控枚举表达
-- **AND** 规则初始状态 SHALL 为 `DRAFT`
+#### Scenario: 创建运行时约束
 
-#### Scenario: 支持规则类型
+- **WHEN** 管理员提交编码、名称、固定触发点、作用域、优先级、断言、失败处理和消息
+- **THEN** 系统 SHALL 保存 `DRAFT` 约束
+- **AND** 失败处理 SHALL 只接受 `REJECT` 或 `WARN`
+- **AND** 编码 SHALL 在同一治理版本内唯一
 
-- **WHEN** 客户端创建本地规则
-- **THEN** 系统 SHALL 至少支持 `VALIDATION`、`DERIVATION`、`REFERENCE_CODE`、`RETENTION`、`ACCESS`、`QUALITY`、`TRANSFER`、`FILING` 和 `EXPORT` 规则类型
-- **AND** 系统 SHALL 拒绝未知规则类型
+#### Scenario: 创建运行时规则
 
-### Requirement: 规则作用域
+- **WHEN** 管理员提交固定触发点、结构化条件和固定动作列表
+- **THEN** 系统 SHALL 保存 `DRAFT` 规则及其动作
+- **AND** 系统 SHALL 拒绝空动作列表、未知动作或不兼容参数
+- **AND** 系统 SHALL NOT 执行配置提供的 SQL、脚本、类名、Bean 名或函数名
 
-本地规则 SHALL 明确作用域，避免跨全宗、分类、层级或对象误用。
+### Requirement: 固定运行时触发点
 
-#### Scenario: 配置规则作用域
+系统 SHALL 只在代码注册并接入真实业务 Service 的固定触发点执行用户配置。
 
-- **WHEN** 客户端为规则配置作用域
-- **THEN** 系统 SHALL 支持按治理方案版本、全宗编码、档案分类、对象类型、对象层级和触发事件限定作用域
-- **AND** 系统 SHALL 校验作用域引用的本体对象类型、事件类型和分类存在且启用
+#### Scenario: 支持首批触发点
 
-#### Scenario: 解析适用规则
+- **WHEN** 管理员创建约束或规则
+- **THEN** 系统 SHALL 支持 `ITEM_BEFORE_CREATE`、`ITEM_BEFORE_UPDATE`、`ITEM_BEFORE_DELETE`、`VOLUME_BEFORE_CREATE`、`VOLUME_BEFORE_ADD_ITEM`、`FILE_BEFORE_UPLOAD` 和 `EXPORT_BEFORE_CREATE`
+- **AND** 系统 SHALL 拒绝未知触发点
 
-- **WHEN** 业务用例请求执行某个触发点的规则
-- **THEN** 系统 SHALL 按治理方案版本、触发点、作用域和启停状态筛选规则
-- **AND** 系统 SHALL 按优先级和规则编码形成稳定执行顺序
+#### Scenario: 导入复用写入触发点
 
-### Requirement: 结构化条件树
+- **WHEN** 导入逐行创建或修改条目
+- **THEN** 系统 SHALL 分别执行 `ITEM_BEFORE_CREATE` 或 `ITEM_BEFORE_UPDATE`
+- **AND** 导入 SHALL NOT 通过独立触发点绕过正常写入合同
 
-本地规则条件 SHALL 使用结构化 AST 表达，禁止自由脚本和自由 SQL。
+### Requirement: 真实字段目录与结构化条件
 
-#### Scenario: 保存条件树
+运行时条件 SHALL 直接引用当前分类和触发点的真实字段目录并使用受控 AST。
 
-- **WHEN** 客户端提交规则条件树
-- **THEN** 系统 SHALL 只接受 `all`、`any`、`not` 和字段条件节点
-- **AND** 字段条件节点 SHALL 包含字段引用、操作符和参数值
-- **AND** 系统 SHALL 校验条件树深度和节点数量不超过系统限制
+#### Scenario: 查询字段目录
 
-#### Scenario: 拒绝自由表达式
+- **WHEN** 管理端按治理版本、分类和触发点查询字段
+- **THEN** 系统 SHALL 返回稳定字段代码、名称、数据类型、来源、可读性和可写性
+- **AND** 字段 SHALL 来自系统固定字段、分类动态字段、实物字段或只读上下文字段
 
-- **WHEN** 客户端在规则条件中提交 SQL、SpEL、MVEL、JavaScript、Groovy 或其他自由表达式
-- **THEN** 系统 SHALL 拒绝保存
-- **AND** 响应 SHALL 说明本地规则只支持结构化条件树
+#### Scenario: 保存结构化条件
 
-### Requirement: 规则事实解析
+- **WHEN** 管理员提交约束断言或规则条件
+- **THEN** 系统 SHALL 只接受 `all`、`any`、`not`、类型化比较和空值判断节点
+- **AND** 系统 SHALL 按字段类型限制操作符和参数类型
+- **AND** 系统 SHALL 校验 AST 深度、节点数、集合参数数和文本长度上限
 
-本地规则 SHALL 通过事实解析器读取受控字段，不直接访问数据库表、SQL 或 HTTP 上下文。
+#### Scenario: 已发布字段引用失效
 
-#### Scenario: 解析字段引用
+- **WHEN** 已发布定义引用的字段被删除、停用、改型或移出当前分类
+- **THEN** 系统 SHALL 阻止破坏性字段变更或在执行时失败关闭
+- **AND** 系统 SHALL NOT 跳过失效定义继续写入
 
-- **WHEN** 系统发布或执行规则
-- **THEN** 系统 SHALL 将字段引用解析为固定字段、动态字段、明细字段、文件组件字段、关系字段、事件字段或上下文字段
-- **AND** 系统 SHALL 校验字段引用在当前治理方案版本和作用域内可见
-- **AND** 系统 SHALL 拒绝无法解析的字段引用
+### Requirement: 系统固定动作
 
-#### Scenario: 限制操作符
+系统 SHALL 通过代码注册动作、参数合同、适用触发点和可写字段边界。
 
-- **WHEN** 系统校验字段条件节点
-- **THEN** 系统 SHALL 按字段数据类型限制可用操作符
-- **AND** 文本、数字、日期、枚举、布尔、引用和集合类型 SHALL 使用各自的操作符白名单
-- **AND** 系统 SHALL 拒绝字段类型不支持的操作符
+#### Scenario: 执行固定动作
 
-### Requirement: 规则 effect
+- **WHEN** 规则命中 `REJECT`、`WARN` 或 `SET_FIELD`
+- **THEN** `REJECT` SHALL 形成阻断决策
+- **AND** `WARN` SHALL 形成非阻断警告
+- **AND** `SET_FIELD` SHALL 只修改当前事务尚未持久化且类型兼容的可写候选字段
+- **AND** 动作处理器 SHALL NOT 直接调用持久化、流程、事件、远程服务或文件系统
 
-本地规则执行 SHALL 只产出受控 effect，不直接执行副作用。
+#### Scenario: 拒绝不兼容动作
 
-#### Scenario: 保存规则 effect
+- **WHEN** 管理员在删除、文件上传或导出触发点配置 `SET_FIELD`
+- **THEN** 系统 SHALL 拒绝保存或发布
+- **AND** 响应 SHALL 定位触发点和动作
 
-- **WHEN** 客户端提交规则 effect
-- **THEN** 系统 SHALL 只接受白名单 effect
-- **AND** effect 参数 SHALL 通过结构化字段表达
-- **AND** 系统 SHALL 校验 effect 与规则类型和触发点兼容
+### Requirement: 发布校验与不可变性
 
-#### Scenario: 支持 effect 类型
+运行时定义发布前 SHALL 完成结构、字段、动作、作用域和数据库状态校验，发布后语义不可原地修改。
 
-- **WHEN** 系统执行规则
-- **THEN** 系统 SHALL 至少支持 `VALIDATION_ERROR`、`WARNING`、`SUGGEST_VALUE`、`DERIVED_VALUE`、`REQUIRE_REVIEW`、`REQUIRE_QUALITY_CHECK`、`DENY_ACCESS`、`MASK_FIELD` 和 `INCLUDE_IN_PACKAGE`
-- **AND** 系统 SHALL 拒绝未知 effect 类型
+#### Scenario: 发布有效定义
 
-#### Scenario: 规则引擎不执行副作用
+- **WHEN** 管理员发布通过校验的草稿定义
+- **THEN** 系统 SHALL 将状态改为 `PUBLISHED`
+- **AND** 系统 SHALL 记录发布人、发布时间和字段目录签名
 
-- **WHEN** 规则命中并产生 effect
-- **THEN** 规则引擎 SHALL 返回规则决策
-- **AND** 规则引擎 SHALL NOT 直接写数据库
-- **AND** 规则引擎 SHALL NOT 直接发布业务事件
-- **AND** 规则引擎 SHALL NOT 直接启动流程实例
+#### Scenario: 修改已发布定义
 
-### Requirement: 规则发布校验
+- **WHEN** 客户端或直接 SQL 尝试修改或删除已发布定义及其动作
+- **THEN** 数据库和应用服务 SHALL 拒绝操作
+- **AND** 系统 SHALL 只允许受审计的启用或停用动作改变运行态开关
 
-本地规则发布前 SHALL 完成结构、引用和安全校验。
+### Requirement: 确定性事务内执行
 
-#### Scenario: 发布规则
+系统 SHALL 在业务持久化前以单次稳定顺序执行运行时规则和约束。
 
-- **WHEN** 客户端发布 `DRAFT` 规则
-- **THEN** 系统 SHALL 校验规则类型、触发点、作用域、条件树、字段引用、操作符和 effect
-- **AND** 系统 SHALL 将校验通过的规则状态改为 `PUBLISHED`
-- **AND** 系统 SHALL 记录发布时间和发布人
+#### Scenario: 执行运行时配置
 
-#### Scenario: 拒绝发布无效规则
+- **WHEN** 业务 Service 到达固定触发点
+- **THEN** 系统 SHALL 按治理版本、触发点和作用域加载已发布启用定义
+- **AND** 规则 SHALL 按 `priority ASC, definition_code ASC, id ASC` 执行并修改候选事实
+- **AND** 约束 SHALL 在规则完成后检查最终候选事实
+- **AND** 系统 SHALL NOT 因字段赋值循环执行规则
 
-- **WHEN** 规则引用不存在字段、停用本体定义、未知操作符或未知 effect
-- **THEN** 系统 SHALL 拒绝发布
-- **AND** 响应 SHALL 返回可定位到规则节点的错误信息
+#### Scenario: 字段赋值冲突
 
-### Requirement: 规则执行决策
+- **WHEN** 两个命中规则为同一字段设置不同值
+- **THEN** 系统 SHALL 返回冲突字段和规则编码并阻断事务
+- **AND** 相同值的重复赋值 SHALL 视为幂等
 
-本地规则执行 SHALL 返回可解释的规则决策。
+#### Scenario: 阻断时零部分写入
 
-#### Scenario: 执行规则
+- **WHEN** 结果包含阻断、配置失效、动作冲突、执行超限或执行器错误
+- **THEN** 业务事务 SHALL 不提交主数据、动态表、文件元数据、审计或决策追踪的部分写入
+- **AND** HTTP 边界 SHALL 返回项目 ProblemDetail 和稳定错误码
 
-- **WHEN** 业务用例提交治理方案版本、触发点和事实上下文执行规则
-- **THEN** 系统 SHALL 返回规则决策列表
-- **AND** 每个决策 SHALL 包含规则 ID、规则编码、规则类型、命中状态、effect、消息和严重级别
-- **AND** 未命中规则 SHALL 可在调试或审计模式下返回跳过原因
+### Requirement: 试运行与决策追踪
 
-#### Scenario: 阻断规则命中
+系统 SHALL 提供无副作用试运行和受权限、数据范围保护的运行时决策追踪。
 
-- **WHEN** 规则产生 `VALIDATION_ERROR` 或 `DENY_ACCESS` effect
-- **THEN** 规则决策 SHALL 标记为阻断
-- **AND** 调用方 SHALL 根据当前用例决定事务回滚、错误响应或人工处理
+#### Scenario: 试运行配置
 
-### Requirement: 规则决策追踪
+- **WHEN** 管理员提交治理版本、固定触发点、作用域和候选事实试运行
+- **THEN** 系统 SHALL 复用真实字段解析、排序、条件和动作核心
+- **AND** 响应 SHALL 返回命中结果、候选变化、警告和阻断
+- **AND** 试运行 SHALL NOT 写主数据、文件、审计或追踪
 
-系统 SHALL 保留必要的规则执行追踪，用于排查档号冲突、移交检测、利用拒绝、开放鉴定和四性检测问题。
+#### Scenario: 记录和查询决策
 
-#### Scenario: 记录规则追踪
-
-- **WHEN** 业务用例要求记录规则追踪
-- **THEN** 系统 SHALL 保存治理方案版本、触发点、对象类型、对象 ID、命中规则、effect、执行结果和执行时间
-- **AND** 系统 SHALL NOT 在追踪记录中保存未脱敏的敏感字段全文
-
-#### Scenario: 查询规则追踪
-
-- **WHEN** 客户端查询某个档案对象或过程对象的规则追踪
-- **THEN** 系统 SHALL 返回规则执行摘要
-- **AND** 系统 SHALL 按当前用户功能权限和数据范围过滤可见追踪记录
-
-#### Scenario: 数据范围内稳定翻页
-
-- **WHEN** 当前用户查询规则追踪且更晚的记录中包含超过一页的不可见记录
-- **THEN** 系统 SHALL 在数据库中先应用当前用户功能权限和数据范围，再按 `created_at DESC, id DESC` 返回 cursor 页
-- **AND** 分页控制参数 SHALL 仅使用 URL query 中的 `limit`、`cursor`、`requestTotal`
-- **AND** 相邻页面 SHALL NOT 因不可见记录而漏掉可见追踪
-- **AND** 相邻页面 SHALL NOT 返回重复追踪
+- **WHEN** 真实业务操作成功执行运行时配置
+- **THEN** 系统 SHALL 保存治理版本、触发点、对象、定义编码、动作摘要、结果和时间
+- **AND** 追踪 SHALL NOT 保存未脱敏的敏感字段全文
+- **AND** 查询 SHALL 先在数据库中应用功能权限和档案数据范围，再按 `created_at DESC, id DESC` 使用统一 cursor 分页

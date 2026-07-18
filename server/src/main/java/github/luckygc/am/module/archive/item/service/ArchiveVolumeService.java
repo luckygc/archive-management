@@ -3,6 +3,7 @@ package github.luckygc.am.module.archive.item.service;
 import java.time.LocalDateTime;
 import java.time.Year;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -40,6 +41,11 @@ import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataReferenc
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveCategoryDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFondsDto;
+import github.luckygc.am.module.archive.rule.ArchiveRuntimeTriggerPoint;
+import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeExecutionService;
+import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeExecutionService.ArchiveRuntimeExecutionRequest;
+import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeExecutionService.ArchiveRuntimeExecutionResult;
+import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeTraceService;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
 
 @Service
@@ -58,6 +64,8 @@ public class ArchiveVolumeService {
     private final ArchiveItemReadService archiveItemRoutingService;
     private final AuthorizationPermissionService permissionService;
     private final ArchiveDataScopeService dataScopeService;
+    private final ArchiveRuntimeExecutionService runtimeExecutionService;
+    private final ArchiveRuntimeTraceService runtimeTraceService;
 
     public ArchiveVolumeService(
             ArchiveMapper archiveMapper,
@@ -68,7 +76,9 @@ public class ArchiveVolumeService {
             ArchiveGovernanceService governanceService,
             ArchiveItemReadService archiveItemRoutingService,
             AuthorizationPermissionService permissionService,
-            ArchiveDataScopeService dataScopeService) {
+            ArchiveDataScopeService dataScopeService,
+            ArchiveRuntimeExecutionService runtimeExecutionService,
+            ArchiveRuntimeTraceService runtimeTraceService) {
         this.archiveMapper = archiveMapper;
         this.archiveVolumeRepository = archiveVolumeRepository;
         this.archiveMetadataService = archiveMetadataService;
@@ -78,6 +88,8 @@ public class ArchiveVolumeService {
         this.archiveItemRoutingService = archiveItemRoutingService;
         this.permissionService = permissionService;
         this.dataScopeService = dataScopeService;
+        this.runtimeExecutionService = runtimeExecutionService;
+        this.runtimeTraceService = runtimeTraceService;
     }
 
     @Transactional(readOnly = true)
@@ -256,16 +268,37 @@ public class ArchiveVolumeService {
         }
         ArchiveFondsDto fonds =
                 archiveMetadataReferenceService.getEnabledFondsByCode(request.fondsCode());
-        assertProposedVolumeInDataScope(userId, category, fonds.fondsCode());
         int archiveYear =
                 request.archiveYear() == null ? Year.now().getValue() : request.archiveYear();
         String archiveNo = StringUtils.trimToNull(request.archiveNo());
-        ensureVolumeArchiveNoUnique(category.categoryCode(), archiveNo);
         Long governanceSchemeVersionId =
                 governanceService
                         .requireDefaultVersionForNewArchive(
                                 fonds.fondsCode(), category.categoryCode())
                         .getId();
+        VolumePolicyExecution policyExecution =
+                enforceVolumePolicy(
+                        governanceSchemeVersionId,
+                        ArchiveRuntimeTriggerPoint.VOLUME_BEFORE_CREATE,
+                        null,
+                        fonds.fondsCode(),
+                        fonds.fondsName(),
+                        category,
+                        archiveNo,
+                        archiveYear,
+                        StringUtils.defaultIfBlank(request.electronicStatus(), "DRAFT"),
+                        null,
+                        userId);
+        ArchiveRuntimeExecutionResult runtimeResult = policyExecution.result();
+        archiveNo = stringFact(runtimeResult.candidateFacts(), "volume.archiveNo");
+        archiveYear = intFact(runtimeResult.candidateFacts(), "volume.archiveYear");
+        String electronicStatus =
+                StringUtils.defaultIfBlank(
+                        stringFact(runtimeResult.candidateFacts(), "volume.electronicStatus"),
+                        "DRAFT");
+        validateArchiveYear(archiveYear);
+        ensureVolumeArchiveNoUnique(category.categoryCode(), archiveNo);
+        assertProposedVolumeInDataScope(userId, category, fonds.fondsCode());
         Long id;
         try {
             id =
@@ -275,7 +308,7 @@ public class ArchiveVolumeService {
                             category.categoryCode(),
                             category.categoryName(),
                             archiveNo,
-                            StringUtils.defaultIfBlank(request.electronicStatus(), "DRAFT"),
+                            electronicStatus,
                             archiveYear,
                             governanceSchemeVersionId);
         } catch (DuplicateKeyException exception) {
@@ -283,6 +316,7 @@ public class ArchiveVolumeService {
         }
         LoadedArchiveVolume volume = loadVolume(id);
         assertVolumeInDataScope(volume, userId);
+        runtimeTraceService.saveSuccessfulExecution(policyExecution.request(), runtimeResult, id);
         return volume.response();
     }
 
@@ -316,11 +350,98 @@ public class ArchiveVolumeService {
                 || !volume.categoryCode().equals(item.categoryCode())) {
             throw new BadRequestException("案卷和档案条目不属于同一全宗和分类");
         }
+        if (volume.governanceSchemeVersionId() == null) {
+            throw new BadRequestException("案卷未绑定治理版本，不能执行运行时检查");
+        }
+        ArchiveCategoryDto category = getCategoryByCode(volume.categoryCode());
+        VolumePolicyExecution policyExecution =
+                enforceVolumePolicy(
+                        volume.governanceSchemeVersionId(),
+                        ArchiveRuntimeTriggerPoint.VOLUME_BEFORE_ADD_ITEM,
+                        volume.id(),
+                        volume.fondsCode(),
+                        volume.fondsName(),
+                        category,
+                        volume.archiveNo(),
+                        volume.archiveYear(),
+                        volume.electronicStatus(),
+                        item,
+                        userId);
         int updated =
                 archiveMapper.moveItemToVolume(
                         volumeId, archiveItemId, displayOrder == null ? 0 : displayOrder);
         if (updated == 0) {
             throw new BadRequestException("档案条目已锁定或不存在，不能加入案卷");
+        }
+        runtimeTraceService.saveSuccessfulExecution(
+                policyExecution.request(), policyExecution.result(), volumeId);
+    }
+
+    private VolumePolicyExecution enforceVolumePolicy(
+            Long governanceSchemeVersionId,
+            ArchiveRuntimeTriggerPoint triggerPoint,
+            @Nullable Long volumeId,
+            String fondsCode,
+            String fondsName,
+            ArchiveCategoryDto category,
+            @Nullable String archiveNo,
+            int archiveYear,
+            String electronicStatus,
+            @Nullable ArchiveItemDto item,
+            Long userId) {
+        Map<String, @Nullable Object> facts = new LinkedHashMap<>();
+        facts.put("volume.id", volumeId);
+        facts.put("volume.fondsCode", fondsCode);
+        facts.put("volume.fondsName", fondsName);
+        facts.put("volume.categoryCode", category.categoryCode());
+        facts.put("volume.categoryName", category.categoryName());
+        facts.put("volume.archiveNo", archiveNo);
+        facts.put("volume.archiveYear", archiveYear);
+        facts.put("volume.electronicStatus", electronicStatus);
+        facts.put("volume.securityLevelId", null);
+        facts.put("volume.retentionPeriodId", null);
+        if (item != null) {
+            facts.put("item.id", item.id());
+            facts.put("item.archiveNo", item.archiveNo());
+            facts.put("item.archiveYear", item.archiveYear());
+        }
+        facts.put("context.userId", userId);
+        facts.put("context.now", LocalDateTime.now());
+        facts.put("context.operation", triggerPoint.name());
+        ArchiveRuntimeExecutionRequest runtimeRequest =
+                new ArchiveRuntimeExecutionRequest(
+                        governanceSchemeVersionId,
+                        triggerPoint,
+                        fondsCode,
+                        category.categoryCode(),
+                        github.luckygc.am.module.archive.ArchiveLevel.VOLUME,
+                        "ARCHIVE_VOLUME",
+                        volumeId,
+                        facts,
+                        userId);
+        return new VolumePolicyExecution(
+                runtimeRequest, runtimeExecutionService.enforce(runtimeRequest));
+    }
+
+    private void validateArchiveYear(int archiveYear) {
+        int nextYear = Year.now().getValue() + 1;
+        if (archiveYear < 1 || archiveYear > nextYear) {
+            throw new BadRequestException("年度必须在 1 到 " + nextYear + " 之间", "archiveYear", "年度不合法");
+        }
+    }
+
+    private @Nullable String stringFact(Map<String, @Nullable Object> facts, String field) {
+        Object value = facts.get(field);
+        return value == null ? null : StringUtils.trimToNull(value.toString());
+    }
+
+    private int intFact(Map<String, @Nullable Object> facts, String field) {
+        Object value = facts.get(field);
+        if (value instanceof Number number) return number.intValue();
+        try {
+            return Integer.parseInt(String.valueOf(value));
+        } catch (NumberFormatException exception) {
+            throw new BadRequestException("运行时规则字段值类型不兼容：" + field);
         }
     }
 
@@ -404,6 +525,7 @@ public class ArchiveVolumeService {
                 string(row, "archiveNo"),
                 string(row, "electronicStatus"),
                 number(row, "archiveYear").intValue(),
+                longOrNull(row, "governanceSchemeVersionId"),
                 bool(row, "lockedFlag"),
                 string(row, "lockReason"),
                 longOrNull(row, "lockedBy"),
@@ -463,6 +585,7 @@ public class ArchiveVolumeService {
             String archiveNo,
             String electronicStatus,
             int archiveYear,
+            @Nullable Long governanceSchemeVersionId,
             boolean lockedFlag,
             String lockReason,
             Long lockedBy,
@@ -487,4 +610,7 @@ public class ArchiveVolumeService {
             ArchiveVolumeDto response,
             @Nullable Long securityLevelId,
             @Nullable Long retentionPeriodId) {}
+
+    private record VolumePolicyExecution(
+            ArchiveRuntimeExecutionRequest request, ArchiveRuntimeExecutionResult result) {}
 }

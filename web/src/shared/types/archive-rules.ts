@@ -1,131 +1,224 @@
 import type { ArchiveLevel } from "./archive-metadata";
 
-export type ArchiveRuleType =
-    | "VALIDATION"
-    | "DERIVATION"
-    | "REFERENCE_CODE"
-    | "RETENTION"
-    | "ACCESS"
-    | "QUALITY"
-    | "TRANSFER"
-    | "FILING"
+export type ArchiveRuntimeDefinitionKind = "CONSTRAINT" | "RULE";
+export type ArchiveRuntimeStatus = "DRAFT" | "PUBLISHED";
+export type ArchiveRuntimeActionType = "REJECT" | "WARN" | "SET_FIELD";
+export type ArchiveRuntimeTriggerPoint =
+    | "ITEM_BEFORE_CREATE"
+    | "ITEM_BEFORE_UPDATE"
+    | "ITEM_BEFORE_DELETE"
+    | "VOLUME_BEFORE_CREATE"
+    | "VOLUME_BEFORE_ADD_ITEM"
+    | "FILE_BEFORE_UPLOAD"
+    | "EXPORT_BEFORE_CREATE";
+export type ArchiveRuntimeFieldDataType =
+    | "TEXT"
+    | "INTEGER"
+    | "DECIMAL"
+    | "DATE"
+    | "DATETIME"
+    | "BOOLEAN"
+    | "ENUM"
+    | "REFERENCE";
+export type ArchiveRuntimeFieldSource =
+    | "FIXED"
+    | "METADATA"
+    | "PHYSICAL"
+    | "CONTEXT"
+    | "FILE"
     | "EXPORT";
-export type ArchiveRuleStatus = "DRAFT" | "PUBLISHED";
-export type ArchiveRuleEffectType =
-    | "VALIDATION_ERROR"
-    | "WARNING"
-    | "SUGGEST_VALUE"
-    | "DERIVED_VALUE"
-    | "REQUIRE_REVIEW"
-    | "REQUIRE_QUALITY_CHECK"
-    | "DENY_ACCESS"
-    | "MASK_FIELD"
-    | "INCLUDE_IN_PACKAGE";
-export type ArchiveRuleDecisionSeverity = "INFO" | "WARNING" | "ERROR";
+export type ArchiveRuntimeDecisionSeverity = "INFO" | "WARNING" | "ERROR";
 
-export interface ArchiveRuleEffectRequest {
-    effectType: ArchiveRuleEffectType;
-    effectOrder?: number;
-    effectParams?: Record<string, unknown>;
+export interface ArchiveRuntimeActionRequest {
+    actionType: ArchiveRuntimeActionType;
+    actionOrder?: number;
+    actionParams?: Record<string, unknown>;
 }
 
-export interface ArchiveRuleRequest {
+export interface ArchiveRuntimeDefinitionRequest {
     schemeVersionId: number;
-    ruleCode: string;
-    ruleName: string;
-    ruleType: ArchiveRuleType;
-    triggerCode: string;
+    definitionKind: ArchiveRuntimeDefinitionKind;
+    definitionCode: string;
+    definitionName: string;
+    triggerPoint: ArchiveRuntimeTriggerPoint;
     scopeFondsCode?: string;
     scopeCategoryCode?: string;
-    scopeObjectTypeId?: number;
     scopeArchiveLevel?: ArchiveLevel;
-    scopeEventTypeId?: number;
     priority?: number;
     conditionJson: Record<string, unknown>;
+    constraintAction?: "REJECT" | "WARN";
+    constraintMessage?: string;
     enabled?: boolean;
-    effects: ArchiveRuleEffectRequest[];
+    actions?: ArchiveRuntimeActionRequest[];
 }
 
-export interface ArchiveRuleEffectDto {
+export interface ArchiveRuntimeActionDto {
     id: number;
-    effectType: ArchiveRuleEffectType;
-    effectOrder: number;
-    effectParams: Record<string, unknown>;
+    actionType: ArchiveRuntimeActionType;
+    actionOrder: number;
+    actionParams: Record<string, unknown>;
 }
 
-export interface ArchiveRuleDto {
+export interface ArchiveRuntimeDefinitionDto extends ArchiveRuntimeDefinitionRequest {
     id: number;
-    schemeVersionId: number;
-    ruleCode: string;
-    ruleName: string;
-    ruleType: ArchiveRuleType;
-    triggerCode: string;
-    status: ArchiveRuleStatus;
+    status: ArchiveRuntimeStatus;
     enabled: boolean;
     priority: number;
-    effects: ArchiveRuleEffectDto[];
+    fieldCatalogSignature?: string;
+    actions: ArchiveRuntimeActionDto[];
 }
 
-export interface ExecuteArchiveRulesRequest {
+export interface ArchiveRuntimeFieldDto {
+    fieldCode: string;
+    fieldName: string;
+    dataType: ArchiveRuntimeFieldDataType;
+    source: ArchiveRuntimeFieldSource;
+    readable: boolean;
+    writable: boolean;
+    categoryCode?: string;
+}
+
+export interface ArchiveRuntimeFieldCatalogDto {
     schemeVersionId: number;
-    triggerCode: string;
+    categoryCode?: string;
+    triggerPoint: ArchiveRuntimeTriggerPoint;
+    signature: string;
+    fields: ArchiveRuntimeFieldDto[];
+}
+
+export interface ArchiveRuntimeExecutionRequest {
+    schemeVersionId: number;
+    triggerPoint: ArchiveRuntimeTriggerPoint;
     fondsCode?: string;
     categoryCode?: string;
-    objectTypeCode?: string;
     archiveLevel?: ArchiveLevel;
-    eventCode?: string;
-    facts: Record<string, unknown>;
-    includeSkipped: boolean;
-    recordTrace: boolean;
-    userId?: number;
+    objectTypeCode?: string;
+    objectId?: number;
+    candidateFacts: Record<string, unknown>;
 }
 
-export interface ArchiveRuleEffectDecision {
-    effectType: ArchiveRuleEffectType;
+export interface ArchiveRuntimeActionDecision {
+    actionType: ArchiveRuntimeActionType;
     params: Record<string, unknown>;
 }
 
-export interface ArchiveRuleDecisionDto {
-    ruleId?: number;
-    ruleCode: string;
-    ruleType: ArchiveRuleType;
+export interface ArchiveRuntimeDecisionDto {
+    definitionId?: number;
+    definitionCode: string;
+    definitionKind: ArchiveRuntimeDefinitionKind;
     matched: boolean;
-    effects: ArchiveRuleEffectDecision[];
+    actions: ArchiveRuntimeActionDecision[];
     message?: string;
-    severity: ArchiveRuleDecisionSeverity;
+    severity: ArchiveRuntimeDecisionSeverity;
     blocking: boolean;
     skippedReason?: string;
 }
 
-export interface SearchArchiveRuleTracesRequest {
-    schemeVersionId?: number;
-    triggerCode?: string;
-    objectTypeCode?: string;
-    objectId?: number;
-    ruleType?: ArchiveRuleType;
+export interface ArchiveRuntimeWarningDto {
+    definitionCode: string;
+    message?: string;
 }
 
-export interface SearchArchiveRuleTracesQuery extends SearchArchiveRuleTracesRequest {
+export interface ArchiveRuntimeExecutionResult {
+    candidateFacts: Record<string, unknown>;
+    assignments: Record<string, unknown>;
+    decisions: ArchiveRuntimeDecisionDto[];
+    warnings: ArchiveRuntimeWarningDto[];
+    blocking: boolean;
+}
+
+export interface SearchArchiveRuntimeTracesRequest {
+    schemeVersionId?: number;
+    triggerPoint?: ArchiveRuntimeTriggerPoint;
+    objectTypeCode?: string;
+    objectId?: number;
+    definitionKind?: ArchiveRuntimeDefinitionKind;
+}
+
+export interface SearchArchiveRuntimeTracesQuery extends SearchArchiveRuntimeTracesRequest {
     limit?: number;
     cursor?: string;
     requestTotal?: boolean;
 }
 
-export interface ArchiveRuleTraceDto {
+export interface ArchiveRuntimeTraceDto {
     id: number;
     schemeVersionId: number;
-    triggerCode: string;
+    triggerPoint: ArchiveRuntimeTriggerPoint;
     objectTypeCode: string;
     objectId?: number;
-    ruleId?: number;
-    ruleCode?: string;
-    ruleType?: ArchiveRuleType;
+    definitionId?: number;
+    definitionCode?: string;
+    definitionKind?: ArchiveRuntimeDefinitionKind;
     matchedFlag: boolean;
     blockingFlag: boolean;
-    effectJson: unknown;
+    actionJson: unknown;
     message?: string;
-    severity?: ArchiveRuleDecisionSeverity;
+    severity?: ArchiveRuntimeDecisionSeverity;
     skippedReason?: string;
     createdBy?: number;
     createdAt: string;
+}
+
+export interface ArchiveRuntimeSnapshot {
+    schemaVersion: string;
+    sourceApplicationVersion: string;
+    exportedAt: string;
+    fileName: string;
+    scheme: {
+        schemeCode: string;
+        schemeName: string;
+        versionCode: string;
+        versionDescription?: string;
+        scopes: Array<{
+            scopeType: "GLOBAL" | "FONDS" | "CATEGORY";
+            fondsCode?: string;
+            categoryCode?: string;
+            defaultFlag: boolean;
+        }>;
+    };
+    definitions: unknown[];
+    sha256: string;
+}
+
+export interface ArchiveRuntimeSnapshotPreflightRequest {
+    snapshot: ArchiveRuntimeSnapshot;
+    targetSchemeCode?: string;
+    categoryMappings?: Record<string, string>;
+    fieldMappings?: Record<string, string>;
+}
+
+export interface ArchiveRuntimeSnapshotFieldMapping {
+    definitionCode: string;
+    sourceCategoryCode?: string;
+    targetCategoryCode?: string;
+    sourceFieldCode: string;
+    targetFieldCode: string;
+    dataType: ArchiveRuntimeFieldDataType;
+}
+
+export interface ArchiveRuntimeSnapshotPreflightResult {
+    compatible: boolean;
+    targetSchemeCode: string;
+    definitionCount: number;
+    scopeCount: number;
+    fieldMappings: ArchiveRuntimeSnapshotFieldMapping[];
+    sha256: string;
+}
+
+export interface ArchiveRuntimeSnapshotImportResult {
+    schemeVersionId: number;
+    schemeCode: string;
+    versionCode: string;
+    definitionCount: number;
+    fieldMappings: ArchiveRuntimeSnapshotFieldMapping[];
+    sha256: string;
+}
+
+export interface ArchiveRuntimeSnapshotRestoreResult {
+    schemeVersionId: number;
+    beforeDefinitionCount: number;
+    afterDefinitionCount: number;
+    fieldMappings: ArchiveRuntimeSnapshotFieldMapping[];
+    sha256: string;
 }

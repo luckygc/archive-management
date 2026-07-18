@@ -15,6 +15,7 @@ public final class ArchiveItemLineRowCommands {
             boolean previous,
             @Nullable Integer cursorLineOrder,
             @Nullable Long cursorId,
+            boolean requestTotal,
             int rowLimit) {}
 
     public record ArchiveItemLineRowLookup(

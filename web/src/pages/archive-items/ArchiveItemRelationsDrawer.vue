@@ -297,6 +297,7 @@ function archiveNo(value: unknown) {
         </el-table>
         <CursorPagination
             :limit="relationLimit"
+            :total="relations?.total"
             :prev="relations?.prev"
             :next="relations?.next"
             :loading="relationLoading"
@@ -382,6 +383,7 @@ function archiveNo(value: unknown) {
             <CursorPagination
                 v-if="candidates"
                 :limit="candidateLimit"
+                :total="candidates?.total"
                 :prev="candidates.prev"
                 :next="candidates.next"
                 :loading="candidateLoading"

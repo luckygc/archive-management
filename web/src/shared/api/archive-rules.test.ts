@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
-import { searchArchiveRuleTraces } from "./archive-rules";
+import { searchArchiveRuntimeTraces } from "./archive-rules";
 
 const httpClientMock = vi.hoisted(() => ({
     post: vi.fn(),
@@ -17,19 +17,19 @@ beforeEach(() => {
 
 describe("archive rules API", () => {
     it("规则追踪将游标分页参数放入 URL query", async () => {
-        await searchArchiveRuleTraces({
+        await searchArchiveRuntimeTraces({
             schemeVersionId: 11,
-            triggerCode: "BEFORE_SAVE",
+            triggerPoint: "ITEM_BEFORE_CREATE",
             limit: 200,
             cursor: "next-token",
             requestTotal: true,
         });
 
         expect(httpClientMock.post).toHaveBeenCalledWith(
-            "/api/v1/archive-rule-traces:search?limit=200&cursor=next-token&requestTotal=true",
+            "/api/v1/archive-runtime-traces:search?limit=200&cursor=next-token",
             {
                 schemeVersionId: 11,
-                triggerCode: "BEFORE_SAVE",
+                triggerPoint: "ITEM_BEFORE_CREATE",
             },
         );
     });

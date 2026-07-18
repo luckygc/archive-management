@@ -179,6 +179,7 @@ function archiveNo(row: Record<string, unknown>) {
             </el-table>
             <CursorPagination
                 :limit="itemLimit"
+                :total="items?.total"
                 :prev="items?.prev"
                 :next="items?.next"
                 :loading="itemLoading"
@@ -239,6 +240,7 @@ function archiveNo(row: Record<string, unknown>) {
             </el-radio-group>
             <CursorPagination
                 :limit="candidateLimit"
+                :total="candidates?.total"
                 :prev="candidates?.prev"
                 :next="candidates?.next"
                 :loading="candidateLoading"

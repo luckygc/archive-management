@@ -88,7 +88,9 @@ class ArchiveItemAuditWriteTests {
                         permissionService,
                         auditRepository,
                         archiveItemReadService,
-                        new ArchiveItemFieldValueConverter());
+                        new ArchiveItemFieldValueConverter(),
+                        ArchiveRuntimeTestSupport.passthroughExecutionService(),
+                        ArchiveRuntimeTestSupport.traceService());
         archiveItemLockService =
                 new ArchiveItemLockService(
                         archiveMapper, archiveItemReadService, permissionService, auditRepository);
@@ -264,6 +266,7 @@ class ArchiveItemAuditWriteTests {
                 Map.entry("archiveNo", "A-001"),
                 Map.entry("electronicStatus", "DRAFT"),
                 Map.entry("archiveYear", 2026),
+                Map.entry("governanceSchemeVersionId", 11L),
                 Map.entry("lockedFlag", locked));
     }
 }

@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/vue";
+import { cleanup, fireEvent, render, screen } from "@testing-library/vue";
 import ElementPlus from "element-plus";
 import { createPinia, getActivePinia, setActivePinia } from "pinia";
 import type { RouteRecordRaw } from "vue-router";
@@ -111,6 +111,22 @@ describe("RouteMenuItem", () => {
         });
 
         expect(screen.queryByText("空分组")).not.toBeInTheDocument();
+    });
+
+    it("悬停叶子菜单时预取页面组件且不重复加载", async () => {
+        const loadPage = vi.fn().mockResolvedValue({ default: {} });
+        renderMenu({
+            path: "prefetched",
+            component: loadPage,
+            meta: { title: "预取页面", menu: true },
+        });
+        const menuItem = screen.getByText("预取页面").closest(".el-menu-item");
+        expect(menuItem).not.toBeNull();
+
+        await fireEvent.mouseEnter(menuItem!);
+        await fireEvent.mouseEnter(menuItem!);
+
+        expect(loadPage).toHaveBeenCalledOnce();
     });
 });
 

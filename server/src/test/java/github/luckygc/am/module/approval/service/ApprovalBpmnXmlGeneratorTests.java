@@ -54,7 +54,7 @@ class ApprovalBpmnXmlGeneratorTests {
         String xml = generator.generate("approval_1", "合同审批", graph);
 
         assertThat(xml)
-                .contains("<process id=\"approval_1\"")
+                .contains("<process id=\"process_approval_1\"")
                 .contains("flowable:candidateUsers=\"10,11\"")
                 .contains("<exclusiveGateway id=\"amount_gateway\"")
                 .contains("default=\"flow_gateway_end\"")

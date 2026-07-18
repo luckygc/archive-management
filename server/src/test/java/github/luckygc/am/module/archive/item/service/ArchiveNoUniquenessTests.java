@@ -90,7 +90,9 @@ class ArchiveNoUniquenessTests {
                         permissionService,
                         auditRepository,
                         archiveItemReadService,
-                        new ArchiveItemFieldValueConverter());
+                        new ArchiveItemFieldValueConverter(),
+                        ArchiveRuntimeTestSupport.passthroughExecutionService(),
+                        ArchiveRuntimeTestSupport.traceService());
         archiveVolumeService =
                 new ArchiveVolumeService(
                         archiveMapper,
@@ -101,7 +103,9 @@ class ArchiveNoUniquenessTests {
                         governanceService,
                         archiveItemReadService,
                         permissionService,
-                        dataScopeService);
+                        dataScopeService,
+                        ArchiveRuntimeTestSupport.passthroughExecutionService(),
+                        ArchiveRuntimeTestSupport.traceService());
     }
 
     @Test
@@ -363,6 +367,7 @@ class ArchiveNoUniquenessTests {
                 Map.entry("archiveNo", "A-001"),
                 Map.entry("electronicStatus", "DRAFT"),
                 Map.entry("archiveYear", 2026),
+                Map.entry("governanceSchemeVersionId", 11L),
                 Map.entry("lockedFlag", false));
     }
 }

@@ -3,6 +3,8 @@ package github.luckygc.am.module.archive.item.service;
 import java.io.InputStream;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.lang3.StringUtils;
@@ -23,6 +25,17 @@ import github.luckygc.am.module.archive.item.ArchiveItemAudit;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemAuditDataRepository;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemDataRepository;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
+import github.luckygc.am.module.archive.metadata.ArchiveDynamicTableNames;
+import github.luckygc.am.module.archive.metadata.ArchiveFieldScope;
+import github.luckygc.am.module.archive.metadata.service.ArchiveCategoryService;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveCategoryDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFieldDto;
+import github.luckygc.am.module.archive.rule.ArchiveRuntimeTriggerPoint;
+import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeExecutionService;
+import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeExecutionService.ArchiveRuntimeExecutionRequest;
+import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeExecutionService.ArchiveRuntimeExecutionResult;
+import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeTraceService;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
 import github.luckygc.am.module.storage.service.StorageObjectService;
 import github.luckygc.am.module.storage.service.StorageObjectService.StorageObjectDownload;
@@ -45,6 +58,10 @@ public class ArchiveItemElectronicFileService {
     private final ArchiveItemAuditDataRepository archiveItemAuditRepository;
     private final AuthorizationPermissionService permissionService;
     private final ArchiveItemReadService archiveItemRoutingService;
+    private final ArchiveMetadataService archiveMetadataService;
+    private final ArchiveCategoryService archiveCategoryService;
+    private final ArchiveRuntimeExecutionService runtimeExecutionService;
+    private final ArchiveRuntimeTraceService runtimeTraceService;
 
     public ArchiveItemElectronicFileService(
             ArchiveMapper archiveMapper,
@@ -52,13 +69,21 @@ public class ArchiveItemElectronicFileService {
             ArchiveItemDataRepository archiveItemRepository,
             ArchiveItemAuditDataRepository archiveItemAuditRepository,
             AuthorizationPermissionService permissionService,
-            ArchiveItemReadService archiveItemRoutingService) {
+            ArchiveItemReadService archiveItemRoutingService,
+            ArchiveMetadataService archiveMetadataService,
+            ArchiveCategoryService archiveCategoryService,
+            ArchiveRuntimeExecutionService runtimeExecutionService,
+            ArchiveRuntimeTraceService runtimeTraceService) {
         this.archiveMapper = archiveMapper;
         this.storageObjectService = storageObjectService;
         this.archiveItemRepository = archiveItemRepository;
         this.archiveItemAuditRepository = archiveItemAuditRepository;
         this.permissionService = permissionService;
         this.archiveItemRoutingService = archiveItemRoutingService;
+        this.archiveMetadataService = archiveMetadataService;
+        this.archiveCategoryService = archiveCategoryService;
+        this.runtimeExecutionService = runtimeExecutionService;
+        this.runtimeTraceService = runtimeTraceService;
     }
 
     @Transactional
@@ -74,7 +99,8 @@ public class ArchiveItemElectronicFileService {
             throw new BadRequestException("文件不能为空", "file", "文件不能为空");
         }
         archiveItemRoutingService.assertItemInDataScope(archiveItemId, userId);
-        ensureArchiveItemExists(archiveItemId);
+        ArchiveItem archiveItem = loadArchiveItem(archiveItemId);
+        FilePolicyExecution policyExecution = enforceUploadPolicy(archiveItem, command, userId);
         StorageObjectDto storageObject =
                 storageObjectService.storeObject(
                         new StorageObjectService.StoreStorageObjectCommand(
@@ -94,6 +120,8 @@ public class ArchiveItemElectronicFileService {
         } catch (DataIntegrityViolationException exception) {
             throw new BadRequestException("档案电子文件已存在");
         }
+        runtimeTraceService.saveSuccessfulExecution(
+                policyExecution.request(), policyExecution.result(), archiveItemId);
         return new ArchiveItemElectronicFileResponse(
                 electronicFileId,
                 archiveItemId,
@@ -105,6 +133,88 @@ public class ArchiveItemElectronicFileService {
                 storageObject.contentType(),
                 storageObject.checksumSha256(),
                 LocalDateTime.now());
+    }
+
+    private FilePolicyExecution enforceUploadPolicy(
+            ArchiveItem item, UploadArchiveItemElectronicFileCommand command, Long userId) {
+        if (item.getGovernanceSchemeVersionId() == null) {
+            throw new BadRequestException("档案条目未绑定治理版本，不能执行运行时检查");
+        }
+        ArchiveCategoryDto category =
+                archiveCategoryService.listCategories(null).stream()
+                        .filter(
+                                candidate ->
+                                        candidate.categoryCode().equals(item.getCategoryCode()))
+                        .findFirst()
+                        .orElseThrow(
+                                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "档案分类不存在"));
+        List<ArchiveFieldDto> fields =
+                archiveMetadataService.listEnabledFields(
+                        category.id(), github.luckygc.am.module.archive.ArchiveLevel.ITEM);
+        List<ArchiveFieldDto> physicalFields =
+                archiveMetadataService.listEnabledFields(
+                        category.id(),
+                        github.luckygc.am.module.archive.ArchiveLevel.ITEM,
+                        ArchiveFieldScope.PHYSICAL);
+        Map<String, @Nullable Object> facts = new LinkedHashMap<>();
+        facts.put("item.id", item.getId());
+        facts.put("item.fondsCode", item.getFondsCode());
+        facts.put("item.fondsName", item.getFondsName());
+        facts.put("item.categoryCode", item.getCategoryCode());
+        facts.put("item.categoryName", item.getCategoryName());
+        facts.put("item.archiveNo", item.getArchiveNo());
+        facts.put("item.archiveYear", item.getArchiveYear());
+        facts.put("item.electronicStatus", item.getElectronicStatus());
+        facts.put("item.securityLevelId", item.getSecurityLevelId());
+        facts.put("item.retentionPeriodId", item.getRetentionPeriodId());
+        addDynamicFacts(
+                facts, "metadata.", category, ArchiveFieldScope.METADATA, item.getId(), fields);
+        addDynamicFacts(
+                facts,
+                "physical.",
+                category,
+                ArchiveFieldScope.PHYSICAL,
+                item.getId(),
+                physicalFields);
+        facts.put("file.name", command.originalFilename());
+        facts.put("file.contentType", command.contentType());
+        facts.put("file.size", command.contentLength());
+        facts.put("context.userId", userId);
+        facts.put("context.now", LocalDateTime.now());
+        facts.put("context.operation", ArchiveRuntimeTriggerPoint.FILE_BEFORE_UPLOAD.name());
+        ArchiveRuntimeExecutionRequest request =
+                new ArchiveRuntimeExecutionRequest(
+                        item.getGovernanceSchemeVersionId(),
+                        ArchiveRuntimeTriggerPoint.FILE_BEFORE_UPLOAD,
+                        item.getFondsCode(),
+                        item.getCategoryCode(),
+                        github.luckygc.am.module.archive.ArchiveLevel.ITEM,
+                        "ARCHIVE_ITEM",
+                        item.getId(),
+                        facts,
+                        userId);
+        return new FilePolicyExecution(request, runtimeExecutionService.enforce(request));
+    }
+
+    private void addDynamicFacts(
+            Map<String, @Nullable Object> facts,
+            String prefix,
+            ArchiveCategoryDto category,
+            ArchiveFieldScope scope,
+            Long itemId,
+            List<ArchiveFieldDto> fields) {
+        String tableName =
+                ArchiveDynamicTableNames.tableName(
+                        category, github.luckygc.am.module.archive.ArchiveLevel.ITEM, scope);
+        Map<String, Object> row =
+                StringUtils.isBlank(tableName) || archiveMapper.tableExists(tableName) == 0
+                        ? Map.of()
+                        : archiveMapper.loadDynamicRecord(tableName, itemId);
+        fields.forEach(
+                field ->
+                        facts.put(
+                                prefix + field.fieldCode(),
+                                row == null ? null : row.get(field.columnName())));
     }
 
     @Transactional(readOnly = true)
@@ -285,4 +395,7 @@ public class ArchiveItemElectronicFileService {
     public record ArchiveItemFileDownload(String originalFilename, FileStorageResource resource) {}
 
     private record OpenedArchiveItemFile(Long storageObjectId, ArchiveItemFileDownload download) {}
+
+    private record FilePolicyExecution(
+            ArchiveRuntimeExecutionRequest request, ArchiveRuntimeExecutionResult result) {}
 }

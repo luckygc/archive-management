@@ -28,6 +28,7 @@ import github.luckygc.am.module.archive.governance.repository.ArchiveGovernanceB
 import github.luckygc.am.module.archive.governance.repository.ArchiveGovernanceSchemeDataRepository;
 import github.luckygc.am.module.archive.governance.repository.ArchiveGovernanceSchemeVersionDataRepository;
 import github.luckygc.am.module.archive.governance.repository.ArchiveGovernanceScopeDataRepository;
+import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeDefinitionService;
 
 @DisplayName("档案治理方案服务")
 class ArchiveGovernanceServiceTests {
@@ -36,6 +37,7 @@ class ArchiveGovernanceServiceTests {
     private ArchiveGovernanceSchemeVersionDataRepository versionRepository;
     private ArchiveGovernanceScopeDataRepository scopeRepository;
     private ArchiveGovernanceBindingDataRepository bindingRepository;
+    private ArchiveRuntimeDefinitionService runtimeDefinitionService;
     private ArchiveGovernanceService service;
 
     @BeforeEach
@@ -44,9 +46,14 @@ class ArchiveGovernanceServiceTests {
         versionRepository = mock(ArchiveGovernanceSchemeVersionDataRepository.class);
         scopeRepository = mock(ArchiveGovernanceScopeDataRepository.class);
         bindingRepository = mock(ArchiveGovernanceBindingDataRepository.class);
+        runtimeDefinitionService = mock(ArchiveRuntimeDefinitionService.class);
         service =
                 new ArchiveGovernanceService(
-                        schemeRepository, versionRepository, scopeRepository, bindingRepository);
+                        schemeRepository,
+                        versionRepository,
+                        scopeRepository,
+                        bindingRepository,
+                        runtimeDefinitionService);
     }
 
     @Test
@@ -96,6 +103,7 @@ class ArchiveGovernanceServiceTests {
         assertThat(version.getPublishedBy()).isEqualTo(8L);
         assertThat(version.getPublishedAt()).isNotNull();
         verify(versionRepository).update(version);
+        verify(runtimeDefinitionService).validateAllForGovernancePublish(3L);
     }
 
     @Test
@@ -152,8 +160,8 @@ class ArchiveGovernanceServiceTests {
         ArchiveGovernanceBinding binding = new ArchiveGovernanceBinding();
         binding.setId(201L);
         binding.setSchemeVersionId(11L);
-        binding.setBindingType(ArchiveGovernanceBindingType.RULE_SET);
-        binding.setTargetType("RULE");
+        binding.setBindingType(ArchiveGovernanceBindingType.DESCRIPTION_PROFILE);
+        binding.setTargetType("PROFILE");
         binding.setTargetId(301L);
         binding.setTargetCode("retention_rules");
         binding.setBindingOrder(2);
@@ -166,8 +174,8 @@ class ArchiveGovernanceServiceTests {
         assertThat(responses.getFirst().id()).isEqualTo(201L);
         assertThat(responses.getFirst().schemeVersionId()).isEqualTo(11L);
         assertThat(responses.getFirst().bindingType())
-                .isEqualTo(ArchiveGovernanceBindingType.RULE_SET);
-        assertThat(responses.getFirst().targetType()).isEqualTo("RULE");
+                .isEqualTo(ArchiveGovernanceBindingType.DESCRIPTION_PROFILE);
+        assertThat(responses.getFirst().targetType()).isEqualTo("PROFILE");
         assertThat(responses.getFirst().targetId()).isEqualTo(301L);
         assertThat(responses.getFirst().targetCode()).isEqualTo("retention_rules");
         assertThat(responses.getFirst().bindingOrder()).isEqualTo(2);
@@ -177,22 +185,22 @@ class ArchiveGovernanceServiceTests {
     @DisplayName("配置引用保护只拦截已发布、冻结或退役治理版本引用")
     void requireTargetNotReferencedShouldOnlyCheckProtectedVersionBindings() {
         when(bindingRepository.countProtectedByBindingTypeAndTargetId(
-                        ArchiveGovernanceBindingType.ONTOLOGY, 301L))
+                        ArchiveGovernanceBindingType.DESCRIPTION_PROFILE, 301L))
                 .thenReturn(0L);
 
         assertThatNoException()
                 .isThrownBy(
                         () ->
                                 service.requireTargetNotReferenced(
-                                        ArchiveGovernanceBindingType.ONTOLOGY, 301L));
+                                        ArchiveGovernanceBindingType.DESCRIPTION_PROFILE, 301L));
 
         when(bindingRepository.countProtectedByBindingTypeAndTargetId(
-                        ArchiveGovernanceBindingType.ONTOLOGY, 302L))
+                        ArchiveGovernanceBindingType.DESCRIPTION_PROFILE, 302L))
                 .thenReturn(1L);
         assertThatThrownBy(
                         () ->
                                 service.requireTargetNotReferenced(
-                                        ArchiveGovernanceBindingType.ONTOLOGY, 302L))
+                                        ArchiveGovernanceBindingType.DESCRIPTION_PROFILE, 302L))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("该配置已被治理方案版本引用");
     }

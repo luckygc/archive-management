@@ -13,13 +13,16 @@ import type {
 import type { CollectionResponse, CursorPageResponse } from "../types/pagination";
 import { queryString } from "./query-string";
 
-export function listApprovalWorkflowDefinitions(params: {
-    enabled?: boolean;
-    limit?: number;
-    cursor?: string;
-} = {}) {
+export function listApprovalWorkflowDefinitions(
+    params: {
+        enabled?: boolean;
+        limit?: number;
+        cursor?: string;
+        requestTotal?: boolean;
+    } = {},
+) {
     return httpClient.get<CursorPageResponse<ApprovalWorkflowDefinitionDto>>(
-        `/api/v1/approval-workflow-definitions${queryString({ limit: 100, ...params })}`,
+        `/api/v1/approval-workflow-definitions${queryString({ limit: 100, ...params, requestTotal: params.cursor ? undefined : (params.requestTotal ?? true) })}`,
     );
 }
 
@@ -81,13 +84,16 @@ export function startApprovalWorkflowInstance(payload: StartApprovalWorkflowInst
     );
 }
 
-export function listMyApprovalWorkflowInstances(params: {
-    status?: ApprovalInstanceStatus;
-    limit?: number;
-    cursor?: string;
-} = {}) {
+export function listMyApprovalWorkflowInstances(
+    params: {
+        status?: ApprovalInstanceStatus;
+        limit?: number;
+        cursor?: string;
+        requestTotal?: boolean;
+    } = {},
+) {
     return httpClient.get<CursorPageResponse<ApprovalWorkflowInstanceDto>>(
-        `/api/v1/approval-workflow-instances${queryString({ limit: 100, ...params })}`,
+        `/api/v1/approval-workflow-instances${queryString({ limit: 100, ...params, requestTotal: params.cursor ? undefined : (params.requestTotal ?? true) })}`,
     );
 }
 
