@@ -8,7 +8,7 @@ use IPC::Open3 qw(open3);
 use Symbol qw(gensym);
 use Test::More;
 
-my $script = 'tooling/scripts/source-lines.pl';
+my $script = 'frontend/scripts/source-lines.pl';
 
 subtest '前端软提示线只报告不失败' => sub {
     my $root = fixture_root('frontend/admin/src');

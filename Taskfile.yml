@@ -21,8 +21,8 @@ tasks:
         desc: 检查 OpenSpec 与项目规范治理状态
         cmds:
             - openspec validate --all --strict --no-interactive
-            - prove -v tooling/scripts/governance-check.t
-            - perl tooling/scripts/governance-check.pl
+            - prove -v openspec/scripts/governance-check.t
+            - perl openspec/scripts/governance-check.pl
 
     infra-up:
         desc: 启动本地 PostgreSQL 和 RustFS 并初始化开发 bucket

@@ -10,7 +10,6 @@ Archive Management 由单 Spring Boot 主应用、PC 前端和独立文件预览
 | `backend/preview-service/` | 独立部署的 Go 文件预览服务，不嵌入主应用进程 |
 | `frontend/admin/` | Vue 3 + Element Plus PC 管理工作台 |
 | `frontend/packages/core/` | 框架无关的 API client、安全验证和共享类型 |
-| `tooling/` | 仓库治理脚本和依赖补丁，不承载产品运行时代码 |
 | `openspec/` | 通用 API 与业务能力合同 |
 | `docs/` | 开发、部署、运维、使用和稳定架构说明 |
 

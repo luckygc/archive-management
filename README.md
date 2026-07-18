@@ -26,7 +26,6 @@
 | `frontend/admin/` | PC 管理界面 |
 | `frontend/packages/core/` | 框架无关的前端共享基础能力 |
 | `deploy/` | 本地 Compose、反向代理和部署配置 |
-| `tooling/` | 仓库治理脚本和依赖补丁 |
 | `openspec/` | API 与业务合同 |
 | `docs/` | 开发、架构、部署、运维和使用说明 |
 

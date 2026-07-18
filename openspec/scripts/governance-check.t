@@ -18,7 +18,7 @@ BEGIN {
 
 use Test::More;
 
-my $script = 'tooling/scripts/governance-check.pl';
+my $script = 'openspec/scripts/governance-check.pl';
 
 subtest '只报告任务全部完成但尚未归档的活动 change' => sub {
     my $root = fixture_root();

@@ -31,7 +31,7 @@ RUN mise install node pnpm
 WORKDIR /workspace/frontend
 
 COPY frontend/package.json frontend/pnpm-lock.yaml frontend/pnpm-workspace.yaml frontend/vite.config.ts ./
-COPY tooling/patches/ /workspace/tooling/patches/
+COPY frontend/patches/ ./patches/
 COPY frontend/packages/core/package.json ./packages/core/package.json
 COPY frontend/admin/package.json ./admin/package.json
 
