@@ -16,9 +16,6 @@ import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.archive.ArchiveLevel;
-import github.luckygc.am.module.archive.governance.ArchiveGovernanceSchemeVersion;
-import github.luckygc.am.module.archive.governance.ArchiveGovernanceSchemeVersionStatus;
-import github.luckygc.am.module.archive.governance.repository.ArchiveGovernanceSchemeVersionDataRepository;
 import github.luckygc.am.module.archive.rule.ArchiveRuntimeAction;
 import github.luckygc.am.module.archive.rule.ArchiveRuntimeActionType;
 import github.luckygc.am.module.archive.rule.ArchiveRuntimeDefinition;
@@ -39,7 +36,6 @@ public class ArchiveRuntimeDefinitionService {
 
     private final ArchiveRuntimeDefinitionDataRepository definitionRepository;
     private final ArchiveRuntimeActionDataRepository actionRepository;
-    private final ArchiveGovernanceSchemeVersionDataRepository schemeVersionRepository;
     private final ArchiveRuntimeFieldCatalogService fieldCatalogService;
     private final Map<ArchiveRuntimeActionType, ArchiveRuntimeActionHandler> actionHandlers;
     private final ArchiveRuntimeConditionValidator conditionValidator =
@@ -49,13 +45,11 @@ public class ArchiveRuntimeDefinitionService {
     public ArchiveRuntimeDefinitionService(
             ArchiveRuntimeDefinitionDataRepository definitionRepository,
             ArchiveRuntimeActionDataRepository actionRepository,
-            ArchiveGovernanceSchemeVersionDataRepository schemeVersionRepository,
             ArchiveRuntimeFieldCatalogService fieldCatalogService,
             List<ArchiveRuntimeActionHandler> handlers,
             JsonMapper jsonMapper) {
         this.definitionRepository = definitionRepository;
         this.actionRepository = actionRepository;
-        this.schemeVersionRepository = schemeVersionRepository;
         this.fieldCatalogService = fieldCatalogService;
         this.actionHandlers = indexHandlers(handlers);
         this.jsonMapper = jsonMapper;
@@ -63,12 +57,10 @@ public class ArchiveRuntimeDefinitionService {
 
     @Transactional(readOnly = true)
     public List<ArchiveRuntimeDefinitionResponse> listDefinitions(
-            Long schemeVersionId, @Nullable ArchiveRuntimeStatus status) {
-        requireSchemeVersion(schemeVersionId);
+            @Nullable ArchiveRuntimeStatus status) {
         return (status == null
-                        ? definitionRepository.findBySchemeVersionId(schemeVersionId)
-                        : definitionRepository.findBySchemeVersionIdAndStatus(
-                                schemeVersionId, status))
+                        ? definitionRepository.list()
+                        : definitionRepository.findByStatus(status))
                 .stream().map(this::toResponse).toList();
     }
 
@@ -80,11 +72,9 @@ public class ArchiveRuntimeDefinitionService {
     @Transactional
     public ArchiveRuntimeDefinitionResponse createDefinition(
             SaveArchiveRuntimeDefinitionRequest request, Long userId) {
-        ArchiveGovernanceSchemeVersion version = requireEditableVersion(request.schemeVersionId());
         String code = normalizeCode(request.definitionCode());
-        if (definitionRepository.findBySchemeVersionIdAndDefinitionCode(version.getId(), code)
-                != null) {
-            throw new BadRequestException("运行时定义编码已存在", "definitionCode", "同一治理版本内编码必须唯一");
+        if (definitionRepository.findByDefinitionCode(code) != null) {
+            throw new BadRequestException("运行时定义编码已存在", "definitionCode", "定义编码必须全局唯一");
         }
         ArchiveRuntimeDefinition definition = new ArchiveRuntimeDefinition();
         applyFields(definition, request, code);
@@ -100,16 +90,10 @@ public class ArchiveRuntimeDefinitionService {
             Long definitionId, SaveArchiveRuntimeDefinitionRequest request, Long userId) {
         ArchiveRuntimeDefinition definition = loadDefinition(definitionId);
         requireDraft(definition);
-        requireEditableVersion(definition.getSchemeVersionId());
-        if (!Objects.equals(definition.getSchemeVersionId(), request.schemeVersionId())) {
-            throw new BadRequestException("不能把运行时定义移动到其他治理版本");
-        }
         String code = normalizeCode(request.definitionCode());
-        ArchiveRuntimeDefinition duplicate =
-                definitionRepository.findBySchemeVersionIdAndDefinitionCode(
-                        definition.getSchemeVersionId(), code);
+        ArchiveRuntimeDefinition duplicate = definitionRepository.findByDefinitionCode(code);
         if (duplicate != null && !Objects.equals(duplicate.getId(), definitionId)) {
-            throw new BadRequestException("运行时定义编码已存在", "definitionCode", "同一治理版本内编码必须唯一");
+            throw new BadRequestException("运行时定义编码已存在", "definitionCode", "定义编码必须全局唯一");
         }
         applyFields(definition, request, code);
         validateDraft(definition, request.actions());
@@ -121,7 +105,6 @@ public class ArchiveRuntimeDefinitionService {
     public ArchiveRuntimeDefinitionResponse publishDefinition(Long definitionId, Long userId) {
         ArchiveRuntimeDefinition definition = loadDefinition(definitionId);
         requireDraft(definition);
-        requireEditableVersion(definition.getSchemeVersionId());
         List<ArchiveRuntimeAction> actions =
                 actionRepository.findByDefinitionId(definition.getId());
         ArchiveRuntimeFieldCatalog fieldCatalog = validateDraft(definition, toRequests(actions));
@@ -147,7 +130,6 @@ public class ArchiveRuntimeDefinitionService {
     public void deleteDefinition(Long definitionId, Long userId) {
         ArchiveRuntimeDefinition definition = loadDefinition(definitionId);
         requireDraft(definition);
-        requireEditableVersion(definition.getSchemeVersionId());
         for (ArchiveRuntimeAction action : actionRepository.findByDefinitionId(definitionId)) {
             actionRepository.update(action);
             actionRepository.delete(action);
@@ -156,50 +138,13 @@ public class ArchiveRuntimeDefinitionService {
         definitionRepository.delete(definition);
     }
 
-    @Transactional(readOnly = true)
-    public void validateAllForGovernancePublish(Long schemeVersionId) {
-        for (ArchiveRuntimeDefinition definition :
-                definitionRepository.findBySchemeVersionId(schemeVersionId)) {
-            if (definition.getStatus() != ArchiveRuntimeStatus.PUBLISHED) {
-                throw new BadRequestException("治理版本包含未发布运行时定义：" + definition.getDefinitionCode());
-            }
-            validatePublishedDefinition(definition);
-        }
-    }
-
-    @Transactional(readOnly = true)
-    public void validatePortableDefinition(SaveArchiveRuntimeDefinitionRequest request) {
-        requireSchemeVersion(request.schemeVersionId());
-        ArchiveRuntimeDefinition definition = new ArchiveRuntimeDefinition();
-        applyFields(definition, request, normalizeCode(request.definitionCode()));
-        definition.setStatus(ArchiveRuntimeStatus.DRAFT);
-        validateDraft(definition, request.actions());
-    }
-
-    private void validatePublishedDefinition(ArchiveRuntimeDefinition definition) {
-        ArchiveRuntimeFieldCatalog catalog =
-                fieldCatalogService.catalog(
-                        definition.getSchemeVersionId(),
-                        definition.getScopeCategoryCode(),
-                        definition.getTriggerPoint());
-        conditionValidator.validate(
-                toConditionNode(definition.getConditionJson()), catalog.fieldsByCode());
-        validateActions(
-                definition, actionRepository.findByDefinitionId(definition.getId()), catalog);
-        if (!Objects.equals(definition.getFieldCatalogSignature(), catalog.signature())) {
-            throw new BadRequestException("已发布运行时定义字段目录已失效：" + definition.getDefinitionCode());
-        }
-    }
-
     private ArchiveRuntimeFieldCatalog validateDraft(
             ArchiveRuntimeDefinition definition,
             @Nullable List<SaveArchiveRuntimeActionRequest> actionRequests) {
         validateShape(definition, actionRequests);
         ArchiveRuntimeFieldCatalog catalog =
                 fieldCatalogService.catalog(
-                        definition.getSchemeVersionId(),
-                        definition.getScopeCategoryCode(),
-                        definition.getTriggerPoint());
+                        definition.getScopeCategoryCode(), definition.getTriggerPoint());
         conditionValidator.validate(
                 toConditionNode(definition.getConditionJson()), catalog.fieldsByCode());
         validateActions(definition, toActions(definition.getId(), actionRequests), catalog);
@@ -264,7 +209,6 @@ public class ArchiveRuntimeDefinitionService {
             ArchiveRuntimeDefinition definition,
             SaveArchiveRuntimeDefinitionRequest request,
             String code) {
-        definition.setSchemeVersionId(request.schemeVersionId());
         definition.setDefinitionKind(request.definitionKind());
         definition.setDefinitionCode(code);
         definition.setDefinitionName(requiredText(request.definitionName(), "definitionName"));
@@ -332,7 +276,6 @@ public class ArchiveRuntimeDefinitionService {
     private ArchiveRuntimeDefinitionResponse toResponse(ArchiveRuntimeDefinition definition) {
         return new ArchiveRuntimeDefinitionResponse(
                 definition.getId(),
-                definition.getSchemeVersionId(),
                 definition.getDefinitionKind(),
                 definition.getDefinitionCode(),
                 definition.getDefinitionName(),
@@ -362,20 +305,6 @@ public class ArchiveRuntimeDefinitionService {
         return definitionRepository
                 .findById(definitionId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "运行时定义不存在"));
-    }
-
-    private ArchiveGovernanceSchemeVersion requireSchemeVersion(Long schemeVersionId) {
-        return schemeVersionRepository
-                .findById(schemeVersionId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "治理版本不存在"));
-    }
-
-    private ArchiveGovernanceSchemeVersion requireEditableVersion(Long schemeVersionId) {
-        ArchiveGovernanceSchemeVersion version = requireSchemeVersion(schemeVersionId);
-        if (version.getStatus() != ArchiveGovernanceSchemeVersionStatus.DRAFT) {
-            throw new BadRequestException("只有草稿治理版本可以维护运行时定义");
-        }
-        return version;
     }
 
     private void requireDraft(ArchiveRuntimeDefinition definition) {
@@ -422,7 +351,6 @@ public class ArchiveRuntimeDefinitionService {
     }
 
     public record SaveArchiveRuntimeDefinitionRequest(
-            Long schemeVersionId,
             ArchiveRuntimeDefinitionKind definitionKind,
             String definitionCode,
             String definitionName,
@@ -444,7 +372,6 @@ public class ArchiveRuntimeDefinitionService {
 
     public record ArchiveRuntimeDefinitionResponse(
             Long id,
-            Long schemeVersionId,
             ArchiveRuntimeDefinitionKind definitionKind,
             String definitionCode,
             String definitionName,

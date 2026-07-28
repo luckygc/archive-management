@@ -6,7 +6,6 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 public record ArchiveRuntimeTraceSearchCriteria(
-        @Nullable Long schemeVersionId,
         @Nullable String triggerPoint,
         @Nullable String objectTypeCode,
         @Nullable Long objectId,

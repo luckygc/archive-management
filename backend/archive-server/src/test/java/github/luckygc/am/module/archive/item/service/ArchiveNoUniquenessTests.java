@@ -25,8 +25,6 @@ import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeResolutionTypes.ArchiveDataScopeFilter;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
-import github.luckygc.am.module.archive.governance.ArchiveGovernanceSchemeVersion;
-import github.luckygc.am.module.archive.governance.service.ArchiveGovernanceService;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemAuditDataRepository;
 import github.luckygc.am.module.archive.item.repository.ArchiveVolumeDataRepository;
 import github.luckygc.am.module.archive.item.service.ArchiveItemCommandService.CreateArchiveItemRequest;
@@ -49,7 +47,6 @@ class ArchiveNoUniquenessTests {
     private ArchiveMetadataService archiveMetadataService;
     private ArchiveMetadataReferenceService archiveMetadataReferenceService;
     private ArchiveCategoryService archiveCategoryService;
-    private ArchiveGovernanceService governanceService;
     private ArchiveItemCommandService archiveItemRoutingService;
     private ArchiveVolumeService archiveVolumeService;
 
@@ -59,7 +56,6 @@ class ArchiveNoUniquenessTests {
         archiveMetadataService = mock(ArchiveMetadataService.class);
         archiveMetadataReferenceService = mock(ArchiveMetadataReferenceService.class);
         archiveCategoryService = mock(ArchiveCategoryService.class);
-        governanceService = mock(ArchiveGovernanceService.class);
         ArchiveItemSearchProjectionService searchProjectionService =
                 mock(ArchiveItemSearchProjectionService.class);
         ArchiveDataScopeService dataScopeService = mock(ArchiveDataScopeService.class);
@@ -69,8 +65,6 @@ class ArchiveNoUniquenessTests {
                 mock(AuthorizationPermissionService.class);
         ArchiveItemAuditDataRepository auditRepository = mock(ArchiveItemAuditDataRepository.class);
         when(permissionService.hasPermission(anyLong(), anyString())).thenReturn(true);
-        when(governanceService.requireDefaultVersionForNewArchive(anyString(), anyString()))
-                .thenReturn(governanceVersion());
         ArchiveItemReadService archiveItemReadService =
                 new ArchiveItemReadService(
                         archiveMetadataService,
@@ -83,7 +77,6 @@ class ArchiveNoUniquenessTests {
                         archiveMetadataService,
                         archiveMetadataReferenceService,
                         archiveCategoryService,
-                        governanceService,
                         archiveMapper,
                         searchProjectionService,
                         dataScopeService,
@@ -100,7 +93,6 @@ class ArchiveNoUniquenessTests {
                         archiveMetadataService,
                         archiveMetadataReferenceService,
                         archiveCategoryService,
-                        governanceService,
                         archiveItemReadService,
                         permissionService,
                         dataScopeService,
@@ -139,8 +131,7 @@ class ArchiveNoUniquenessTests {
                         anyString(),
                         any(),
                         any(),
-                        anyInt(),
-                        any());
+                        anyInt());
     }
 
     @Test
@@ -162,8 +153,7 @@ class ArchiveNoUniquenessTests {
                         anyString(),
                         any(),
                         any(),
-                        anyInt(),
-                        any()))
+                        anyInt()))
                 .thenThrow(new DuplicateKeyException("duplicate archive_no"));
 
         assertThatThrownBy(
@@ -279,8 +269,7 @@ class ArchiveNoUniquenessTests {
                         anyString(),
                         any(),
                         anyString(),
-                        anyInt(),
-                        any());
+                        anyInt());
     }
 
     @Test
@@ -297,8 +286,7 @@ class ArchiveNoUniquenessTests {
                         anyString(),
                         any(),
                         anyString(),
-                        anyInt(),
-                        any()))
+                        anyInt()))
                 .thenThrow(new DuplicateKeyException("duplicate archive_no"));
 
         assertThatThrownBy(
@@ -314,12 +302,6 @@ class ArchiveNoUniquenessTests {
     private ArchiveFondsDto activeFonds() {
         LocalDateTime now = LocalDateTime.of(2026, 6, 30, 10, 0);
         return new ArchiveFondsDto(1L, "F001", "启用全宗", true, 0, now, now);
-    }
-
-    private ArchiveGovernanceSchemeVersion governanceVersion() {
-        ArchiveGovernanceSchemeVersion version = new ArchiveGovernanceSchemeVersion();
-        version.setId(77L);
-        return version;
     }
 
     private ArchiveCategoryDto itemCategory() {
@@ -367,7 +349,6 @@ class ArchiveNoUniquenessTests {
                 Map.entry("archiveNo", "A-001"),
                 Map.entry("electronicStatus", "DRAFT"),
                 Map.entry("archiveYear", 2026),
-                Map.entry("governanceSchemeVersionId", 11L),
                 Map.entry("lockedFlag", false));
     }
 }

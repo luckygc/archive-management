@@ -8,7 +8,7 @@
 | --- | --- |
 | `config.yaml` | OpenSpec 项目配置 |
 | `specs/` | 当前作为业务和 API 合同真相源的能力规格 |
-| `changes/` | 进行中的 change；归档历史位于 `changes/archive/` |
+| `changes/` | 真实进行中的 change；`1.0.0` 前不保留已完成 change 的历史副本 |
 
 ## 当前真相源规格
 
@@ -19,17 +19,13 @@
 - `specs/unified-todo/spec.md`
 - `specs/archive-classification-scheme/spec.md`
 - `specs/archive-data-scope/spec.md`
-- `specs/archive-governance-scheme/spec.md`
-- `specs/archive-governance-workbench/spec.md`
 - `specs/archive-import-export/spec.md`
 - `specs/archive-local-rule-engine/spec.md`
 - `specs/archive-metadata/spec.md`
 - `specs/archive-record-routing/spec.md`
 - `specs/archive-record-search/spec.md`
-- `specs/archive-runtime-check-portability/spec.md`
 - `specs/authorization-permissions/spec.md`
 - `specs/cursor-pagination-summary/spec.md`
-- `specs/file-preview-service/spec.md`
 - `specs/file-storage/spec.md`
 - `specs/intake/spec.md`
 - `specs/login-authentication/spec.md`
@@ -47,7 +43,7 @@ openspec list --specs
 openspec list
 ```
 
-`changes/` 只保留真实进行中的变更；任务全部完成后必须校准规格并及时归档。
+`changes/` 只保留真实进行中的变更。项目达到 `1.0.0` 前，任务全部完成后必须先将最终合同校准到 `specs/`，再删除 change；OpenSpec 不保留过渡方案、迁移叙事或已完成 change 的历史副本。
 
 ## 使用规则
 
@@ -56,7 +52,8 @@ openspec list
 - 改档案搜索、管理查询或全文 provider 前，先查 `specs/archive-record-search/spec.md`。
 - 改文件存储、短链或对象存储前，先查 `specs/file-storage/spec.md`。
 - 改登录、CAP、会话或认证用户前，先查 `specs/login-authentication/spec.md`。
-- 业务或 API change 完成后，先将增量同步或校准至 `specs/`，再将 change 目录归档到 `changes/archive/`；里程碑或纯工程治理 change 可以跳过规格同步并直接归档。
+- 稳定规格只描述当前可观察合同和业务不变量，不写实现伪代码，不保存已经被最终实现推翻的中间设计。
+- 业务或 API change 完成后，先将增量同步或校准至 `specs/`，确认最终事实完整后删除 change；纯工程 change 在验证完成后直接删除。
 
 ## 与说明文档的关系
 

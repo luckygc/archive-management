@@ -57,8 +57,6 @@ import github.luckygc.am.test.PostgreSqlContainerTest;
 @DisplayName("档案导出运行时策略 PostgreSQL 集成")
 class ArchiveExportRuntimePolicyIntegrationTests extends PostgreSqlContainerTest {
 
-    private static final long SCHEME_ID = 9_650_000L;
-    private static final long VERSION_ID = 9_650_001L;
     private static final long ITEM_ID = 9_650_002L;
     private static final long USER_ID = 9_650_009L;
 
@@ -73,7 +71,7 @@ class ArchiveExportRuntimePolicyIntegrationTests extends PostgreSqlContainerTest
 
     @BeforeEach
     void setUp() {
-        seedGovernanceAndItem();
+        seedItem();
         when(permissionService.hasPermission(USER_ID, "archive:export")).thenReturn(true);
         when(queryService.searchItems(any(), eq(USER_ID)))
                 .thenReturn(
@@ -139,31 +137,18 @@ class ArchiveExportRuntimePolicyIntegrationTests extends PostgreSqlContainerTest
         assertThat(count("am_archive_runtime_trace")).isEqualTo(1L);
         assertThat(
                         jdbcTemplate.queryForObject(
-                                "select trigger_point from am_archive_runtime_trace "
-                                        + "where scheme_version_id = ?",
-                                String.class,
-                                VERSION_ID))
+                                "select trigger_point from am_archive_runtime_trace", String.class))
                 .isEqualTo("EXPORT_BEFORE_CREATE");
     }
 
-    private void seedGovernanceAndItem() {
-        jdbcTemplate.update(
-                "insert into am_archive_governance_scheme (id, scheme_code, scheme_name) "
-                        + "values (?, 'runtime-export-scheme', '导出运行时方案')",
-                SCHEME_ID);
-        jdbcTemplate.update(
-                "insert into am_archive_governance_scheme_version "
-                        + "(id, scheme_id, version_code) values (?, ?, 'v1')",
-                VERSION_ID,
-                SCHEME_ID);
+    private void seedItem() {
         jdbcTemplate.update(
                 "insert into am_archive_item "
                         + "(id, fonds_code, fonds_name, category_code, category_name, archive_no, "
-                        + "electronic_status, archive_year, governance_scheme_version_id) "
+                        + "electronic_status, archive_year) "
                         + "values (?, 'F001', '全宗', 'CONTRACT', '合同', 'A-001', "
-                        + "'DRAFT', 2026, ?)",
-                ITEM_ID,
-                VERSION_ID);
+                        + "'DRAFT', 2026)",
+                ITEM_ID);
     }
 
     private static Map<String, Object> exportRow() {

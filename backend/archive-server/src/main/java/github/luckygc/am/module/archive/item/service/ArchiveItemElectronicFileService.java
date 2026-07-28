@@ -137,9 +137,6 @@ public class ArchiveItemElectronicFileService {
 
     private FilePolicyExecution enforceUploadPolicy(
             ArchiveItem item, UploadArchiveItemElectronicFileCommand command, Long userId) {
-        if (item.getGovernanceSchemeVersionId() == null) {
-            throw new BadRequestException("档案条目未绑定治理版本，不能执行运行时检查");
-        }
         ArchiveCategoryDto category =
                 archiveCategoryService.listCategories(null).stream()
                         .filter(
@@ -184,7 +181,6 @@ public class ArchiveItemElectronicFileService {
         facts.put("context.operation", ArchiveRuntimeTriggerPoint.FILE_BEFORE_UPLOAD.name());
         ArchiveRuntimeExecutionRequest request =
                 new ArchiveRuntimeExecutionRequest(
-                        item.getGovernanceSchemeVersionId(),
                         ArchiveRuntimeTriggerPoint.FILE_BEFORE_UPLOAD,
                         item.getFondsCode(),
                         item.getCategoryCode(),

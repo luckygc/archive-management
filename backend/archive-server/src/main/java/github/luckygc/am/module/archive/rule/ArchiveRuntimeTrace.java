@@ -30,9 +30,6 @@ public class ArchiveRuntimeTrace implements CreationAuditable {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "scheme_version_id", nullable = false)
-    private Long schemeVersionId;
-
     @Column(name = "trigger_point", nullable = false, length = 50)
     @Enumerated(EnumType.STRING)
     private ArchiveRuntimeTriggerPoint triggerPoint;

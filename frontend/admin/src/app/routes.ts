@@ -131,30 +131,22 @@ export const workspaceRoutes: RouteRecordRaw[] = [
             },
         ),
     ]),
-    group("archive/governance", "档案治理", DataAnalysis, [
+    group("archive/rules", "档案规则", DataAnalysis, [
         route(
-            "schemes",
-            "archive-governance",
-            "治理方案",
-            DataAnalysis,
-            () => import("@/pages/archive-governance/ArchiveGovernancePage.vue"),
-            { permission: "archive:governance:manage" },
-        ),
-        route(
-            "rules",
+            "definitions",
             "archive-rules",
             "运行时规则",
             DocumentChecked,
             () => import("@/pages/archive-rules/ArchiveRulesPage.vue"),
-            { permission: "archive:governance:manage" },
+            { permission: "archive:rule:manage" },
         ),
         route(
-            "rule-traces",
+            "traces",
             "archive-rule-traces",
             "决策追踪",
             Document,
             () => import("@/pages/archive-rule-traces/ArchiveRuleTracesPage.vue"),
-            { permission: "archive:governance:manage" },
+            { permission: "archive:rule:manage" },
         ),
     ]),
     group("system", "系统配置", Setting, [

@@ -70,8 +70,7 @@ public interface ArchiveMapper {
             @Param("electronicStatus") String electronicStatus,
             @Param("securityLevelId") Long securityLevelId,
             @Param("retentionPeriodId") Long retentionPeriodId,
-            @Param("archiveYear") int archiveYear,
-            @Param("governanceSchemeVersionId") Long governanceSchemeVersionId);
+            @Param("archiveYear") int archiveYear);
 
     int countArchiveItemsByArchiveNo(
             @Param("categoryCode") String categoryCode,
@@ -121,8 +120,7 @@ public interface ArchiveMapper {
             @Param("categoryName") String categoryName,
             @Param("archiveNo") String archiveNo,
             @Param("electronicStatus") String electronicStatus,
-            @Param("archiveYear") int archiveYear,
-            @Param("governanceSchemeVersionId") Long governanceSchemeVersionId);
+            @Param("archiveYear") int archiveYear);
 
     int countArchiveVolumesByArchiveNo(
             @Param("categoryCode") String categoryCode,

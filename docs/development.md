@@ -10,7 +10,6 @@
 | --- | --- |
 | Java | 25 |
 | Maven | 3 |
-| Go | 1.22 |
 | Node.js | 24 |
 | pnpm | 11 |
 | Task | 3 |
@@ -79,13 +78,7 @@ task web-dev
 
 `task web-dev` 会长期占用端口，只由开发者在需要预览时本地执行；自动化代理不主动启动。
 
-独立文件预览服务：
-
-```bash
-task preview-run
-```
-
-默认端口和运行参数分别以 `application.yaml`、Vite+ 配置和 [`backend/preview-service/README.md`](../backend/preview-service/README.md) 为准，本文不复制运行参数表。
+默认端口和运行参数分别以 `application.yaml` 和 Vite+ 配置为准，本文不复制运行参数表。
 
 ## 按范围验证
 
@@ -96,7 +89,6 @@ task preview-run
 | 单个前端包 | `task web-*` 或 `task frontend-core-*` 对应任务 |
 | 后端 Java | `task server-format-check`、`task server-compile`、相关 `task server-test` |
 | 后端发布包 | `task server-package` |
-| 文件预览服务 | `task preview-test`、`task preview-build` |
 
 后端需要直接运行 Maven 时，先 `cd backend/archive-server` 再执行 Maven 命令。前端需要直接运行 pnpm 或 Vite+ 时先 `cd frontend`，再使用项目依赖提供的 `pnpm ...` 或 `pnpm exec vp ...`；可用子命令以 `pnpm exec vp help` 为准。
 

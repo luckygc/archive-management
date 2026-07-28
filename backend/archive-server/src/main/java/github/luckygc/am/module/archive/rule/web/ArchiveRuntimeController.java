@@ -30,14 +30,6 @@ import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeExecutionServ
 import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeExecutionService.ArchiveRuntimeExecutionResult;
 import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeFieldCatalogService;
 import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeFieldCatalogService.ArchiveRuntimeFieldCatalog;
-import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeSnapshotService;
-import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeSnapshotService.ArchiveRuntimeSnapshot;
-import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeSnapshotService.ArchiveRuntimeSnapshotImportRequest;
-import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeSnapshotService.ArchiveRuntimeSnapshotImportResult;
-import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeSnapshotService.ArchiveRuntimeSnapshotPreflightRequest;
-import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeSnapshotService.ArchiveRuntimeSnapshotPreflightResult;
-import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeSnapshotService.ArchiveRuntimeSnapshotRestoreRequest;
-import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeSnapshotService.ArchiveRuntimeSnapshotRestoreResult;
 import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeTraceService;
 import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeTraceService.SearchArchiveRuntimeTracesRequest;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionCode;
@@ -50,7 +42,6 @@ public class ArchiveRuntimeController {
     private final ArchiveRuntimeFieldCatalogService fieldCatalogService;
     private final ArchiveRuntimeExecutionService executionService;
     private final ArchiveRuntimeTraceService traceService;
-    private final ArchiveRuntimeSnapshotService snapshotService;
     private final AuthorizationPermissionService permissionService;
 
     public ArchiveRuntimeController(
@@ -58,23 +49,20 @@ public class ArchiveRuntimeController {
             ArchiveRuntimeFieldCatalogService fieldCatalogService,
             ArchiveRuntimeExecutionService executionService,
             ArchiveRuntimeTraceService traceService,
-            ArchiveRuntimeSnapshotService snapshotService,
             AuthorizationPermissionService permissionService) {
         this.definitionService = definitionService;
         this.fieldCatalogService = fieldCatalogService;
         this.executionService = executionService;
         this.traceService = traceService;
-        this.snapshotService = snapshotService;
         this.permissionService = permissionService;
     }
 
     @GetMapping("/api/v1/archive-runtime-definitions")
     public CollectionResponse<ArchiveRuntimeDefinitionResponse> listDefinitions(
-            @RequestParam Long schemeVersionId,
             @RequestParam(required = false) ArchiveRuntimeStatus status,
             Authentication authentication) {
         requireManage(authentication);
-        return CollectionResponse.of(definitionService.listDefinitions(schemeVersionId, status));
+        return CollectionResponse.of(definitionService.listDefinitions(status));
     }
 
     @GetMapping("/api/v1/archive-runtime-definitions/{definitionId}")
@@ -127,12 +115,11 @@ public class ArchiveRuntimeController {
 
     @GetMapping("/api/v1/archive-runtime-fields")
     public ArchiveRuntimeFieldCatalog getFieldCatalog(
-            @RequestParam Long schemeVersionId,
             @RequestParam(required = false) @Nullable String categoryCode,
             @RequestParam ArchiveRuntimeTriggerPoint triggerPoint,
             Authentication authentication) {
         requireManage(authentication);
-        return fieldCatalogService.catalog(schemeVersionId, categoryCode, triggerPoint);
+        return fieldCatalogService.catalog(categoryCode, triggerPoint);
     }
 
     @PostMapping("/api/v1/archive-runtime-definitions:simulate")
@@ -151,43 +138,9 @@ public class ArchiveRuntimeController {
         return traceService.listTraces(withUserId(request, userId), pageRequest);
     }
 
-    @GetMapping("/api/v1/archive-governance-scheme-versions/{schemeVersionId}/runtime-snapshot")
-    public ArchiveRuntimeSnapshot exportSnapshot(
-            @PathVariable Long schemeVersionId, Authentication authentication) {
-        requireManage(authentication);
-        return snapshotService.exportSnapshot(schemeVersionId);
-    }
-
-    @PostMapping("/api/v1/archive-runtime-snapshots:preflight")
-    public ArchiveRuntimeSnapshotPreflightResult preflightSnapshot(
-            @RequestBody ArchiveRuntimeSnapshotPreflightRequest request,
-            Authentication authentication) {
-        requireManage(authentication);
-        return snapshotService.preflight(request);
-    }
-
-    @PostMapping("/api/v1/archive-runtime-snapshots:import")
-    @ResponseStatus(HttpStatus.CREATED)
-    public ArchiveRuntimeSnapshotImportResult importSnapshot(
-            @RequestBody ArchiveRuntimeSnapshotImportRequest request,
-            Authentication authentication) {
-        return snapshotService.importAsDraft(request, requireManage(authentication));
-    }
-
-    @PostMapping(
-            "/api/v1/archive-governance-scheme-versions/{schemeVersionId}:restore-runtime-snapshot")
-    public ArchiveRuntimeSnapshotRestoreResult restoreSnapshot(
-            @PathVariable Long schemeVersionId,
-            @RequestBody ArchiveRuntimeSnapshotRestoreRequest request,
-            Authentication authentication) {
-        return snapshotService.restoreDraft(
-                schemeVersionId, request, requireManage(authentication));
-    }
-
     private ArchiveRuntimeExecutionRequest withUserId(
             ArchiveRuntimeExecutionRequest request, Long userId) {
         return new ArchiveRuntimeExecutionRequest(
-                request.schemeVersionId(),
                 request.triggerPoint(),
                 request.fondsCode(),
                 request.categoryCode(),
@@ -201,7 +154,6 @@ public class ArchiveRuntimeController {
     private SearchArchiveRuntimeTracesRequest withUserId(
             SearchArchiveRuntimeTracesRequest request, Long userId) {
         return new SearchArchiveRuntimeTracesRequest(
-                request.schemeVersionId(),
                 request.triggerPoint(),
                 request.objectTypeCode(),
                 request.objectId(),
@@ -214,7 +166,7 @@ public class ArchiveRuntimeController {
                 AuthenticatedUsers.requireUserId(
                         authentication == null ? null : authentication.getPrincipal());
         permissionService.requirePermission(
-                userId, AuthorizationPermissionCode.ARCHIVE_GOVERNANCE_MANAGE);
+                userId, AuthorizationPermissionCode.ARCHIVE_RULE_MANAGE);
         return userId;
     }
 }

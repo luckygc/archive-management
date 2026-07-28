@@ -17,7 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.archive.ArchiveLevel;
-import github.luckygc.am.module.archive.governance.repository.ArchiveGovernanceSchemeVersionDataRepository;
 import github.luckygc.am.module.archive.metadata.ArchiveCategory;
 import github.luckygc.am.module.archive.metadata.ArchiveField;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldDataType;
@@ -30,27 +29,19 @@ import github.luckygc.am.module.archive.rule.ArchiveRuntimeTriggerPoint;
 @Service
 public class ArchiveRuntimeFieldCatalogService {
 
-    private final ArchiveGovernanceSchemeVersionDataRepository schemeVersionRepository;
     private final ArchiveCategoryDataRepository categoryRepository;
     private final ArchiveFieldDataRepository fieldRepository;
 
     public ArchiveRuntimeFieldCatalogService(
-            ArchiveGovernanceSchemeVersionDataRepository schemeVersionRepository,
             ArchiveCategoryDataRepository categoryRepository,
             ArchiveFieldDataRepository fieldRepository) {
-        this.schemeVersionRepository = schemeVersionRepository;
         this.categoryRepository = categoryRepository;
         this.fieldRepository = fieldRepository;
     }
 
     @Transactional(readOnly = true)
     public ArchiveRuntimeFieldCatalog catalog(
-            Long schemeVersionId,
-            @Nullable String categoryCode,
-            ArchiveRuntimeTriggerPoint triggerPoint) {
-        schemeVersionRepository
-                .findById(schemeVersionId)
-                .orElseThrow(() -> new BadRequestException("治理版本不存在"));
+            @Nullable String categoryCode, ArchiveRuntimeTriggerPoint triggerPoint) {
         String normalizedCategoryCode = StringUtils.trimToNull(categoryCode);
         ArchiveCategory category = resolveCategory(normalizedCategoryCode);
         List<ArchiveRuntimeField> fields = new ArrayList<>();
@@ -66,7 +57,7 @@ public class ArchiveRuntimeFieldCatalogService {
                         .sorted(Comparator.comparing(ArchiveRuntimeField::fieldCode))
                         .toList();
         return new ArchiveRuntimeFieldCatalog(
-                schemeVersionId, normalizedCategoryCode, triggerPoint, signature(ordered), ordered);
+                normalizedCategoryCode, triggerPoint, signature(ordered), ordered);
     }
 
     private @Nullable ArchiveCategory resolveCategory(@Nullable String categoryCode) {
@@ -227,7 +218,6 @@ public class ArchiveRuntimeFieldCatalogService {
     }
 
     public record ArchiveRuntimeFieldCatalog(
-            Long schemeVersionId,
             @Nullable String categoryCode,
             ArchiveRuntimeTriggerPoint triggerPoint,
             String signature,

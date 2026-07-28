@@ -1,6 +1,6 @@
 # Archive Management
 
-面向机构内部使用的档案管理系统。PC 工作台使用 Vue 3、TypeScript 和 Element Plus，后端为单 Spring Boot 应用，并配套独立文件预览服务。
+面向机构内部使用的档案管理系统。PC 工作台使用 Vue 3、TypeScript 和 Element Plus，后端为单 Spring Boot 应用。
 
 ## 当前真相源
 
@@ -22,7 +22,6 @@
 | 路径 | 职责 |
 | --- | --- |
 | `backend/archive-server/` | Spring Boot 后端主应用 |
-| `backend/preview-service/` | 独立 Go 文件预览服务 |
 | `frontend/` | pnpm/Vite+ 前端工作区配置、测试入口与前端项目 |
 | `frontend/admin/` | PC 管理界面 |
 | `frontend/packages/core/` | 框架无关的前端共享基础能力 |

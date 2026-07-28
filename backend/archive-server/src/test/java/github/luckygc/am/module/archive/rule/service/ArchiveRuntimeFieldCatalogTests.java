@@ -5,15 +5,12 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
-import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import github.luckygc.am.module.archive.ArchiveLevel;
-import github.luckygc.am.module.archive.governance.ArchiveGovernanceSchemeVersion;
-import github.luckygc.am.module.archive.governance.repository.ArchiveGovernanceSchemeVersionDataRepository;
 import github.luckygc.am.module.archive.metadata.ArchiveCategory;
 import github.luckygc.am.module.archive.metadata.ArchiveField;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldScope;
@@ -31,15 +28,9 @@ class ArchiveRuntimeFieldCatalogTests {
 
     @BeforeEach
     void setUp() {
-        ArchiveGovernanceSchemeVersionDataRepository versionRepository =
-                mock(ArchiveGovernanceSchemeVersionDataRepository.class);
         categoryRepository = mock(ArchiveCategoryDataRepository.class);
         fieldRepository = mock(ArchiveFieldDataRepository.class);
-        when(versionRepository.findById(11L))
-                .thenReturn(Optional.of(new ArchiveGovernanceSchemeVersion()));
-        service =
-                new ArchiveRuntimeFieldCatalogService(
-                        versionRepository, categoryRepository, fieldRepository);
+        service = new ArchiveRuntimeFieldCatalogService(categoryRepository, fieldRepository);
     }
 
     @Test
@@ -52,7 +43,7 @@ class ArchiveRuntimeFieldCatalogTests {
         when(fieldRepository.list(21L, ArchiveLevel.ITEM, ArchiveFieldScope.PHYSICAL, true))
                 .thenReturn(List.of(field(32L, "boxNo", "盒号", ArchiveFieldType.INTEGER, false)));
 
-        var catalog = service.catalog(11L, "DOC", ArchiveRuntimeTriggerPoint.ITEM_BEFORE_CREATE);
+        var catalog = service.catalog("DOC", ArchiveRuntimeTriggerPoint.ITEM_BEFORE_CREATE);
 
         assertThat(catalog.fieldsByCode())
                 .containsKeys(
@@ -77,7 +68,7 @@ class ArchiveRuntimeFieldCatalogTests {
         when(fieldRepository.list(21L, ArchiveLevel.ITEM, ArchiveFieldScope.PHYSICAL, true))
                 .thenReturn(List.of());
 
-        var catalog = service.catalog(11L, "DOC", ArchiveRuntimeTriggerPoint.ITEM_BEFORE_DELETE);
+        var catalog = service.catalog("DOC", ArchiveRuntimeTriggerPoint.ITEM_BEFORE_DELETE);
 
         assertThat(catalog.fields()).noneMatch(field -> field.writable());
     }
@@ -100,8 +91,8 @@ class ArchiveRuntimeFieldCatalogTests {
                         org.mockito.ArgumentMatchers.eq(true)))
                 .thenReturn(List.of());
 
-        var doc = service.catalog(11L, "DOC", ArchiveRuntimeTriggerPoint.ITEM_BEFORE_UPDATE);
-        var photo = service.catalog(11L, "PHOTO", ArchiveRuntimeTriggerPoint.ITEM_BEFORE_UPDATE);
+        var doc = service.catalog("DOC", ArchiveRuntimeTriggerPoint.ITEM_BEFORE_UPDATE);
+        var photo = service.catalog("PHOTO", ArchiveRuntimeTriggerPoint.ITEM_BEFORE_UPDATE);
 
         assertThat(doc.fieldsByCode())
                 .containsKey("metadata.title")
@@ -117,7 +108,7 @@ class ArchiveRuntimeFieldCatalogTests {
         ArchiveCategory category = category(21L, "DOC");
         when(categoryRepository.findByCategoryCode("DOC")).thenReturn(category);
 
-        var catalog = service.catalog(11L, "DOC", ArchiveRuntimeTriggerPoint.EXPORT_BEFORE_CREATE);
+        var catalog = service.catalog("DOC", ArchiveRuntimeTriggerPoint.EXPORT_BEFORE_CREATE);
 
         assertThat(catalog.fieldsByCode())
                 .containsKeys(

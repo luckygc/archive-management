@@ -96,7 +96,6 @@ class ArchiveRuntimeTraceServiceTests {
 
     private ArchiveRuntimeExecutionRequest request() {
         return new ArchiveRuntimeExecutionRequest(
-                1L,
                 ArchiveRuntimeTriggerPoint.ITEM_BEFORE_CREATE,
                 "F001",
                 "DOC",

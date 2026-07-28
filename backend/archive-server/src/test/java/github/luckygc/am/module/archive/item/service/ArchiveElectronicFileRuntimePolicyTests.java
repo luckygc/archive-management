@@ -211,7 +211,6 @@ class ArchiveElectronicFileRuntimePolicyTests {
         item.setArchiveNo("A-001");
         item.setArchiveYear(2026);
         item.setElectronicStatus("DRAFT");
-        item.setGovernanceSchemeVersionId(11L);
         return item;
     }
 

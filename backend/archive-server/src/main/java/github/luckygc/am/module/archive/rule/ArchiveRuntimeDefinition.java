@@ -34,9 +34,6 @@ public class ArchiveRuntimeDefinition implements CreationAuditable, UpdateAudita
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "scheme_version_id", nullable = false)
-    private Long schemeVersionId;
-
     @Column(name = "definition_kind", nullable = false, length = 20)
     @Enumerated(EnumType.STRING)
     private ArchiveRuntimeDefinitionKind definitionKind;

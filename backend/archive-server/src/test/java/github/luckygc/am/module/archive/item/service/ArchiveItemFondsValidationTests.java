@@ -24,7 +24,6 @@ import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeResolutionTypes.ArchiveDataScopeFilter;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
-import github.luckygc.am.module.archive.governance.service.ArchiveGovernanceService;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemAuditDataRepository;
 import github.luckygc.am.module.archive.item.repository.ArchiveVolumeDataRepository;
 import github.luckygc.am.module.archive.item.service.ArchiveItemCommandService.CreateArchiveItemRequest;
@@ -46,7 +45,6 @@ class ArchiveItemFondsValidationTests {
     private ArchiveMetadataService archiveMetadataService;
     private ArchiveMetadataReferenceService archiveMetadataReferenceService;
     private ArchiveCategoryService archiveCategoryService;
-    private ArchiveGovernanceService governanceService;
     private ArchiveItemCommandService archiveItemRoutingService;
     private ArchiveVolumeService archiveVolumeService;
 
@@ -56,7 +54,6 @@ class ArchiveItemFondsValidationTests {
         archiveMetadataService = mock(ArchiveMetadataService.class);
         archiveMetadataReferenceService = mock(ArchiveMetadataReferenceService.class);
         archiveCategoryService = mock(ArchiveCategoryService.class);
-        governanceService = mock(ArchiveGovernanceService.class);
         ArchiveItemSearchProjectionService searchProjectionService =
                 mock(ArchiveItemSearchProjectionService.class);
         ArchiveDataScopeService dataScopeService = mock(ArchiveDataScopeService.class);
@@ -78,7 +75,6 @@ class ArchiveItemFondsValidationTests {
                         archiveMetadataService,
                         archiveMetadataReferenceService,
                         archiveCategoryService,
-                        governanceService,
                         archiveMapper,
                         searchProjectionService,
                         dataScopeService,
@@ -95,7 +91,6 @@ class ArchiveItemFondsValidationTests {
                         archiveMetadataService,
                         archiveMetadataReferenceService,
                         archiveCategoryService,
-                        governanceService,
                         archiveItemReadService,
                         permissionService,
                         dataScopeService,
@@ -134,8 +129,7 @@ class ArchiveItemFondsValidationTests {
                         anyString(),
                         any(),
                         any(),
-                        anyInt(),
-                        any());
+                        anyInt());
         verify(archiveMetadataReferenceService).getEnabledFondsByCode("F001");
         verify(archiveMetadataReferenceService, never()).getFondsByCode("F001");
     }
@@ -204,8 +198,7 @@ class ArchiveItemFondsValidationTests {
                         anyString(),
                         any(),
                         anyString(),
-                        anyInt(),
-                        any());
+                        anyInt());
         verify(archiveMetadataReferenceService).getEnabledFondsByCode("F001");
         verify(archiveMetadataReferenceService, never()).getFondsByCode("F001");
     }

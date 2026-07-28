@@ -35,35 +35,20 @@ import github.luckygc.am.test.PostgreSqlContainerTest;
 @DisplayName("运行时配置试运行 PostgreSQL 集成")
 class ArchiveRuntimeSimulationIntegrationTests extends PostgreSqlContainerTest {
 
-    private static final long SCHEME_ID = 9_620_000L;
-    private static final long VERSION_ID = 9_620_001L;
-
     @Autowired private ArchiveRuntimeExecutionService executionService;
     @Autowired private JdbcTemplate jdbcTemplate;
 
     @BeforeEach
     void setUp() {
         jdbcTemplate.update(
-                "insert into am_archive_governance_scheme (id, scheme_code, scheme_name) values (?, ?, ?)",
-                SCHEME_ID,
-                "runtime-simulation-scheme",
-                "运行时试运行方案");
-        jdbcTemplate.update(
-                "insert into am_archive_governance_scheme_version "
-                        + "(id, scheme_id, version_code) values (?, ?, ?)",
-                VERSION_ID,
-                SCHEME_ID,
-                "v1");
-        jdbcTemplate.update(
                 "insert into am_archive_runtime_definition "
-                        + "(scheme_version_id, definition_kind, definition_code, definition_name, "
+                        + "(definition_kind, definition_code, definition_name, "
                         + "trigger_point, condition_json, constraint_action, constraint_message, "
                         + "status, published_by, published_at) "
-                        + "values (?, 'CONSTRAINT', 'year-2026', '年度检查', "
+                        + "values ('CONSTRAINT', 'year-2026', '年度检查', "
                         + "'ITEM_BEFORE_CREATE', "
                         + "'{\"field\":\"item.archiveYear\",\"operator\":\"EQ\",\"value\":2026}'::jsonb, "
-                        + "'WARN', '年度不是 2026', 'PUBLISHED', 7, localtimestamp)",
-                VERSION_ID);
+                        + "'WARN', '年度不是 2026', 'PUBLISHED', 7, localtimestamp)");
     }
 
     @Test
@@ -76,7 +61,6 @@ class ArchiveRuntimeSimulationIntegrationTests extends PostgreSqlContainerTest {
         var result =
                 executionService.simulate(
                         new ArchiveRuntimeExecutionRequest(
-                                VERSION_ID,
                                 ArchiveRuntimeTriggerPoint.ITEM_BEFORE_CREATE,
                                 "F001",
                                 null,

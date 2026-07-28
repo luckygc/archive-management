@@ -6,7 +6,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,27 +38,10 @@ import github.luckygc.am.test.PostgreSqlContainerTest;
 @DisplayName("运行时追踪 MyBatis PostgreSQL 集成")
 class ArchiveRuntimeTraceMapperIntegrationTests extends PostgreSqlContainerTest {
 
-    private static final long SCHEME_ID = 9_610_000L;
-    private static final long VERSION_ID = 9_610_001L;
     private static final LocalDateTime BASE_TIME = LocalDateTime.of(2026, 7, 18, 10, 0);
 
     @Autowired private ArchiveRuleMapper ruleMapper;
     @Autowired private JdbcTemplate jdbcTemplate;
-
-    @BeforeEach
-    void setUp() {
-        jdbcTemplate.update(
-                "insert into am_archive_governance_scheme (id, scheme_code, scheme_name) values (?, ?, ?)",
-                SCHEME_ID,
-                "runtime-trace-scheme",
-                "运行时追踪方案");
-        jdbcTemplate.update(
-                "insert into am_archive_governance_scheme_version "
-                        + "(id, scheme_id, version_code) values (?, ?, ?)",
-                VERSION_ID,
-                SCHEME_ID,
-                "v1");
-    }
 
     @Test
     @DisplayName("相同创建时间按 ID 稳定游标翻页且无重复遗漏")
@@ -106,7 +88,7 @@ class ArchiveRuntimeTraceMapperIntegrationTests extends PostgreSqlContainerTest 
             List<ArchiveRuntimeTraceTargetScope> itemScopes,
             ArchiveRuntimeTracePageWindow page) {
         return new ArchiveRuntimeTraceSearchCriteria(
-                null, null, null, null, null, allData, 7L, itemScopes, List.of(), page);
+                null, null, null, null, allData, 7L, itemScopes, List.of(), page);
     }
 
     private ArchiveRuntimeTracePageWindow page(LocalDateTime createdAt, Long id, int rowLimit) {
@@ -117,10 +99,9 @@ class ArchiveRuntimeTraceMapperIntegrationTests extends PostgreSqlContainerTest 
             long id, String objectType, Long objectId, long createdBy, LocalDateTime createdAt) {
         jdbcTemplate.update(
                 "insert into am_archive_runtime_trace "
-                        + "(id, scheme_version_id, trigger_point, object_type_code, object_id, "
-                        + "created_by, created_at) values (?, ?, 'ITEM_BEFORE_CREATE', ?, ?, ?, ?)",
+                        + "(id, trigger_point, object_type_code, object_id, created_by, created_at) "
+                        + "values (?, 'ITEM_BEFORE_CREATE', ?, ?, ?, ?)",
                 id,
-                VERSION_ID,
                 objectType,
                 objectId,
                 createdBy,
@@ -131,12 +112,11 @@ class ArchiveRuntimeTraceMapperIntegrationTests extends PostgreSqlContainerTest 
         jdbcTemplate.update(
                 "insert into am_archive_item "
                         + "(id, fonds_code, fonds_name, category_code, category_name, "
-                        + "electronic_status, archive_year, governance_scheme_version_id) "
-                        + "values (?, ?, '全宗', ?, '分类', 'DRAFT', 2026, ?)",
+                        + "electronic_status, archive_year) "
+                        + "values (?, ?, '全宗', ?, '分类', 'DRAFT', 2026)",
                 id,
                 fondsCode,
-                categoryCode,
-                VERSION_ID);
+                categoryCode);
     }
 
     private List<Long> ids(List<Map<String, Object>> rows) {

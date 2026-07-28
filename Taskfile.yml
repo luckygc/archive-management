@@ -3,12 +3,10 @@ version: "3"
 vars:
     FRONTEND_DIR: frontend
     SERVER_DIR: backend/archive-server
-    PREVIEW_DIR: backend/preview-service
     COMPOSE_FILE: deploy/compose.dev.yaml
     JAVA: mise exec -- java
     PNPM: mise exec -- pnpm
     MVN: mise exec -- mvn
-    GO: mise exec -- go
 
 tasks:
     default:
@@ -204,25 +202,3 @@ tasks:
         dir: "{{.SERVER_DIR}}"
         cmds:
             - "{{.MVN}} spring-boot:run"
-
-    preview-test:
-        desc: 测试文件预览服务
-        dir: "{{.PREVIEW_DIR}}"
-        cmds:
-            - "{{.GO}} test ./..."
-
-    preview-build:
-        desc: 构建文件预览服务
-        dir: "{{.PREVIEW_DIR}}"
-        cmds:
-            - cmd: powershell -NoProfile -Command "New-Item -ItemType Directory -Force build | Out-Null"
-              platforms: [windows]
-            - cmd: mkdir -p build
-              platforms: [linux, darwin]
-            - "{{.GO}} build -o build/preview-service ./cmd/preview-service"
-
-    preview-run:
-        desc: 启动文件预览服务
-        dir: "{{.PREVIEW_DIR}}"
-        cmds:
-            - "{{.GO}} run ./cmd/preview-service"

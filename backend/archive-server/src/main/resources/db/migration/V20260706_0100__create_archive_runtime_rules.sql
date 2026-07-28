@@ -1,131 +1,6 @@
-create table am_archive_governance_scheme
-(
-    id            bigserial primary key,
-    scheme_code   varchar(100)  not null,
-    scheme_name   varchar(255)  not null,
-    description   varchar(1000),
-    enabled       boolean       not null default true,
-    sort_order    integer       not null default 0,
-    deleted_flag  boolean       not null default false,
-    version       integer       not null default 0,
-    created_by    bigint,
-    created_at    timestamp     not null default localtimestamp,
-    updated_by    bigint,
-    updated_at    timestamp     not null default localtimestamp,
-    constraint ck_am_archive_governance_scheme_code_not_blank
-        check (btrim(scheme_code) <> ''),
-    constraint ck_am_archive_governance_scheme_name_not_blank
-        check (btrim(scheme_name) <> '')
-);
-
-create unique index uk_am_archive_governance_scheme_code_active
-    on am_archive_governance_scheme (scheme_code)
-    where deleted_flag = false;
-create index idx_am_archive_governance_scheme_sort_active
-    on am_archive_governance_scheme (sort_order, id)
-    where deleted_flag = false;
-
-comment on table am_archive_governance_scheme is '档案治理方案表';
-
-create table am_archive_governance_scheme_version
-(
-    id                  bigserial primary key,
-    scheme_id           bigint        not null references am_archive_governance_scheme (id),
-    version_code        varchar(100)  not null,
-    version_description varchar(1000),
-    status              varchar(30)   not null default 'DRAFT',
-    published_by        bigint,
-    published_at        timestamp,
-    frozen_by           bigint,
-    frozen_at           timestamp,
-    retired_by          bigint,
-    retired_at          timestamp,
-    deleted_flag        boolean       not null default false,
-    version             integer       not null default 0,
-    created_by          bigint,
-    created_at          timestamp     not null default localtimestamp,
-    updated_by          bigint,
-    updated_at          timestamp     not null default localtimestamp,
-    constraint ck_am_archive_governance_version_code_not_blank
-        check (btrim(version_code) <> ''),
-    constraint ck_am_archive_governance_version_status
-        check (status in ('DRAFT', 'PUBLISHED', 'FROZEN', 'RETIRED'))
-);
-
-create unique index uk_am_archive_governance_version_code_active
-    on am_archive_governance_scheme_version (scheme_id, version_code)
-    where deleted_flag = false;
-create index idx_am_archive_governance_version_scheme_active
-    on am_archive_governance_scheme_version (scheme_id, status, id)
-    where deleted_flag = false;
-
-comment on table am_archive_governance_scheme_version is '档案治理方案版本表';
-
-create table am_archive_governance_scope
-(
-    id                bigserial primary key,
-    scheme_version_id bigint       not null references am_archive_governance_scheme_version (id),
-    scope_type        varchar(30)  not null,
-    fonds_code        varchar(100),
-    category_code     varchar(100),
-    default_flag      boolean      not null default false,
-    deleted_flag      boolean      not null default false,
-    version           integer      not null default 0,
-    created_by        bigint,
-    created_at        timestamp    not null default localtimestamp,
-    updated_by        bigint,
-    updated_at        timestamp    not null default localtimestamp,
-    constraint ck_am_archive_governance_scope_type
-        check (scope_type in ('GLOBAL', 'FONDS', 'CATEGORY')),
-    constraint ck_am_archive_governance_scope_shape
-        check (
-            (scope_type = 'GLOBAL' and fonds_code is null and category_code is null)
-            or (scope_type = 'FONDS' and fonds_code is not null and category_code is null)
-            or (scope_type = 'CATEGORY' and category_code is not null)
-        )
-);
-
-create unique index uk_am_archive_governance_scope_default_active
-    on am_archive_governance_scope
-        (scope_type, coalesce(fonds_code, ''), coalesce(category_code, ''))
-    where deleted_flag = false and default_flag = true;
-create index idx_am_archive_governance_scope_version_active
-    on am_archive_governance_scope (scheme_version_id, id)
-    where deleted_flag = false;
-
-comment on table am_archive_governance_scope is '档案治理方案适用范围表';
-
-create table am_archive_governance_binding
-(
-    id                bigserial primary key,
-    scheme_version_id bigint        not null references am_archive_governance_scheme_version (id),
-    binding_type      varchar(50)   not null,
-    target_type       varchar(100),
-    target_id         bigint,
-    target_code       varchar(100),
-    binding_order     integer       not null default 0,
-    deleted_flag      boolean       not null default false,
-    version           integer       not null default 0,
-    created_by        bigint,
-    created_at        timestamp     not null default localtimestamp,
-    updated_by        bigint,
-    updated_at        timestamp     not null default localtimestamp,
-    constraint ck_am_archive_governance_binding_type
-        check (binding_type in ('CLASSIFICATION_SCHEME', 'DESCRIPTION_PROFILE', 'REFERENCE_CODE_RULE')),
-    constraint ck_am_archive_governance_binding_target
-        check (target_id is not null or btrim(coalesce(target_code, '')) <> '')
-);
-
-create index idx_am_archive_governance_binding_version_active
-    on am_archive_governance_binding (scheme_version_id, binding_type, binding_order, id)
-    where deleted_flag = false;
-
-comment on table am_archive_governance_binding is '档案治理方案外部配置绑定表';
-
 create table am_archive_runtime_definition
 (
     id                      bigserial primary key,
-    scheme_version_id       bigint        not null references am_archive_governance_scheme_version (id),
     definition_kind         varchar(20)   not null,
     definition_code         varchar(100)  not null,
     definition_name         varchar(255)  not null,
@@ -184,15 +59,16 @@ create table am_archive_runtime_definition
 );
 
 create unique index uk_am_archive_runtime_definition_code_active
-    on am_archive_runtime_definition (scheme_version_id, definition_code)
+    on am_archive_runtime_definition (definition_code)
     where deleted_flag = false;
 create index idx_am_archive_runtime_definition_execution_active
     on am_archive_runtime_definition
-        (scheme_version_id, trigger_point, priority, definition_code, id)
+        (trigger_point, scope_fonds_code, scope_category_code, scope_archive_level,
+         priority, definition_code, id)
     where deleted_flag = false and status = 'PUBLISHED' and enabled = true;
 create index idx_am_archive_runtime_definition_category_active
     on am_archive_runtime_definition
-        (scope_category_code, trigger_point, scheme_version_id, id)
+        (scope_category_code, trigger_point, id)
     where deleted_flag = false;
 
 comment on table am_archive_runtime_definition is '用户定义的档案运行时约束和规则';
@@ -229,7 +105,6 @@ comment on table am_archive_runtime_action is '运行时规则使用的系统固
 create table am_archive_runtime_trace
 (
     id                bigserial primary key,
-    scheme_version_id bigint        not null references am_archive_governance_scheme_version (id),
     trigger_point     varchar(50)   not null,
     object_type_code  varchar(100)  not null,
     object_id         bigint,
@@ -264,8 +139,8 @@ create table am_archive_runtime_trace
 
 create index idx_am_archive_runtime_trace_object
     on am_archive_runtime_trace (object_type_code, object_id, created_at desc, id desc);
-create index idx_am_archive_runtime_trace_version
-    on am_archive_runtime_trace (scheme_version_id, trigger_point, created_at desc, id desc);
+create index idx_am_archive_runtime_trace_trigger
+    on am_archive_runtime_trace (trigger_point, created_at desc, id desc);
 
 comment on table am_archive_runtime_trace is '档案运行时约束和规则执行追踪';
 
@@ -285,8 +160,7 @@ begin
     end if;
 
     if old.status = 'PUBLISHED' and (
-        new.scheme_version_id is distinct from old.scheme_version_id
-        or new.definition_kind is distinct from old.definition_kind
+        new.definition_kind is distinct from old.definition_kind
         or new.definition_code is distinct from old.definition_code
         or new.definition_name is distinct from old.definition_name
         or new.trigger_point is distinct from old.trigger_point
@@ -350,29 +224,9 @@ language plpgsql
 as $$
 declare
     active_actions bigint;
-    governance_status varchar(30);
 begin
-    select status into governance_status
-    from am_archive_governance_scheme_version
-    where id = new.scheme_version_id;
-
-    if not new.deleted_flag
-        and governance_status <> 'DRAFT'
-        and new.status <> 'PUBLISHED' then
-        raise exception using
-            errcode = '23514',
-            constraint = 'ck_am_archive_governance_runtime_definitions_published',
-            message = '非草稿治理版本只能包含已发布运行时定义';
-    end if;
-
     if new.deleted_flag or new.status <> 'PUBLISHED' then
         return null;
-    end if;
-    if governance_status <> 'DRAFT' then
-        raise exception using
-            errcode = '23514',
-            constraint = 'ck_am_archive_runtime_definition_governance_editable',
-            message = '只能在草稿治理版本中发布运行时定义';
     end if;
 
     select count(*) into active_actions
@@ -400,91 +254,7 @@ after insert or update on am_archive_runtime_definition
 deferrable initially deferred
 for each row execute function am_archive_runtime_definition_consistent();
 
-create function am_archive_governance_runtime_consistent()
-returns trigger
-language plpgsql
-as $$
-begin
-    if new.status <> 'DRAFT' and exists (
-        select 1
-        from am_archive_runtime_definition definition
-        where definition.scheme_version_id = new.id
-          and definition.deleted_flag = false
-          and definition.status <> 'PUBLISHED'
-    ) then
-        raise exception using
-            errcode = '23514',
-            constraint = 'ck_am_archive_governance_runtime_definitions_published',
-            message = '非草稿治理版本只能包含已发布运行时定义';
-    end if;
-    return null;
-end;
-$$;
-
-create constraint trigger trg_am_archive_governance_runtime_consistent
-after insert or update on am_archive_governance_scheme_version
-deferrable initially deferred
-for each row execute function am_archive_governance_runtime_consistent();
-
-alter table am_archive_item
-    add column governance_scheme_version_id bigint references am_archive_governance_scheme_version (id);
-alter table am_archive_volume
-    add column governance_scheme_version_id bigint references am_archive_governance_scheme_version (id);
-
-with default_scheme as (
-    insert into am_archive_governance_scheme
-        (scheme_code, scheme_name, description, enabled, sort_order)
-    values
-        ('default_governance', '默认治理方案', '默认运行时约束和规则治理方案', true, 0)
-    returning id
-),
-default_version as (
-    insert into am_archive_governance_scheme_version
-        (scheme_id, version_code, version_description, status, published_at)
-    select id,
-           'v1',
-           '默认治理方案初始发布版本',
-           'PUBLISHED',
-           localtimestamp
-    from default_scheme
-    returning id
-)
-insert into am_archive_governance_scope
-    (scheme_version_id, scope_type, default_flag)
-select id, 'GLOBAL', true
-from default_version;
-
-update am_archive_item
-set governance_scheme_version_id = (
-        select version.id
-        from am_archive_governance_scheme scheme
-        join am_archive_governance_scheme_version version on version.scheme_id = scheme.id
-        where scheme.scheme_code = 'default_governance'
-          and version.version_code = 'v1'
-    )
-where governance_scheme_version_id is null;
-
-update am_archive_volume
-set governance_scheme_version_id = (
-        select version.id
-        from am_archive_governance_scheme scheme
-        join am_archive_governance_scheme_version version on version.scheme_id = scheme.id
-        where scheme.scheme_code = 'default_governance'
-          and version.version_code = 'v1'
-    )
-where governance_scheme_version_id is null;
-
-create index idx_am_archive_item_governance_version
-    on am_archive_item (governance_scheme_version_id, id)
-    where deleted_flag = false;
-create index idx_am_archive_volume_governance_version
-    on am_archive_volume (governance_scheme_version_id, id)
-    where deleted_flag = false;
-
-comment on column am_archive_item.governance_scheme_version_id is '档案采用的治理方案版本 ID';
-comment on column am_archive_volume.governance_scheme_version_id is '案卷采用的治理方案版本 ID';
-
 insert into am_authorization_permission
     (permission_code, permission_name, module_code, description)
 values
-    ('archive:governance:manage', '管理档案治理', 'archive', '维护治理方案和运行时约束规则');
+    ('archive:rule:manage', '管理档案运行时规则', 'archive', '维护运行时约束和规则');

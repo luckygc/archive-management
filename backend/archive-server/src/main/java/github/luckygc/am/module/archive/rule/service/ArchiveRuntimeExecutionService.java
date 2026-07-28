@@ -77,12 +77,10 @@ public class ArchiveRuntimeExecutionService {
             throw new BadRequestException("运行时触发点不能为空");
         }
         ArchiveRuntimeFieldCatalog catalog =
-                fieldCatalogService.catalog(
-                        request.schemeVersionId(), request.categoryCode(), request.triggerPoint());
+                fieldCatalogService.catalog(request.categoryCode(), request.triggerPoint());
         List<ArchiveRuntimeDefinition> definitions =
                 ruleMapper.listExecutableRuntimeDefinitions(
                         new ArchiveRuntimeExecutionCriteria(
-                                request.schemeVersionId(),
                                 request.triggerPoint(),
                                 StringUtils.trimToNull(request.fondsCode()),
                                 StringUtils.trimToNull(request.categoryCode()),
@@ -272,7 +270,6 @@ public class ArchiveRuntimeExecutionService {
     }
 
     public record ArchiveRuntimeExecutionRequest(
-            Long schemeVersionId,
             ArchiveRuntimeTriggerPoint triggerPoint,
             @Nullable String fondsCode,
             @Nullable String categoryCode,

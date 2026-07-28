@@ -102,10 +102,6 @@ class ArchiveRuntimeActionHandlerTests {
                         writable,
                         null);
         return new ArchiveRuntimeFieldCatalog(
-                1L,
-                null,
-                ArchiveRuntimeTriggerPoint.ITEM_BEFORE_UPDATE,
-                "signature",
-                List.of(field));
+                null, ArchiveRuntimeTriggerPoint.ITEM_BEFORE_UPDATE, "signature", List.of(field));
     }
 }

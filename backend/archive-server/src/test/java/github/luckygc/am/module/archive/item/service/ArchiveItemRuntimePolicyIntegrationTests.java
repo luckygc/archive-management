@@ -25,8 +25,6 @@ import github.luckygc.am.app.ArchiveManagementApplication;
 import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeResolutionTypes.ArchiveDataScopeFilter;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
-import github.luckygc.am.module.archive.governance.ArchiveGovernanceSchemeVersion;
-import github.luckygc.am.module.archive.governance.service.ArchiveGovernanceService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemCommandService.CreateArchiveItemRequest;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldControl;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldScope;
@@ -60,8 +58,6 @@ import github.luckygc.am.test.PostgreSqlContainerTest;
 class ArchiveItemRuntimePolicyIntegrationTests extends PostgreSqlContainerTest {
 
     private static final long CATEGORY_ID = 9_630_000L;
-    private static final long SCHEME_ID = 9_631_000L;
-    private static final long VERSION_ID = 9_631_001L;
     private static final String DYNAMIC_TABLE = "am_archive_item_runtime_doc";
 
     @Autowired private ArchiveItemCommandService commandService;
@@ -71,7 +67,6 @@ class ArchiveItemRuntimePolicyIntegrationTests extends PostgreSqlContainerTest {
     @MockitoBean private ArchiveMetadataService metadataService;
     @MockitoBean private ArchiveMetadataReferenceService metadataReferenceService;
     @MockitoBean private ArchiveCategoryService categoryService;
-    @MockitoBean private ArchiveGovernanceService governanceService;
     @MockitoBean private ArchiveDataScopeService dataScopeService;
     @MockitoBean private AuthorizationPermissionService permissionService;
     @MockitoBean private ArchiveItemSearchProjectionService searchProjectionService;
@@ -81,7 +76,7 @@ class ArchiveItemRuntimePolicyIntegrationTests extends PostgreSqlContainerTest {
 
     @BeforeEach
     void setUp() {
-        seedCategoryAndGovernance();
+        seedCategory();
         category = category();
         titleField = titleField();
         when(permissionService.hasPermission(anyLong(), anyString())).thenReturn(true);
@@ -95,10 +90,6 @@ class ArchiveItemRuntimePolicyIntegrationTests extends PostgreSqlContainerTest {
                 .thenReturn(List.of());
         when(dataScopeService.buildItemFilter(9L, CATEGORY_ID, "F001"))
                 .thenReturn(ArchiveDataScopeFilter.all());
-        ArchiveGovernanceSchemeVersion version = new ArchiveGovernanceSchemeVersion();
-        version.setId(VERSION_ID);
-        when(governanceService.requireDefaultVersionForNewArchive("F001", "RUNTIME_DOC"))
-                .thenReturn(version);
         seedSetFieldAndWarningDefinitions();
     }
 
@@ -139,7 +130,7 @@ class ArchiveItemRuntimePolicyIntegrationTests extends PostgreSqlContainerTest {
         assertThat(count("am_archive_runtime_trace")).isZero();
     }
 
-    private void seedCategoryAndGovernance() {
+    private void seedCategory() {
         Long classificationSchemeId =
                 jdbcTemplate.queryForObject(
                         "select id from am_archive_classification_scheme "
@@ -168,24 +159,12 @@ class ArchiveItemRuntimePolicyIntegrationTests extends PostgreSqlContainerTest {
                         + "'f_title', 100, 'INPUT')",
                 9_630_001L,
                 CATEGORY_ID);
-        jdbcTemplate.update(
-                "insert into am_archive_governance_scheme (id, scheme_code, scheme_name) "
-                        + "values (?, 'runtime-item-scheme', '条目运行时方案')",
-                SCHEME_ID);
-        jdbcTemplate.update(
-                "insert into am_archive_governance_scheme_version "
-                        + "(id, scheme_id, version_code) values (?, ?, 'v1')",
-                VERSION_ID,
-                SCHEME_ID);
     }
 
     private void seedSetFieldAndWarningDefinitions() {
         String signature =
                 fieldCatalogService
-                        .catalog(
-                                VERSION_ID,
-                                "RUNTIME_DOC",
-                                ArchiveRuntimeTriggerPoint.ITEM_BEFORE_CREATE)
+                        .catalog("RUNTIME_DOC", ArchiveRuntimeTriggerPoint.ITEM_BEFORE_CREATE)
                         .signature();
         long ruleId =
                 insertRule(
@@ -212,13 +191,12 @@ class ArchiveItemRuntimePolicyIntegrationTests extends PostgreSqlContainerTest {
     private long insertRule(String code, String conditionJson, String signature) {
         return jdbcTemplate.queryForObject(
                 "insert into am_archive_runtime_definition "
-                        + "(scheme_version_id, definition_kind, definition_code, definition_name, "
+                        + "(definition_kind, definition_code, definition_name, "
                         + "trigger_point, scope_category_code, scope_archive_level, priority, "
                         + "condition_json, field_catalog_signature) "
-                        + "values (?, 'RULE', ?, ?, 'ITEM_BEFORE_CREATE', 'RUNTIME_DOC', "
+                        + "values ('RULE', ?, ?, 'ITEM_BEFORE_CREATE', 'RUNTIME_DOC', "
                         + "'ITEM', 10, ?::jsonb, ?) returning id",
                 Long.class,
-                VERSION_ID,
                 code,
                 code,
                 conditionJson,
@@ -229,21 +207,17 @@ class ArchiveItemRuntimePolicyIntegrationTests extends PostgreSqlContainerTest {
             String code, String expectedArchiveNo, String action, String message) {
         String signature =
                 fieldCatalogService
-                        .catalog(
-                                VERSION_ID,
-                                "RUNTIME_DOC",
-                                ArchiveRuntimeTriggerPoint.ITEM_BEFORE_CREATE)
+                        .catalog("RUNTIME_DOC", ArchiveRuntimeTriggerPoint.ITEM_BEFORE_CREATE)
                         .signature();
         jdbcTemplate.update(
                 "insert into am_archive_runtime_definition "
-                        + "(scheme_version_id, definition_kind, definition_code, definition_name, "
+                        + "(definition_kind, definition_code, definition_name, "
                         + "trigger_point, scope_category_code, scope_archive_level, priority, "
                         + "condition_json, constraint_action, constraint_message, status, "
                         + "field_catalog_signature, published_by, published_at) "
-                        + "values (?, 'CONSTRAINT', ?, ?, 'ITEM_BEFORE_CREATE', 'RUNTIME_DOC', "
+                        + "values ('CONSTRAINT', ?, ?, 'ITEM_BEFORE_CREATE', 'RUNTIME_DOC', "
                         + "'ITEM', 20, jsonb_build_object('field', 'item.archiveNo', "
                         + "'operator', 'EQ', 'value', ?), ?, ?, 'PUBLISHED', ?, 9, localtimestamp)",
-                VERSION_ID,
                 code,
                 code,
                 expectedArchiveNo,

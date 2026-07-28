@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.postgresql.util.PSQLException;
@@ -33,26 +32,7 @@ import github.luckygc.am.test.PostgreSqlContainerTest;
 @DisplayName("运行时配置 PostgreSQL 触发器")
 class ArchiveRuntimeTriggerIntegrationTests extends PostgreSqlContainerTest {
 
-    private static final long SCHEME_ID = 9_710_000L;
-
     @Autowired private JdbcTemplate jdbcTemplate;
-
-    private long schemeVersionId;
-
-    @BeforeEach
-    void setUp() {
-        jdbcTemplate.update(
-                "insert into am_archive_governance_scheme (id, scheme_code, scheme_name) "
-                        + "values (?, 'runtime-trigger', '运行时触发器测试方案')",
-                SCHEME_ID);
-        schemeVersionId =
-                jdbcTemplate.queryForObject(
-                        "insert into am_archive_governance_scheme_version "
-                                + "(scheme_id, version_code, status) "
-                                + "values (?, 'draft-v1', 'DRAFT') returning id",
-                        Long.class,
-                        SCHEME_ID);
-    }
 
     @Test
     @DisplayName("同一事务先写动作再发布规则合法")
@@ -139,12 +119,11 @@ class ArchiveRuntimeTriggerIntegrationTests extends PostgreSqlContainerTest {
     private long insertDraftRule(String code) {
         return jdbcTemplate.queryForObject(
                 "insert into am_archive_runtime_definition "
-                        + "(scheme_version_id, definition_kind, definition_code, definition_name, "
+                        + "(definition_kind, definition_code, definition_name, "
                         + "trigger_point, condition_json, status) "
-                        + "values (?, 'RULE', ?, ?, 'ITEM_BEFORE_CREATE', '{}'::jsonb, 'DRAFT') "
+                        + "values ('RULE', ?, ?, 'ITEM_BEFORE_CREATE', '{}'::jsonb, 'DRAFT') "
                         + "returning id",
                 Long.class,
-                schemeVersionId,
                 code,
                 "测试规则 " + code);
     }

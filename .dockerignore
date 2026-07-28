@@ -8,7 +8,6 @@ node_modules
 **/node_modules
 frontend/admin/dist
 backend/archive-server/target
-backend/preview-service
 docs
 openspec
 logs

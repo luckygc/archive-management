@@ -26,7 +26,6 @@ import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeExecutionServ
 import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeExecutionService.ArchiveRuntimeExecutionRequest;
 import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeExecutionService.ArchiveRuntimeExecutionResult;
 import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeFieldCatalogService;
-import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeSnapshotService;
 import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeTraceService;
 import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeTraceService.SearchArchiveRuntimeTracesRequest;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionCode;
@@ -42,8 +41,6 @@ class ArchiveRuntimeControllerTests {
     private final ArchiveRuntimeExecutionService executionService =
             mock(ArchiveRuntimeExecutionService.class);
     private final ArchiveRuntimeTraceService traceService = mock(ArchiveRuntimeTraceService.class);
-    private final ArchiveRuntimeSnapshotService snapshotService =
-            mock(ArchiveRuntimeSnapshotService.class);
     private final AuthorizationPermissionService permissionService =
             mock(AuthorizationPermissionService.class);
     private final ArchiveRuntimeController controller =
@@ -52,7 +49,6 @@ class ArchiveRuntimeControllerTests {
                     fieldCatalogService,
                     executionService,
                     traceService,
-                    snapshotService,
                     permissionService);
 
     @Test
@@ -65,7 +61,6 @@ class ArchiveRuntimeControllerTests {
         ArchiveRuntimeExecutionResult actual =
                 controller.simulate(
                         new ArchiveRuntimeExecutionRequest(
-                                1L,
                                 ArchiveRuntimeTriggerPoint.ITEM_BEFORE_CREATE,
                                 "F001",
                                 "DOC",
@@ -82,7 +77,7 @@ class ArchiveRuntimeControllerTests {
         verify(executionService).simulate(captor.capture());
         assertThat(captor.getValue().userId()).isEqualTo(9L);
         verify(permissionService)
-                .requirePermission(9L, AuthorizationPermissionCode.ARCHIVE_GOVERNANCE_MANAGE);
+                .requirePermission(9L, AuthorizationPermissionCode.ARCHIVE_RULE_MANAGE);
     }
 
     @Test
@@ -96,7 +91,6 @@ class ArchiveRuntimeControllerTests {
 
         controller.searchTraces(
                 new SearchArchiveRuntimeTracesRequest(
-                        1L,
                         ArchiveRuntimeTriggerPoint.ITEM_BEFORE_UPDATE,
                         "ARCHIVE_ITEM",
                         3L,

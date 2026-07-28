@@ -390,12 +390,11 @@
         insert into am_archive_item
             (volume_id, fonds_code, fonds_name, category_code, category_name,
              archive_no, electronic_status, security_level_id, retention_period_id,
-             archive_year, governance_scheme_version_id, created_by, created_at, updated_by, updated_at)
+             archive_year, created_by, created_at, updated_by, updated_at)
         values
             (#{volumeId}, #{fondsCode}, #{fondsName}, #{categoryCode}, #{categoryName},
              #{archiveNo}, #{electronicStatus}, #{securityLevelId}, #{retentionPeriodId},
-             #{archiveYear}, #{governanceSchemeVersionId}, #{_audit.userId}, #{_audit.now},
-             #{_audit.userId}, #{_audit.now})
+             #{archiveYear}, #{_audit.userId}, #{_audit.now}, #{_audit.userId}, #{_audit.now})
         returning id
     </select>
 
@@ -472,7 +471,6 @@
                security_level_id,
                retention_period_id,
                archive_year,
-               governance_scheme_version_id,
                locked_flag,
                lock_reason,
                locked_by,
@@ -492,7 +490,6 @@
                security_level_id,
                retention_period_id,
                archive_year,
-               governance_scheme_version_id,
                locked_flag,
                lock_reason,
                locked_by,
@@ -519,7 +516,6 @@
                security_level_id,
                retention_period_id,
                archive_year,
-               governance_scheme_version_id,
                locked_flag,
                lock_reason,
                locked_by,
@@ -531,11 +527,11 @@
     <select id="insertArchiveVolume" resultType="long" affectData="true" flushCache="true">
         insert into am_archive_volume
             (fonds_code, fonds_name, category_code, category_name,
-             archive_no, electronic_status, archive_year, governance_scheme_version_id,
+             archive_no, electronic_status, archive_year,
              created_by, created_at, updated_by, updated_at)
         values
             (#{fondsCode}, #{fondsName}, #{categoryCode}, #{categoryName},
-             #{archiveNo}, #{electronicStatus}, #{archiveYear}, #{governanceSchemeVersionId},
+             #{archiveNo}, #{electronicStatus}, #{archiveYear},
              #{_audit.userId}, #{_audit.now}, #{_audit.userId}, #{_audit.now})
         returning id
     </select>

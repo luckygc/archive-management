@@ -11,7 +11,6 @@
 
     <select id="listExecutableRuntimeDefinitions" resultMap="runtimeDefinitionResult">
         select definition.id,
-               definition.scheme_version_id,
                definition.definition_kind,
                definition.definition_code,
                definition.definition_name,
@@ -35,7 +34,6 @@
                definition.updated_at
         from am_archive_runtime_definition definition
         where definition.deleted_flag = false
-          and definition.scheme_version_id = #{criteria.schemeVersionId}
           and definition.trigger_point = #{criteria.triggerPoint}
           and definition.status = 'PUBLISHED'
           and definition.enabled = true
@@ -50,7 +48,6 @@
 
     <select id="listRuntimeTraces" resultType="map">
         select trace.id,
-               trace.scheme_version_id,
                trace.trigger_point,
                trace.object_type_code,
                trace.object_id,
@@ -73,9 +70,6 @@
           and trace.object_type_code = 'ARCHIVE_VOLUME'
           and volume.deleted_flag = false
         where 1 = 1
-        <if test="criteria.schemeVersionId != null">
-            and trace.scheme_version_id = #{criteria.schemeVersionId}
-        </if>
         <if test="criteria.triggerPoint != null and criteria.triggerPoint != ''">
             and trace.trigger_point = #{criteria.triggerPoint}
         </if>

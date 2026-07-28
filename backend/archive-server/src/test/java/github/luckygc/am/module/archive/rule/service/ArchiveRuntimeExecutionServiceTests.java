@@ -44,7 +44,7 @@ class ArchiveRuntimeExecutionServiceTests {
         actionRepository = mock(ArchiveRuntimeActionDataRepository.class);
         ArchiveRuntimeFieldCatalogService catalogService =
                 mock(ArchiveRuntimeFieldCatalogService.class);
-        when(catalogService.catalog(1L, "DOC", ArchiveRuntimeTriggerPoint.ITEM_BEFORE_UPDATE))
+        when(catalogService.catalog("DOC", ArchiveRuntimeTriggerPoint.ITEM_BEFORE_UPDATE))
                 .thenReturn(catalog());
         service =
                 new ArchiveRuntimeExecutionService(
@@ -165,7 +165,6 @@ class ArchiveRuntimeExecutionServiceTests {
 
     private ArchiveRuntimeExecutionRequest request(Map<String, Object> facts) {
         return new ArchiveRuntimeExecutionRequest(
-                1L,
                 ArchiveRuntimeTriggerPoint.ITEM_BEFORE_UPDATE,
                 "F001",
                 "DOC",
@@ -227,7 +226,6 @@ class ArchiveRuntimeExecutionServiceTests {
 
     private ArchiveRuntimeFieldCatalog catalog() {
         return new ArchiveRuntimeFieldCatalog(
-                1L,
                 "DOC",
                 ArchiveRuntimeTriggerPoint.ITEM_BEFORE_UPDATE,
                 "signature",

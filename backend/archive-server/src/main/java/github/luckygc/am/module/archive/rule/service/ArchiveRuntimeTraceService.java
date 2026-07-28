@@ -66,7 +66,6 @@ public class ArchiveRuntimeTraceService {
         }
         for (ArchiveRuntimeDecision decision : result.decisions()) {
             ArchiveRuntimeTrace trace = new ArchiveRuntimeTrace();
-            trace.setSchemeVersionId(request.schemeVersionId());
             trace.setTriggerPoint(request.triggerPoint());
             trace.setObjectTypeCode(
                     StringUtils.defaultIfBlank(request.objectTypeCode(), "UNKNOWN"));
@@ -148,7 +147,6 @@ public class ArchiveRuntimeTraceService {
             boolean allData,
             TraceScopes scopes) {
         return new ArchiveRuntimeTraceSearchCriteria(
-                request.schemeVersionId(),
                 request.triggerPoint() == null ? null : request.triggerPoint().name(),
                 StringUtils.trimToNull(request.objectTypeCode()),
                 request.objectId(),
@@ -214,7 +212,6 @@ public class ArchiveRuntimeTraceService {
     }
 
     public record SearchArchiveRuntimeTracesRequest(
-            @Nullable Long schemeVersionId,
             @Nullable ArchiveRuntimeTriggerPoint triggerPoint,
             @Nullable String objectTypeCode,
             @Nullable Long objectId,

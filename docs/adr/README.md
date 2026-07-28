@@ -19,7 +19,7 @@
 
 ```text
 0001-use-postgresql-only.md
-0002-isolate-file-preview-service.md
+0002-use-object-storage.md
 ```
 
 每份 ADR 至少包含：

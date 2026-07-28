@@ -2,20 +2,15 @@
 import { HttpClientError } from "@archive-management/frontend-core/api";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { computed, onMounted, ref, watch } from "vue";
-import { useRoute } from "vue-router";
 
 import {
     createArchiveRuntimeDefinition,
     deleteArchiveRuntimeDefinition,
     disableArchiveRuntimeDefinition,
     enableArchiveRuntimeDefinition,
-    exportArchiveRuntimeSnapshot,
     getArchiveRuntimeFields,
-    importArchiveRuntimeSnapshot,
     listArchiveRuntimeDefinitions,
-    preflightArchiveRuntimeSnapshot,
     publishArchiveRuntimeDefinition,
-    restoreArchiveRuntimeSnapshot,
     simulateArchiveRuntimeDefinitions,
     updateArchiveRuntimeDefinition,
 } from "@/shared/api/archive-rules";
@@ -27,9 +22,6 @@ import type {
     ArchiveRuntimeDefinitionRequest,
     ArchiveRuntimeExecutionResult,
     ArchiveRuntimeFieldDto,
-    ArchiveRuntimeSnapshot,
-    ArchiveRuntimeSnapshotPreflightRequest,
-    ArchiveRuntimeSnapshotPreflightResult,
     ArchiveRuntimeStatus,
     ArchiveRuntimeTriggerPoint,
 } from "@/shared/types/archive-rules";
@@ -51,11 +43,6 @@ const assignmentTriggers = new Set<ArchiveRuntimeTriggerPoint>([
     "VOLUME_BEFORE_ADD_ITEM",
 ]);
 
-const route = useRoute();
-const routeVersionId = Number(route.query.schemeVersionId);
-const schemeVersionId = ref<number | undefined>(
-    Number.isSafeInteger(routeVersionId) && routeVersionId > 0 ? routeVersionId : undefined,
-);
 const status = ref<ArchiveRuntimeStatus>();
 const triggerPoint = ref<ArchiveRuntimeTriggerPoint>();
 const definitions = ref<ArchiveRuntimeDefinitionDto[]>([]);
@@ -77,27 +64,16 @@ const simulationError = ref<string>();
 const simulationResult = ref<ArchiveRuntimeExecutionResult>();
 const simulation = ref(defaultSimulation());
 
-const snapshotOpen = ref(false);
-const snapshotSubmitting = ref(false);
-const snapshotError = ref<string>();
-const snapshotJson = ref("");
-const snapshotTargetSchemeCode = ref("");
-const snapshotTargetVersionCode = ref("");
-const categoryMappingsJson = ref("{}");
-const fieldMappingsJson = ref("{}");
-const preflightResult = ref<ArchiveRuntimeSnapshotPreflightResult>();
-
 const availableActions = computed<ArchiveRuntimeActionType[]>(() =>
     assignmentTriggers.has(editor.value.triggerPoint)
         ? ["REJECT", "WARN", "SET_FIELD"]
         : ["REJECT", "WARN"],
 );
 const writableFields = computed(() => fieldCatalog.value.filter((field) => field.writable));
-const selectedVersionReady = computed(() => schemeVersionId.value != null);
 
-watch([schemeVersionId, status], () => void loadDefinitions());
+watch(status, () => void loadDefinitions());
 watch(
-    () => [editor.value.schemeVersionId, editor.value.scopeCategoryCode, editor.value.triggerPoint],
+    () => [editor.value.scopeCategoryCode, editor.value.triggerPoint],
     () => {
         if (editorOpen.value) void loadFieldCatalog();
     },
@@ -105,13 +81,9 @@ watch(
 onMounted(() => void loadDefinitions());
 
 async function loadDefinitions() {
-    if (!schemeVersionId.value) {
-        definitions.value = [];
-        return;
-    }
     loading.value = true;
     try {
-        const response = await listArchiveRuntimeDefinitions(schemeVersionId.value, status.value);
+        const response = await listArchiveRuntimeDefinitions(status.value);
         definitions.value = triggerPoint.value
             ? response.items.filter((item) => item.triggerPoint === triggerPoint.value)
             : response.items;
@@ -124,12 +96,8 @@ async function loadDefinitions() {
 }
 
 function openCreate() {
-    if (!schemeVersionId.value) {
-        ElMessage.warning("请先选择治理版本");
-        return;
-    }
     editingId.value = undefined;
-    editor.value = { ...defaultEditor(), schemeVersionId: schemeVersionId.value };
+    editor.value = defaultEditor();
     editorError.value = undefined;
     editorViolations.value = [];
     editorOpen.value = true;
@@ -139,7 +107,6 @@ function openEdit(value: unknown) {
     const row = value as ArchiveRuntimeDefinitionDto;
     editingId.value = row.id;
     editor.value = {
-        schemeVersionId: row.schemeVersionId,
         definitionKind: row.definitionKind,
         definitionCode: row.definitionCode,
         definitionName: row.definitionName,
@@ -164,11 +131,9 @@ function openEdit(value: unknown) {
 }
 
 async function loadFieldCatalog() {
-    if (!editor.value.schemeVersionId) return;
     fieldLoading.value = true;
     try {
         const response = await getArchiveRuntimeFields({
-            schemeVersionId: editor.value.schemeVersionId,
             categoryCode: trim(editor.value.scopeCategoryCode),
             triggerPoint: editor.value.triggerPoint,
         });
@@ -212,8 +177,8 @@ async function submitDefinition() {
 
 function editorPayload(): ArchiveRuntimeDefinitionRequest {
     const value = editor.value;
-    if (!value.schemeVersionId || !value.definitionCode.trim() || !value.definitionName.trim()) {
-        throw new Error("治理版本、编码和名称不能为空");
+    if (!value.definitionCode.trim() || !value.definitionName.trim()) {
+        throw new Error("编码和名称不能为空");
     }
     const actions =
         value.definitionKind === "RULE"
@@ -230,7 +195,6 @@ function editorPayload(): ArchiveRuntimeDefinitionRequest {
         throw new Error("运行时规则至少需要一个固定动作");
     }
     return {
-        schemeVersionId: value.schemeVersionId,
         definitionKind: value.definitionKind,
         definitionCode: value.definitionCode.trim(),
         definitionName: value.definitionName.trim(),
@@ -289,11 +253,7 @@ async function removeDefinition(value: unknown) {
 }
 
 function openSimulation() {
-    if (!schemeVersionId.value) {
-        ElMessage.warning("请先选择治理版本");
-        return;
-    }
-    simulation.value = { ...defaultSimulation(), schemeVersionId: schemeVersionId.value };
+    simulation.value = defaultSimulation();
     simulationResult.value = undefined;
     simulationError.value = undefined;
     simulationOpen.value = true;
@@ -305,7 +265,6 @@ async function runSimulation() {
     try {
         const value = simulation.value;
         simulationResult.value = await simulateArchiveRuntimeDefinitions({
-            schemeVersionId: value.schemeVersionId!,
             triggerPoint: value.triggerPoint,
             fondsCode: trim(value.fondsCode),
             categoryCode: trim(value.categoryCode),
@@ -318,125 +277,6 @@ async function runSimulation() {
     } finally {
         simulationSubmitting.value = false;
     }
-}
-
-function openSnapshot() {
-    snapshotError.value = undefined;
-    preflightResult.value = undefined;
-    snapshotOpen.value = true;
-}
-
-async function exportSnapshot() {
-    if (!schemeVersionId.value) return;
-    snapshotSubmitting.value = true;
-    try {
-        const snapshot = await exportArchiveRuntimeSnapshot(schemeVersionId.value);
-        snapshotJson.value = JSON.stringify(snapshot, null, 2);
-        downloadJson(snapshot);
-        ElMessage.success(`快照已生成，摘要 ${snapshot.sha256.slice(0, 12)}…`);
-    } catch (error) {
-        snapshotError.value = requestErrorMessage(error, "快照导出失败");
-    } finally {
-        snapshotSubmitting.value = false;
-    }
-}
-
-async function readSnapshotFile(event: Event) {
-    const file = (event.target as HTMLInputElement).files?.[0];
-    if (!file) return;
-    if (file.size > 1_048_576) {
-        snapshotError.value = "快照不得超过 1 MiB";
-        return;
-    }
-    snapshotJson.value = await file.text();
-    preflightResult.value = undefined;
-}
-
-function snapshotPreflightRequest(): ArchiveRuntimeSnapshotPreflightRequest {
-    return {
-        snapshot: JSON.parse(snapshotJson.value) as ArchiveRuntimeSnapshot,
-        targetSchemeCode: trim(snapshotTargetSchemeCode.value),
-        categoryMappings: parseObject(categoryMappingsJson.value, "分类映射 JSON") as Record<
-            string,
-            string
-        >,
-        fieldMappings: parseObject(fieldMappingsJson.value, "字段映射 JSON") as Record<
-            string,
-            string
-        >,
-    };
-}
-
-async function preflightSnapshot() {
-    snapshotSubmitting.value = true;
-    snapshotError.value = undefined;
-    try {
-        preflightResult.value = await preflightArchiveRuntimeSnapshot(snapshotPreflightRequest());
-    } catch (error) {
-        preflightResult.value = undefined;
-        snapshotError.value = requestErrorMessage(error, "快照预检失败");
-    } finally {
-        snapshotSubmitting.value = false;
-    }
-}
-
-async function importSnapshot() {
-    if (!preflightResult.value || !snapshotTargetVersionCode.value.trim()) {
-        snapshotError.value = "请先通过预检并填写新的草稿版本编码";
-        return;
-    }
-    snapshotSubmitting.value = true;
-    try {
-        const result = await importArchiveRuntimeSnapshot({
-            preflight: snapshotPreflightRequest(),
-            targetVersionCode: snapshotTargetVersionCode.value.trim(),
-        });
-        schemeVersionId.value = result.schemeVersionId;
-        await loadDefinitions();
-        ElMessage.success(`已创建草稿版本 ${result.versionCode}（ID ${result.schemeVersionId}）`);
-        snapshotOpen.value = false;
-    } catch (error) {
-        snapshotError.value = requestErrorMessage(error, "快照导入失败，未产生部分配置");
-    } finally {
-        snapshotSubmitting.value = false;
-    }
-}
-
-async function restoreSnapshot() {
-    if (!preflightResult.value || !schemeVersionId.value) return;
-    try {
-        await ElMessageBox.confirm(
-            `将以快照中的 ${preflightResult.value.definitionCount} 条定义全量替换当前草稿，失败会自动回滚。`,
-            "确认恢复草稿",
-            { type: "warning", confirmButtonText: "确认恢复" },
-        );
-        snapshotSubmitting.value = true;
-        const result = await restoreArchiveRuntimeSnapshot(schemeVersionId.value, {
-            preflight: snapshotPreflightRequest(),
-        });
-        ElMessage.success(
-            `草稿已从 ${result.beforeDefinitionCount} 条恢复为 ${result.afterDefinitionCount} 条`,
-        );
-        snapshotOpen.value = false;
-        await loadDefinitions();
-    } catch (error) {
-        if (error !== "cancel" && error !== "close") {
-            snapshotError.value = requestErrorMessage(error, "恢复失败，原草稿保持不变");
-        }
-    } finally {
-        snapshotSubmitting.value = false;
-    }
-}
-
-function downloadJson(snapshot: ArchiveRuntimeSnapshot) {
-    const href = URL.createObjectURL(
-        new Blob([JSON.stringify(snapshot, null, 2)], { type: "application/json" }),
-    );
-    const anchor = document.createElement("a");
-    anchor.href = href;
-    anchor.download = snapshot.fileName;
-    anchor.click();
-    URL.revokeObjectURL(href);
 }
 
 async function copyFieldCode(fieldCode: string) {
@@ -470,7 +310,6 @@ function trim(value?: string) {
 
 function defaultEditor() {
     return {
-        schemeVersionId: undefined as number | undefined,
         definitionKind: "CONSTRAINT" as ArchiveRuntimeDefinitionKind,
         definitionCode: "",
         definitionName: "",
@@ -493,7 +332,6 @@ function defaultEditor() {
 
 function defaultSimulation() {
     return {
-        schemeVersionId: undefined as number | undefined,
         triggerPoint: "ITEM_BEFORE_CREATE" as ArchiveRuntimeTriggerPoint,
         fondsCode: "",
         categoryCode: "",
@@ -519,22 +357,13 @@ function defaultSimulation() {
                 <p class="runtime-subtitle">用户定义条件，系统只执行固定触发点与固定动作。</p>
             </div>
             <div class="am-page__actions">
-                <el-button :disabled="!selectedVersionReady" @click="openSnapshot"
-                    >迁移与恢复</el-button
-                >
-                <el-button :disabled="!selectedVersionReady" @click="openSimulation"
-                    >试运行</el-button
-                >
+                <el-button @click="openSimulation">试运行</el-button>
                 <el-button type="primary" @click="openCreate">新建定义</el-button>
             </div>
         </div>
 
         <el-card class="runtime-filter" shadow="never">
             <div class="runtime-filter__grid">
-                <label>
-                    <span>治理版本 ID</span>
-                    <el-input-number v-model="schemeVersionId" :min="1" controls-position="right" />
-                </label>
                 <label>
                     <span>状态</span>
                     <el-select v-model="status" clearable placeholder="全部状态">
@@ -564,10 +393,7 @@ function defaultSimulation() {
 
         <el-alert v-if="loadError" :title="loadError" type="error" show-icon :closable="false" />
         <el-card class="runtime-list" shadow="never">
-            <el-empty
-                v-if="!loading && definitions.length === 0"
-                description="当前版本还没有运行时定义"
-            >
+            <el-empty v-if="!loading && definitions.length === 0" description="还没有运行时定义">
                 <el-button type="primary" @click="openCreate">创建第一条约束</el-button>
             </el-empty>
             <el-table v-else v-loading="loading" :data="definitions" row-key="id" size="small">
@@ -922,99 +748,6 @@ function defaultSimulation() {
                 ></template
             >
         </el-dialog>
-
-        <el-dialog
-            v-model="snapshotOpen"
-            title="运行时配置迁移与恢复"
-            width="min(900px, 94vw)"
-            destroy-on-close
-        >
-            <div class="snapshot-toolbar">
-                <el-button
-                    :disabled="!schemeVersionId"
-                    :loading="snapshotSubmitting"
-                    @click="exportSnapshot"
-                    >导出当前版本</el-button
-                ><label class="file-button"
-                    ><span>选择快照文件</span
-                    ><input type="file" accept="application/json,.json" @change="readSnapshotFile"
-                /></label>
-            </div>
-            <el-form label-position="top">
-                <el-form-item label="快照 JSON"
-                    ><el-input
-                        v-model="snapshotJson"
-                        type="textarea"
-                        :rows="7"
-                        class="code-input"
-                        placeholder="导出、选择文件或粘贴快照"
-                /></el-form-item>
-                <div class="editor-form__row">
-                    <el-form-item label="目标治理方案编码"
-                        ><el-input
-                            v-model="snapshotTargetSchemeCode"
-                            placeholder="为空沿用快照方案编码" /></el-form-item
-                    ><el-form-item label="新草稿版本编码"
-                        ><el-input
-                            v-model="snapshotTargetVersionCode"
-                            placeholder="跨环境导入时必填"
-                    /></el-form-item>
-                </div>
-                <div class="editor-form__row">
-                    <el-form-item label="分类映射 JSON"
-                        ><el-input
-                            v-model="categoryMappingsJson"
-                            type="textarea"
-                            :rows="3"
-                            class="code-input" /></el-form-item
-                    ><el-form-item label="字段映射 JSON"
-                        ><el-input
-                            v-model="fieldMappingsJson"
-                            type="textarea"
-                            :rows="3"
-                            class="code-input"
-                    /></el-form-item>
-                </div>
-            </el-form>
-            <el-alert
-                v-if="snapshotError"
-                :title="snapshotError"
-                type="error"
-                :closable="false"
-                show-icon
-            />
-            <el-card v-if="preflightResult" class="preflight-result" shadow="never"
-                ><div class="preflight-result__summary">
-                    <el-tag type="success">预检通过</el-tag
-                    ><strong>{{ preflightResult.definitionCount }} 条定义</strong
-                    ><span>{{ preflightResult.fieldMappings.length }} 个字段引用</span
-                    ><code>{{ preflightResult.sha256 }}</code>
-                </div>
-                <el-table :data="preflightResult.fieldMappings" max-height="220" size="small"
-                    ><el-table-column prop="definitionCode" label="定义" /><el-table-column
-                        prop="sourceFieldCode"
-                        label="源字段" /><el-table-column
-                        prop="targetFieldCode"
-                        label="目标字段" /><el-table-column
-                        prop="dataType"
-                        label="类型"
-                        width="100" /></el-table
-            ></el-card>
-            <template #footer
-                ><el-button @click="snapshotOpen = false">关闭</el-button
-                ><el-button :loading="snapshotSubmitting" @click="preflightSnapshot"
-                    >完整预检</el-button
-                ><el-button :disabled="!preflightResult" @click="restoreSnapshot"
-                    >恢复当前草稿</el-button
-                ><el-button
-                    type="primary"
-                    :disabled="!preflightResult"
-                    :loading="snapshotSubmitting"
-                    @click="importSnapshot"
-                    >导入为新草稿</el-button
-                ></template
-            >
-        </el-dialog>
     </section>
 </template>
 
@@ -1144,9 +877,7 @@ function defaultSimulation() {
     font-size: 11px;
 }
 .action-header,
-.snapshot-toolbar,
-.simulation-summary,
-.preflight-result__summary {
+.simulation-summary {
     display: flex;
     align-items: center;
     gap: 12px;
@@ -1186,33 +917,6 @@ pre {
     padding: 12px;
     background: #f5f7f8;
     font-size: 12px;
-}
-.snapshot-toolbar {
-    margin-bottom: 14px;
-}
-.file-button {
-    display: inline-flex;
-    align-items: center;
-    height: 32px;
-    padding: 0 15px;
-    border: 1px solid var(--el-border-color);
-    border-radius: var(--el-border-radius-base);
-    cursor: pointer;
-}
-.file-button input {
-    display: none;
-}
-.preflight-result {
-    margin-top: 12px;
-}
-.preflight-result__summary {
-    flex-wrap: wrap;
-    margin-bottom: 10px;
-}
-.preflight-result__summary code {
-    margin-left: auto;
-    color: var(--runtime-muted);
-    font-size: 10px;
 }
 @media (max-width: 900px) {
     .runtime-filter__grid,

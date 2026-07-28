@@ -320,7 +320,6 @@ class ArchiveItemElectronicFileServiceTests {
         archiveItem.setArchiveNo("A-001");
         archiveItem.setArchiveYear(2026);
         archiveItem.setElectronicStatus("DRAFT");
-        archiveItem.setGovernanceSchemeVersionId(11L);
         return archiveItem;
     }
 

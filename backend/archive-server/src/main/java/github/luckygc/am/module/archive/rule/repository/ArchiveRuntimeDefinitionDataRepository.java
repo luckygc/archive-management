@@ -40,25 +40,16 @@ public interface ArchiveRuntimeDefinitionDataRepository {
     @OrderBy("priority")
     @OrderBy("definitionCode")
     @OrderBy("id")
-    List<ArchiveRuntimeDefinition> findBySchemeVersionId(@Nonnull Long schemeVersionId);
+    List<ArchiveRuntimeDefinition> list();
 
     @Transactional(readOnly = true)
     @Find
     @OrderBy("priority")
     @OrderBy("definitionCode")
     @OrderBy("id")
-    List<ArchiveRuntimeDefinition> findBySchemeVersionIdAndStatus(
-            @Nonnull Long schemeVersionId, @Nonnull ArchiveRuntimeStatus status);
-
-    @Transactional(readOnly = true)
-    @Find
-    @OrderBy("schemeVersionId")
-    @OrderBy("definitionCode")
-    @OrderBy("id")
     List<ArchiveRuntimeDefinition> findByStatus(@Nonnull ArchiveRuntimeStatus status);
 
     @Nullable @Transactional(readOnly = true)
     @Find
-    ArchiveRuntimeDefinition findBySchemeVersionIdAndDefinitionCode(
-            @Nonnull Long schemeVersionId, @Nonnull String definitionCode);
+    ArchiveRuntimeDefinition findByDefinitionCode(@Nonnull String definitionCode);
 }

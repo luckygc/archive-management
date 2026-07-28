@@ -112,7 +112,6 @@ class ArchiveItemImportExportServiceTests {
         exportItem.setId(10L);
         exportItem.setFondsCode("F001");
         exportItem.setCategoryCode("contract");
-        exportItem.setGovernanceSchemeVersionId(11L);
         when(archiveItemRepository.findById(10L)).thenReturn(java.util.Optional.of(exportItem));
     }
 

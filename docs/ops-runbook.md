@@ -10,13 +10,6 @@
 curl http://localhost:8080/actuator/health
 ```
 
-预览服务：
-
-```bash
-curl http://localhost:8088/healthz
-curl http://localhost:8088/v1/capabilities
-```
-
 PC 前端：
 
 - 浏览器能访问前端入口。
@@ -130,13 +123,6 @@ POST /api/v1/login-failure-limits/{username}:reset
 - Caffeine nonce 缓存大小。
 - Spring Session 表增长。
 - 认证审计、档案审计和规则追踪表增长。
-
-预览服务重点关注：
-
-- 上传文件大小。
-- Magika 探测耗时。
-- 同步转换接口响应时间。
-- 外部转换工具是否缺失。
 
 ## 应急处理清单
 

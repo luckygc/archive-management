@@ -1,13 +1,12 @@
 # 架构总览
 
-Archive Management 由单 Spring Boot 主应用、PC 前端和独立文件预览服务组成。本文只记录稳定技术边界；业务合同、运行参数和页面实现分别由 OpenSpec、配置文件和源码承担。
+Archive Management 由单 Spring Boot 主应用和 PC 前端组成。本文只记录稳定技术边界；业务合同、运行参数和页面实现分别由 OpenSpec、配置文件和源码承担。
 
 ## 顶层组件
 
 | 路径 | 稳定职责 |
 | --- | --- |
 | `backend/archive-server/` | Spring Boot 后端主应用，承载项目 HTTP API、业务模块、认证授权、迁移和基础设施接入 |
-| `backend/preview-service/` | 独立部署的 Go 文件预览服务，不嵌入主应用进程 |
 | `frontend/admin/` | Vue 3 + Element Plus PC 管理工作台 |
 | `frontend/packages/core/` | 框架无关的 API client、安全验证和共享类型 |
 | `openspec/` | 通用 API 与业务能力合同 |
@@ -74,11 +73,9 @@ Repository 通过 Hibernate `StatelessSession` / `EntityAgent` 执行，不依�
 
 ## 运行时约束与规则边界
 
-治理版本直接拥有用户定义的约束和规则。字段目录由固定字段、当前分类动态字段、实物字段和只读上下文字段实时组成；条件只接受带资源上限和类型校验的结构化 AST。系统通过代码注册固定触发点及 `REJECT`、`WARN`、`SET_FIELD` 动作，配置不能提供 SQL、脚本或任意实现入口。
+运行时定义直接携带全宗、分类、档案层级和固定触发点作用域。字段目录由固定字段、当前分类动态字段、实物字段和只读上下文字段实时组成；条件只接受带资源上限和类型校验的结构化 AST。系统通过代码注册固定触发点及 `REJECT`、`WARN`、`SET_FIELD` 动作，配置不能提供 SQL、脚本或任意实现入口。
 
 条目、案卷、文件、导入和导出 Service 在副作用前调用统一执行核心。动作只改变尚未持久化的候选值或返回决策，事务仍由业务 Service 拥有；阻断、配置失效、冲突和执行错误均失败关闭。已发布定义由应用状态机与 PostgreSQL 约束共同保证不可变，追踪查询在数据库内应用权限和数据范围。
-
-动态运行时配置可导出为使用稳定编码和 SHA-256 摘要的版本化快照。导入先完整预检并在单事务中创建新草稿；恢复只全量替换显式草稿目标且失败回滚。快照不包含档案、文件、用户、权限、审计或追踪，也不替代整库备份、WAL/PITR 和对象存储恢复。
 
 ## 前端边界
 
@@ -86,11 +83,9 @@ Repository 通过 Hibernate `StatelessSession` / `EntityAgent` 执行，不依�
 
 `frontend/packages/core/` 只提供框架无关的共享能力，不承载业务页面或 UI 壳层。具体路由、页面组织和请求流程属于源码实现，不写入稳定架构文档。
 
-## 文件与预览
+## 文件存储
 
 文件内容只使用 S3 兼容对象存储，业务模块统一通过 `FileStorageService` 使用存储能力。endpoint、bucket、凭证和 path-style 等参数以 [`application.yaml`](../backend/archive-server/src/main/resources/application.yaml) 及部署环境外部配置为准。
-
-`backend/preview-service/` 作为独立 HTTP 服务部署，与主应用保持进程和重转换依赖隔离。其接口和能力合同以 [`file-preview-service`](../openspec/specs/file-preview-service/spec.md) 及 [`backend/preview-service/README.md`](../backend/preview-service/README.md) 为准。
 
 ## 运行时基础设施
 

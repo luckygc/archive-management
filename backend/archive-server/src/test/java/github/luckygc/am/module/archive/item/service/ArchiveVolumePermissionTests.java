@@ -32,8 +32,6 @@ import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeResolutionTypes.ArchiveDataScopeFilter;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeResolutionTypes.ResolvedArchiveDataScope;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
-import github.luckygc.am.module.archive.governance.ArchiveGovernanceSchemeVersion;
-import github.luckygc.am.module.archive.governance.service.ArchiveGovernanceService;
 import github.luckygc.am.module.archive.item.ArchiveItemQueryOperator;
 import github.luckygc.am.module.archive.item.ArchiveVolume;
 import github.luckygc.am.module.archive.item._ArchiveVolume;
@@ -59,7 +57,6 @@ class ArchiveVolumePermissionTests {
     private ArchiveMetadataService archiveMetadataService;
     private ArchiveMetadataReferenceService archiveMetadataReferenceService;
     private ArchiveCategoryService archiveCategoryService;
-    private ArchiveGovernanceService governanceService;
     private ArchiveItemReadService archiveItemRoutingService;
     private AuthorizationPermissionService permissionService;
     private ArchiveDataScopeService dataScopeService;
@@ -72,14 +69,11 @@ class ArchiveVolumePermissionTests {
         archiveMetadataService = mock(ArchiveMetadataService.class);
         archiveMetadataReferenceService = mock(ArchiveMetadataReferenceService.class);
         archiveCategoryService = mock(ArchiveCategoryService.class);
-        governanceService = mock(ArchiveGovernanceService.class);
         archiveItemRoutingService = mock(ArchiveItemReadService.class);
         permissionService = mock(AuthorizationPermissionService.class);
         dataScopeService = mock(ArchiveDataScopeService.class);
         when(dataScopeService.buildItemFilter(anyLong(), anyLong(), anyString()))
                 .thenReturn(ArchiveDataScopeFilter.all());
-        when(governanceService.requireDefaultVersionForNewArchive(anyString(), anyString()))
-                .thenReturn(governanceVersion());
         archiveVolumeService =
                 new ArchiveVolumeService(
                         archiveMapper,
@@ -87,7 +81,6 @@ class ArchiveVolumePermissionTests {
                         archiveMetadataService,
                         archiveMetadataReferenceService,
                         archiveCategoryService,
-                        governanceService,
                         archiveItemRoutingService,
                         permissionService,
                         dataScopeService,
@@ -225,8 +218,7 @@ class ArchiveVolumePermissionTests {
                         anyString(),
                         any(),
                         anyString(),
-                        anyInt(),
-                        any());
+                        anyInt());
     }
 
     @Test
@@ -294,13 +286,12 @@ class ArchiveVolumePermissionTests {
                         anyString(),
                         org.mockito.ArgumentMatchers.any(),
                         anyString(),
-                        org.mockito.ArgumentMatchers.anyInt(),
-                        org.mockito.ArgumentMatchers.any());
+                        org.mockito.ArgumentMatchers.anyInt());
     }
 
     @Test
-    @DisplayName("创建案卷时写入默认治理方案版本")
-    void createVolumeShouldSaveDefaultGovernanceVersion() {
+    @DisplayName("创建案卷时直接执行运行时规则")
+    void createVolumeShouldExecuteRuntimeRulesDirectly() {
         when(permissionService.hasPermission(9L, "archive:item:create")).thenReturn(true);
         when(archiveCategoryService.getCategory(1L)).thenReturn(volumeCategory());
         when(archiveCategoryService.listCategories(null))
@@ -317,8 +308,7 @@ class ArchiveVolumePermissionTests {
                         eq("合同档案"),
                         eq("V-001"),
                         eq("DRAFT"),
-                        eq(2026),
-                        eq(77L)))
+                        eq(2026)))
                 .thenReturn(31L);
         when(archiveMapper.getArchiveVolume(31L)).thenReturn(volumeRow());
 
@@ -327,18 +317,11 @@ class ArchiveVolumePermissionTests {
                         new CreateArchiveVolumeRequest(1L, "F001", "V-001", 2026, "DRAFT"), 9L);
 
         assertThat(volume.id()).isEqualTo(31L);
-        verify(governanceService).requireDefaultVersionForNewArchive("F001", "contract");
     }
 
     private ArchiveFondsDto activeFonds() {
         LocalDateTime now = LocalDateTime.of(2026, 6, 30, 10, 0);
         return new ArchiveFondsDto(1L, "F001", "启用全宗", true, 0, now, now);
-    }
-
-    private ArchiveGovernanceSchemeVersion governanceVersion() {
-        ArchiveGovernanceSchemeVersion version = new ArchiveGovernanceSchemeVersion();
-        version.setId(77L);
-        return version;
     }
 
     private void assertInvalidItemId(Long itemId) {

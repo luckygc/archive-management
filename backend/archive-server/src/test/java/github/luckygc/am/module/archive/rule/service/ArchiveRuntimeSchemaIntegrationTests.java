@@ -81,7 +81,7 @@ class ArchiveRuntimeSchemaIntegrationTests extends PostgreSqlContainerTest {
                         "idx_am_archive_runtime_definition_execution_active",
                         "idx_am_archive_runtime_action_definition_active",
                         "idx_am_archive_runtime_trace_object",
-                        "idx_am_archive_runtime_trace_version");
+                        "idx_am_archive_runtime_trace_trigger");
         assertThat(columnType("am_archive_runtime_definition", "condition_json"))
                 .isEqualTo("jsonb");
         assertThat(columnType("am_archive_runtime_action", "action_params")).isEqualTo("jsonb");
@@ -91,17 +91,14 @@ class ArchiveRuntimeSchemaIntegrationTests extends PostgreSqlContainerTest {
     @Test
     @DisplayName("数据库拒绝未知触发点动作和遗留绑定类型")
     void databaseRejectsValuesOutsideFixedCatalogs() {
-        long versionId = insertDraftVersion(9_700_000L);
-
         assertThatThrownBy(
                         () ->
                                 jdbcTemplate.update(
                                         "insert into am_archive_runtime_definition "
-                                                + "(scheme_version_id, definition_kind, definition_code, "
-                                                + "definition_name, trigger_point, condition_json) "
-                                                + "values (?, 'RULE', 'invalid-trigger', '无效触发点', "
-                                                + "'USER_SCRIPT', '{}'::jsonb)",
-                                        versionId))
+                                                + "(definition_kind, definition_code, definition_name, "
+                                                + "trigger_point, condition_json) "
+                                                + "values ('RULE', 'invalid-trigger', '无效触发点', "
+                                                + "'USER_SCRIPT', '{}'::jsonb)"))
                 .hasStackTraceContaining("ck_am_archive_runtime_trigger_point");
     }
 
@@ -112,20 +109,5 @@ class ArchiveRuntimeSchemaIntegrationTests extends PostgreSqlContainerTest {
                 String.class,
                 tableName,
                 columnName);
-    }
-
-    private long insertDraftVersion(long schemeId) {
-        jdbcTemplate.update(
-                "insert into am_archive_governance_scheme (id, scheme_code, scheme_name) "
-                        + "values (?, ?, ?)",
-                schemeId,
-                "runtime-schema-" + schemeId,
-                "运行时结构测试方案");
-        return jdbcTemplate.queryForObject(
-                "insert into am_archive_governance_scheme_version "
-                        + "(scheme_id, version_code, status) values (?, 'draft-v1', 'DRAFT') "
-                        + "returning id",
-                Long.class,
-                schemeId);
     }
 }

@@ -31,8 +31,6 @@ import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeResolutionTypes.ArchiveDataScopeFilter;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeResolutionTypes.ResolvedArchiveDataScope;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
-import github.luckygc.am.module.archive.governance.ArchiveGovernanceSchemeVersion;
-import github.luckygc.am.module.archive.governance.service.ArchiveGovernanceService;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemAuditDataRepository;
 import github.luckygc.am.module.archive.item.service.ArchiveItemCommandService.CreateArchiveItemRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService.SearchArchiveItemsRequest;
@@ -55,7 +53,6 @@ class ArchiveItemDataScopeQueryTests {
     private ArchiveMetadataService archiveMetadataService;
     private ArchiveMetadataReferenceService archiveMetadataReferenceService;
     private ArchiveCategoryService archiveCategoryService;
-    private ArchiveGovernanceService governanceService;
     private ArchiveDataScopeService dataScopeService;
     private AuthorizationPermissionService permissionService;
     private ArchiveItemCommandService archiveItemRoutingService;
@@ -69,11 +66,6 @@ class ArchiveItemDataScopeQueryTests {
         archiveMetadataService = mock(ArchiveMetadataService.class);
         archiveMetadataReferenceService = mock(ArchiveMetadataReferenceService.class);
         archiveCategoryService = mock(ArchiveCategoryService.class);
-        governanceService = mock(ArchiveGovernanceService.class);
-        ArchiveGovernanceSchemeVersion governanceVersion = new ArchiveGovernanceSchemeVersion();
-        governanceVersion.setId(11L);
-        when(governanceService.requireDefaultVersionForNewArchive(any(), any()))
-                .thenReturn(governanceVersion);
         ArchiveItemSearchProjectionService searchProjectionService =
                 mock(ArchiveItemSearchProjectionService.class);
         dataScopeService = mock(ArchiveDataScopeService.class);
@@ -92,7 +84,6 @@ class ArchiveItemDataScopeQueryTests {
                         archiveMetadataService,
                         archiveMetadataReferenceService,
                         archiveCategoryService,
-                        governanceService,
                         archiveMapper,
                         searchProjectionService,
                         dataScopeService,
@@ -453,8 +444,7 @@ class ArchiveItemDataScopeQueryTests {
                         anyString(),
                         any(),
                         any(),
-                        anyInt(),
-                        any());
+                        anyInt());
     }
 
     private ArchiveCategoryDto category() {

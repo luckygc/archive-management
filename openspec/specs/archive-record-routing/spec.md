@@ -213,12 +213,13 @@
 
 ### Requirement: 档案写入运行时触发
 
-条目、案卷和电子文件状态变更 SHALL 在持久化前执行治理版本的用户定义运行时配置。
+条目、案卷和电子文件状态变更 SHALL 在持久化前执行与当前对象作用域匹配的用户定义运行时配置。
 
 #### Scenario: 条目创建修改删除
 
 - **WHEN** 条目创建、修改或删除通过基础权限和字段校验
 - **THEN** 系统 SHALL 分别执行 `ITEM_BEFORE_CREATE`、`ITEM_BEFORE_UPDATE` 或 `ITEM_BEFORE_DELETE`
+- **AND** 系统 SHALL 使用当前条目的全宗、分类和档案层级匹配运行时定义
 - **AND** `SET_FIELD` 最终候选值 SHALL 再次通过类型、数据范围和数据库约束
 - **AND** 阻断 SHALL 使主表、动态表、审计和决策追踪不产生部分写入
 
@@ -226,10 +227,18 @@
 
 - **WHEN** 创建案卷或把条目加入案卷
 - **THEN** 系统 SHALL 在关系变化前执行 `VOLUME_BEFORE_CREATE` 或 `VOLUME_BEFORE_ADD_ITEM`
+- **AND** 系统 SHALL 使用当前案卷或条目的全宗和分类匹配运行时定义
 - **AND** 阻断 SHALL 保持案卷、条目归属和排序不变
 
 #### Scenario: 电子文件上传
 
 - **WHEN** 文件通过基础权限、大小和存储请求校验
 - **THEN** 系统 SHALL 在文件元数据写入前执行 `FILE_BEFORE_UPLOAD`
+- **AND** 系统 SHALL 使用所属档案条目的全宗和分类匹配运行时定义
 - **AND** 阻断 SHALL 不写文件元数据，并按现有补偿合同清理或过期临时对象
+
+#### Scenario: 档案记录不保存额外配置容器引用
+
+- **WHEN** 系统创建或更新档案条目或案卷
+- **THEN** 主表 SHALL NOT 保存额外的方案或版本容器 ID
+- **AND** 业务请求和响应 SHALL NOT 暴露额外的方案或版本容器字段

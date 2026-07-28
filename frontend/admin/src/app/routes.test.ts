@@ -59,13 +59,13 @@ describe("workspaceRoutes", () => {
         expect(router.resolve("/archive/catalog/categories").meta.permission).toBe(
             "archive:metadata:manage",
         );
-        expect(router.resolve("/archive/governance/schemes").meta.permission).toBe(
-            "archive:governance:manage",
+        expect(router.resolve("/archive/rules/definitions").meta.permission).toBe(
+            "archive:rule:manage",
         );
-        expect(router.resolve("/archive/governance/rules").meta.title).toBe("运行时规则");
+        expect(router.resolve("/archive/rules/definitions").meta.title).toBe("运行时规则");
         expect(
-            router.getRoutes().filter((route) => route.path.startsWith("/archive/governance/")),
-        ).toHaveLength(3);
+            router.getRoutes().filter((route) => route.path.startsWith("/archive/rules/")),
+        ).toHaveLength(2);
         expect(router.resolve("/approval/center").meta.title).toBe("审批中心");
         expect(router.resolve("/approval/definitions").meta.permission).toBe(
             "approval:definition:manage",

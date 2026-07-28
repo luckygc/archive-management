@@ -22,7 +22,6 @@ import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeResolutionTypes.ArchiveDataScopeFilter;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
-import github.luckygc.am.module.archive.governance.service.ArchiveGovernanceService;
 import github.luckygc.am.module.archive.item.ArchiveItemAudit;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemAuditDataRepository;
 import github.luckygc.am.module.archive.item.service.ArchiveItemReadService.ArchiveItemDetailDto;
@@ -58,7 +57,6 @@ public class ArchiveItemCommandService {
     private final ArchiveMetadataService archiveMetadataService;
     private final ArchiveMetadataReferenceService archiveMetadataReferenceService;
     private final ArchiveCategoryService archiveCategoryService;
-    private final ArchiveGovernanceService governanceService;
     private final ArchiveMapper archiveMapper;
     private final ArchiveItemSearchProjectionService searchProjectionService;
     private final ArchiveDataScopeService dataScopeService;
@@ -73,7 +71,6 @@ public class ArchiveItemCommandService {
             ArchiveMetadataService archiveMetadataService,
             ArchiveMetadataReferenceService archiveMetadataReferenceService,
             ArchiveCategoryService archiveCategoryService,
-            ArchiveGovernanceService governanceService,
             ArchiveMapper archiveMapper,
             ArchiveItemSearchProjectionService searchProjectionService,
             ArchiveDataScopeService dataScopeService,
@@ -86,7 +83,6 @@ public class ArchiveItemCommandService {
         this.archiveMetadataService = archiveMetadataService;
         this.archiveMetadataReferenceService = archiveMetadataReferenceService;
         this.archiveCategoryService = archiveCategoryService;
-        this.governanceService = governanceService;
         this.archiveMapper = archiveMapper;
         this.searchProjectionService = searchProjectionService;
         this.dataScopeService = dataScopeService;
@@ -143,14 +139,8 @@ public class ArchiveItemCommandService {
                         ? Map.of()
                         : fieldValueConverter.convertFields(
                                 physicalFields, requestPhysicalFields, "physicalFields");
-        Long governanceSchemeVersionId =
-                governanceService
-                        .requireDefaultVersionForNewArchive(
-                                fonds.fondsCode(), category.categoryCode())
-                        .getId();
         ItemPolicyExecution policyExecution =
                 enforceItemPolicy(
-                        governanceSchemeVersionId,
                         ArchiveRuntimeTriggerPoint.ITEM_BEFORE_CREATE,
                         null,
                         volumeId,
@@ -199,8 +189,7 @@ public class ArchiveItemCommandService {
                             candidate.electronicStatus(),
                             candidate.securityLevelId(),
                             candidate.retentionPeriodId(),
-                            archiveYear,
-                            governanceSchemeVersionId);
+                            archiveYear);
         } catch (DuplicateKeyException exception) {
             throw duplicateArchiveNo();
         }
@@ -280,10 +269,8 @@ public class ArchiveItemCommandService {
                                 before.physicalFields(), requestPhysicalFields, "physicalFields");
         Map<String, @Nullable Object> convertedPhysicalFields =
                 mergeFields(currentPhysicalFields, convertedRequestPhysicalFields);
-        Long governanceSchemeVersionId = requireGovernanceVersionId(before.item());
         ItemPolicyExecution policyExecution =
                 enforceItemPolicy(
-                        governanceSchemeVersionId,
                         ArchiveRuntimeTriggerPoint.ITEM_BEFORE_UPDATE,
                         id,
                         volumeId,
@@ -379,7 +366,6 @@ public class ArchiveItemCommandService {
                         category.id(), ArchiveLevel.ITEM, ArchiveFieldScope.PHYSICAL);
         ItemPolicyExecution policyExecution =
                 enforceItemPolicy(
-                        requireGovernanceVersionId(record),
                         ArchiveRuntimeTriggerPoint.ITEM_BEFORE_DELETE,
                         id,
                         record.volumeId(),
@@ -423,7 +409,6 @@ public class ArchiveItemCommandService {
     }
 
     private ItemPolicyExecution enforceItemPolicy(
-            Long governanceSchemeVersionId,
             ArchiveRuntimeTriggerPoint triggerPoint,
             @Nullable Long itemId,
             @Nullable Long volumeId,
@@ -458,7 +443,6 @@ public class ArchiveItemCommandService {
         facts.put("context.operation", triggerPoint.name());
         ArchiveRuntimeExecutionRequest request =
                 new ArchiveRuntimeExecutionRequest(
-                        governanceSchemeVersionId,
                         triggerPoint,
                         fondsCode,
                         category.categoryCode(),
@@ -535,13 +519,6 @@ public class ArchiveItemCommandService {
 
     private boolean hasAssignment(ArchiveRuntimeExecutionResult result, String prefix) {
         return result.assignments().keySet().stream().anyMatch(field -> field.startsWith(prefix));
-    }
-
-    private Long requireGovernanceVersionId(ArchiveItemDto item) {
-        if (item.governanceSchemeVersionId() == null) {
-            throw badRequest("档案条目未绑定治理版本，不能执行运行时检查");
-        }
-        return item.governanceSchemeVersionId();
     }
 
     private @Nullable String stringFact(Map<String, @Nullable Object> facts, String field) {

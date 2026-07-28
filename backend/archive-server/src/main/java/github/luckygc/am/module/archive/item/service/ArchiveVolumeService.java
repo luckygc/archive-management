@@ -28,7 +28,6 @@ import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeResolutionTypes.ArchiveDataScopeFilter;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeResolutionTypes.ResolvedArchiveDataScope;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
-import github.luckygc.am.module.archive.governance.service.ArchiveGovernanceService;
 import github.luckygc.am.module.archive.item.ArchiveVolume;
 import github.luckygc.am.module.archive.item._ArchiveVolume;
 import github.luckygc.am.module.archive.item.repository.ArchiveVolumeDataRepository;
@@ -60,7 +59,6 @@ public class ArchiveVolumeService {
     private final ArchiveMetadataService archiveMetadataService;
     private final ArchiveMetadataReferenceService archiveMetadataReferenceService;
     private final ArchiveCategoryService archiveCategoryService;
-    private final ArchiveGovernanceService governanceService;
     private final ArchiveItemReadService archiveItemRoutingService;
     private final AuthorizationPermissionService permissionService;
     private final ArchiveDataScopeService dataScopeService;
@@ -73,7 +71,6 @@ public class ArchiveVolumeService {
             ArchiveMetadataService archiveMetadataService,
             ArchiveMetadataReferenceService archiveMetadataReferenceService,
             ArchiveCategoryService archiveCategoryService,
-            ArchiveGovernanceService governanceService,
             ArchiveItemReadService archiveItemRoutingService,
             AuthorizationPermissionService permissionService,
             ArchiveDataScopeService dataScopeService,
@@ -84,7 +81,6 @@ public class ArchiveVolumeService {
         this.archiveMetadataService = archiveMetadataService;
         this.archiveMetadataReferenceService = archiveMetadataReferenceService;
         this.archiveCategoryService = archiveCategoryService;
-        this.governanceService = governanceService;
         this.archiveItemRoutingService = archiveItemRoutingService;
         this.permissionService = permissionService;
         this.dataScopeService = dataScopeService;
@@ -271,14 +267,8 @@ public class ArchiveVolumeService {
         int archiveYear =
                 request.archiveYear() == null ? Year.now().getValue() : request.archiveYear();
         String archiveNo = StringUtils.trimToNull(request.archiveNo());
-        Long governanceSchemeVersionId =
-                governanceService
-                        .requireDefaultVersionForNewArchive(
-                                fonds.fondsCode(), category.categoryCode())
-                        .getId();
         VolumePolicyExecution policyExecution =
                 enforceVolumePolicy(
-                        governanceSchemeVersionId,
                         ArchiveRuntimeTriggerPoint.VOLUME_BEFORE_CREATE,
                         null,
                         fonds.fondsCode(),
@@ -309,8 +299,7 @@ public class ArchiveVolumeService {
                             category.categoryName(),
                             archiveNo,
                             electronicStatus,
-                            archiveYear,
-                            governanceSchemeVersionId);
+                            archiveYear);
         } catch (DuplicateKeyException exception) {
             throw duplicateArchiveNo();
         }
@@ -350,13 +339,9 @@ public class ArchiveVolumeService {
                 || !volume.categoryCode().equals(item.categoryCode())) {
             throw new BadRequestException("案卷和档案条目不属于同一全宗和分类");
         }
-        if (volume.governanceSchemeVersionId() == null) {
-            throw new BadRequestException("案卷未绑定治理版本，不能执行运行时检查");
-        }
         ArchiveCategoryDto category = getCategoryByCode(volume.categoryCode());
         VolumePolicyExecution policyExecution =
                 enforceVolumePolicy(
-                        volume.governanceSchemeVersionId(),
                         ArchiveRuntimeTriggerPoint.VOLUME_BEFORE_ADD_ITEM,
                         volume.id(),
                         volume.fondsCode(),
@@ -378,7 +363,6 @@ public class ArchiveVolumeService {
     }
 
     private VolumePolicyExecution enforceVolumePolicy(
-            Long governanceSchemeVersionId,
             ArchiveRuntimeTriggerPoint triggerPoint,
             @Nullable Long volumeId,
             String fondsCode,
@@ -410,7 +394,6 @@ public class ArchiveVolumeService {
         facts.put("context.operation", triggerPoint.name());
         ArchiveRuntimeExecutionRequest runtimeRequest =
                 new ArchiveRuntimeExecutionRequest(
-                        governanceSchemeVersionId,
                         triggerPoint,
                         fondsCode,
                         category.categoryCode(),
@@ -525,7 +508,6 @@ public class ArchiveVolumeService {
                 string(row, "archiveNo"),
                 string(row, "electronicStatus"),
                 number(row, "archiveYear").intValue(),
-                longOrNull(row, "governanceSchemeVersionId"),
                 bool(row, "lockedFlag"),
                 string(row, "lockReason"),
                 longOrNull(row, "lockedBy"),
@@ -585,7 +567,6 @@ public class ArchiveVolumeService {
             String archiveNo,
             String electronicStatus,
             int archiveYear,
-            @Nullable Long governanceSchemeVersionId,
             boolean lockedFlag,
             String lockReason,
             Long lockedBy,

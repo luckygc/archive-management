@@ -32,26 +32,20 @@
 - [档案记录路由](../openspec/specs/archive-record-routing/spec.md)
 - [档案导入导出](../openspec/specs/archive-import-export/spec.md)
 
-### 治理与运行时规则
+### 运行时规则
 
-- [档案治理方案](../openspec/specs/archive-governance-scheme/spec.md)
-- [治理工作台](../openspec/specs/archive-governance-workbench/spec.md)
 - [运行时规则引擎](../openspec/specs/archive-local-rule-engine/spec.md)
-- [运行时配置迁移与恢复](../openspec/specs/archive-runtime-check-portability/spec.md)
 
 ### 文件与流程
 
 - [文件存储](../openspec/specs/file-storage/spec.md)
 - [归档接收](../openspec/specs/intake/spec.md)
-- [文件预览服务](../openspec/specs/file-preview-service/spec.md)
 
 OpenSpec 总览与活动 change 状态见 [`openspec/README.md`](../openspec/README.md)。规格尚未覆盖的接口不能仅凭本文成为稳定合同，应先补齐或澄清对应 OpenSpec。
 
-## 第三方和独立服务边界
+## 第三方协议边界
 
 CAP 等第三方固定协议只作为适配层例外，不反向改变项目自有 API 风格。
-
-文件预览服务是独立运行面，不使用主应用 `/api/v1` 前缀。其接口、默认监听和运行方式以 [文件预览规格](../openspec/specs/file-preview-service/spec.md) 与 [`backend/preview-service/README.md`](../backend/preview-service/README.md) 为准。
 
 ## 变更流程
 

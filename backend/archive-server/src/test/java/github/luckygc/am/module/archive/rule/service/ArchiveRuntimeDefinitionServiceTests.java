@@ -17,9 +17,6 @@ import org.junit.jupiter.api.Test;
 
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.archive.ArchiveLevel;
-import github.luckygc.am.module.archive.governance.ArchiveGovernanceSchemeVersion;
-import github.luckygc.am.module.archive.governance.ArchiveGovernanceSchemeVersionStatus;
-import github.luckygc.am.module.archive.governance.repository.ArchiveGovernanceSchemeVersionDataRepository;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldDataType;
 import github.luckygc.am.module.archive.rule.ArchiveRuntimeAction;
 import github.luckygc.am.module.archive.rule.ArchiveRuntimeActionType;
@@ -42,20 +39,17 @@ class ArchiveRuntimeDefinitionServiceTests {
 
     private ArchiveRuntimeDefinitionDataRepository definitionRepository;
     private ArchiveRuntimeActionDataRepository actionRepository;
-    private ArchiveGovernanceSchemeVersionDataRepository versionRepository;
     private ArchiveRuntimeDefinitionService service;
 
     @BeforeEach
     void setUp() {
         definitionRepository = mock(ArchiveRuntimeDefinitionDataRepository.class);
         actionRepository = mock(ArchiveRuntimeActionDataRepository.class);
-        versionRepository = mock(ArchiveGovernanceSchemeVersionDataRepository.class);
         ArchiveRuntimeFieldCatalogService catalogService =
                 mock(ArchiveRuntimeFieldCatalogService.class);
-        when(versionRepository.findById(1L)).thenReturn(Optional.of(draftVersion()));
-        when(catalogService.catalog(1L, "DOC", ArchiveRuntimeTriggerPoint.ITEM_BEFORE_CREATE))
+        when(catalogService.catalog("DOC", ArchiveRuntimeTriggerPoint.ITEM_BEFORE_CREATE))
                 .thenReturn(catalog(ArchiveRuntimeTriggerPoint.ITEM_BEFORE_CREATE));
-        when(catalogService.catalog(1L, "DOC", ArchiveRuntimeTriggerPoint.ITEM_BEFORE_DELETE))
+        when(catalogService.catalog("DOC", ArchiveRuntimeTriggerPoint.ITEM_BEFORE_DELETE))
                 .thenReturn(catalog(ArchiveRuntimeTriggerPoint.ITEM_BEFORE_DELETE));
         when(definitionRepository.insert(any(ArchiveRuntimeDefinition.class)))
                 .thenAnswer(
@@ -70,7 +64,6 @@ class ArchiveRuntimeDefinitionServiceTests {
                 new ArchiveRuntimeDefinitionService(
                         definitionRepository,
                         actionRepository,
-                        versionRepository,
                         catalogService,
                         List.of(
                                 new ArchiveRuntimeRejectActionHandler(),
@@ -85,7 +78,6 @@ class ArchiveRuntimeDefinitionServiceTests {
         var response =
                 service.createDefinition(
                         new SaveArchiveRuntimeDefinitionRequest(
-                                1L,
                                 ArchiveRuntimeDefinitionKind.CONSTRAINT,
                                 "archive_no_required",
                                 "档号必填",
@@ -157,23 +149,9 @@ class ArchiveRuntimeDefinitionServiceTests {
         assertThat(service.updateEnabled(11L, false, 7L).enabled()).isFalse();
     }
 
-    @Test
-    @DisplayName("发布规则必须校验治理版本仍为草稿")
-    void publishingRequiresDraftGovernanceVersion() {
-        ArchiveGovernanceSchemeVersion published = draftVersion();
-        published.setStatus(ArchiveGovernanceSchemeVersionStatus.PUBLISHED);
-        when(versionRepository.findById(1L)).thenReturn(Optional.of(published));
-        when(definitionRepository.findById(11L)).thenReturn(Optional.of(draftRule()));
-
-        assertThatThrownBy(() -> service.publishDefinition(11L, 7L))
-                .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("草稿治理版本");
-    }
-
     private SaveArchiveRuntimeDefinitionRequest ruleRequest(
             ArchiveRuntimeTriggerPoint triggerPoint, String code) {
         return new SaveArchiveRuntimeDefinitionRequest(
-                1L,
                 ArchiveRuntimeDefinitionKind.RULE,
                 code,
                 "设置年度",
@@ -196,7 +174,6 @@ class ArchiveRuntimeDefinitionServiceTests {
     private ArchiveRuntimeDefinition draftRule() {
         ArchiveRuntimeDefinition definition = new ArchiveRuntimeDefinition();
         definition.setId(11L);
-        definition.setSchemeVersionId(1L);
         definition.setDefinitionKind(ArchiveRuntimeDefinitionKind.RULE);
         definition.setDefinitionCode("set-year");
         definition.setDefinitionName("设置年度");
@@ -217,16 +194,8 @@ class ArchiveRuntimeDefinitionServiceTests {
         return action;
     }
 
-    private ArchiveGovernanceSchemeVersion draftVersion() {
-        ArchiveGovernanceSchemeVersion version = new ArchiveGovernanceSchemeVersion();
-        version.setId(1L);
-        version.setStatus(ArchiveGovernanceSchemeVersionStatus.DRAFT);
-        return version;
-    }
-
     private ArchiveRuntimeFieldCatalog catalog(ArchiveRuntimeTriggerPoint triggerPoint) {
         return new ArchiveRuntimeFieldCatalog(
-                1L,
                 "DOC",
                 triggerPoint,
                 "catalog-signature",

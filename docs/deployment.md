@@ -1,6 +1,6 @@
 # 部署手册
 
-本文面向测试、预生产和生产环境。系统运行面为 Spring Boot 主应用、PC 前端静态资源和独立文件预览服务；PostgreSQL 与 S3 兼容对象存储由部署环境提供。
+本文面向测试、预生产和生产环境。系统运行面为 Spring Boot 主应用和 PC 前端静态资源；PostgreSQL 与 S3 兼容对象存储由部署环境提供。
 
 ## 部署组件
 
@@ -8,7 +8,6 @@
 | --- | --- | --- |
 | 主应用 | `backend/archive-server/` | Spring Boot JAR |
 | PC 前端 | `frontend/admin/` | 静态资源；`frontend/packages/core/` 随前端构建，不独立部署 |
-| 文件预览服务 | `backend/preview-service/` | 独立 Go HTTP 服务 |
 | 数据库 | 外部 PostgreSQL | 项目唯一优先数据库目标 |
 | 文件内容 | 外部 S3 兼容对象存储 | 业务统一通过 `FileStorageService` 访问 |
 
@@ -19,20 +18,18 @@
 ```bash
 task server-package
 task frontend-build
-task preview-build
 ```
 
-发布前按范围运行 `task server-test`、`task frontend-ready`、`task preview-test`，并运行 `task governance-check`。所有任务均以根 [`Taskfile.yml`](../Taskfile.yml) 为准。
+发布前按范围运行 `task server-test`、`task frontend-ready`，并运行 `task governance-check`。所有任务均以根 [`Taskfile.yml`](../Taskfile.yml) 为准。
 
-三个可部署应用分别拥有自己的容器构建定义。需要构建镜像时从仓库根目录执行：
+两个可部署应用分别拥有自己的容器构建定义。需要构建镜像时从仓库根目录执行：
 
 ```bash
 docker build -f backend/archive-server/Dockerfile --target server .
 docker build -f frontend/admin/Dockerfile --target web .
-docker build backend/preview-service
 ```
 
-前两个构建使用仓库根作为上下文，以读取统一工具版本和 `frontend/` 工作区；预览服务只使用自身目录作为上下文。
+两个构建均使用仓库根作为上下文，以读取统一工具版本和 `frontend/` 工作区。
 
 ## 配置来源
 
@@ -43,7 +40,6 @@ docker build backend/preview-service
 - PostgreSQL 地址、数据库、用户名、密码和连接池容量。
 - S3 endpoint、region、bucket、access key、secret key 和 path-style 行为。
 - 可信前端 Origin、请求签名策略、管理员初始化策略和 Actuator 暴露范围。
-- 预览服务监听地址、上传限制和可选外部转换工具。
 
 密钥、生产连接串、客户环境参数和管理员口令不得写入 Git。
 
@@ -81,11 +77,10 @@ archive:
 ## 部署顺序
 
 1. 准备 PostgreSQL、备份策略和 S3 兼容 bucket。
-2. 配置主应用、前端和预览服务的外部参数与 Secret。
+2. 配置主应用和前端的外部参数与 Secret。
 3. 启动主应用，确认 Flyway 成功并检查 `/actuator/health` 与日志。
 4. 部署前端静态资源，确认 API 地址、Cookie 和 CORS 策略一致。
-5. 部署预览服务，检查 `/healthz` 和 `/v1/capabilities`。
-6. 使用受控管理员账号检查登录、当前用户、权限和基础业务入口。
+5. 使用受控管理员账号检查登录、当前用户、权限和基础业务入口。
 
 ## 回滚原则
 

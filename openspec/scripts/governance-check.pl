@@ -15,6 +15,7 @@ my $root = shift // '.';
 my @violations;
 
 check_active_changes($root, \@violations);
+check_archived_changes($root, \@violations);
 check_spec_index($root, \@violations);
 check_history_notice($root, \@violations);
 
@@ -54,8 +55,27 @@ sub check_active_changes {
         next if grep { $_ eq ' ' } @checkboxes;
 
         push @{$violations},
-            "openspec/changes/$name/tasks.md: 任务已全部完成但仍位于活动 change";
+            "openspec/changes/$name/tasks.md: 任务已全部完成；1.0.0 前应校准最终规格并删除 change";
     }
+}
+
+sub check_archived_changes {
+    my ($repository_root, $violations) = @_;
+    my $archive_dir = File::Spec->catdir($repository_root, 'openspec', 'changes', 'archive');
+    return if !-d $archive_dir;
+
+    my $archive;
+    if (!opendir $archive, $archive_dir) {
+        push @{$violations}, "openspec/changes/archive/: 无法读取目录: $!";
+        return;
+    }
+
+    my @names = sort grep { $_ ne '.' && $_ ne '..' } readdir $archive;
+    closedir $archive;
+    return if !@names;
+
+    push @{$violations},
+        'openspec/changes/archive/: 1.0.0 前不得保留已完成 change 历史，只保留当前最终规格';
 }
 
 sub check_spec_index {

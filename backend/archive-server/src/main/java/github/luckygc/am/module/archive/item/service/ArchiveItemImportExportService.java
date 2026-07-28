@@ -214,15 +214,7 @@ public class ArchiveItemImportExportService {
                                     () ->
                                             new BadRequestException(
                                                     "导出档案条目不存在：" + number.longValue()));
-            if (item.getGovernanceSchemeVersionId() == null) {
-                throw new BadRequestException("导出档案条目未绑定治理版本：" + item.getId());
-            }
-            scopes.putIfAbsent(
-                    new ExportScope(
-                            item.getGovernanceSchemeVersionId(),
-                            item.getFondsCode(),
-                            item.getCategoryCode()),
-                    item);
+            scopes.putIfAbsent(new ExportScope(item.getFondsCode(), item.getCategoryCode()), item);
         }
         List<ExportPolicyExecution> executions = new ArrayList<>();
         for (Map.Entry<ExportScope, ArchiveItem> entry : scopes.entrySet()) {
@@ -235,7 +227,6 @@ public class ArchiveItemImportExportService {
             facts.put("context.operation", ArchiveRuntimeTriggerPoint.EXPORT_BEFORE_CREATE.name());
             ArchiveRuntimeExecutionRequest request =
                     new ArchiveRuntimeExecutionRequest(
-                            scope.schemeVersionId(),
                             ArchiveRuntimeTriggerPoint.EXPORT_BEFORE_CREATE,
                             scope.fondsCode(),
                             scope.categoryCode(),
@@ -611,7 +602,7 @@ public class ArchiveItemImportExportService {
         }
     }
 
-    private record ExportScope(Long schemeVersionId, String fondsCode, String categoryCode) {}
+    private record ExportScope(String fondsCode, String categoryCode) {}
 
     private record ExportPolicyExecution(
             ArchiveRuntimeExecutionRequest request, ArchiveRuntimeExecutionResult result) {}

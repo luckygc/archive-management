@@ -36,7 +36,6 @@ export interface ArchiveRuntimeActionRequest {
 }
 
 export interface ArchiveRuntimeDefinitionRequest {
-    schemeVersionId: number;
     definitionKind: ArchiveRuntimeDefinitionKind;
     definitionCode: string;
     definitionName: string;
@@ -79,7 +78,6 @@ export interface ArchiveRuntimeFieldDto {
 }
 
 export interface ArchiveRuntimeFieldCatalogDto {
-    schemeVersionId: number;
     categoryCode?: string;
     triggerPoint: ArchiveRuntimeTriggerPoint;
     signature: string;
@@ -87,7 +85,6 @@ export interface ArchiveRuntimeFieldCatalogDto {
 }
 
 export interface ArchiveRuntimeExecutionRequest {
-    schemeVersionId: number;
     triggerPoint: ArchiveRuntimeTriggerPoint;
     fondsCode?: string;
     categoryCode?: string;
@@ -128,7 +125,6 @@ export interface ArchiveRuntimeExecutionResult {
 }
 
 export interface SearchArchiveRuntimeTracesRequest {
-    schemeVersionId?: number;
     triggerPoint?: ArchiveRuntimeTriggerPoint;
     objectTypeCode?: string;
     objectId?: number;
@@ -143,7 +139,6 @@ export interface SearchArchiveRuntimeTracesQuery extends SearchArchiveRuntimeTra
 
 export interface ArchiveRuntimeTraceDto {
     id: number;
-    schemeVersionId: number;
     triggerPoint: ArchiveRuntimeTriggerPoint;
     objectTypeCode: string;
     objectId?: number;
@@ -158,67 +153,4 @@ export interface ArchiveRuntimeTraceDto {
     skippedReason?: string;
     createdBy?: number;
     createdAt: string;
-}
-
-export interface ArchiveRuntimeSnapshot {
-    schemaVersion: string;
-    sourceApplicationVersion: string;
-    exportedAt: string;
-    fileName: string;
-    scheme: {
-        schemeCode: string;
-        schemeName: string;
-        versionCode: string;
-        versionDescription?: string;
-        scopes: Array<{
-            scopeType: "GLOBAL" | "FONDS" | "CATEGORY";
-            fondsCode?: string;
-            categoryCode?: string;
-            defaultFlag: boolean;
-        }>;
-    };
-    definitions: unknown[];
-    sha256: string;
-}
-
-export interface ArchiveRuntimeSnapshotPreflightRequest {
-    snapshot: ArchiveRuntimeSnapshot;
-    targetSchemeCode?: string;
-    categoryMappings?: Record<string, string>;
-    fieldMappings?: Record<string, string>;
-}
-
-export interface ArchiveRuntimeSnapshotFieldMapping {
-    definitionCode: string;
-    sourceCategoryCode?: string;
-    targetCategoryCode?: string;
-    sourceFieldCode: string;
-    targetFieldCode: string;
-    dataType: ArchiveRuntimeFieldDataType;
-}
-
-export interface ArchiveRuntimeSnapshotPreflightResult {
-    compatible: boolean;
-    targetSchemeCode: string;
-    definitionCount: number;
-    scopeCount: number;
-    fieldMappings: ArchiveRuntimeSnapshotFieldMapping[];
-    sha256: string;
-}
-
-export interface ArchiveRuntimeSnapshotImportResult {
-    schemeVersionId: number;
-    schemeCode: string;
-    versionCode: string;
-    definitionCount: number;
-    fieldMappings: ArchiveRuntimeSnapshotFieldMapping[];
-    sha256: string;
-}
-
-export interface ArchiveRuntimeSnapshotRestoreResult {
-    schemeVersionId: number;
-    beforeDefinitionCount: number;
-    afterDefinitionCount: number;
-    fieldMappings: ArchiveRuntimeSnapshotFieldMapping[];
-    sha256: string;
 }

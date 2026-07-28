@@ -26,7 +26,6 @@ const triggerPoints: ArchiveRuntimeTriggerPoint[] = [
 
 const formRef = ref<FormInstance>();
 const form = ref({
-    schemeVersionId: undefined as number | undefined,
     triggerPoint: undefined as ArchiveRuntimeTriggerPoint | undefined,
     objectTypeCode: "",
     objectId: undefined as number | undefined,
@@ -43,7 +42,6 @@ let requestVersion = 0;
 async function submitSearch() {
     const version = ++submissionVersion;
     const query: SearchArchiveRuntimeTracesRequest = {
-        schemeVersionId: form.value.schemeVersionId,
         triggerPoint: form.value.triggerPoint,
         objectTypeCode: form.value.objectTypeCode.trim() || undefined,
         objectId: form.value.objectId,
@@ -96,13 +94,6 @@ function resetForm() {
         <div class="am-page__header"><h1>运行时决策追踪</h1></div>
         <el-card class="am-page__filter" shadow="never">
             <el-form ref="formRef" :model="form" inline>
-                <el-form-item label="治理版本" prop="schemeVersionId">
-                    <el-input-number
-                        v-model="form.schemeVersionId"
-                        :min="1"
-                        controls-position="right"
-                    />
-                </el-form-item>
                 <el-form-item label="触发点" prop="triggerPoint">
                     <el-select v-model="form.triggerPoint" clearable style="width: 220px">
                         <el-option
@@ -142,7 +133,6 @@ function resetForm() {
             />
             <el-table v-loading="loading" :data="result?.items || []" row-key="id">
                 <el-table-column prop="createdAt" label="时间" width="170" />
-                <el-table-column prop="schemeVersionId" label="治理版本" width="100" />
                 <el-table-column prop="triggerPoint" label="触发点" width="190" />
                 <el-table-column prop="objectTypeCode" label="对象类型" width="130" />
                 <el-table-column prop="objectId" label="对象 ID" width="100" />

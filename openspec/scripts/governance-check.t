@@ -20,26 +20,41 @@ use Test::More;
 
 my $script = 'openspec/scripts/governance-check.pl';
 
-subtest '只报告任务全部完成但尚未归档的活动 change' => sub {
+subtest '只报告任务全部完成但尚未删除的活动 change' => sub {
     my $root = fixture_root();
     write_valid_history_notice($root);
     write_file("$root/openspec/README.md", "# 规格索引\n");
     write_file("$root/openspec/changes/completed/tasks.md", "- [x] 已完成任务\n");
     write_file("$root/openspec/changes/active/tasks.md", "- [ ] 待完成任务\n");
-    write_file("$root/openspec/changes/archive/archived/tasks.md", "- [x] 已归档任务\n");
 
     my ($status, $stdout, $stderr) = run_script($root);
 
-    is($status, 1, '存在完成但未归档的 change 时退出 1');
-    like($stderr, qr/completed/, '报告完成但未归档的 completed change');
-    like($stderr, qr/任务已全部完成但仍位于活动 change/, '报告包含约定的精确诊断短语');
-    unlike($stderr, qr/(?<![[:alnum:]_-])active(?![[:alnum:]_-])/i, '不报告仍有未完成任务的 active change');
-    unlike(
+    is($status, 1, '存在完成但未删除的 change 时退出 1');
+    like($stderr, qr/completed/, '报告完成但未删除的 completed change');
+    like(
         $stderr,
-        qr/(?<![[:alnum:]_-])(?:archive|archived)(?![[:alnum:]_-])/i,
-        '不把 archive 目录作为活动 change 报告',
+        qr/任务已全部完成；1\.0\.0 前应校准最终规格并删除 change/,
+        '报告包含约定的精确诊断短语',
     );
-    is($stdout, '', '存在完成但未归档的 change 时标准输出为空');
+    unlike($stderr, qr/(?<![[:alnum:]_-])active(?![[:alnum:]_-])/i, '不报告仍有未完成任务的 active change');
+    is($stdout, '', '存在完成但未删除的 change 时标准输出为空');
+};
+
+subtest '1.0.0 前拒绝保留已完成 change 历史' => sub {
+    my $root = fixture_root();
+    write_valid_history_notice($root);
+    write_file("$root/openspec/README.md", "# 规格索引\n");
+    write_file("$root/openspec/changes/archive/old-change/tasks.md", "- [x] 已完成任务\n");
+
+    my ($status, $stdout, $stderr) = run_script($root);
+
+    is($status, 1, '存在历史 change 时退出 1');
+    like(
+        $stderr,
+        qr/1\.0\.0 前不得保留已完成 change 历史，只保留当前最终规格/,
+        '诊断说明 1.0.0 前只保留最终规格',
+    );
+    is($stdout, '', '历史 change 违规时标准输出为空');
 };
 
 subtest '同一次执行报告规格索引的缺失项和过期项' => sub {
@@ -141,7 +156,11 @@ subtest '一次执行汇总多类治理违规' => sub {
     my ($status, $stdout, $stderr) = run_script($root);
 
     is($status, 1, '同时存在多类治理违规时退出 1');
-    like($stderr, qr/任务已全部完成但仍位于活动 change/, '汇总完成但未归档的 change 违规');
+    like(
+        $stderr,
+        qr/任务已全部完成；1\.0\.0 前应校准最终规格并删除 change/,
+        '汇总完成但未删除的 change 违规',
+    );
     like($stderr, qr{specs/beta/spec\.md}, '汇总规格索引缺失项');
     like($stderr, qr{specs/stale/spec\.md}, '汇总规格索引过期项');
     like($stderr, qr{docs/superpowers/README\.md}, '汇总可定位历史资料声明违规');

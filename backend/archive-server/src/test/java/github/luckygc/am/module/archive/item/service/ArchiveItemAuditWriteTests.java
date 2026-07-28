@@ -21,8 +21,6 @@ import org.mockito.ArgumentCaptor;
 import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeResolutionTypes.ArchiveDataScopeFilter;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
-import github.luckygc.am.module.archive.governance.ArchiveGovernanceSchemeVersion;
-import github.luckygc.am.module.archive.governance.service.ArchiveGovernanceService;
 import github.luckygc.am.module.archive.item.ArchiveItemAudit;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemAuditDataRepository;
 import github.luckygc.am.module.archive.item.service.ArchiveItemCommandService.CreateArchiveItemRequest;
@@ -46,7 +44,6 @@ class ArchiveItemAuditWriteTests {
     private ArchiveMetadataService archiveMetadataService;
     private ArchiveMetadataReferenceService archiveMetadataReferenceService;
     private ArchiveCategoryService archiveCategoryService;
-    private ArchiveGovernanceService governanceService;
     private ArchiveItemSearchProjectionService searchProjectionService;
     private ArchiveItemAuditDataRepository auditRepository;
     private ArchiveItemCommandService archiveItemRoutingService;
@@ -58,7 +55,6 @@ class ArchiveItemAuditWriteTests {
         archiveMetadataService = mock(ArchiveMetadataService.class);
         archiveMetadataReferenceService = mock(ArchiveMetadataReferenceService.class);
         archiveCategoryService = mock(ArchiveCategoryService.class);
-        governanceService = mock(ArchiveGovernanceService.class);
         searchProjectionService = mock(ArchiveItemSearchProjectionService.class);
         auditRepository = mock(ArchiveItemAuditDataRepository.class);
         ArchiveDataScopeService dataScopeService = mock(ArchiveDataScopeService.class);
@@ -67,8 +63,6 @@ class ArchiveItemAuditWriteTests {
         AuthorizationPermissionService permissionService =
                 mock(AuthorizationPermissionService.class);
         when(permissionService.hasPermission(anyLong(), anyString())).thenReturn(true);
-        when(governanceService.requireDefaultVersionForNewArchive(anyString(), anyString()))
-                .thenReturn(governanceVersion());
         ArchiveItemReadService archiveItemReadService =
                 new ArchiveItemReadService(
                         archiveMetadataService,
@@ -81,7 +75,6 @@ class ArchiveItemAuditWriteTests {
                         archiveMetadataService,
                         archiveMetadataReferenceService,
                         archiveCategoryService,
-                        governanceService,
                         archiveMapper,
                         searchProjectionService,
                         dataScopeService,
@@ -119,8 +112,7 @@ class ArchiveItemAuditWriteTests {
                         eq("DRAFT"),
                         isNull(),
                         isNull(),
-                        eq(2026),
-                        eq(77L)))
+                        eq(2026)))
                 .thenReturn(10L);
         when(archiveMapper.getArchiveItem(10L)).thenReturn(itemRow(false));
 
@@ -228,12 +220,6 @@ class ArchiveItemAuditWriteTests {
         return new ArchiveFondsDto(1L, "F001", "启用全宗", true, 0, now, now);
     }
 
-    private ArchiveGovernanceSchemeVersion governanceVersion() {
-        ArchiveGovernanceSchemeVersion version = new ArchiveGovernanceSchemeVersion();
-        version.setId(77L);
-        return version;
-    }
-
     private ArchiveCategoryDto category() {
         LocalDateTime now = LocalDateTime.of(2026, 6, 30, 10, 0);
         return new ArchiveCategoryDto(
@@ -266,7 +252,6 @@ class ArchiveItemAuditWriteTests {
                 Map.entry("archiveNo", "A-001"),
                 Map.entry("electronicStatus", "DRAFT"),
                 Map.entry("archiveYear", 2026),
-                Map.entry("governanceSchemeVersionId", 11L),
                 Map.entry("lockedFlag", locked));
     }
 }

@@ -180,7 +180,6 @@ class MyBatisAuditingIntegrationTests extends PostgreSqlContainerTest {
         parameters.put("securityLevelId", null);
         parameters.put("retentionPeriodId", null);
         parameters.put("archiveYear", 2026);
-        parameters.put("governanceSchemeVersionId", null);
         return parameters;
     }
 

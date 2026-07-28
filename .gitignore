@@ -12,7 +12,6 @@ lerna-debug.log*
 /**/node_modules/
 /frontend/admin/dist/
 /mobile/dist/
-/backend/preview-service/build/
 /dist/
 /dist-ssr/
 /data/
