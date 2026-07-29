@@ -72,6 +72,10 @@ public interface ArchiveMapper {
             @Param("retentionPeriodId") Long retentionPeriodId,
             @Param("archiveYear") int archiveYear);
 
+    Long getEnabledArchiveRepositoryId(@Param("id") Long id);
+
+    int updateArchiveItemRepository(@Param("id") Long id, @Param("repositoryId") Long repositoryId);
+
     int countArchiveItemsByArchiveNo(
             @Param("categoryCode") String categoryCode,
             @Param("archiveNo") String archiveNo,
@@ -121,6 +125,9 @@ public interface ArchiveMapper {
             @Param("archiveNo") String archiveNo,
             @Param("electronicStatus") String electronicStatus,
             @Param("archiveYear") int archiveYear);
+
+    int updateArchiveVolumeRepository(
+            @Param("id") Long id, @Param("repositoryId") Long repositoryId);
 
     int countArchiveVolumesByArchiveNo(
             @Param("categoryCode") String categoryCode,

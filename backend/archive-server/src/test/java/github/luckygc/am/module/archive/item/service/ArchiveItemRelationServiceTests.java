@@ -239,7 +239,6 @@ class ArchiveItemRelationServiceTests {
     private ArchiveCategoryDto category(Long id, String code) {
         return new ArchiveCategoryDto(
                 id,
-                1L,
                 null,
                 code,
                 code + "档案",

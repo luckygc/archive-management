@@ -32,9 +32,6 @@ public class ArchiveFondsCategoryScope implements CreationAuditable, UpdateAudit
     @Column(name = "category_id", nullable = false)
     private Long categoryId;
 
-    @Column(name = "default_flag", nullable = false)
-    private boolean defaultFlag;
-
     @Column(name = "sort_order", nullable = false)
     private int sortOrder;
 

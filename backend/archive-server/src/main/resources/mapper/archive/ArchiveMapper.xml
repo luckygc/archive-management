@@ -55,26 +55,30 @@
     </update>
 
     <select id="listItemOverview" resultType="map">
-        select id,
-               volume_id,
-               fonds_code,
-               fonds_name,
-               category_code,
-               category_name,
-               archive_no,
-               electronic_status,
-               security_level_id,
-               retention_period_id,
-               archive_year,
-               display_order,
-               created_at,
-               locked_flag,
-               lock_reason,
-               locked_by,
-               locked_at
-        from am_archive_item
-        where deleted_flag = false
-        order by sort_order, id desc
+        select i.id,
+               i.volume_id,
+               i.fonds_code,
+               i.fonds_name,
+               i.category_code,
+               i.category_name,
+               i.archive_no,
+               i.electronic_status,
+               i.security_level_id,
+               i.retention_period_id,
+               i.archive_year,
+               i.display_order,
+               i.created_at,
+               i.locked_flag,
+               i.lock_reason,
+               i.locked_by,
+               i.locked_at
+        from am_archive_item i
+        join am_archive_repository repository
+          on repository.id = i.repository_id
+         and repository.deleted_flag = false
+         and repository.repository_role = 'HOLDING'
+        where i.deleted_flag = false
+        order by i.sort_order, i.id desc
     </select>
 
     <select id="listRelatedFilterCategories" resultType="map">
@@ -115,6 +119,10 @@
     <sql id="dynamicItemFromWhere">
         from am_archive_item i
         join ${source.tableName} d on d.id = i.id
+        join am_archive_repository repository
+          on repository.id = i.repository_id
+         and repository.deleted_flag = false
+         and repository.repository_role = 'HOLDING'
         where i.deleted_flag = #{source.deleted}
           and d.deleted_flag = #{source.deleted}
         <if test="criteria.requestedFondsCode != null and criteria.requestedFondsCode != ''">
@@ -313,7 +321,8 @@
                i.locked_flag,
                i.lock_reason,
                i.locked_by,
-               i.locked_at
+               i.locked_at,
+               i.repository_id
                <foreach collection="projection.fields" item="field">
                    , d.${field}
                </foreach>
@@ -398,6 +407,23 @@
         returning id
     </select>
 
+    <select id="getEnabledArchiveRepositoryId" resultType="long">
+        select id
+        from am_archive_repository
+        where id = #{id}
+          and enabled = true
+          and deleted_flag = false
+    </select>
+
+    <update id="updateArchiveItemRepository">
+        update am_archive_item
+        set repository_id = #{repositoryId},
+            updated_by = #{_audit.userId},
+            version = version + 1,
+            updated_at = #{_audit.now}
+        where id = #{id} and deleted_flag = false
+    </update>
+
     <select id="countArchiveItemsByArchiveNo" resultType="int">
         select count(1)
         from am_archive_item
@@ -474,35 +500,40 @@
                locked_flag,
                lock_reason,
                locked_by,
-               locked_at
+               locked_at,
+               repository_id
         from am_archive_item
         where id = #{id} and deleted_flag = false
     </select>
 
     <select id="listArchiveVolumes" resultType="map">
-        select id,
-               fonds_code,
-               fonds_name,
-               category_code,
-               category_name,
-               archive_no,
-               electronic_status,
-               security_level_id,
-               retention_period_id,
-               archive_year,
-               locked_flag,
-               lock_reason,
-               locked_by,
-               locked_at
-        from am_archive_volume
-        where deleted_flag = false
+        select volume.id,
+               volume.fonds_code,
+               volume.fonds_name,
+               volume.category_code,
+               volume.category_name,
+               volume.archive_no,
+               volume.electronic_status,
+               volume.security_level_id,
+               volume.retention_period_id,
+               volume.archive_year,
+               volume.locked_flag,
+               volume.lock_reason,
+               volume.locked_by,
+               volume.locked_at
+        from am_archive_volume volume
+        join am_archive_repository repository
+          on repository.id = volume.repository_id
+         and repository.deleted_flag = false
+         and repository.repository_role = 'HOLDING'
+        where volume.deleted_flag = false
         <if test="fondsCode != null and fondsCode != ''">
-            and fonds_code = #{fondsCode}
+            and volume.fonds_code = #{fondsCode}
         </if>
         <if test="categoryCode != null and categoryCode != ''">
-            and category_code = #{categoryCode}
+            and volume.category_code = #{categoryCode}
         </if>
-        order by sort_order, id desc
+        order by volume.sort_order, volume.id desc
     </select>
 
     <select id="getArchiveVolume" resultType="map">
@@ -519,7 +550,8 @@
                locked_flag,
                lock_reason,
                locked_by,
-               locked_at
+               locked_at,
+               repository_id
         from am_archive_volume
         where id = #{id} and deleted_flag = false
     </select>
@@ -535,6 +567,15 @@
              #{_audit.userId}, #{_audit.now}, #{_audit.userId}, #{_audit.now})
         returning id
     </select>
+
+    <update id="updateArchiveVolumeRepository">
+        update am_archive_volume
+        set repository_id = #{repositoryId},
+            updated_by = #{_audit.userId},
+            version = version + 1,
+            updated_at = #{_audit.now}
+        where id = #{id} and deleted_flag = false
+    </update>
 
     <select id="countArchiveVolumesByArchiveNo" resultType="int">
         select count(1)

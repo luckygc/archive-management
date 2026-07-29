@@ -131,17 +131,11 @@ class ArchiveItemRuntimePolicyIntegrationTests extends PostgreSqlContainerTest {
     }
 
     private void seedCategory() {
-        Long classificationSchemeId =
-                jdbcTemplate.queryForObject(
-                        "select id from am_archive_classification_scheme "
-                                + "where scheme_code = 'default_classification'",
-                        Long.class);
         jdbcTemplate.update(
                 "insert into am_archive_category "
-                        + "(id, scheme_id, category_code, category_name, management_mode, "
-                        + "item_table_name, table_status) values (?, ?, ?, ?, 'ITEM_ONLY', ?, 'BUILT')",
+                        + "(id, category_code, category_name, management_mode, "
+                        + "item_table_name, table_status) values (?, ?, ?, 'ITEM_ONLY', ?, 'BUILT')",
                 CATEGORY_ID,
-                classificationSchemeId,
                 "RUNTIME_DOC",
                 "运行时档案",
                 DYNAMIC_TABLE);
@@ -244,7 +238,6 @@ class ArchiveItemRuntimePolicyIntegrationTests extends PostgreSqlContainerTest {
         LocalDateTime now = LocalDateTime.of(2026, 7, 18, 10, 0);
         return new ArchiveCategoryDto(
                 CATEGORY_ID,
-                1L,
                 null,
                 "RUNTIME_DOC",
                 "运行时档案",

@@ -219,7 +219,6 @@ function renderEditor(fondsCode: string, onSave: () => void) {
 
 const category = {
     id: 1,
-    schemeId: 1,
     categoryCode: "contract",
     categoryName: "合同档案",
     managementMode: "ITEM_ONLY" as const,

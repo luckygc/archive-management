@@ -91,7 +91,6 @@ class ArchiveDynamicTableServiceTests {
     private static ArchiveCategoryDto category() {
         return new ArchiveCategoryDto(
                 1L,
-                2L,
                 null,
                 "contract",
                 "合同档案",

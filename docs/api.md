@@ -26,7 +26,7 @@
 
 ### 档案元数据与记录
 
-- [分类方案](../openspec/specs/archive-classification-scheme/spec.md)
+- [分类与全宗可用范围](../openspec/specs/archive-classification-scheme/spec.md)
 - [档案元数据](../openspec/specs/archive-metadata/spec.md)
 - [档案记录搜索](../openspec/specs/archive-record-search/spec.md)
 - [档案记录路由](../openspec/specs/archive-record-routing/spec.md)

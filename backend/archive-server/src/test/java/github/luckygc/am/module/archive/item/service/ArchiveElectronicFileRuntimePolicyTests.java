@@ -218,7 +218,6 @@ class ArchiveElectronicFileRuntimePolicyTests {
         LocalDateTime now = LocalDateTime.of(2026, 7, 18, 10, 0);
         return new ArchiveCategoryDto(
                 1L,
-                1L,
                 null,
                 "DOC",
                 "文件档案",

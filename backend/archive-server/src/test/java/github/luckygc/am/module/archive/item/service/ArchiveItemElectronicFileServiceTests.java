@@ -327,7 +327,6 @@ class ArchiveItemElectronicFileServiceTests {
         LocalDateTime now = LocalDateTime.of(2026, 7, 18, 10, 0);
         return new ArchiveCategoryDto(
                 1L,
-                1L,
                 null,
                 "contract",
                 "合同档案",

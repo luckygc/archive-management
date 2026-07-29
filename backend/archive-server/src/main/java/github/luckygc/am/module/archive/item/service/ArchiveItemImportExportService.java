@@ -444,11 +444,22 @@ public class ArchiveItemImportExportService {
         if (StringUtils.isBlank(request.fondsCode())) {
             errors.add(new ArchiveImportRowError(row.rowNumber(), HEADER_FONDS_CODE, "全宗不能为空"));
         } else {
+            boolean validFonds = true;
             try {
                 archiveMetadataReferenceService.getEnabledFondsByCode(request.fondsCode());
             } catch (RuntimeException exception) {
+                validFonds = false;
                 errors.add(
                         new ArchiveImportRowError(row.rowNumber(), HEADER_FONDS_CODE, "全宗不存在或已停用"));
+            }
+            if (validFonds) {
+                try {
+                    archiveCategoryService.requireCategoryAvailableForFonds(
+                            request.fondsCode(), category.id());
+                } catch (BadRequestException exception) {
+                    errors.add(
+                            new ArchiveImportRowError(row.rowNumber(), "categoryId", "该全宗未配置此分类"));
+                }
             }
         }
         if (request.archiveYear() != null && request.archiveYear() < 1) {

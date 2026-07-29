@@ -2,8 +2,6 @@ import { httpClient } from "@archive-management/frontend-core/api";
 import type {
     ArchiveCategoryDto,
     ArchiveCategoryRequest,
-    ArchiveClassificationSchemeDto,
-    ArchiveClassificationSchemeRequest,
     ArchiveFieldDto,
     ArchiveFieldLayoutDto,
     ArchiveFieldLayoutRequest,
@@ -62,29 +60,6 @@ export function saveArchiveFondsCategoryScopes(
 export function listArchiveCategoriesForFonds(fondsCode: string, enabled?: boolean) {
     return httpClient.get<CollectionResponse<ArchiveCategoryDto>>(
         `/api/v1/archive-fonds/${fondsCode}/categories${queryString({ enabled })}`,
-    );
-}
-
-export function listArchiveClassificationSchemes(enabled?: boolean) {
-    return httpClient.get<CollectionResponse<ArchiveClassificationSchemeDto>>(
-        `/api/v1/archive-classification-schemes${queryString({ enabled })}`,
-    );
-}
-
-export function createArchiveClassificationScheme(payload: ArchiveClassificationSchemeRequest) {
-    return httpClient.post<ArchiveClassificationSchemeDto>(
-        "/api/v1/archive-classification-schemes",
-        payload,
-    );
-}
-
-export function updateArchiveClassificationScheme(
-    id: number,
-    payload: ArchiveClassificationSchemeRequest,
-) {
-    return httpClient.patch<ArchiveClassificationSchemeDto>(
-        `/api/v1/archive-classification-schemes/${id}`,
-        payload,
     );
 }
 

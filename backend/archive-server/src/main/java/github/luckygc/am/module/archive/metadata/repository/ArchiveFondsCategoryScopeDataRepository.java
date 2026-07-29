@@ -29,4 +29,9 @@ public interface ArchiveFondsCategoryScopeDataRepository {
     @OrderBy("sortOrder")
     @OrderBy("id")
     List<ArchiveFondsCategoryScope> findByFondsCode(@Nonnull String fondsCode);
+
+    @Transactional(readOnly = true)
+    @Find
+    List<ArchiveFondsCategoryScope> findByFondsCodeAndCategoryId(
+            @Nonnull String fondsCode, @Nonnull Long categoryId);
 }

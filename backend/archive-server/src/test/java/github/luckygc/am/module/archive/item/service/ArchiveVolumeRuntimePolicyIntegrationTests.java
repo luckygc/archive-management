@@ -121,17 +121,11 @@ class ArchiveVolumeRuntimePolicyIntegrationTests extends PostgreSqlContainerTest
     }
 
     private void seedConfiguration() {
-        Long classificationSchemeId =
-                jdbcTemplate.queryForObject(
-                        "select id from am_archive_classification_scheme "
-                                + "where scheme_code = 'default_classification'",
-                        Long.class);
         jdbcTemplate.update(
                 "insert into am_archive_category "
-                        + "(id, scheme_id, category_code, category_name, management_mode, table_status) "
-                        + "values (?, ?, 'VOLUME_DOC', '案卷档案', 'VOLUME_ITEM', 'NOT_BUILT')",
-                CATEGORY_ID,
-                classificationSchemeId);
+                        + "(id, category_code, category_name, management_mode, table_status) "
+                        + "values (?, 'VOLUME_DOC', '案卷档案', 'VOLUME_ITEM', 'NOT_BUILT')",
+                CATEGORY_ID);
     }
 
     private void seedVolumeAndItem() {
@@ -178,7 +172,6 @@ class ArchiveVolumeRuntimePolicyIntegrationTests extends PostgreSqlContainerTest
         LocalDateTime now = LocalDateTime.of(2026, 7, 18, 10, 0);
         return new ArchiveCategoryDto(
                 CATEGORY_ID,
-                1L,
                 null,
                 "VOLUME_DOC",
                 "案卷档案",

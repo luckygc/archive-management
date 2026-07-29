@@ -35,6 +35,9 @@ public class ArchiveItem implements CreationAuditable, UpdateAuditable {
     @Column(name = "volume_id")
     private Long volumeId;
 
+    @Column(name = "repository_id", nullable = false)
+    private Long repositoryId;
+
     @Column(name = "fonds_code", nullable = false, length = 100)
     private String fondsCode;
 

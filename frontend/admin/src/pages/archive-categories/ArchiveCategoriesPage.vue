@@ -16,7 +16,6 @@ const {
     categoryDialogOpen,
     categoryForm,
     categoryMode,
-    enabledSchemes,
     fieldDialogOpen,
     fieldForm,
     fieldMode,
@@ -33,13 +32,9 @@ const {
     saveCategory,
     saveField,
     saving,
-    schemeNameById,
-    schemes,
     scopeDialog,
     selectedCategory,
     selectedCategoryId,
-    selectedScheme,
-    selectedSchemeId,
     treeData,
 } = useArchiveCategories();
 
@@ -66,19 +61,6 @@ const canManageMetadata = computed(() => permissionStore.has("archive:metadata:m
         <el-row :gutter="16">
             <el-col :xs="24" :lg="7"
                 ><el-card v-loading="loading" header="分类树" shadow="never"
-                    ><el-select
-                        v-model="selectedSchemeId"
-                        aria-label="当前方案"
-                        placeholder="选择分类方案"
-                        style="width: 100%"
-                        ><el-option
-                            v-for="scheme in schemes"
-                            :key="scheme.id"
-                            :label="`${scheme.schemeName}（${scheme.schemeCode}）`"
-                            :value="scheme.id" /></el-select
-                    ><el-text v-if="selectedScheme" type="info">{{
-                        selectedScheme.schemeCode
-                    }}</el-text
                     ><el-empty
                         v-if="treeData.length === 0"
                         description="暂无分类，请新建"
@@ -104,7 +86,6 @@ const canManageMetadata = computed(() => permissionStore.has("archive:metadata:m
                                 <el-text type="info">{{
                                     managementModeLabels[selectedCategory.managementMode]
                                 }}</el-text
-                                ><el-tag>{{ schemeNameById.get(selectedCategory.schemeId) }}</el-tag
                                 ><el-text v-if="selectedCategory.itemTableName" tag="code">{{
                                     selectedCategory.itemTableName
                                 }}</el-text
@@ -163,13 +144,6 @@ const canManageMetadata = computed(() => permissionStore.has("archive:metadata:m
             :title="categoryMode === 'create' ? '新建分类' : '编辑分类'"
             width="520"
             ><el-form :model="categoryForm" label-position="top"
-                ><el-form-item label="分类方案" required
-                    ><el-select v-model="categoryForm.schemeId" aria-label="分类方案"
-                        ><el-option
-                            v-for="scheme in enabledSchemes"
-                            :key="scheme.id"
-                            :label="scheme.schemeName"
-                            :value="scheme.id" /></el-select></el-form-item
                 ><el-form-item label="父级分类"
                     ><el-select v-model="categoryForm.parentId" clearable
                         ><el-option

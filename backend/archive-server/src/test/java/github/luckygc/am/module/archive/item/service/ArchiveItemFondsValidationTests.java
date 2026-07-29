@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -36,6 +37,7 @@ import github.luckygc.am.module.archive.metadata.service.ArchiveCategoryService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataReferenceService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveCategoryDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFondsDto;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
 
 @DisplayName("档案写入全宗校验")
@@ -135,6 +137,41 @@ class ArchiveItemFondsValidationTests {
     }
 
     @Test
+    @DisplayName("创建档案条目时拒绝全宗未配置的分类")
+    void createItemShouldRejectCategoryOutsideFondsScope() {
+        when(archiveCategoryService.getCategory(1L)).thenReturn(itemCategory());
+        when(archiveMapper.tableExists("am_archive_item_contract")).thenReturn(1);
+        when(archiveMetadataReferenceService.getEnabledFondsByCode("F001")).thenReturn(fonds());
+        doThrow(new BadRequestException("该全宗未配置此分类", "categoryId", "该全宗未配置此分类"))
+                .when(archiveCategoryService)
+                .requireCategoryAvailableForFonds("F001", 1L);
+
+        assertThatThrownBy(
+                        () ->
+                                archiveItemRoutingService.createItem(
+                                        new CreateArchiveItemRequest(
+                                                1L, null, "F001", "A-001", 2026, "DRAFT", null,
+                                                null, null, Map.of()),
+                                        9L))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("该全宗未配置此分类");
+
+        verify(archiveMapper, never())
+                .insertArchiveItem(
+                        anyString(),
+                        any(),
+                        anyString(),
+                        anyString(),
+                        anyString(),
+                        anyString(),
+                        any(),
+                        anyString(),
+                        any(),
+                        any(),
+                        anyInt());
+    }
+
+    @Test
     @DisplayName("更新档案条目时拒绝停用全宗")
     void updateItemShouldRejectDisabledFonds() {
         ArchiveCategoryDto category = itemCategory();
@@ -175,6 +212,46 @@ class ArchiveItemFondsValidationTests {
     }
 
     @Test
+    @DisplayName("更新档案条目时拒绝全宗未配置的分类")
+    void updateItemShouldRejectCategoryOutsideFondsScope() {
+        ArchiveCategoryDto category = itemCategory();
+        when(archiveMapper.getArchiveItem(10L)).thenReturn(itemRow());
+        when(archiveCategoryService.listCategories(null)).thenReturn(List.of(category));
+        when(archiveMetadataService.listEffectiveFields(
+                        eq(1L), eq(ArchiveLevel.ITEM), any(), any(), isNull()))
+                .thenReturn(List.of());
+        when(archiveMapper.loadDynamicRecord(anyString(), eq(10L))).thenReturn(Map.of());
+        when(archiveMapper.tableExists("am_archive_item_contract")).thenReturn(1);
+        when(archiveMetadataReferenceService.getEnabledFondsByCode("F001")).thenReturn(fonds());
+        doThrow(new BadRequestException("该全宗未配置此分类", "categoryId", "该全宗未配置此分类"))
+                .when(archiveCategoryService)
+                .requireCategoryAvailableForFonds("F001", 1L);
+
+        assertThatThrownBy(
+                        () ->
+                                archiveItemRoutingService.updateItem(
+                                        10L,
+                                        new UpdateArchiveItemRequest(
+                                                null, "F001", "A-002", 2026, "DRAFT", null, null,
+                                                null, Map.of()),
+                                        9L))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("该全宗未配置此分类");
+
+        verify(archiveMapper, never())
+                .updateArchiveItem(
+                        anyLong(),
+                        any(),
+                        anyString(),
+                        anyString(),
+                        any(),
+                        anyString(),
+                        any(),
+                        any(),
+                        anyInt());
+    }
+
+    @Test
     @DisplayName("创建案卷时拒绝停用全宗")
     void createVolumeShouldRejectDisabledFonds() {
         when(archiveCategoryService.getCategory(1L)).thenReturn(volumeCategory());
@@ -203,6 +280,35 @@ class ArchiveItemFondsValidationTests {
         verify(archiveMetadataReferenceService, never()).getFondsByCode("F001");
     }
 
+    @Test
+    @DisplayName("创建案卷时拒绝全宗未配置的分类")
+    void createVolumeShouldRejectCategoryOutsideFondsScope() {
+        when(archiveCategoryService.getCategory(1L)).thenReturn(volumeCategory());
+        when(archiveMetadataReferenceService.getEnabledFondsByCode("F001")).thenReturn(fonds());
+        doThrow(new BadRequestException("该全宗未配置此分类", "categoryId", "该全宗未配置此分类"))
+                .when(archiveCategoryService)
+                .requireCategoryAvailableForFonds("F001", 1L);
+
+        assertThatThrownBy(
+                        () ->
+                                archiveVolumeService.createVolume(
+                                        new CreateArchiveVolumeRequest(
+                                                1L, "F001", "V-001", 2026, "DRAFT"),
+                                        9L))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("该全宗未配置此分类");
+
+        verify(archiveMapper, never())
+                .insertArchiveVolume(
+                        anyString(),
+                        anyString(),
+                        anyString(),
+                        anyString(),
+                        any(),
+                        anyString(),
+                        anyInt());
+    }
+
     private ArchiveCategoryDto itemCategory() {
         return category(ArchiveManagementMode.ITEM_ONLY, null, "am_archive_item_contract");
     }
@@ -219,7 +325,6 @@ class ArchiveItemFondsValidationTests {
         LocalDateTime now = LocalDateTime.of(2026, 6, 30, 10, 0);
         return new ArchiveCategoryDto(
                 1L,
-                1L,
                 null,
                 "contract",
                 "合同档案",
@@ -234,6 +339,11 @@ class ArchiveItemFondsValidationTests {
                 0,
                 now,
                 now);
+    }
+
+    private ArchiveFondsDto fonds() {
+        LocalDateTime now = LocalDateTime.of(2026, 6, 30, 10, 0);
+        return new ArchiveFondsDto(1L, "F001", "测试全宗", true, 0, now, now);
     }
 
     private Map<String, Object> itemRow() {

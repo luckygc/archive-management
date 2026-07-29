@@ -26,7 +26,6 @@ import org.springframework.web.server.ResponseStatusException;
 import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveCategoryDataRepository;
-import github.luckygc.am.module.archive.metadata.repository.ArchiveClassificationSchemeDataRepository;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveFieldDataRepository;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveFieldLayoutDataRepository;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveFondsCategoryScopeDataRepository;
@@ -40,8 +39,6 @@ import github.luckygc.am.module.archive.metadata.service.ArchiveFieldLayoutServi
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataReferenceService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveClassificationSchemeDto;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveClassificationSchemeRequest;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFondsCategoryScopeRequest;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveUniqueConstraintDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveUniqueConstraintRequest;
@@ -53,7 +50,6 @@ class ArchiveMetadataServiceTests {
 
     private ArchiveMapper archiveMapper;
     private ArchiveFondsDataRepository fondsRepository;
-    private ArchiveClassificationSchemeDataRepository classificationSchemeRepository;
     private ArchiveFondsCategoryScopeDataRepository fondsCategoryScopeRepository;
     private ArchiveCategoryDataRepository categoryRepository;
     private ArchiveFieldDataRepository fieldRepository;
@@ -65,7 +61,6 @@ class ArchiveMetadataServiceTests {
     void setUp() {
         archiveMapper = mock(ArchiveMapper.class);
         fondsRepository = mock(ArchiveFondsDataRepository.class);
-        classificationSchemeRepository = mock(ArchiveClassificationSchemeDataRepository.class);
         fondsCategoryScopeRepository = mock(ArchiveFondsCategoryScopeDataRepository.class);
         categoryRepository = mock(ArchiveCategoryDataRepository.class);
         fieldRepository = mock(ArchiveFieldDataRepository.class);
@@ -87,15 +82,11 @@ class ArchiveMetadataServiceTests {
                 new ArchiveCategoryService(
                         archiveMapper,
                         fondsRepository,
-                        classificationSchemeRepository,
                         fondsCategoryScopeRepository,
                         categoryRepository);
         referenceService =
                 new ArchiveMetadataReferenceService(
-                        fondsRepository,
-                        classificationSchemeRepository,
-                        securityLevelRepository,
-                        retentionPeriodRepository);
+                        fondsRepository, securityLevelRepository, retentionPeriodRepository);
         service =
                 new ArchiveMetadataService(
                         archiveMapper,
@@ -109,63 +100,30 @@ class ArchiveMetadataServiceTests {
     }
 
     @Test
-    @DisplayName("创建分类方案时保存编码名称和审计人")
-    void createClassificationSchemeShouldPersistScheme() {
-        when(classificationSchemeRepository.findBySchemeCode("enterprise_project"))
-                .thenReturn(null);
-        when(classificationSchemeRepository.insert(
-                        org.mockito.ArgumentMatchers.any(ArchiveClassificationScheme.class)))
-                .thenAnswer(invocation -> withSchemeId(invocation.getArgument(0), 5L));
-
-        ArchiveClassificationSchemeDto response =
-                referenceService.createClassificationScheme(
-                        new ArchiveClassificationSchemeRequest(
-                                " enterprise_project ", " 企业项目档案分类 ", " 项目制度 ", true, 3),
-                        9L);
-
-        assertThat(response.id()).isEqualTo(5L);
-        assertThat(response.schemeCode()).isEqualTo("enterprise_project");
-        assertThat(response.schemeName()).isEqualTo("企业项目档案分类");
-    }
-
-    @Test
-    @DisplayName("创建分类时必须归属启用分类方案")
-    void createCategoryShouldRequireEnabledClassificationScheme() {
-        ArchiveClassificationScheme scheme = scheme(8L, "default_classification", true);
-        when(classificationSchemeRepository.findById(8L)).thenReturn(Optional.of(scheme));
+    @DisplayName("创建全局分类时保存分类")
+    void createCategoryShouldPersistGlobalCategory() {
         when(categoryRepository.insert(org.mockito.ArgumentMatchers.any(ArchiveCategory.class)))
                 .thenAnswer(invocation -> withCategoryId(invocation.getArgument(0), 12L));
 
         ArchiveMetadataTypes.ArchiveCategoryDto response =
                 categoryService.createCategory(
                         new ArchiveMetadataTypes.ArchiveCategoryRequest(
-                                8L,
-                                "contract",
-                                "合同档案",
-                                null,
-                                ArchiveManagementMode.ITEM_ONLY,
-                                true,
-                                0),
+                                "contract", "合同档案", null, ArchiveManagementMode.ITEM_ONLY, true, 0),
                         9L);
 
-        assertThat(response.schemeId()).isEqualTo(8L);
         assertThat(response.categoryCode()).isEqualTo("contract");
     }
 
     @Test
-    @DisplayName("拒绝跨分类方案创建重复分类编码")
+    @DisplayName("拒绝创建重复分类编码")
     void createCategoryShouldRejectGloballyDuplicateCode() {
-        ArchiveClassificationScheme scheme = scheme(8L, "enterprise_project", true);
         ArchiveCategory existing = category(12L, ArchiveManagementMode.ITEM_ONLY);
-        existing.setSchemeId(7L);
-        when(classificationSchemeRepository.findById(8L)).thenReturn(Optional.of(scheme));
         when(categoryRepository.findByCategoryCode("contract")).thenReturn(existing);
 
         assertThatThrownBy(
                         () ->
                                 categoryService.createCategory(
                                         new ArchiveMetadataTypes.ArchiveCategoryRequest(
-                                                8L,
                                                 " contract ",
                                                 "合同档案",
                                                 null,
@@ -186,10 +144,7 @@ class ArchiveMetadataServiceTests {
     @Test
     @DisplayName("修改分类时允许保留自身编码")
     void updateCategoryShouldAllowKeepingOwnCode() {
-        ArchiveClassificationScheme scheme = scheme(8L, "enterprise_project", true);
         ArchiveCategory current = category(12L, ArchiveManagementMode.ITEM_ONLY);
-        current.setSchemeId(8L);
-        when(classificationSchemeRepository.findById(8L)).thenReturn(Optional.of(scheme));
         when(categoryRepository.findById(12L)).thenReturn(Optional.of(current));
         when(categoryRepository.update(any(ArchiveCategory.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
@@ -198,7 +153,6 @@ class ArchiveMetadataServiceTests {
                 categoryService.updateCategory(
                         12L,
                         new ArchiveMetadataTypes.ArchiveCategoryRequest(
-                                8L,
                                 " contract ",
                                 "合同档案",
                                 null,
@@ -215,7 +169,6 @@ class ArchiveMetadataServiceTests {
     @DisplayName("拒绝修改分类编码")
     void updateCategoryShouldRejectCategoryCodeChange() {
         ArchiveCategory current = category(12L, ArchiveManagementMode.ITEM_ONLY);
-        current.setSchemeId(8L);
         when(categoryRepository.findById(12L)).thenReturn(Optional.of(current));
 
         assertThatThrownBy(
@@ -223,7 +176,6 @@ class ArchiveMetadataServiceTests {
                                 categoryService.updateCategory(
                                         12L,
                                         new ArchiveMetadataTypes.ArchiveCategoryRequest(
-                                                8L,
                                                 "project",
                                                 "项目档案",
                                                 null,
@@ -251,7 +203,6 @@ class ArchiveMetadataServiceTests {
                                 categoryService.updateCategory(
                                         99L,
                                         new ArchiveMetadataTypes.ArchiveCategoryRequest(
-                                                8L,
                                                 "occupied",
                                                 "不存在分类",
                                                 null,
@@ -269,14 +220,10 @@ class ArchiveMetadataServiceTests {
     @Test
     @DisplayName("创建分类时拒绝超长编码和名称")
     void createCategoryShouldRejectOversizedCodeAndName() {
-        ArchiveClassificationScheme scheme = scheme(8L, "enterprise_project", true);
-        when(classificationSchemeRepository.findById(8L)).thenReturn(Optional.of(scheme));
-
         assertThatThrownBy(
                         () ->
                                 categoryService.createCategory(
                                         new ArchiveMetadataTypes.ArchiveCategoryRequest(
-                                                8L,
                                                 "c".repeat(101),
                                                 "合同档案",
                                                 null,
@@ -291,7 +238,6 @@ class ArchiveMetadataServiceTests {
                         () ->
                                 categoryService.createCategory(
                                         new ArchiveMetadataTypes.ArchiveCategoryRequest(
-                                                8L,
                                                 "contract",
                                                 "名".repeat(256),
                                                 null,
@@ -308,8 +254,6 @@ class ArchiveMetadataServiceTests {
     @Test
     @DisplayName("创建分类时拒绝仅包含 Unicode 空白的编码")
     void createCategoryShouldRejectUnicodeBlankCode() {
-        ArchiveClassificationScheme scheme = scheme(8L, "enterprise_project", true);
-        when(classificationSchemeRepository.findById(8L)).thenReturn(Optional.of(scheme));
         when(categoryRepository.insert(any(ArchiveCategory.class)))
                 .thenAnswer(invocation -> withCategoryId(invocation.getArgument(0), 12L));
 
@@ -317,7 +261,6 @@ class ArchiveMetadataServiceTests {
                         () ->
                                 categoryService.createCategory(
                                         new ArchiveMetadataTypes.ArchiveCategoryRequest(
-                                                8L,
                                                 "\u2003",
                                                 "合同档案",
                                                 null,
@@ -334,8 +277,6 @@ class ArchiveMetadataServiceTests {
     @Test
     @DisplayName("创建分类时拒绝仅包含 Unicode 空白的名称")
     void createCategoryShouldRejectUnicodeBlankName() {
-        ArchiveClassificationScheme scheme = scheme(8L, "enterprise_project", true);
-        when(classificationSchemeRepository.findById(8L)).thenReturn(Optional.of(scheme));
         when(categoryRepository.insert(any(ArchiveCategory.class)))
                 .thenAnswer(invocation -> withCategoryId(invocation.getArgument(0), 12L));
 
@@ -343,7 +284,6 @@ class ArchiveMetadataServiceTests {
                         () ->
                                 categoryService.createCategory(
                                         new ArchiveMetadataTypes.ArchiveCategoryRequest(
-                                                8L,
                                                 "contract",
                                                 "\u2003",
                                                 null,
@@ -360,8 +300,6 @@ class ArchiveMetadataServiceTests {
     @Test
     @DisplayName("分类编码长度按 Unicode code point 校验")
     void createCategoryShouldValidateCodeLengthByUnicodeCodePoint() {
-        ArchiveClassificationScheme scheme = scheme(8L, "enterprise_project", true);
-        when(classificationSchemeRepository.findById(8L)).thenReturn(Optional.of(scheme));
         when(categoryRepository.insert(any(ArchiveCategory.class)))
                 .thenAnswer(invocation -> withCategoryId(invocation.getArgument(0), 12L));
         String maximumCode = "😀".repeat(100);
@@ -370,7 +308,6 @@ class ArchiveMetadataServiceTests {
                         () ->
                                 categoryService.createCategory(
                                         new ArchiveMetadataTypes.ArchiveCategoryRequest(
-                                                8L,
                                                 maximumCode,
                                                 "合同档案",
                                                 null,
@@ -383,7 +320,6 @@ class ArchiveMetadataServiceTests {
                         () ->
                                 categoryService.createCategory(
                                         new ArchiveMetadataTypes.ArchiveCategoryRequest(
-                                                8L,
                                                 "😀".repeat(101),
                                                 "合同档案",
                                                 null,
@@ -398,8 +334,6 @@ class ArchiveMetadataServiceTests {
     @Test
     @DisplayName("分类名称长度按 Unicode code point 校验")
     void createCategoryShouldValidateNameLengthByUnicodeCodePoint() {
-        ArchiveClassificationScheme scheme = scheme(8L, "enterprise_project", true);
-        when(classificationSchemeRepository.findById(8L)).thenReturn(Optional.of(scheme));
         when(categoryRepository.insert(any(ArchiveCategory.class)))
                 .thenAnswer(invocation -> withCategoryId(invocation.getArgument(0), 12L));
         String maximumName = "😀".repeat(255);
@@ -408,7 +342,6 @@ class ArchiveMetadataServiceTests {
                         () ->
                                 categoryService.createCategory(
                                         new ArchiveMetadataTypes.ArchiveCategoryRequest(
-                                                8L,
                                                 "contract",
                                                 maximumName,
                                                 null,
@@ -421,7 +354,6 @@ class ArchiveMetadataServiceTests {
                         () ->
                                 categoryService.createCategory(
                                         new ArchiveMetadataTypes.ArchiveCategoryRequest(
-                                                8L,
                                                 "contract-other",
                                                 "😀".repeat(256),
                                                 null,
@@ -436,8 +368,6 @@ class ArchiveMetadataServiceTests {
     @Test
     @DisplayName("指定分类编码唯一约束冲突返回资源已存在")
     void createCategoryShouldMapNamedUniqueConstraint() {
-        ArchiveClassificationScheme scheme = scheme(8L, "enterprise_project", true);
-        when(classificationSchemeRepository.findById(8L)).thenReturn(Optional.of(scheme));
         when(categoryRepository.findByCategoryCode("contract")).thenReturn(null);
         var constraintViolation =
                 new org.hibernate.exception.ConstraintViolationException(
@@ -451,7 +381,6 @@ class ArchiveMetadataServiceTests {
                         () ->
                                 categoryService.createCategory(
                                         new ArchiveMetadataTypes.ArchiveCategoryRequest(
-                                                8L,
                                                 "contract",
                                                 "合同档案",
                                                 null,
@@ -470,8 +399,6 @@ class ArchiveMetadataServiceTests {
     @Test
     @DisplayName("非分类编码约束的完整性异常保持原样")
     void createCategoryShouldRethrowUnrelatedIntegrityViolation() {
-        ArchiveClassificationScheme scheme = scheme(8L, "enterprise_project", true);
-        when(classificationSchemeRepository.findById(8L)).thenReturn(Optional.of(scheme));
         when(categoryRepository.findByCategoryCode("contract")).thenReturn(null);
         var unrelated =
                 new org.springframework.dao.DataIntegrityViolationException(
@@ -486,7 +413,6 @@ class ArchiveMetadataServiceTests {
                         () ->
                                 categoryService.createCategory(
                                         new ArchiveMetadataTypes.ArchiveCategoryRequest(
-                                                8L,
                                                 "contract",
                                                 "合同档案",
                                                 null,
@@ -498,45 +424,33 @@ class ArchiveMetadataServiceTests {
     }
 
     @Test
-    @DisplayName("拒绝把不同分类方案下的分类设置为父级")
-    void createCategoryShouldRejectParentFromDifferentScheme() {
-        ArchiveClassificationScheme scheme = scheme(8L, "default_classification", true);
+    @DisplayName("创建分类时允许选择全局树中的现有父级")
+    void createCategoryShouldAllowExistingGlobalParent() {
         ArchiveCategory parent = category(20L, ArchiveManagementMode.ITEM_ONLY);
-        parent.setSchemeId(7L);
-        when(classificationSchemeRepository.findById(8L)).thenReturn(Optional.of(scheme));
         when(categoryRepository.findById(20L)).thenReturn(Optional.of(parent));
+        when(categoryRepository.insert(any(ArchiveCategory.class)))
+                .thenAnswer(invocation -> withCategoryId(invocation.getArgument(0), 12L));
 
-        assertThatThrownBy(
-                        () ->
-                                categoryService.createCategory(
-                                        new ArchiveMetadataTypes.ArchiveCategoryRequest(
-                                                8L,
-                                                "contract",
-                                                "合同档案",
-                                                20L,
-                                                ArchiveManagementMode.ITEM_ONLY,
-                                                true,
-                                                0),
-                                        9L))
-                .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("父级分类必须属于同一分类方案");
+        ArchiveMetadataTypes.ArchiveCategoryDto response =
+                categoryService.createCategory(
+                        new ArchiveMetadataTypes.ArchiveCategoryRequest(
+                                "contract", "合同档案", 20L, ArchiveManagementMode.ITEM_ONLY, true, 0),
+                        9L);
+
+        assertThat(response.parentId()).isEqualTo(20L);
     }
 
     @Test
     @DisplayName("按全宗可用分类范围返回分类节点")
     void listCategoriesForFondsShouldUseCategoryScopes() {
         ArchiveFonds fonds = fonds("F001");
-        ArchiveClassificationScheme scheme = scheme(8L, "enterprise_project", true);
         ArchiveFondsCategoryScope scope = new ArchiveFondsCategoryScope();
         scope.setId(30L);
         scope.setFondsCode("F001");
         scope.setCategoryId(12L);
-        scope.setDefaultFlag(true);
         scope.setSortOrder(0);
         ArchiveCategory category = category(12L, ArchiveManagementMode.ITEM_ONLY);
-        category.setSchemeId(8L);
         when(fondsRepository.find("F001")).thenReturn(Optional.of(fonds));
-        when(classificationSchemeRepository.findById(8L)).thenReturn(Optional.of(scheme));
         when(fondsCategoryScopeRepository.findByFondsCode("F001")).thenReturn(List.of(scope));
         when(categoryRepository.findById(12L)).thenReturn(Optional.of(category));
 
@@ -544,22 +458,28 @@ class ArchiveMetadataServiceTests {
                 categoryService.listCategoriesForFonds(" F001 ", true);
 
         assertThat(categories).extracting("id").containsExactly(12L);
-        assertThat(categories).extracting("schemeId").containsExactly(8L);
+    }
+
+    @Test
+    @DisplayName("全宗未勾选分类时返回空列表")
+    void listCategoriesForFondsShouldNotFallbackToGlobalCategories() {
+        when(fondsRepository.find("F001")).thenReturn(Optional.of(fonds("F001")));
+        when(fondsCategoryScopeRepository.findByFondsCode("F001")).thenReturn(List.of());
+
+        assertThat(categoryService.listCategoriesForFonds("F001", true)).isEmpty();
+        verify(categoryRepository, never()).list();
     }
 
     @Test
     @DisplayName("保存全宗可用分类范围时覆盖旧关系")
     void saveFondsCategoryScopesShouldReplaceExistingScopes() {
         ArchiveFonds fonds = fonds("F001");
-        ArchiveClassificationScheme scheme = scheme(8L, "enterprise_project", true);
         ArchiveFondsCategoryScope existing = new ArchiveFondsCategoryScope();
         existing.setId(30L);
         existing.setFondsCode("F001");
         existing.setCategoryId(11L);
         ArchiveCategory category = category(12L, ArchiveManagementMode.ITEM_ONLY);
-        category.setSchemeId(8L);
         when(fondsRepository.find("F001")).thenReturn(Optional.of(fonds));
-        when(classificationSchemeRepository.findById(8L)).thenReturn(Optional.of(scheme));
         when(categoryRepository.findById(12L)).thenReturn(Optional.of(category));
         when(fondsCategoryScopeRepository.findByFondsCode("F001")).thenReturn(List.of(existing));
         when(fondsCategoryScopeRepository.insertAll(org.mockito.ArgumentMatchers.anyList()))
@@ -567,11 +487,22 @@ class ArchiveMetadataServiceTests {
 
         List<ArchiveMetadataTypes.ArchiveFondsCategoryScopeDto> result =
                 categoryService.saveFondsCategoryScopes(
-                        " F001 ", List.of(new ArchiveFondsCategoryScopeRequest(12L, true, 1)), 9L);
+                        " F001 ", List.of(new ArchiveFondsCategoryScopeRequest(12L, 1)), 9L);
 
         assertThat(result).extracting("categoryId").containsExactly(12L);
-        assertThat(result).extracting("defaultFlag").containsExactly(true);
+        assertThat(result).extracting("sortOrder").containsExactly(1);
         verify(fondsCategoryScopeRepository).deleteAll(List.of(existing));
+    }
+
+    @Test
+    @DisplayName("全宗未配置分类时拒绝写入")
+    void requireCategoryAvailableForFondsShouldRejectMissingScope() {
+        when(fondsCategoryScopeRepository.findByFondsCodeAndCategoryId("F001", 12L))
+                .thenReturn(List.of());
+
+        assertThatThrownBy(() -> categoryService.requireCategoryAvailableForFonds(" F001 ", 12L))
+                .isInstanceOf(github.luckygc.am.common.exception.BadRequestException.class)
+                .hasMessageContaining("该全宗未配置此分类");
     }
 
     @Test
@@ -688,26 +619,11 @@ class ArchiveMetadataServiceTests {
     private ArchiveCategory category(Long id, ArchiveManagementMode managementMode) {
         ArchiveCategory category = new ArchiveCategory();
         category.setId(id);
-        category.setSchemeId(1L);
         category.setCategoryCode("contract");
         category.setCategoryName("合同档案");
         category.setManagementMode(managementMode);
         category.setEnabled(true);
         return category;
-    }
-
-    private ArchiveClassificationScheme scheme(Long id, String schemeCode, boolean enabled) {
-        ArchiveClassificationScheme scheme = new ArchiveClassificationScheme();
-        scheme.setId(id);
-        scheme.setSchemeCode(schemeCode);
-        scheme.setSchemeName("分类方案");
-        scheme.setEnabled(enabled);
-        return scheme;
-    }
-
-    private ArchiveClassificationScheme withSchemeId(ArchiveClassificationScheme scheme, Long id) {
-        scheme.setId(id);
-        return scheme;
     }
 
     private ArchiveCategory withCategoryId(ArchiveCategory category, Long id) {

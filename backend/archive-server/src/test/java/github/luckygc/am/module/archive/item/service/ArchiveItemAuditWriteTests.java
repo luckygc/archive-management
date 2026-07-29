@@ -224,7 +224,6 @@ class ArchiveItemAuditWriteTests {
         LocalDateTime now = LocalDateTime.of(2026, 6, 30, 10, 0);
         return new ArchiveCategoryDto(
                 1L,
-                1L,
                 null,
                 "contract",
                 "合同档案",

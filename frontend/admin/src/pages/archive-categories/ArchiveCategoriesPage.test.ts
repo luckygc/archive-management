@@ -13,7 +13,6 @@ const mocks = vi.hoisted(() => ({
     deleteArchiveCategory: vi.fn(),
     deleteArchiveField: vi.fn(),
     listArchiveCategories: vi.fn(),
-    listArchiveClassificationSchemes: vi.fn(),
     listArchiveFields: vi.fn(),
     listArchiveFonds: vi.fn(),
     listArchiveFondsCategoryScopes: vi.fn(),
@@ -34,25 +33,10 @@ const permissionApiMocks = vi.hoisted(() => ({ getCurrentUserPermissions: vi.fn(
 vi.mock("@/shared/api/authorization", () => permissionApiMocks);
 beforeEach(() => {
     setActivePinia(createPinia());
-    mocks.listArchiveClassificationSchemes.mockResolvedValue({
-        items: [
-            {
-                id: 8,
-                schemeCode: "default_classification",
-                schemeName: "默认分类方案",
-                defaultFlag: true,
-                enabled: true,
-                sortOrder: 0,
-                createdAt: "",
-                updatedAt: "",
-            },
-        ],
-    });
     mocks.listArchiveCategories.mockResolvedValue({
         items: [
             {
                 id: 12,
-                schemeId: 8,
                 categoryCode: "contract",
                 categoryName: "合同档案",
                 enabled: true,
@@ -86,17 +70,17 @@ afterEach(() => {
     vi.clearAllMocks();
 });
 describe("ArchiveCategoriesPage", () => {
-    it("显示分类方案并在新建分类时选择方案", async () => {
+    it("直接显示全局分类树且新建分类无需选择方案", async () => {
         await renderPage();
-        expect((await screen.findAllByText(/默认分类方案/)).length).toBeGreaterThan(0);
+        expect((await screen.findAllByText("合同档案（contract）")).length).toBeGreaterThan(0);
+        expect(screen.queryByText(/分类方案/)).not.toBeInTheDocument();
         await fireEvent.click(screen.getByRole("button", { name: "新建分类" }));
-        expect(
-            (await screen.findAllByLabelText("分类方案")).some(
-                (item) => item.getAttribute("role") === "combobox",
-            ),
-        ).toBe(true);
+        expect(screen.queryByLabelText("分类方案")).not.toBeInTheDocument();
     });
     it("提供全宗可用分类范围入口", async () => {
+        mocks.listArchiveFondsCategoryScopes.mockResolvedValueOnce({
+            items: [{ fondsCode: "F001", categoryId: 12, sortOrder: 2 }],
+        });
         await renderPage(["archive:metadata:manage"]);
         const button = await screen.findByRole("button", { name: "全宗可用分类" });
         await waitFor(() => expect(button).toBeEnabled());
@@ -105,9 +89,12 @@ describe("ArchiveCategoriesPage", () => {
         await waitFor(() =>
             expect(mocks.listArchiveFondsCategoryScopes).toHaveBeenCalledWith("F001"),
         );
+        expect(screen.queryByText("默认")).not.toBeInTheDocument();
         await fireEvent.click(screen.getByRole("button", { name: "确定" }));
         await waitFor(() =>
-            expect(mocks.saveArchiveFondsCategoryScopes).toHaveBeenCalledWith("F001", []),
+            expect(mocks.saveArchiveFondsCategoryScopes).toHaveBeenCalledWith("F001", [
+                { categoryId: 12, sortOrder: 2 },
+            ]),
         );
     });
     it("只有元数据维护权限可见明细表入口和维护控件", async () => {

@@ -29,7 +29,6 @@ async function load() {
     items.value = fondsCode.value
         ? (await listArchiveFondsCategoryScopes(fondsCode.value)).items.map((item) => ({
               categoryId: item.categoryId,
-              defaultFlag: item.defaultFlag,
               sortOrder: item.sortOrder,
           }))
         : [];
@@ -50,7 +49,6 @@ async function save() {
 function addItem() {
     items.value.push({
         categoryId: 0,
-        defaultFlag: items.value.length === 0,
         sortOrder: items.value.length,
     });
 }
@@ -72,7 +70,7 @@ defineExpose({ show });
                 </el-select>
             </el-form-item>
             <el-row v-for="(item, index) in items" :key="index" :gutter="12">
-                <el-col :span="12">
+                <el-col :span="15">
                     <el-select v-model="item.categoryId">
                         <el-option
                             v-for="category in categoryOptions"
@@ -82,11 +80,8 @@ defineExpose({ show });
                         />
                     </el-select>
                 </el-col>
-                <el-col :span="5"
-                    ><el-checkbox v-model="item.defaultFlag">默认</el-checkbox></el-col
-                >
-                <el-col :span="5"><el-input-number v-model="item.sortOrder" :min="0" /></el-col>
-                <el-col :span="2"
+                <el-col :span="6"><el-input-number v-model="item.sortOrder" :min="0" /></el-col>
+                <el-col :span="3"
                     ><el-button type="danger" plain @click="items.splice(index, 1)"
                         >删除</el-button
                     ></el-col

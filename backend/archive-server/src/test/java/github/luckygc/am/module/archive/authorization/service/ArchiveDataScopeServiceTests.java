@@ -708,7 +708,6 @@ class ArchiveDataScopeServiceTests {
         LocalDateTime now = LocalDateTime.of(2026, 6, 30, 10, 0);
         return new ArchiveCategoryDto(
                 id,
-                1L,
                 parentId,
                 "category-" + id,
                 "分类" + id,

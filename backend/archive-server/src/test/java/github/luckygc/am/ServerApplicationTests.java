@@ -220,20 +220,15 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
     }
 
     @Test
-    @DisplayName("分类编码跨方案且跨逻辑删除历史永久全局唯一")
+    @DisplayName("分类编码跨逻辑删除历史永久全局唯一")
     void categoryCodeRemainsGloballyUniqueAfterSoftDelete() {
         String categoryCode = "GLOBAL_UNIQUE_TEST";
-        String firstSchemeCode = "GLOBAL_UNIQUE_SCHEME_1";
-        String secondSchemeCode = "GLOBAL_UNIQUE_SCHEME_2";
-        deleteCategoryUniquenessFixtures(categoryCode, firstSchemeCode, secondSchemeCode);
+        deleteCategoryUniquenessFixtures(categoryCode);
         try {
-            Long firstSchemeId = insertClassificationScheme(firstSchemeCode);
-            Long secondSchemeId = insertClassificationScheme(secondSchemeCode);
             jdbcTemplate.update(
                     "insert into am_archive_category "
-                            + "(scheme_id, category_code, category_name, management_mode) "
-                            + "values (?, ?, '全局唯一测试分类', 'ITEM_ONLY')",
-                    firstSchemeId,
+                            + "(category_code, category_name, management_mode) "
+                            + "values (?, '全局唯一测试分类', 'ITEM_ONLY')",
                     categoryCode);
 
             Assertions.assertThrows(
@@ -241,16 +236,13 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
                     () ->
                             jdbcTemplate.update(
                                     "insert into am_archive_category "
-                                            + "(scheme_id, category_code, category_name, "
-                                            + "management_mode) "
-                                            + "values (?, ?, '重复分类', 'ITEM_ONLY')",
-                                    secondSchemeId,
+                                            + "(category_code, category_name, management_mode) "
+                                            + "values (?, '重复分类', 'ITEM_ONLY')",
                                     categoryCode));
 
             jdbcTemplate.update(
                     "update am_archive_category set deleted_flag = true "
-                            + "where scheme_id = ? and category_code = ?",
-                    firstSchemeId,
+                            + "where category_code = ?",
                     categoryCode);
             Assertions.assertNull(archiveCategoryDataRepository.findByCategoryCode(categoryCode));
 
@@ -260,7 +252,6 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
                             () ->
                                     archiveCategoryService.createCategory(
                                             new ArchiveMetadataTypes.ArchiveCategoryRequest(
-                                                    secondSchemeId,
                                                     categoryCode,
                                                     "历史编码不可复用",
                                                     null,
@@ -270,28 +261,13 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
                                             9L));
             Assertions.assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
         } finally {
-            deleteCategoryUniquenessFixtures(categoryCode, firstSchemeCode, secondSchemeCode);
+            deleteCategoryUniquenessFixtures(categoryCode);
         }
     }
 
-    private Long insertClassificationScheme(String schemeCode) {
-        return jdbcTemplate.queryForObject(
-                "insert into am_archive_classification_scheme "
-                        + "(scheme_code, scheme_name, enabled, default_flag, sort_order) "
-                        + "values (?, ?, true, false, 0) returning id",
-                Long.class,
-                schemeCode,
-                schemeCode);
-    }
-
-    private void deleteCategoryUniquenessFixtures(
-            String categoryCode, String firstSchemeCode, String secondSchemeCode) {
+    private void deleteCategoryUniquenessFixtures(String categoryCode) {
         jdbcTemplate.update(
                 "delete from am_archive_category where category_code = ?", categoryCode);
-        jdbcTemplate.update(
-                "delete from am_archive_classification_scheme where scheme_code in (?, ?)",
-                firstSchemeCode,
-                secondSchemeCode);
     }
 
     @Test

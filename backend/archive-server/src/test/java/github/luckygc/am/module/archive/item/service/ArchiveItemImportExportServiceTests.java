@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -228,6 +229,40 @@ class ArchiveItemImportExportServiceTests {
         assertThat(result.errors())
                 .extracting(ArchiveItemImportExportService.ArchiveImportRowError::message)
                 .contains("缺少创建权限");
+    }
+
+    @Test
+    @DisplayName("导入时全宗未配置分类返回分类字段错误且不写入")
+    void importItemsShouldRejectCategoryOutsideFondsScope() throws IOException {
+        when(permissionService.hasPermission(9L, "archive:item:create")).thenReturn(true);
+        when(dataScopeService.buildItemFilter(9L, 1L, null))
+                .thenReturn(ArchiveDataScopeFilter.all());
+        when(dataScopeService.buildItemFilter(9L, 1L, "F001"))
+                .thenReturn(ArchiveDataScopeFilter.all());
+        when(archiveCategoryService.getCategory(1L)).thenReturn(category());
+        when(archiveMetadataService.listEnabledFields(1L, ArchiveLevel.ITEM))
+                .thenReturn(List.of(textField()));
+        when(archiveMetadataReferenceService.getEnabledFondsByCode("F001")).thenReturn(fonds());
+        doThrow(new github.luckygc.am.common.exception.BadRequestException("该全宗未配置此分类"))
+                .when(archiveCategoryService)
+                .requireCategoryAvailableForFonds("F001", 1L);
+
+        ArchiveImportResult result =
+                importExportService.importItems(
+                        1L,
+                        new ByteArrayInputStream(
+                                workbookBytes(
+                                        List.of(List.of("F001", "A-001", 2026, "DRAFT", "题名")))),
+                        9L);
+
+        assertThat(result.importedCount()).isZero();
+        assertThat(result.errors())
+                .anySatisfy(
+                        error -> {
+                            assertThat(error.fieldName()).isEqualTo("categoryId");
+                            assertThat(error.message()).isEqualTo("该全宗未配置此分类");
+                        });
+        verify(archiveItemRoutingService, org.mockito.Mockito.never()).createItem(any(), anyLong());
     }
 
     @Test
@@ -496,7 +531,6 @@ class ArchiveItemImportExportServiceTests {
     private static ArchiveCategoryDto category() {
         LocalDateTime now = LocalDateTime.of(2026, 6, 30, 10, 0);
         return new ArchiveCategoryDto(
-                1L,
                 1L,
                 null,
                 "contract",

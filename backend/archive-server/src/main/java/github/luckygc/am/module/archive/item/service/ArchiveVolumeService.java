@@ -120,6 +120,9 @@ public class ArchiveVolumeService {
             ResolvedArchiveDataScope resolvedScope,
             Long userId) {
         List<Restriction<ArchiveVolume>> requestRestrictions = new ArrayList<>();
+        requestRestrictions.add(
+                _ArchiveVolume.repositoryRole.equalTo(
+                        github.luckygc.am.module.archive.library.ArchiveRepositoryRole.HOLDING));
         if (fondsCode != null) {
             requestRestrictions.add(_ArchiveVolume.fondsCode.equalTo(fondsCode));
         }
@@ -221,7 +224,8 @@ public class ArchiveVolumeService {
                 volume.getLockReason(),
                 volume.getLockedBy(),
                 volume.getLockedAt(),
-                volume.getCreatedAt());
+                volume.getCreatedAt(),
+                volume.getRepositoryId());
     }
 
     public ArchiveVolumeDto getVolume(Long id, Long userId) {
@@ -264,6 +268,7 @@ public class ArchiveVolumeService {
         }
         ArchiveFondsDto fonds =
                 archiveMetadataReferenceService.getEnabledFondsByCode(request.fondsCode());
+        archiveCategoryService.requireCategoryAvailableForFonds(fonds.fondsCode(), category.id());
         int archiveYear =
                 request.archiveYear() == null ? Year.now().getValue() : request.archiveYear();
         String archiveNo = StringUtils.trimToNull(request.archiveNo());
@@ -302,6 +307,13 @@ public class ArchiveVolumeService {
                             archiveYear);
         } catch (DuplicateKeyException exception) {
             throw duplicateArchiveNo();
+        }
+        if (request.repositoryId() != null) {
+            Long repositoryId = archiveMapper.getEnabledArchiveRepositoryId(request.repositoryId());
+            if (repositoryId == null) {
+                throw new BadRequestException("目标业务库不存在或已禁用");
+            }
+            archiveMapper.updateArchiveVolumeRepository(id, repositoryId);
         }
         LoadedArchiveVolume volume = loadVolume(id);
         assertVolumeInDataScope(volume, userId);
@@ -511,7 +523,8 @@ public class ArchiveVolumeService {
                 bool(row, "lockedFlag"),
                 string(row, "lockReason"),
                 longOrNull(row, "lockedBy"),
-                dateTime(row, "lockedAt"));
+                dateTime(row, "lockedAt"),
+                longOrNull(row, "repositoryId"));
     }
 
     private Number number(Map<String, Object> row, String key) {
@@ -554,7 +567,18 @@ public class ArchiveVolumeService {
             String fondsCode,
             String archiveNo,
             Integer archiveYear,
-            String electronicStatus) {}
+            String electronicStatus,
+            @Nullable Long repositoryId) {
+
+        public CreateArchiveVolumeRequest(
+                Long categoryId,
+                String fondsCode,
+                String archiveNo,
+                Integer archiveYear,
+                String electronicStatus) {
+            this(categoryId, fondsCode, archiveNo, archiveYear, electronicStatus, null);
+        }
+    }
 
     public record AddItemToVolumeRequest(Long itemId, Integer displayOrder) {}
 
@@ -570,7 +594,38 @@ public class ArchiveVolumeService {
             boolean lockedFlag,
             String lockReason,
             Long lockedBy,
-            LocalDateTime lockedAt) {}
+            LocalDateTime lockedAt,
+            @Nullable Long repositoryId) {
+
+        public ArchiveVolumeDto(
+                Long id,
+                String fondsCode,
+                String fondsName,
+                String categoryCode,
+                String categoryName,
+                String archiveNo,
+                String electronicStatus,
+                int archiveYear,
+                boolean lockedFlag,
+                String lockReason,
+                Long lockedBy,
+                LocalDateTime lockedAt) {
+            this(
+                    id,
+                    fondsCode,
+                    fondsName,
+                    categoryCode,
+                    categoryName,
+                    archiveNo,
+                    electronicStatus,
+                    archiveYear,
+                    lockedFlag,
+                    lockReason,
+                    lockedBy,
+                    lockedAt,
+                    null);
+        }
+    }
 
     public record ArchiveVolumeResponse(
             Long id,
@@ -585,7 +640,8 @@ public class ArchiveVolumeService {
             @Nullable String lockReason,
             @Nullable Long lockedBy,
             @Nullable LocalDateTime lockedAt,
-            LocalDateTime createdAt) {}
+            LocalDateTime createdAt,
+            @Nullable Long repositoryId) {}
 
     private record LoadedArchiveVolume(
             ArchiveVolumeDto response,

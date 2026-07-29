@@ -14,7 +14,6 @@ class ArchiveDynamicTableNamesTests {
         ArchiveCategoryDto category =
                 new ArchiveCategoryDto(
                         7L,
-                        1L,
                         null,
                         "contract",
                         "合同档案",

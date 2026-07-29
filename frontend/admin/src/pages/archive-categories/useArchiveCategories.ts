@@ -8,7 +8,6 @@ import {
     deleteArchiveCategory,
     deleteArchiveField,
     listArchiveCategories,
-    listArchiveClassificationSchemes,
     listArchiveFields,
     listArchiveFonds,
     updateArchiveCategory,
@@ -16,7 +15,6 @@ import {
 } from "@/shared/api/archive-metadata";
 import type {
     ArchiveCategoryDto,
-    ArchiveClassificationSchemeDto,
     ArchiveFieldDto,
     ArchiveFieldType,
     ArchiveFondsDto,
@@ -39,18 +37,15 @@ export const fieldTypeLabels: Record<string, string> = {
 
 export function useArchiveCategories() {
     const categories = ref<ArchiveCategoryDto[]>([]);
-    const schemes = ref<ArchiveClassificationSchemeDto[]>([]);
     const fonds = ref<ArchiveFondsDto[]>([]);
     const fields = ref<ArchiveFieldDto[]>([]);
     const selectedCategoryId = ref<number>();
-    const selectedSchemeId = ref<number>();
     const loading = ref(false);
     const saving = ref(false);
     const categoryDialogOpen = ref(false);
     const categoryMode = ref<"create" | "edit">("create");
     const editingCategory = ref<ArchiveCategoryDto>();
     const categoryForm = reactive({
-        schemeId: undefined as number | undefined,
         parentId: undefined as number | undefined,
         categoryCode: "",
         categoryName: "",
@@ -81,27 +76,12 @@ export function useArchiveCategories() {
         editSortOrder: 0,
     });
     const scopeDialog = ref<InstanceType<typeof ArchiveCategoryScopeDialog>>();
-    const enabledSchemes = computed(() => schemes.value.filter((item) => item.enabled));
-    const visibleCategories = computed(() =>
-        selectedSchemeId.value == null
-            ? categories.value
-            : categories.value.filter((item) => item.schemeId === selectedSchemeId.value),
-    );
     const selectedCategory = computed(() =>
-        visibleCategories.value.find((item) => item.id === selectedCategoryId.value),
+        categories.value.find((item) => item.id === selectedCategoryId.value),
     );
-    const selectedScheme = computed(() =>
-        schemes.value.find((item) => item.id === selectedSchemeId.value),
-    );
-    const schemeNameById = computed(
-        () => new Map(schemes.value.map((item) => [item.id, item.schemeName])),
-    );
-    const treeData = computed(() => buildTree(visibleCategories.value));
+    const treeData = computed(() => buildTree(categories.value));
     const parentOptions = computed(() =>
-        categories.value.filter(
-            (item) =>
-                item.schemeId === categoryForm.schemeId && item.id !== editingCategory.value?.id,
-        ),
+        categories.value.filter((item) => item.id !== editingCategory.value?.id),
     );
 
     async function reloadCategories() {
@@ -112,7 +92,6 @@ export function useArchiveCategories() {
         categoryMode.value = "create";
         editingCategory.value = undefined;
         Object.assign(categoryForm, {
-            schemeId: selectedSchemeId.value ?? enabledSchemes.value[0]?.id,
             parentId: selectedCategoryId.value,
             categoryCode: "",
             categoryName: "",
@@ -133,17 +112,12 @@ export function useArchiveCategories() {
     }
 
     async function saveCategory() {
-        if (
-            !categoryForm.schemeId ||
-            !categoryForm.categoryCode.trim() ||
-            !categoryForm.categoryName.trim()
-        )
+        if (!categoryForm.categoryCode.trim() || !categoryForm.categoryName.trim())
             return ElMessage.warning("请填写分类必填项");
         saving.value = true;
         try {
             const payload = {
                 ...categoryForm,
-                schemeId: categoryForm.schemeId,
                 categoryCode: categoryForm.categoryCode.trim(),
                 categoryName: categoryForm.categoryName.trim(),
             };
@@ -252,23 +226,18 @@ export function useArchiveCategories() {
     onMounted(async () => {
         loading.value = true;
         try {
-            const [categoryResponse, schemeResponse, fondsResponse] = await Promise.all([
+            const [categoryResponse, fondsResponse] = await Promise.all([
                 listArchiveCategories(),
-                listArchiveClassificationSchemes(),
                 listArchiveFonds(true),
             ]);
             categories.value = categoryResponse.items;
-            schemes.value = schemeResponse.items;
             fonds.value = fondsResponse.items;
-            selectedSchemeId.value = (
-                schemes.value.find((item) => item.defaultFlag) ?? schemes.value[0]
-            )?.id;
         } finally {
             loading.value = false;
         }
     });
     watch(
-        visibleCategories,
+        categories,
         (items) => {
             if (!items.some((item) => item.id === selectedCategoryId.value))
                 selectedCategoryId.value = items[0]?.id;
@@ -285,7 +254,6 @@ export function useArchiveCategories() {
         categoryDialogOpen,
         categoryForm,
         categoryMode,
-        enabledSchemes,
         fieldDialogOpen,
         fieldForm,
         fieldMode,
@@ -302,13 +270,9 @@ export function useArchiveCategories() {
         saveCategory,
         saveField,
         saving,
-        schemeNameById,
-        schemes,
         scopeDialog,
         selectedCategory,
         selectedCategoryId,
-        selectedScheme,
-        selectedSchemeId,
         treeData,
     };
 }

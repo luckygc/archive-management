@@ -450,7 +450,6 @@ class ArchiveItemDataScopeQueryTests {
     private ArchiveCategoryDto category() {
         return new ArchiveCategoryDto(
                 1L,
-                1L,
                 null,
                 "contract",
                 "合同档案",

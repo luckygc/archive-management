@@ -23,31 +23,10 @@ export interface ArchiveFondsRequest {
     sortOrder: number;
 }
 
-export interface ArchiveClassificationSchemeDto {
-    id: number;
-    schemeCode: string;
-    schemeName: string;
-    description?: string;
-    defaultFlag: boolean;
-    enabled: boolean;
-    sortOrder: number;
-    createdAt: string;
-    updatedAt: string;
-}
-
-export interface ArchiveClassificationSchemeRequest {
-    schemeCode: string;
-    schemeName: string;
-    description?: string;
-    enabled: boolean;
-    sortOrder: number;
-}
-
 export interface ArchiveFondsCategoryScopeDto {
     id?: number;
     fondsCode: string;
     categoryId: number;
-    defaultFlag: boolean;
     sortOrder: number;
     createdAt?: string;
     updatedAt?: string;
@@ -55,7 +34,6 @@ export interface ArchiveFondsCategoryScopeDto {
 
 export interface ArchiveFondsCategoryScopeRequest {
     categoryId: number;
-    defaultFlag: boolean;
     sortOrder: number;
 }
 
@@ -87,7 +65,6 @@ export interface ArchiveRetentionPeriodRequest {
 
 export interface ArchiveCategoryDto {
     id: number;
-    schemeId: number;
     parentId?: number;
     categoryCode: string;
     categoryName: string;
@@ -103,7 +80,6 @@ export interface ArchiveCategoryDto {
 }
 
 export interface ArchiveCategoryRequest {
-    schemeId: number;
     categoryCode: string;
     categoryName: string;
     parentId?: number;

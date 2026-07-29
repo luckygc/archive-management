@@ -201,7 +201,6 @@ class ArchiveFieldDefinitionServiceTests {
     private static ArchiveCategoryDto category(ArchiveManagementMode mode) {
         return new ArchiveCategoryDto(
                 1L,
-                2L,
                 null,
                 "contract",
                 "合同档案",

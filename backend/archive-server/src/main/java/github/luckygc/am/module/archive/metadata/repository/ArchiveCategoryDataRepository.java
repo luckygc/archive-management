@@ -51,18 +51,4 @@ public interface ArchiveCategoryDataRepository {
     @OrderBy("sortOrder")
     @OrderBy("id")
     List<ArchiveCategory> list(boolean enabled);
-
-    @Transactional(readOnly = true)
-    @Find
-    @OrderBy("parentId")
-    @OrderBy("sortOrder")
-    @OrderBy("id")
-    List<ArchiveCategory> findBySchemeId(@Nonnull Long schemeId);
-
-    @Transactional(readOnly = true)
-    @Find
-    @OrderBy("parentId")
-    @OrderBy("sortOrder")
-    @OrderBy("id")
-    List<ArchiveCategory> findBySchemeIdAndEnabled(@Nonnull Long schemeId, boolean enabled);
 }

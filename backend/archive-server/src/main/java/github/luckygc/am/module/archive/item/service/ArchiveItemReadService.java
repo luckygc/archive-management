@@ -130,7 +130,8 @@ public class ArchiveItemReadService {
                 bool(row, "lockedFlag"),
                 string(row, "lockReason"),
                 longOrNull(row, "lockedBy"),
-                dateTime(row, "lockedAt"));
+                dateTime(row, "lockedAt"),
+                longOrNull(row, "repositoryId"));
     }
 
     private Map<String, @Nullable Object> loadDynamicRecord(ArchiveCategoryDto category, Long id) {
@@ -329,7 +330,44 @@ public class ArchiveItemReadService {
             boolean lockedFlag,
             @Nullable String lockReason,
             @Nullable Long lockedBy,
-            @Nullable LocalDateTime lockedAt) {}
+            @Nullable LocalDateTime lockedAt,
+            @Nullable Long repositoryId) {
+
+        public ArchiveItemDto(
+                Long id,
+                @Nullable Long volumeId,
+                String fondsCode,
+                String fondsName,
+                String categoryCode,
+                String categoryName,
+                @Nullable String archiveNo,
+                String electronicStatus,
+                @Nullable Long securityLevelId,
+                @Nullable Long retentionPeriodId,
+                int archiveYear,
+                boolean lockedFlag,
+                @Nullable String lockReason,
+                @Nullable Long lockedBy,
+                @Nullable LocalDateTime lockedAt) {
+            this(
+                    id,
+                    volumeId,
+                    fondsCode,
+                    fondsName,
+                    categoryCode,
+                    categoryName,
+                    archiveNo,
+                    electronicStatus,
+                    securityLevelId,
+                    retentionPeriodId,
+                    archiveYear,
+                    lockedFlag,
+                    lockReason,
+                    lockedBy,
+                    lockedAt,
+                    null);
+        }
+    }
 
     public record ArchiveItemDetailDto(
             ArchiveItemDto item,

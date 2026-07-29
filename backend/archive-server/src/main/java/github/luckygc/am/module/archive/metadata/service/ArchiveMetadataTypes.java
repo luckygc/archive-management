@@ -31,34 +31,13 @@ public abstract class ArchiveMetadataTypes {
             LocalDateTime createdAt,
             LocalDateTime updatedAt) {}
 
-    public record ArchiveClassificationSchemeRequest(
-            @Nullable String schemeCode,
-            @Nullable String schemeName,
-            @Nullable String description,
-            @Nullable Boolean enabled,
-            @Nullable Integer sortOrder) {}
-
-    public record ArchiveClassificationSchemeDto(
-            Long id,
-            String schemeCode,
-            String schemeName,
-            @Nullable String description,
-            boolean defaultFlag,
-            boolean enabled,
-            int sortOrder,
-            LocalDateTime createdAt,
-            LocalDateTime updatedAt) {}
-
     public record ArchiveFondsCategoryScopeRequest(
-            @Nullable Long categoryId,
-            @Nullable Boolean defaultFlag,
-            @Nullable Integer sortOrder) {}
+            @Nullable Long categoryId, @Nullable Integer sortOrder) {}
 
     public record ArchiveFondsCategoryScopeDto(
             @Nullable Long id,
             String fondsCode,
             Long categoryId,
-            boolean defaultFlag,
             int sortOrder,
             @Nullable LocalDateTime createdAt,
             @Nullable LocalDateTime updatedAt) {}
@@ -84,7 +63,6 @@ public abstract class ArchiveMetadataTypes {
             LocalDateTime updatedAt) {}
 
     public record ArchiveCategoryRequest(
-            @Nullable Long schemeId,
             @Nullable String categoryCode,
             @Nullable String categoryName,
             @Nullable Long parentId,
@@ -94,7 +72,6 @@ public abstract class ArchiveMetadataTypes {
 
     public record ArchiveCategoryDto(
             Long id,
-            @Nullable Long schemeId,
             @Nullable Long parentId,
             String categoryCode,
             String categoryName,

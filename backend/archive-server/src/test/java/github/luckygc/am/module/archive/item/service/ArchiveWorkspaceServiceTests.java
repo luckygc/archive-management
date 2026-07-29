@@ -73,7 +73,6 @@ class ArchiveWorkspaceServiceTests {
     private ArchiveCategoryDto category(long id) {
         return new ArchiveCategoryDto(
                 id,
-                1L,
                 null,
                 "category_" + id,
                 "分类" + id,

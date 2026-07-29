@@ -4,17 +4,21 @@ import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 
+import org.hibernate.annotations.Formula;
 import org.hibernate.annotations.SoftDelete;
 import org.jspecify.annotations.Nullable;
 
 import github.luckygc.am.common.audit.CreationAuditable;
 import github.luckygc.am.common.audit.UpdateAuditable;
+import github.luckygc.am.module.archive.library.ArchiveRepositoryRole;
 
 import lombok.Data;
 
@@ -31,6 +35,14 @@ public class ArchiveVolume implements CreationAuditable, UpdateAuditable {
             sequenceName = "am_archive_volume_id_seq",
             allocationSize = 1000)
     private Long id;
+
+    @Column(name = "repository_id", nullable = false)
+    private Long repositoryId;
+
+    @Formula(
+            "(select repository.repository_role from am_archive_repository repository where repository.id = repository_id and repository.deleted_flag = false)")
+    @Enumerated(EnumType.STRING)
+    private ArchiveRepositoryRole repositoryRole;
 
     @Column(name = "fonds_code", nullable = false, length = 100)
     private String fondsCode;

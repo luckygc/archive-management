@@ -446,7 +446,6 @@ async function chooseOption(label: string, option: string) {
 function category() {
     return {
         id: 7,
-        schemeId: 1,
         categoryCode: "ACCOUNTING",
         categoryName: "会计档案",
         managementMode: "VOLUME_ITEM" as const,

@@ -115,6 +115,7 @@ public class ArchiveItemCommandService {
         }
         ArchiveFondsDto fonds =
                 archiveMetadataReferenceService.getEnabledFondsByCode(request.fondsCode());
+        archiveCategoryService.requireCategoryAvailableForFonds(fonds.fondsCode(), category.id());
         Long volumeId =
                 validateParentForWrite(
                         archiveLevel,
@@ -193,6 +194,13 @@ public class ArchiveItemCommandService {
         } catch (DuplicateKeyException exception) {
             throw duplicateArchiveNo();
         }
+        if (request.repositoryId() != null) {
+            Long repositoryId = archiveMapper.getEnabledArchiveRepositoryId(request.repositoryId());
+            if (repositoryId == null) {
+                throw badRequest("目标业务库不存在或已禁用");
+            }
+            archiveMapper.updateArchiveItemRepository(recordId, repositoryId);
+        }
         try {
             insertDynamicRecord(tableName, recordId, fields, convertedDynamicFields);
         } catch (DuplicateKeyException | MyBatisSystemException exception) {
@@ -231,6 +239,7 @@ public class ArchiveItemCommandService {
         }
         ArchiveFondsDto fonds =
                 archiveMetadataReferenceService.getEnabledFondsByCode(request.fondsCode());
+        archiveCategoryService.requireCategoryAvailableForFonds(fonds.fondsCode(), category.id());
         Long volumeId =
                 validateParentForWrite(
                         ArchiveLevel.ITEM,
@@ -741,7 +750,34 @@ public class ArchiveItemCommandService {
             @Nullable Long securityLevelId,
             @Nullable Long retentionPeriodId,
             @Nullable Map<String, @Nullable Object> physicalFields,
-            @Nullable Map<String, @Nullable Object> dynamicFields) {}
+            @Nullable Map<String, @Nullable Object> dynamicFields,
+            @Nullable Long repositoryId) {
+
+        public CreateArchiveItemRequest(
+                @Nullable Long categoryId,
+                @Nullable Long volumeId,
+                @Nullable String fondsCode,
+                @Nullable String archiveNo,
+                @Nullable Integer archiveYear,
+                @Nullable String electronicStatus,
+                @Nullable Long securityLevelId,
+                @Nullable Long retentionPeriodId,
+                @Nullable Map<String, @Nullable Object> physicalFields,
+                @Nullable Map<String, @Nullable Object> dynamicFields) {
+            this(
+                    categoryId,
+                    volumeId,
+                    fondsCode,
+                    archiveNo,
+                    archiveYear,
+                    electronicStatus,
+                    securityLevelId,
+                    retentionPeriodId,
+                    physicalFields,
+                    dynamicFields,
+                    null);
+        }
+    }
 
     public record UpdateArchiveItemRequest(
             @Nullable Long volumeId,

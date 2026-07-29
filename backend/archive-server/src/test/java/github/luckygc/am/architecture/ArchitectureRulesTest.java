@@ -62,7 +62,11 @@ class ArchitectureRulesTest {
                     "github.luckygc.am.module.archive.metadata.ArchiveField",
                     "github.luckygc.am.module.archive.metadata.ArchiveFieldLayout",
                     "github.luckygc.am.module.archive.item.ArchiveItem",
-                    "github.luckygc.am.module.archive.item.ArchiveVolume");
+                    "github.luckygc.am.module.archive.item.ArchiveVolume",
+                    "github.luckygc.am.module.archive.library.ArchiveRepository",
+                    "github.luckygc.am.module.archive.physical.ArchiveWarehouse",
+                    "github.luckygc.am.module.archive.physical.ArchiveStorageLocation",
+                    "github.luckygc.am.module.archive.physical.ArchivePhysicalObject");
 
     @ArchTest
     static final ArchRule common_should_not_depend_on_business_or_infrastructure =

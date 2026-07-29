@@ -26,8 +26,6 @@ import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataReferenc
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveCategoryDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveCategoryRequest;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveClassificationSchemeDto;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveClassificationSchemeRequest;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFieldDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFieldLayoutDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFieldLayoutRequest;
@@ -117,31 +115,6 @@ public class ArchiveMetadataController {
             @PathVariable String fondsCode, Boolean enabled) {
         return CollectionResponse.of(
                 archiveCategoryService.listCategoriesForFonds(fondsCode, enabled));
-    }
-
-    @GetMapping("/api/v1/archive-classification-schemes")
-    public CollectionResponse<ArchiveClassificationSchemeDto> listClassificationSchemes(
-            Boolean enabled) {
-        return CollectionResponse.of(
-                archiveMetadataReferenceService.listClassificationSchemes(enabled));
-    }
-
-    @PostMapping("/api/v1/archive-classification-schemes")
-    @ResponseStatus(HttpStatus.CREATED)
-    public ArchiveClassificationSchemeDto createClassificationScheme(
-            @RequestBody ArchiveClassificationSchemeRequest request,
-            Authentication authentication) {
-        return archiveMetadataReferenceService.createClassificationScheme(
-                request, requireMetadataManage(authentication));
-    }
-
-    @PatchMapping("/api/v1/archive-classification-schemes/{id}")
-    public ArchiveClassificationSchemeDto updateClassificationScheme(
-            @PathVariable Long id,
-            @RequestBody ArchiveClassificationSchemeRequest request,
-            Authentication authentication) {
-        return archiveMetadataReferenceService.updateClassificationScheme(
-                id, request, requireMetadataManage(authentication));
     }
 
     @GetMapping("/api/v1/archive-security-levels")
