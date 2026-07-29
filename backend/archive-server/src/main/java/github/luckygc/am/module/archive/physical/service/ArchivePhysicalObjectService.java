@@ -92,7 +92,15 @@ public class ArchivePhysicalObjectService {
         return toResponse(entity);
     }
 
-    public @Nullable ArchivePhysicalObjectResponse findByOwner(
+    public ArchivePhysicalObjectResponse getByArchiveItem(Long archiveItemId, Long userId) {
+        return getByOwner(archiveItemId, null, userId);
+    }
+
+    public ArchivePhysicalObjectResponse getByArchiveVolume(Long archiveVolumeId, Long userId) {
+        return getByOwner(null, archiveVolumeId, userId);
+    }
+
+    private ArchivePhysicalObjectResponse getByOwner(
             @Nullable Long archiveItemId, @Nullable Long archiveVolumeId, Long userId) {
         requireReadPermission(userId);
         validateOwner(archiveItemId, archiveVolumeId);
@@ -101,7 +109,7 @@ public class ArchivePhysicalObjectService {
                         ? objectRepository.findByArchiveItemId(archiveItemId)
                         : objectRepository.findByArchiveVolumeId(archiveVolumeId))
                 .map(this::toResponse)
-                .orElse(null);
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "实物对象不存在"));
     }
 
     @Transactional

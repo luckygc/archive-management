@@ -23,7 +23,6 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
-import github.luckygc.am.common.api.CollectionResponse;
 import github.luckygc.am.common.storage.FileStorageResource;
 import github.luckygc.am.module.archive.item.ArchiveItem;
 import github.luckygc.am.module.archive.item.ArchiveItemAudit;
@@ -153,7 +152,7 @@ class ArchiveItemElectronicFileServiceTests {
 
     @Test
     @DisplayName("查询档案条目电子文件列表")
-    void listFilesShouldReturnCollectionResponse() {
+    void listFilesShouldReturnElectronicFiles() {
         LocalDateTime createdAt = LocalDateTime.of(2026, 6, 30, 10, 0);
         when(archiveMapper.getArchiveItem(10L)).thenReturn(Map.of("id", 10L));
         when(archiveMapper.listArchiveItemElectronicFiles(10L))
@@ -171,10 +170,9 @@ class ArchiveItemElectronicFileServiceTests {
                                         Map.entry("checksum_sha256", "abc"),
                                         Map.entry("created_at", createdAt))));
 
-        CollectionResponse<ArchiveItemElectronicFileResponse> response =
-                electronicFileService.listFiles(10L, 9L);
+        List<ArchiveItemElectronicFileResponse> response = electronicFileService.listFiles(10L, 9L);
 
-        assertThat(response.items())
+        assertThat(response)
                 .containsExactly(
                         new ArchiveItemElectronicFileResponse(
                                 30L,

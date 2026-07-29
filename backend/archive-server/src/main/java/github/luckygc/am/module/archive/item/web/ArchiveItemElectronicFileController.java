@@ -40,7 +40,8 @@ public class ArchiveItemElectronicFileController {
     @GetMapping("/api/v1/archive-items/{archiveItem}/electronic-files")
     public CollectionResponse<ArchiveItemElectronicFileResponse> listFiles(
             @PathVariable Long archiveItem, Authentication authentication) {
-        return electronicFileService.listFiles(archiveItem, currentUserId(authentication));
+        return CollectionResponse.of(
+                electronicFileService.listFiles(archiveItem, currentUserId(authentication)));
     }
 
     @PostMapping(

@@ -30,13 +30,15 @@ task frontend-install
 task infra-up
 ```
 
-该任务由 [`deploy/compose.dev.yaml`](../deploy/compose.dev.yaml) 和 `Taskfile.yml` 定义，等待两个服务健康后通过 AWS SigV4 幂等创建 bucket。本地默认端口、账号和临时数据策略以这两个文件为准；Compose 环境只用于开发，不提供生产持久化、高可用或灾备。
+该任务由 [`deploy/compose.dev.yaml`](../deploy/compose.dev.yaml) 和 `Taskfile.yml` 定义。每次启动前都会停止并删除旧容器、命名卷和匿名卷，再创建全新的 PostgreSQL 与对象存储容器；等待两个服务健康后，通过 AWS SigV4 创建开发 bucket。本地默认端口、账号和临时数据策略以这两个文件为准；Compose 环境只用于开发，不提供生产持久化、高可用或灾备。
 
 已有 PostgreSQL 和 S3 兼容服务时，无需启动 Compose，可通过本机覆盖配置连接现有服务。停止仓库提供的本地基础设施使用：
 
 ```bash
 task infra-down
 ```
+
+停止任务也会删除容器、命名卷和匿名卷，不保留本地基础设施数据。
 
 ## 本机覆盖配置
 

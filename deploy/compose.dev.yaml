@@ -9,6 +9,7 @@ services:
             POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
         ports:
             - "${POSTGRES_PORT:-5433}:5432"
+        # 开发数据只存于 tmpfs，不声明命名卷；容器删除后数据随即清空。
         tmpfs:
             - /var/lib/postgresql
         healthcheck:
@@ -28,6 +29,7 @@ services:
         ports:
             - "${ARCHIVE_STORAGE_PORT:-9000}:9000"
             - "${ARCHIVE_STORAGE_CONSOLE_PORT:-9001}:9001"
+        # 对象数据同样不落命名卷，保证重建后得到空存储。
         tmpfs:
             - /data:uid=10001,gid=10001,mode=0750
         command: ["/data"]

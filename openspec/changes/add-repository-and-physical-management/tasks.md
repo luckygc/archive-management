@@ -18,4 +18,5 @@
 ## 4. 契约与回归验证
 
 - [x] 4.1 补充 Controller/API 合同测试并核对错误响应；运行 `cd backend/archive-server && mise exec -- mvn -Dtest='*ArchiveRepository*Tests,*ArchivePhysical*Tests,*ArchiveStorageLocation*Tests' test`，预期新增 API 测试全部通过。
-- [ ] 4.2 执行格式、后端回归和 OpenSpec 治理验证；依次运行 `task server-format`、`task server-test`、`task governance-check`，预期格式化完成、后端测试通过且 OpenSpec 严格校验通过。
+- [x] 4.2 收紧集合响应边界，并将一档一实物查询改为单资源接口；运行 `cd backend/archive-server && mise exec -- mvn -Dtest='ArchiveItemElectronicFileServiceTests,ArchiveItemElectronicFileControllerTests,ArchivePhysicalObjectServiceTests,ArchivePhysicalObjectControllerTests' test`，预期 Service 不依赖 HTTP 集合包装且单资源不存在时返回 404。
+- [ ] 4.3 执行格式、后端回归和 OpenSpec 治理验证；依次运行 `task server-format`、`task server-test`、`task governance-check`，预期格式化完成、后端测试通过且 OpenSpec 严格校验通过。

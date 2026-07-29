@@ -28,6 +28,12 @@
 - **THEN** 系统 SHALL 拒绝再次创建
 - **AND** 响应 SHALL 说明该档案已经存在实物信息
 
+#### Scenario: 按所有者读取实物对象
+
+- **WHEN** 有档案读取权限和数据范围的客户端查询 `GET /api/v1/archive-items/{archiveItemId}/physical-object` 或 `GET /api/v1/archive-volumes/{archiveVolumeId}/physical-object`
+- **THEN** 系统 SHALL 直接返回该档案的单个实物对象
+- **AND** 档案不存在实物对象时系统 SHALL 返回状态为 `404` 的 `ProblemDetail`
+
 #### Scenario: 删除实物对象
 
 - **WHEN** 有档案更新权限的用户删除实物对象

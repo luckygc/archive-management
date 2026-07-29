@@ -66,6 +66,7 @@
 - 业务库、真实库房与位置配置复用 `archive:metadata:manage`。
 - 实物对象维护和档案库变更复用档案读取/更新权限，并继续经过档案数据范围校验。
 - 集合规模可控的配置资源使用 `CollectionResponse`；增长型位置历史首期仅按单一实物对象读取，按操作时间和 ID 倒序返回受限集合。
+- 条目和案卷至多关联一个实物对象，分别通过嵌套的单资源路径直接返回；不存在时返回 `404 ProblemDetail`，不使用空集合表达缺失。
 - 标准资源使用 `GET`、`POST`、`PATCH`、`DELETE`；库变更和批量位置关联使用 AIP-136 风格 custom method。
 
 ## Risks / Trade-offs

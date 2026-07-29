@@ -16,7 +16,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import github.luckygc.am.common.api.CollectionResponse;
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.common.storage.FileStorageResource;
@@ -213,15 +212,13 @@ public class ArchiveItemElectronicFileService {
     }
 
     @Transactional(readOnly = true)
-    public CollectionResponse<ArchiveItemElectronicFileResponse> listFiles(
-            Long archiveItemId, Long userId) {
+    public List<ArchiveItemElectronicFileResponse> listFiles(Long archiveItemId, Long userId) {
         requirePermission(userId, PERMISSION_ITEM_READ);
         archiveItemRoutingService.assertItemInDataScope(archiveItemId, userId);
         ensureArchiveItemExists(archiveItemId);
-        return CollectionResponse.of(
-                archiveMapper.listArchiveItemElectronicFiles(archiveItemId).stream()
-                        .map(this::toResponse)
-                        .toList());
+        return archiveMapper.listArchiveItemElectronicFiles(archiveItemId).stream()
+                .map(this::toResponse)
+                .toList();
     }
 
     @Transactional

@@ -1,8 +1,5 @@
 package github.luckygc.am.module.archive.physical.web;
 
-import java.util.List;
-
-import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -33,14 +30,16 @@ public class ArchivePhysicalObjectController {
         this.service = service;
     }
 
-    @GetMapping("/api/v1/archive-physical-objects")
-    public CollectionResponse<ArchivePhysicalObjectResponse> findByOwner(
-            @Nullable Long archiveItemId,
-            @Nullable Long archiveVolumeId,
-            Authentication authentication) {
-        ArchivePhysicalObjectResponse response =
-                service.findByOwner(archiveItemId, archiveVolumeId, userId(authentication));
-        return CollectionResponse.of(response == null ? List.of() : List.of(response));
+    @GetMapping("/api/v1/archive-items/{archiveItemId}/physical-object")
+    public ArchivePhysicalObjectResponse getByArchiveItem(
+            @PathVariable Long archiveItemId, Authentication authentication) {
+        return service.getByArchiveItem(archiveItemId, userId(authentication));
+    }
+
+    @GetMapping("/api/v1/archive-volumes/{archiveVolumeId}/physical-object")
+    public ArchivePhysicalObjectResponse getByArchiveVolume(
+            @PathVariable Long archiveVolumeId, Authentication authentication) {
+        return service.getByArchiveVolume(archiveVolumeId, userId(authentication));
     }
 
     @PostMapping("/api/v1/archive-physical-objects")

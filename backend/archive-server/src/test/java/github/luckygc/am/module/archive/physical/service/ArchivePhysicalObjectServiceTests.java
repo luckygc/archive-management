@@ -10,10 +10,13 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.archive.item.service.ArchiveItemReadService;
@@ -80,5 +83,33 @@ class ArchivePhysicalObjectServiceTests {
         assertThat(response.id()).isEqualTo(51L);
         assertThat(response.archiveItemId()).isEqualTo(31L);
         assertThat(response.archiveVolumeId()).isNull();
+    }
+
+    @Test
+    @DisplayName("按条目读取实物对象时直接返回单资源")
+    void getByArchiveItemShouldReturnPhysicalObject() {
+        ArchivePhysicalObject object = new ArchivePhysicalObject();
+        object.setId(51L);
+        object.setArchiveItemId(31L);
+        when(objectRepository.findByArchiveItemId(31L)).thenReturn(Optional.of(object));
+
+        var response = service.getByArchiveItem(31L, 9L);
+
+        assertThat(response.id()).isEqualTo(51L);
+        assertThat(response.archiveItemId()).isEqualTo(31L);
+    }
+
+    @Test
+    @DisplayName("档案不存在实物对象时返回不存在")
+    void getByArchiveItemShouldRejectMissingPhysicalObject() {
+        when(objectRepository.findByArchiveItemId(31L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.getByArchiveItem(31L, 9L))
+                .isInstanceOfSatisfying(
+                        ResponseStatusException.class,
+                        exception ->
+                                assertThat(exception.getStatusCode())
+                                        .isEqualTo(HttpStatus.NOT_FOUND))
+                .hasMessageContaining("实物对象不存在");
     }
 }

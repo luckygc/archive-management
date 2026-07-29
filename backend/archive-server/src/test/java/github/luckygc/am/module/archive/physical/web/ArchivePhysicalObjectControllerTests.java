@@ -16,17 +16,22 @@ import github.luckygc.am.module.archive.physical.service.ArchivePhysicalObjectSe
 class ArchivePhysicalObjectControllerTests {
 
     @Test
-    @DisplayName("实物对象和位置历史使用独立资源")
+    @DisplayName("条目和案卷实物对象使用单资源路径")
     void objectAndHistoryUseDedicatedResources() throws Exception {
-        Method find =
+        Method itemObject =
                 ArchivePhysicalObjectController.class.getDeclaredMethod(
-                        "findByOwner", Long.class, Long.class, Authentication.class);
+                        "getByArchiveItem", Long.class, Authentication.class);
+        Method volumeObject =
+                ArchivePhysicalObjectController.class.getDeclaredMethod(
+                        "getByArchiveVolume", Long.class, Authentication.class);
         Method history =
                 ArchivePhysicalObjectController.class.getDeclaredMethod(
                         "listLocationHistory", Long.class, Authentication.class);
 
-        assertThat(find.getAnnotation(GetMapping.class).value())
-                .containsExactly("/api/v1/archive-physical-objects");
+        assertThat(itemObject.getAnnotation(GetMapping.class).value())
+                .containsExactly("/api/v1/archive-items/{archiveItemId}/physical-object");
+        assertThat(volumeObject.getAnnotation(GetMapping.class).value())
+                .containsExactly("/api/v1/archive-volumes/{archiveVolumeId}/physical-object");
         assertThat(history.getAnnotation(GetMapping.class).value())
                 .containsExactly("/api/v1/archive-physical-objects/{id}/location-history");
     }

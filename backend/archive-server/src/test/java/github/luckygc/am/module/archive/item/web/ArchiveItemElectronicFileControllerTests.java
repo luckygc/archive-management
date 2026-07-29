@@ -7,12 +7,14 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.core.Authentication;
 
+import github.luckygc.am.common.api.CollectionResponse;
 import github.luckygc.am.common.security.AuthenticatedUser;
 import github.luckygc.am.module.archive.item.service.ArchiveItemElectronicFileLinkService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemElectronicFileService;
@@ -27,6 +29,29 @@ class ArchiveItemElectronicFileControllerTests {
     private final ArchiveItemElectronicFileController controller =
             new ArchiveItemElectronicFileController(
                     electronicFileService, electronicFileLinkService);
+
+    @Test
+    @DisplayName("电子文件列表在 HTTP 边界包装集合响应")
+    void listFilesShouldWrapCollectionAtHttpBoundary() {
+        ArchiveItemElectronicFileService.ArchiveItemElectronicFileResponse file =
+                new ArchiveItemElectronicFileService.ArchiveItemElectronicFileResponse(
+                        30L,
+                        10L,
+                        20L,
+                        "DEFAULT",
+                        0,
+                        "合同.pdf",
+                        4,
+                        "application/pdf",
+                        null,
+                        LocalDateTime.of(2026, 7, 1, 10, 0));
+        when(electronicFileService.listFiles(10L, 9L)).thenReturn(List.of(file));
+
+        CollectionResponse<ArchiveItemElectronicFileService.ArchiveItemElectronicFileResponse>
+                response = controller.listFiles(10L, authentication(9L));
+
+        assertThat(response.items()).containsExactly(file);
+    }
 
     @Test
     @DisplayName("上传附件时从路径携带档案 ID，不接收用户手填文件记录 ID")

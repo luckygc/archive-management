@@ -23,10 +23,11 @@ tasks:
             - perl openspec/scripts/governance-check.pl
 
     infra-up:
-        desc: 启动本地 PostgreSQL 和 RustFS 并初始化开发 bucket
+        desc: 清理旧容器和卷，启动全新的 PostgreSQL 和 RustFS 并初始化开发 bucket
         silent: true
         cmds:
-            - docker compose -f "{{.COMPOSE_FILE}}" up -d --wait
+            - docker compose -f "{{.COMPOSE_FILE}}" down --volumes --remove-orphans
+            - docker compose -f "{{.COMPOSE_FILE}}" up -d --wait --force-recreate --renew-anon-volumes
             - |
                 bucket_url="http://localhost:${ARCHIVE_STORAGE_PORT:-9000}/${ARCHIVE_STORAGE_BUCKET:-archive}"
                 sigv4="aws:amz:${ARCHIVE_STORAGE_REGION:-us-east-1}:s3"
@@ -46,10 +47,10 @@ tasks:
                 fi
 
     infra-down:
-        desc: 停止本地 PostgreSQL 和 RustFS
+        desc: 停止本地 PostgreSQL 和 RustFS，并删除容器和卷
         silent: true
         cmds:
-            - docker compose -f "{{.COMPOSE_FILE}}" down
+            - docker compose -f "{{.COMPOSE_FILE}}" down --volumes --remove-orphans
 
     frontend-install:
         desc: 安装前端依赖
