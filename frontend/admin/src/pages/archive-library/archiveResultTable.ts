@@ -12,7 +12,6 @@ export function toArchiveRecordOrder(
         archive_year: "archiveYear",
         fonds_name: "fondsCode",
         category_name: "categoryCode",
-        electronic_status: "electronicStatus",
     };
     const dynamic = fields.find((field) => field.columnName === prop);
     return [

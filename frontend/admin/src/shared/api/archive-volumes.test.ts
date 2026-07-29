@@ -33,7 +33,6 @@ describe("archive volume API", () => {
             fondsCode: "F001",
             archiveNo: "V-2026-001",
             archiveYear: 2026,
-            electronicStatus: "DRAFT" as const,
         };
         httpClientMock.post.mockResolvedValue({ id: 12 });
         httpClientMock.get.mockResolvedValue({ id: 12 });

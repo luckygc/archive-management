@@ -7,7 +7,6 @@ import { errorMessage, HttpClientError } from "@archive-management/frontend-core
 
 import { createArchiveVolume, getArchiveVolume } from "@/shared/api/archive-volumes";
 import type { ArchiveCategoryDto } from "@/shared/types/archive-metadata";
-import type { ArchiveElectronicStatus } from "@/shared/types/archive-records";
 import type { ArchiveVolumeDetailResponse } from "@/shared/types/archive-volumes";
 
 const props = defineProps<{
@@ -27,7 +26,6 @@ const form = reactive({
     fondsCode: "",
     archiveNo: "",
     archiveYear: new Date().getFullYear(),
-    electronicStatus: "DRAFT" as ArchiveElectronicStatus,
 });
 let requestVersion = 0;
 
@@ -47,7 +45,6 @@ watch(
                 fondsCode: "",
                 archiveNo: "",
                 archiveYear: new Date().getFullYear(),
-                electronicStatus: "DRAFT",
             });
             return;
         }
@@ -82,7 +79,6 @@ async function submit() {
             fondsCode: form.fondsCode,
             archiveNo: form.archiveNo.trim() || undefined,
             archiveYear: form.archiveYear,
-            electronicStatus: form.electronicStatus,
         });
         if (version !== requestVersion) return;
         ElMessage.success("案卷已创建");
@@ -141,9 +137,6 @@ function withTraceId(error: unknown, fallback: string) {
                     {{ detail.categoryCode }} {{ detail.categoryName }}
                 </el-descriptions-item>
                 <el-descriptions-item label="年度">{{ detail.archiveYear }}</el-descriptions-item>
-                <el-descriptions-item label="电子状态">
-                    {{ detail.electronicStatus }}
-                </el-descriptions-item>
             </el-descriptions>
             <el-form
                 v-else-if="state?.mode === 'create'"
@@ -186,12 +179,6 @@ function withTraceId(error: unknown, fallback: string) {
                 </el-form-item>
                 <el-form-item label="年度" :error="fieldErrors.archiveYear">
                     <el-input-number v-model="form.archiveYear" :min="1" />
-                </el-form-item>
-                <el-form-item label="电子状态" :error="fieldErrors.electronicStatus">
-                    <el-select v-model="form.electronicStatus">
-                        <el-option label="草稿" value="DRAFT" />
-                        <el-option label="已归档" value="ARCHIVED" />
-                    </el-select>
                 </el-form-item>
             </el-form>
         </div>

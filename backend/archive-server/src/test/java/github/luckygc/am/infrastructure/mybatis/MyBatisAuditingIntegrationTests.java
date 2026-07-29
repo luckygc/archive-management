@@ -176,7 +176,6 @@ class MyBatisAuditingIntegrationTests extends PostgreSqlContainerTest {
         parameters.put("categoryCode", "AUDIT-CATEGORY");
         parameters.put("categoryName", "审计测试分类");
         parameters.put("archiveNo", archiveNo);
-        parameters.put("electronicStatus", "NONE");
         parameters.put("securityLevelId", null);
         parameters.put("retentionPeriodId", null);
         parameters.put("archiveYear", 2026);
@@ -188,8 +187,8 @@ class MyBatisAuditingIntegrationTests extends PostgreSqlContainerTest {
                 """
                 insert into am_archive_item
                     (fonds_code, fonds_name, category_code, category_name, archive_no,
-                     electronic_status, archive_year, created_by, created_at, updated_by, updated_at)
-                values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     archive_year, created_by, created_at, updated_by, updated_at)
+                values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 returning id
                 """,
                 Long.class,
@@ -198,7 +197,6 @@ class MyBatisAuditingIntegrationTests extends PostgreSqlContainerTest {
                 "AUDIT-CATEGORY",
                 "审计测试分类",
                 archiveNo,
-                "NONE",
                 2026,
                 createdBy,
                 createdAt,

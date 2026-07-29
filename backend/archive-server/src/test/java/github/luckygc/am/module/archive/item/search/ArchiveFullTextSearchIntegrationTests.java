@@ -172,10 +172,10 @@ class ArchiveFullTextSearchIntegrationTests {
                     """
                     insert into am_archive_item
                         (fonds_code, fonds_name, category_code, category_name, archive_no,
-                         electronic_status, archive_year, created_at, updated_at)
+                         archive_year, created_at, updated_at)
                     select
                         'TASK12', '分页验收全宗', 'GW', '公文档案',
-                        'TASK12-' || lpad(value::text, 3, '0'), 'DRAFT', 2026,
+                        'TASK12-' || lpad(value::text, 3, '0'), 2026,
                         timestamp '2026-07-15 08:00:00', timestamp '2026-07-15 08:00:00'
                     from generate_series(1, 101) value
                     """);
@@ -337,9 +337,9 @@ class ArchiveFullTextSearchIntegrationTests {
                         """
                         insert into am_archive_item
                             (fonds_code, fonds_name, category_code, category_name, archive_no,
-                             electronic_status, archive_year)
+                             archive_year)
                         values
-                            ('Z000', '集团全宗', 'GW', '公文档案', 'GW-DELETE-META', 'DRAFT', 2026)
+                            ('Z000', '集团全宗', 'GW', '公文档案', 'GW-DELETE-META', 2026)
                         returning id
                         """,
                         Long.class);
@@ -424,10 +424,10 @@ class ArchiveFullTextSearchIntegrationTests {
                 jdbcTemplate.queryForObject(
                         """
                         insert into am_archive_item
-                            (fonds_code, fonds_name, category_code, category_name, archive_no, electronic_status,
+                            (fonds_code, fonds_name, category_code, category_name, archive_no,
                              archive_year, deleted_flag, deleted_at, deleted_by)
                         values
-                            ('Z000', '集团全宗', 'GW', '公文档案', ?, 'DRAFT',
+                            ('Z000', '集团全宗', 'GW', '公文档案', ?,
                              2026, true, timestamp '%s', 99)
                         returning id
                         """

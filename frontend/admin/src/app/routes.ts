@@ -99,7 +99,7 @@ export const workspaceRoutes: RouteRecordRaw[] = [
         "归档接收",
         UploadFilled,
         () => import("@/pages/intake/IntakePage.vue"),
-        { cache: false, menu: false },
+        { cache: false, permission: "archive:item:read" },
     ),
     group("approval", "审批工作", DocumentChecked, [
         route(

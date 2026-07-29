@@ -351,7 +351,7 @@
             <!--
                 Hibernate Processor 8.0.0.Beta1 生成 CursoredPage 仓储实现时会使用
                 List<Comparable<?>>，但未注册 java.util.List 导入。这里在注解处理与主源码编译之间
-                精确修补受影响的 5 个生成文件。该处理器也会在增量处理时漏掉已编译的
+                精确修补受影响的 CursoredPage 生成文件。该处理器也会在增量处理时漏掉已编译的
                 查询元模型，因此处理前删除上一轮生成源和 `_*.class`，强制重建完整生成集。
                 同时删除稳定的应用入口 class 作为编译哨兵，防止无源码变化时 Maven 跳过注解处理。
                 升级到已修复该生成器缺陷的 Hibernate 版本时，
@@ -426,6 +426,21 @@ import static java.util.Objects.requireNonNull;]]></replacevalue>
                                 </condition>
                                 <fail unless="hibernate.cursor.archive-volume.import-patched"
                                       message="Hibernate 生成的 _ArchiveVolumeDataRepository.java 未补入 java.util.List 导入，请重新核对 8.0.0.Beta1 补丁。"/>
+                                <replace file="${project.build.directory}/generated-sources/hibernate-processor/github/luckygc/am/module/intake/repository/_ArchiveIntakePackageDataRepository.java">
+                                    <replacefilter>
+                                        <replacetoken><![CDATA[import java.util.ArrayList;
+import static java.util.Objects.requireNonNull;]]></replacetoken>
+                                        <replacevalue><![CDATA[import java.util.ArrayList;
+import java.util.List;
+import static java.util.Objects.requireNonNull;]]></replacevalue>
+                                    </replacefilter>
+                                </replace>
+                                <condition property="hibernate.cursor.archive-intake-package.import-patched">
+                                    <resourcecontains resource="${project.build.directory}/generated-sources/hibernate-processor/github/luckygc/am/module/intake/repository/_ArchiveIntakePackageDataRepository.java"
+                                                      substring="import java.util.List;"/>
+                                </condition>
+                                <fail unless="hibernate.cursor.archive-intake-package.import-patched"
+                                      message="Hibernate 生成的 _ArchiveIntakePackageDataRepository.java 未补入 java.util.List 导入，请重新核对 8.0.0.Beta1 补丁。"/>
                                 <replace file="${project.build.directory}/generated-sources/hibernate-processor/github/luckygc/am/module/authentication/repository/_AuthenticationLoginLogDataRepository.java">
                                     <replacefilter>
                                         <replacetoken><![CDATA[import java.util.ArrayList;

@@ -45,20 +45,20 @@ class ArchiveWorkspaceMapperIntegrationTests extends PostgreSqlContainerTest {
     @DisplayName("PostgreSQL 聚合复用数据范围并排除主表和动态表逻辑删除记录")
     void summaryExecutesPostgreSqlFiltersAgainstVisibleItems() {
         createDynamicTable();
-        insertItem(9_100_001L, "F001", "DRAFT", false, false, false);
-        insertItem(9_100_002L, "F002", "ARCHIVED", true, false, false);
-        insertItem(9_100_003L, "F001", "DRAFT", true, false, true);
-        insertItem(9_100_004L, "F001", "DRAFT", true, true, false);
-        insertItem(9_100_005L, "F001", "ARCHIVED", false, false, false);
-        insertElectronicFile(9_100_001L, 9_100_101L);
-        insertElectronicFile(9_100_001L, 9_100_102L);
+        insertItem(9_100_001L, "F001", 1L, false, false, false);
+        insertItem(9_100_002L, "F002", 2L, true, false, false);
+        insertItem(9_100_003L, "F001", 1L, true, false, true);
+        insertItem(9_100_004L, "F001", 1L, true, true, false);
+        insertItem(9_100_005L, "F001", 2L, false, false, false);
+        insertElectronicFile(9_100_005L, 9_100_101L);
+        insertElectronicFile(9_100_005L, 9_100_102L);
 
         Map<String, Object> allData =
                 archiveMapper.summarizeDynamicItems(
-                        new ArchiveDynamicItemSource(TABLE_NAME, false), criteria(List.of()));
+                        new ArchiveDynamicItemSource(TABLE_NAME, false, null), criteria(List.of()));
         Map<String, Object> fondsScoped =
                 archiveMapper.summarizeDynamicItems(
-                        new ArchiveDynamicItemSource(TABLE_NAME, false),
+                        new ArchiveDynamicItemSource(TABLE_NAME, false, null),
                         criteria(
                                 List.of(
                                         new ArchiveDataScopeSqlGroup(
@@ -67,8 +67,8 @@ class ArchiveWorkspaceMapperIntegrationTests extends PostgreSqlContainerTest {
                                                 List.of(),
                                                 List.of()))));
 
-        assertCounts(allData, 3, 1, 1, 2);
-        assertCounts(fondsScoped, 2, 1, 0, 2);
+        assertCounts(allData, 2, 1, 1, 2);
+        assertCounts(fondsScoped, 1, 1, 0, 2);
     }
 
     private ArchiveDynamicItemCriteria criteria(List<ArchiveDataScopeSqlGroup> groups) {
@@ -85,19 +85,19 @@ class ArchiveWorkspaceMapperIntegrationTests extends PostgreSqlContainerTest {
     private void insertItem(
             long id,
             String fondsCode,
-            String electronicStatus,
+            long repositoryId,
             boolean locked,
             boolean itemDeleted,
             boolean dynamicDeleted) {
         jdbcTemplate.update(
                 "insert into am_archive_item "
                         + "(id, fonds_code, fonds_name, category_code, category_name, archive_no, "
-                        + "electronic_status, archive_year, locked_flag, deleted_flag) "
-                        + "values (?, ?, 'Task 10 全宗', 'TASK10', 'Task 10 分类', ?, ?, 2026, ?, ?)",
+                        + "archive_year, repository_id, locked_flag, deleted_flag) "
+                        + "values (?, ?, 'Task 10 全宗', 'TASK10', 'Task 10 分类', ?, 2026, ?, ?, ?)",
                 id,
                 fondsCode,
                 "TASK10-" + id,
-                electronicStatus,
+                repositoryId,
                 locked,
                 itemDeleted);
         jdbcTemplate.update(
@@ -124,11 +124,11 @@ class ArchiveWorkspaceMapperIntegrationTests extends PostgreSqlContainerTest {
     private void assertCounts(
             Map<String, Object> row,
             long archiveItemCount,
-            long draftCount,
+            long intakeCount,
             long lockedCount,
             long electronicFileCount) {
         assertThat(number(row, "archive_item_count")).isEqualTo(archiveItemCount);
-        assertThat(number(row, "draft_count")).isEqualTo(draftCount);
+        assertThat(number(row, "intake_count")).isEqualTo(intakeCount);
         assertThat(number(row, "locked_count")).isEqualTo(lockedCount);
         assertThat(number(row, "electronic_file_count")).isEqualTo(electronicFileCount);
     }

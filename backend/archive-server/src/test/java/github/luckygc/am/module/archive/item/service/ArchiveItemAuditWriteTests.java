@@ -109,7 +109,6 @@ class ArchiveItemAuditWriteTests {
                         eq("contract"),
                         eq("合同档案"),
                         eq("A-001"),
-                        eq("DRAFT"),
                         isNull(),
                         isNull(),
                         eq(2026)))
@@ -118,7 +117,7 @@ class ArchiveItemAuditWriteTests {
 
         archiveItemRoutingService.createItem(
                 new CreateArchiveItemRequest(
-                        1L, null, "F001", "A-001", 2026, "DRAFT", null, null, null, Map.of()),
+                        1L, null, "F001", "A-001", 2026, null, null, null, Map.of()),
                 9L);
 
         verifyAudit("CREATE", null);
@@ -138,7 +137,6 @@ class ArchiveItemAuditWriteTests {
                         eq("F001"),
                         eq("启用全宗"),
                         eq("A-002"),
-                        eq("DRAFT"),
                         isNull(),
                         isNull(),
                         eq(2026)))
@@ -147,7 +145,7 @@ class ArchiveItemAuditWriteTests {
         archiveItemRoutingService.updateItem(
                 10L,
                 new UpdateArchiveItemRequest(
-                        null, "F001", "A-002", 2026, "DRAFT", null, null, null, Map.of()),
+                        null, "F001", "A-002", 2026, null, null, null, Map.of()),
                 9L);
 
         verifyAudit("UPDATE", null);
@@ -249,7 +247,6 @@ class ArchiveItemAuditWriteTests {
                 Map.entry("categoryCode", "contract"),
                 Map.entry("categoryName", "合同档案"),
                 Map.entry("archiveNo", "A-001"),
-                Map.entry("electronicStatus", "DRAFT"),
                 Map.entry("archiveYear", 2026),
                 Map.entry("lockedFlag", locked));
     }

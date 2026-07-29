@@ -12,6 +12,7 @@ describe("ArchiveResultTable", () => {
             global: { plugins: [ElementPlus] },
         });
         expect(await screen.findAllByText("成文日期")).not.toHaveLength(0);
+        expect(screen.queryByText("状态")).not.toBeInTheDocument();
         expect(toArchiveRecordOrder("f_formed_date", "ascending", archiveResult().fields)).toEqual([
             { field: "formed_date", direction: "ASC" },
         ]);

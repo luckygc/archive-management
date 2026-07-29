@@ -68,6 +68,18 @@ public class ArchiveMetadataReferenceService {
         return levels.stream().map(this::mapSecurityLevel).toList();
     }
 
+    public ArchiveSecurityLevelDto getEnabledSecurityLevelByName(String levelName) {
+        String normalizedName = StringUtils.trimToNull(levelName);
+        if (normalizedName == null) {
+            throw new BadRequestException("密级不能为空");
+        }
+        return securityLevelRepository.list(true).stream()
+                .filter(level -> normalizedName.equals(StringUtils.trim(level.getLevelName())))
+                .findFirst()
+                .map(this::mapSecurityLevel)
+                .orElseThrow(() -> new BadRequestException("密级未配置或已禁用：" + normalizedName));
+    }
+
     @Transactional
     public ArchiveSecurityLevelDto updateSecurityLevel(
             Long id, UpdateArchiveSecurityLevelRequest request) {
@@ -86,6 +98,18 @@ public class ArchiveMetadataReferenceService {
                         ? retentionPeriodRepository.list()
                         : retentionPeriodRepository.list(enabled);
         return periods.stream().map(this::mapRetentionPeriod).toList();
+    }
+
+    public ArchiveRetentionPeriodDto getEnabledRetentionPeriodByName(String periodName) {
+        String normalizedName = StringUtils.trimToNull(periodName);
+        if (normalizedName == null) {
+            throw new BadRequestException("保管期限不能为空");
+        }
+        return retentionPeriodRepository.list(true).stream()
+                .filter(period -> normalizedName.equals(StringUtils.trim(period.getPeriodName())))
+                .findFirst()
+                .map(this::mapRetentionPeriod)
+                .orElseThrow(() -> new BadRequestException("保管期限未配置或已禁用：" + normalizedName));
     }
 
     @Transactional

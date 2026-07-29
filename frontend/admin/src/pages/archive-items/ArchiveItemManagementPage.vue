@@ -20,10 +20,7 @@ import type {
     ArchiveRetentionPeriodDto,
     ArchiveSecurityLevelDto,
 } from "@/shared/types/archive-metadata";
-import type {
-    ArchiveElectronicStatus,
-    ArchiveRecordDetailDto,
-} from "@/shared/types/archive-records";
+import type { ArchiveRecordDetailDto } from "@/shared/types/archive-records";
 import CursorPagination from "@/shared/components/CursorPagination.vue";
 import RequestErrorState from "@/shared/components/RequestErrorState.vue";
 import { usePermissionStore } from "@/stores/permissionStore";
@@ -80,7 +77,6 @@ const editorForm = reactive({
     fondsCode: "",
     archiveNo: "",
     archiveYear: new Date().getFullYear(),
-    electronicStatus: "DRAFT" as ArchiveElectronicStatus,
     securityLevelId: undefined as number | undefined,
     retentionPeriodId: undefined as number | undefined,
     physicalFields: {} as Record<string, unknown>,
@@ -213,7 +209,6 @@ function openCreateEditor() {
         fondsCode: "",
         archiveNo: "",
         archiveYear: new Date().getFullYear(),
-        electronicStatus: "DRAFT",
         securityLevelId: undefined,
         retentionPeriodId: undefined,
         physicalFields: {},
@@ -244,7 +239,6 @@ async function openRecordEditor(value: unknown, mode: "detail" | "edit") {
             fondsCode: detail.item.fondsCode,
             archiveNo: detail.item.archiveNo ?? "",
             archiveYear: detail.item.archiveYear,
-            electronicStatus: detail.item.electronicStatus,
             securityLevelId: detail.item.securityLevelId,
             retentionPeriodId: detail.item.retentionPeriodId,
             physicalFields: { ...detail.physicalFieldValues },
@@ -264,7 +258,6 @@ async function saveRecord() {
         fondsCode: editorForm.fondsCode,
         archiveNo: editorForm.archiveNo.trim() || undefined,
         archiveYear: editorForm.archiveYear,
-        electronicStatus: editorForm.electronicStatus,
         securityLevelId: editorForm.securityLevelId,
         retentionPeriodId: editorForm.retentionPeriodId,
         physicalFields: normalizeArchiveRecordFormValues({
@@ -324,7 +317,6 @@ function applyEditorFieldViolations(error: unknown) {
         "fondsCode",
         "archiveNo",
         "archiveYear",
-        "electronicStatus",
         "securityLevelId",
         "retentionPeriodId",
     ]);

@@ -37,7 +37,7 @@ public class ArchiveWorkspaceService {
     }
 
     public record ArchiveWorkspaceSummary(
-            long archiveItemCount, long draftCount, long lockedCount, long electronicFileCount) {
+            long archiveItemCount, long intakeCount, long lockedCount, long electronicFileCount) {
 
         public static ArchiveWorkspaceSummary empty() {
             return new ArchiveWorkspaceSummary(0, 0, 0, 0);
@@ -47,7 +47,7 @@ public class ArchiveWorkspaceService {
             try {
                 return new ArchiveWorkspaceSummary(
                         Math.addExact(archiveItemCount, summary.archiveItemCount()),
-                        Math.addExact(draftCount, summary.draftCount()),
+                        Math.addExact(intakeCount, summary.intakeCount()),
                         Math.addExact(lockedCount, summary.lockedCount()),
                         Math.addExact(electronicFileCount, summary.electronicFileCount()));
             } catch (ArithmeticException exception) {

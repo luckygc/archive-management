@@ -34,13 +34,6 @@ const baseColumns = computed(() => {
         { key: "fonds_name", label: "全宗", prop: "fonds_name", width: 160, sortable: true },
         { key: "category_name", label: "分类", prop: "category_name", width: 150, sortable: true },
         { key: "archive_year", label: "年度", prop: "archive_year", width: 90, sortable: true },
-        {
-            key: "electronic_status",
-            label: "状态",
-            prop: "electronic_status",
-            width: 120,
-            sortable: true,
-        },
     ];
     for (const field of props.result.fields.filter((item) => item.listVisible))
         columns.push({

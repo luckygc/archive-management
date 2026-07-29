@@ -33,7 +33,6 @@ public class ArchiveFieldDefinitionService {
                     "category_code",
                     "category_name",
                     "archive_no",
-                    "electronic_status",
                     "security_level_id",
                     "retention_period_id",
                     "sort_order",

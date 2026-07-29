@@ -7,9 +7,10 @@ import github.luckygc.am.module.intake.IntakeOverviewDto;
 @Service
 public class IntakeService {
 
-    public static final String STATUS_NOT_CONFIGURED = "not_configured";
+    public static final String STATUS_LOCAL_PACKAGE_AVAILABLE = "local_package_available";
 
     public IntakeOverviewDto getOverview() {
-        return new IntakeOverviewDto(false, STATUS_NOT_CONFIGURED, "归档接收入口已启用，暂未对接外部系统");
+        return new IntakeOverviewDto(
+                false, STATUS_LOCAL_PACKAGE_AVAILABLE, "本地档案信息包接收可用；暂未配置 NAS、SFTP、HTTP 等外部连接");
     }
 }

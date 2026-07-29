@@ -193,8 +193,8 @@ class ArchiveItemImportExportServiceTests {
                         new ByteArrayInputStream(
                                 workbookBytes(
                                         List.of(
-                                                List.of("F001", "A-001", 2026, "DRAFT", "新题名"),
-                                                List.of("F001", "A-002", 2026, "DRAFT", "旧题名")))),
+                                                List.of("F001", "A-001", 2026, "新题名"),
+                                                List.of("F001", "A-002", 2026, "旧题名")))),
                         9L);
 
         assertThat(result.errors()).isEmpty();
@@ -221,8 +221,7 @@ class ArchiveItemImportExportServiceTests {
                 importExportService.importItems(
                         1L,
                         new ByteArrayInputStream(
-                                workbookBytes(
-                                        List.of(List.of("F001", "A-001", 2026, "DRAFT", "题名")))),
+                                workbookBytes(List.of(List.of("F001", "A-001", 2026, "题名")))),
                         9L);
 
         assertThat(result.importedCount()).isZero();
@@ -251,8 +250,7 @@ class ArchiveItemImportExportServiceTests {
                 importExportService.importItems(
                         1L,
                         new ByteArrayInputStream(
-                                workbookBytes(
-                                        List.of(List.of("F001", "A-001", 2026, "DRAFT", "题名")))),
+                                workbookBytes(List.of(List.of("F001", "A-001", 2026, "题名")))),
                         9L);
 
         assertThat(result.importedCount()).isZero();
@@ -515,13 +513,7 @@ class ArchiveItemImportExportServiceTests {
     private static byte[] workbookBytes(List<List<Object>> rows) throws IOException {
         try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
             FesodSheet.write(outputStream)
-                    .head(
-                            List.of(
-                                    List.of("全宗编码"),
-                                    List.of("档号"),
-                                    List.of("年度"),
-                                    List.of("电子状态"),
-                                    List.of("题名")))
+                    .head(List.of(List.of("全宗编码"), List.of("档号"), List.of("年度"), List.of("题名")))
                     .sheet("导入")
                     .doWrite(rows);
             return outputStream.toByteArray();
@@ -594,7 +586,6 @@ class ArchiveItemImportExportServiceTests {
         item.setCategoryName("合同");
         item.setArchiveNo("A-002");
         item.setArchiveYear(2026);
-        item.setElectronicStatus("DRAFT");
         return item;
     }
 }

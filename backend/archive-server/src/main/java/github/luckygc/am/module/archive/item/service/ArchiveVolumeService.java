@@ -218,7 +218,6 @@ public class ArchiveVolumeService {
                 volume.getCategoryCode(),
                 volume.getCategoryName(),
                 volume.getArchiveNo(),
-                volume.getElectronicStatus(),
                 volume.getArchiveYear(),
                 volume.isLockedFlag(),
                 volume.getLockReason(),
@@ -281,16 +280,11 @@ public class ArchiveVolumeService {
                         category,
                         archiveNo,
                         archiveYear,
-                        StringUtils.defaultIfBlank(request.electronicStatus(), "DRAFT"),
                         null,
                         userId);
         ArchiveRuntimeExecutionResult runtimeResult = policyExecution.result();
         archiveNo = stringFact(runtimeResult.candidateFacts(), "volume.archiveNo");
         archiveYear = intFact(runtimeResult.candidateFacts(), "volume.archiveYear");
-        String electronicStatus =
-                StringUtils.defaultIfBlank(
-                        stringFact(runtimeResult.candidateFacts(), "volume.electronicStatus"),
-                        "DRAFT");
         validateArchiveYear(archiveYear);
         ensureVolumeArchiveNoUnique(category.categoryCode(), archiveNo);
         assertProposedVolumeInDataScope(userId, category, fonds.fondsCode());
@@ -303,7 +297,6 @@ public class ArchiveVolumeService {
                             category.categoryCode(),
                             category.categoryName(),
                             archiveNo,
-                            electronicStatus,
                             archiveYear);
         } catch (DuplicateKeyException exception) {
             throw duplicateArchiveNo();
@@ -361,7 +354,6 @@ public class ArchiveVolumeService {
                         category,
                         volume.archiveNo(),
                         volume.archiveYear(),
-                        volume.electronicStatus(),
                         item,
                         userId);
         int updated =
@@ -382,7 +374,6 @@ public class ArchiveVolumeService {
             ArchiveCategoryDto category,
             @Nullable String archiveNo,
             int archiveYear,
-            String electronicStatus,
             @Nullable ArchiveItemDto item,
             Long userId) {
         Map<String, @Nullable Object> facts = new LinkedHashMap<>();
@@ -393,7 +384,6 @@ public class ArchiveVolumeService {
         facts.put("volume.categoryName", category.categoryName());
         facts.put("volume.archiveNo", archiveNo);
         facts.put("volume.archiveYear", archiveYear);
-        facts.put("volume.electronicStatus", electronicStatus);
         facts.put("volume.securityLevelId", null);
         facts.put("volume.retentionPeriodId", null);
         if (item != null) {
@@ -518,7 +508,6 @@ public class ArchiveVolumeService {
                 string(row, "categoryCode"),
                 string(row, "categoryName"),
                 string(row, "archiveNo"),
-                string(row, "electronicStatus"),
                 number(row, "archiveYear").intValue(),
                 bool(row, "lockedFlag"),
                 string(row, "lockReason"),
@@ -567,16 +556,11 @@ public class ArchiveVolumeService {
             String fondsCode,
             String archiveNo,
             Integer archiveYear,
-            String electronicStatus,
             @Nullable Long repositoryId) {
 
         public CreateArchiveVolumeRequest(
-                Long categoryId,
-                String fondsCode,
-                String archiveNo,
-                Integer archiveYear,
-                String electronicStatus) {
-            this(categoryId, fondsCode, archiveNo, archiveYear, electronicStatus, null);
+                Long categoryId, String fondsCode, String archiveNo, Integer archiveYear) {
+            this(categoryId, fondsCode, archiveNo, archiveYear, null);
         }
     }
 
@@ -589,7 +573,6 @@ public class ArchiveVolumeService {
             String categoryCode,
             String categoryName,
             String archiveNo,
-            String electronicStatus,
             int archiveYear,
             boolean lockedFlag,
             String lockReason,
@@ -604,7 +587,6 @@ public class ArchiveVolumeService {
                 String categoryCode,
                 String categoryName,
                 String archiveNo,
-                String electronicStatus,
                 int archiveYear,
                 boolean lockedFlag,
                 String lockReason,
@@ -617,7 +599,6 @@ public class ArchiveVolumeService {
                     categoryCode,
                     categoryName,
                     archiveNo,
-                    electronicStatus,
                     archiveYear,
                     lockedFlag,
                     lockReason,
@@ -634,7 +615,6 @@ public class ArchiveVolumeService {
             String categoryCode,
             String categoryName,
             @Nullable String archiveNo,
-            String electronicStatus,
             int archiveYear,
             boolean lockedFlag,
             @Nullable String lockReason,

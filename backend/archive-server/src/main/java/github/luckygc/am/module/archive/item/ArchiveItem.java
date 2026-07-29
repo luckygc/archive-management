@@ -53,9 +53,6 @@ public class ArchiveItem implements CreationAuditable, UpdateAuditable {
     @Column(name = "archive_no", length = 100)
     private String archiveNo;
 
-    @Column(name = "electronic_status", nullable = false, length = 50)
-    private String electronicStatus;
-
     @Column(name = "security_level_id")
     private Long securityLevelId;
 

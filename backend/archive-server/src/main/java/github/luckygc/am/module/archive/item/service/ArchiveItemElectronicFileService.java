@@ -161,7 +161,6 @@ public class ArchiveItemElectronicFileService {
         facts.put("item.categoryName", item.getCategoryName());
         facts.put("item.archiveNo", item.getArchiveNo());
         facts.put("item.archiveYear", item.getArchiveYear());
-        facts.put("item.electronicStatus", item.getElectronicStatus());
         facts.put("item.securityLevelId", item.getSecurityLevelId());
         facts.put("item.retentionPeriodId", item.getRetentionPeriodId());
         addDynamicFacts(

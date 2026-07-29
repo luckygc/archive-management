@@ -37,11 +37,6 @@ public class ArchiveMetadataService extends ArchiveMetadataTypes {
                             ArchiveFieldType.INTEGER,
                             "retention_period_id"),
                     new BuiltinDataScopeField(
-                            "electronic_status",
-                            "电子状态",
-                            ArchiveFieldType.TEXT,
-                            "electronic_status"),
-                    new BuiltinDataScopeField(
                             "fonds_code", "全宗编码", ArchiveFieldType.TEXT, "fonds_code"),
                     new BuiltinDataScopeField(
                             "category_code", "分类编码", ArchiveFieldType.TEXT, "category_code"),

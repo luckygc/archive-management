@@ -80,8 +80,9 @@ class ArchiveMapperXmlContractTests {
 
         assertThat(sql).contains("<include refid=\"dynamicItemFromWhere\"/>");
         assertThat(sql).contains("count(distinct visible.id)");
-        assertThat(sql).contains("filter (where visible.electronic_status = 'DRAFT')");
-        assertThat(sql).contains("filter (where visible.locked_flag = true)");
+        assertThat(sql).contains("filter (where visible.repository_role = 'INTAKE')");
+        assertThat(sql).contains("visible.repository_role = 'HOLDING'");
+        assertThat(sql).contains("visible.locked_flag = true");
         assertThat(sql).contains("count(distinct ef.id)");
         assertThat(sql).contains("left join am_archive_item_electronic_file ef");
         assertThat(sql).doesNotContain("ef.deleted_flag", "ef.deleted_at");

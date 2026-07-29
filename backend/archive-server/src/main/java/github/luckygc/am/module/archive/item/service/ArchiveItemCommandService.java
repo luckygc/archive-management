@@ -150,7 +150,6 @@ public class ArchiveItemCommandService {
                         category,
                         archiveNo,
                         archiveYear,
-                        StringUtils.defaultIfBlank(request.electronicStatus(), "DRAFT"),
                         request.securityLevelId(),
                         request.retentionPeriodId(),
                         fields,
@@ -159,8 +158,7 @@ public class ArchiveItemCommandService {
                         convertedPhysicalFields,
                         userId);
         ArchiveRuntimeExecutionResult runtimeResult = policyExecution.result();
-        ItemCandidate candidate =
-                finalItemCandidate(runtimeResult, fields, physicalFields, "DRAFT");
+        ItemCandidate candidate = finalItemCandidate(runtimeResult, fields, physicalFields);
         archiveNo = candidate.archiveNo();
         archiveYear = candidate.archiveYear();
         convertedDynamicFields = candidate.dynamicFields();
@@ -187,7 +185,6 @@ public class ArchiveItemCommandService {
                             category.categoryCode(),
                             category.categoryName(),
                             archiveNo,
-                            candidate.electronicStatus(),
                             candidate.securityLevelId(),
                             candidate.retentionPeriodId(),
                             archiveYear);
@@ -288,8 +285,6 @@ public class ArchiveItemCommandService {
                         category,
                         archiveNo,
                         archiveYear,
-                        StringUtils.defaultIfBlank(
-                                request.electronicStatus(), before.item().electronicStatus()),
                         request.securityLevelId() == null
                                 ? before.item().securityLevelId()
                                 : request.securityLevelId(),
@@ -302,12 +297,7 @@ public class ArchiveItemCommandService {
                         convertedPhysicalFields,
                         userId);
         ArchiveRuntimeExecutionResult runtimeResult = policyExecution.result();
-        ItemCandidate candidate =
-                finalItemCandidate(
-                        runtimeResult,
-                        allFields,
-                        allPhysicalFields,
-                        before.item().electronicStatus());
+        ItemCandidate candidate = finalItemCandidate(runtimeResult, allFields, allPhysicalFields);
         archiveNo = candidate.archiveNo();
         archiveYear = candidate.archiveYear();
         convertedDynamicFields = candidate.dynamicFields();
@@ -331,7 +321,6 @@ public class ArchiveItemCommandService {
                             fonds.fondsCode(),
                             fonds.fondsName(),
                             archiveNo,
-                            candidate.electronicStatus(),
                             candidate.securityLevelId(),
                             candidate.retentionPeriodId(),
                             archiveYear);
@@ -383,7 +372,6 @@ public class ArchiveItemCommandService {
                         category,
                         record.archiveNo(),
                         record.archiveYear(),
-                        record.electronicStatus(),
                         record.securityLevelId(),
                         record.retentionPeriodId(),
                         fields,
@@ -426,7 +414,6 @@ public class ArchiveItemCommandService {
             ArchiveCategoryDto category,
             @Nullable String archiveNo,
             int archiveYear,
-            String electronicStatus,
             @Nullable Long securityLevelId,
             @Nullable Long retentionPeriodId,
             List<ArchiveFieldDto> fields,
@@ -442,7 +429,6 @@ public class ArchiveItemCommandService {
         facts.put("item.categoryName", category.categoryName());
         facts.put("item.archiveNo", archiveNo);
         facts.put("item.archiveYear", archiveYear);
-        facts.put("item.electronicStatus", electronicStatus);
         facts.put("item.securityLevelId", securityLevelId);
         facts.put("item.retentionPeriodId", retentionPeriodId);
         addFieldFacts(facts, "metadata.", fields, dynamicFields);
@@ -475,8 +461,7 @@ public class ArchiveItemCommandService {
     private ItemCandidate finalItemCandidate(
             ArchiveRuntimeExecutionResult result,
             List<ArchiveFieldDto> fields,
-            List<ArchiveFieldDto> physicalFields,
-            String defaultElectronicStatus) {
+            List<ArchiveFieldDto> physicalFields) {
         Map<String, @Nullable Object> facts = result.candidateFacts();
         Map<String, @Nullable Object> dynamicFields =
                 fieldValueConverter.convertFields(
@@ -489,8 +474,6 @@ public class ArchiveItemCommandService {
         return new ItemCandidate(
                 stringFact(facts, "item.archiveNo"),
                 intFact(facts, "item.archiveYear"),
-                StringUtils.defaultIfBlank(
-                        stringFact(facts, "item.electronicStatus"), defaultElectronicStatus),
                 longFact(facts, "item.securityLevelId"),
                 longFact(facts, "item.retentionPeriodId"),
                 dynamicFields,
@@ -559,7 +542,6 @@ public class ArchiveItemCommandService {
     private record ItemCandidate(
             @Nullable String archiveNo,
             int archiveYear,
-            String electronicStatus,
             @Nullable Long securityLevelId,
             @Nullable Long retentionPeriodId,
             Map<String, @Nullable Object> dynamicFields,
@@ -746,7 +728,6 @@ public class ArchiveItemCommandService {
             @Nullable String fondsCode,
             @Nullable String archiveNo,
             @Nullable Integer archiveYear,
-            @Nullable String electronicStatus,
             @Nullable Long securityLevelId,
             @Nullable Long retentionPeriodId,
             @Nullable Map<String, @Nullable Object> physicalFields,
@@ -759,7 +740,6 @@ public class ArchiveItemCommandService {
                 @Nullable String fondsCode,
                 @Nullable String archiveNo,
                 @Nullable Integer archiveYear,
-                @Nullable String electronicStatus,
                 @Nullable Long securityLevelId,
                 @Nullable Long retentionPeriodId,
                 @Nullable Map<String, @Nullable Object> physicalFields,
@@ -770,7 +750,6 @@ public class ArchiveItemCommandService {
                     fondsCode,
                     archiveNo,
                     archiveYear,
-                    electronicStatus,
                     securityLevelId,
                     retentionPeriodId,
                     physicalFields,
@@ -784,7 +763,6 @@ public class ArchiveItemCommandService {
             @Nullable String fondsCode,
             @Nullable String archiveNo,
             @Nullable Integer archiveYear,
-            @Nullable String electronicStatus,
             @Nullable Long securityLevelId,
             @Nullable Long retentionPeriodId,
             @Nullable Map<String, @Nullable Object> physicalFields,

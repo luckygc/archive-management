@@ -210,7 +210,6 @@ class ArchiveElectronicFileRuntimePolicyTests {
         item.setCategoryName("文件档案");
         item.setArchiveNo("A-001");
         item.setArchiveYear(2026);
-        item.setElectronicStatus("DRAFT");
         return item;
     }
 

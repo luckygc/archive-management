@@ -401,7 +401,6 @@ class ArchiveItemLineRowServiceTests {
                 "contract",
                 "合同档案",
                 "A-001",
-                "DRAFT",
                 null,
                 null,
                 2026,

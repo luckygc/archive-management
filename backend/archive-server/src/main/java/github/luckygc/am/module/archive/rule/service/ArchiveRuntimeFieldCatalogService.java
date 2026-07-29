@@ -95,7 +95,6 @@ public class ArchiveRuntimeFieldCatalogService {
                         "保管期限",
                         ArchiveFieldDataType.REFERENCE,
                         itemWritable));
-        fields.add(field(prefix + "electronicStatus", "电子状态", ArchiveFieldDataType.ENUM, writable));
         if (triggerPoint == ArchiveRuntimeTriggerPoint.VOLUME_BEFORE_ADD_ITEM) {
             fields.add(field("item.id", "条目主键", ArchiveFieldDataType.INTEGER, false));
             fields.add(field("item.archiveNo", "条目档号", ArchiveFieldDataType.TEXT, false));

@@ -92,6 +92,7 @@ describe("档案管理拆分组件", () => {
         expect(screen.getByLabelText("题名")).toBeDisabled();
         expect(screen.getByLabelText("盒号")).toHaveValue("BOX-001");
         expect(screen.getByLabelText("题名")).toHaveValue("建设工程档案");
+        expect(screen.queryByText("电子状态")).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "保存" })).not.toBeInTheDocument();
     });
 
@@ -242,7 +243,6 @@ function editorForm() {
         fondsCode: "F001",
         archiveNo: "A-001",
         archiveYear: 2026,
-        electronicStatus: "DRAFT" as const,
         securityLevelId: 2,
         retentionPeriodId: 3,
         physicalFields: { box_no: "BOX-001" },
@@ -259,7 +259,6 @@ function detail() {
             categoryCode: "contract",
             categoryName: "合同档案",
             archiveNo: "A-001",
-            electronicStatus: "DRAFT" as const,
             securityLevelId: 2,
             retentionPeriodId: 3,
             archiveYear: 2026,

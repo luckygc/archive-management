@@ -122,9 +122,9 @@ class ArchiveImportRuntimePolicyTests {
     private static byte[] workbookBytes() throws IOException {
         try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
             FesodSheet.write(outputStream)
-                    .head(List.of(List.of("全宗编码"), List.of("档号"), List.of("年度"), List.of("电子状态")))
+                    .head(List.of(List.of("全宗编码"), List.of("档号"), List.of("年度")))
                     .sheet("导入")
-                    .doWrite(List.of(List.of("F001", "A-001", 2026, "DRAFT")));
+                    .doWrite(List.of(List.of("F001", "A-001", 2026)));
             return outputStream.toByteArray();
         }
     }

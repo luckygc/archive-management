@@ -70,7 +70,7 @@ class ArchiveItemQueryWorkspaceTests {
                 .thenReturn(
                         Map.of(
                                 "archive_item_count", 7L,
-                                "draft_count", 2L,
+                                "intake_count", 2L,
                                 "locked_count", 1L,
                                 "electronic_file_count", 4L));
 
@@ -82,7 +82,8 @@ class ArchiveItemQueryWorkspaceTests {
                 ArgumentCaptor.forClass(ArchiveDynamicItemCriteria.class);
         verify(archiveMapper).summarizeDynamicItems(source.capture(), criteria.capture());
         assertThat(source.getValue())
-                .isEqualTo(new ArchiveDynamicItemSource("am_archive_item_data_contract", false));
+                .isEqualTo(
+                        new ArchiveDynamicItemSource("am_archive_item_data_contract", false, null));
         assertThat(criteria.getValue().dataScopeGroups()).containsExactly(group);
         assertThat(criteria.getValue().conditions()).isEmpty();
         assertThat(criteria.getValue().relatedGroups()).isEmpty();
@@ -145,7 +146,7 @@ class ArchiveItemQueryWorkspaceTests {
         stubAllDataCategory();
         Map<String, Object> row = new LinkedHashMap<>();
         row.put("archive_item_count", null);
-        row.put("draft_count", 2L);
+        row.put("intake_count", 2L);
         row.put("locked_count", null);
         row.put("electronic_file_count", 4L);
         when(archiveMapper.summarizeDynamicItems(any(), any())).thenReturn(row);
@@ -163,7 +164,7 @@ class ArchiveItemQueryWorkspaceTests {
                         Map.of(
                                 "archive_item_count",
                                 BigInteger.valueOf(Long.MAX_VALUE).add(BigInteger.ONE),
-                                "draft_count",
+                                "intake_count",
                                 0L,
                                 "locked_count",
                                 0L,

@@ -465,7 +465,6 @@ function volume() {
         categoryCode: "ACCOUNTING",
         categoryName: "会计档案",
         archiveNo: "V-2026-001",
-        electronicStatus: "DRAFT" as const,
         archiveYear: 2026,
         lockedFlag: false,
         createdAt: "2026-07-15T10:00:00",

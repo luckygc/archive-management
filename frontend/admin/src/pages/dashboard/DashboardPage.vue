@@ -57,7 +57,7 @@ defineExpose({ loadSummary });
 
 const metrics: Array<{ label: string; key: keyof WorkspaceSummaryResponse }> = [
     { label: "档案总数", key: "archiveItemCount" },
-    { label: "草稿档案", key: "draftCount" },
+    { label: "预归档档案", key: "intakeCount" },
     { label: "已锁定档案", key: "lockedCount" },
     { label: "电子文件", key: "electronicFileCount" },
 ];

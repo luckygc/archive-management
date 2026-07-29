@@ -175,7 +175,6 @@ function archiveNo(row: Record<string, unknown>) {
                     <template #default="{ row }">{{ archiveNo(row) }}</template>
                 </el-table-column>
                 <el-table-column label="年度" prop="archiveYear" width="100" />
-                <el-table-column label="电子状态" prop="electronicStatus" width="120" />
             </el-table>
             <CursorPagination
                 :limit="itemLimit"
@@ -235,7 +234,6 @@ function archiveNo(row: Record<string, unknown>) {
                 >
                     <span>{{ archiveNo(row) }}</span>
                     <span>{{ row.archiveYear || row.archive_year || "-" }}</span>
-                    <span>{{ row.electronicStatus || row.electronic_status || "-" }}</span>
                 </el-radio>
             </el-radio-group>
             <CursorPagination

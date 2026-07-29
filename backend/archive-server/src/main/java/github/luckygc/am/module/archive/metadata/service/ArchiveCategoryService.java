@@ -130,6 +130,15 @@ public class ArchiveCategoryService {
         return loadCategory(id);
     }
 
+    public ArchiveCategoryDto getEnabledCategoryByCode(String categoryCode) {
+        String normalizedCode = requireCategoryCode(categoryCode);
+        ArchiveCategory category = categoryRepository.findByCategoryCode(normalizedCode);
+        if (category == null || !category.isEnabled()) {
+            throw notFound("档案分类不存在或已禁用");
+        }
+        return mapCategory(category);
+    }
+
     private ArchiveCategoryDto loadCategory(Long id) {
         requireId(id);
         return categoryRepository

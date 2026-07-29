@@ -319,7 +319,6 @@ class ArchiveItemElectronicFileServiceTests {
         archiveItem.setCategoryName("合同档案");
         archiveItem.setArchiveNo("A-001");
         archiveItem.setArchiveYear(2026);
-        archiveItem.setElectronicStatus("DRAFT");
         return archiveItem;
     }
 

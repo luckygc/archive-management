@@ -1,5 +1,3 @@
-import type { ArchiveElectronicStatus } from "./archive-records";
-
 export interface ArchiveVolumeResponse {
     id: number;
     fondsCode: string;
@@ -7,7 +5,6 @@ export interface ArchiveVolumeResponse {
     categoryCode: string;
     categoryName: string;
     archiveNo?: string;
-    electronicStatus: ArchiveElectronicStatus;
     archiveYear: number;
     lockedFlag: boolean;
     lockReason?: string;
@@ -31,5 +28,4 @@ export interface CreateArchiveVolumeRequest {
     fondsCode: string;
     archiveNo?: string;
     archiveYear?: number;
-    electronicStatus?: ArchiveElectronicStatus;
 }

@@ -7,7 +7,7 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.jdbc.support.JdbcUtils;
 
 public record ArchiveWorkspaceCategorySummary(
-        long archiveItemCount, long draftCount, long lockedCount, long electronicFileCount) {
+        long archiveItemCount, long intakeCount, long lockedCount, long electronicFileCount) {
 
     public static ArchiveWorkspaceCategorySummary empty() {
         return new ArchiveWorkspaceCategorySummary(0, 0, 0, 0);
@@ -16,7 +16,7 @@ public record ArchiveWorkspaceCategorySummary(
     public static ArchiveWorkspaceCategorySummary fromMapperRow(Map<String, @Nullable Object> row) {
         return new ArchiveWorkspaceCategorySummary(
                 aggregateCount(row, "archiveItemCount"),
-                aggregateCount(row, "draftCount"),
+                aggregateCount(row, "intakeCount"),
                 aggregateCount(row, "lockedCount"),
                 aggregateCount(row, "electronicFileCount"));
     }

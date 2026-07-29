@@ -25,11 +25,11 @@ public class ArchiveWorkspaceController {
                                 authentication == null ? null : authentication.getPrincipal()));
         return new WorkspaceSummaryResponse(
                 summary.archiveItemCount(),
-                summary.draftCount(),
+                summary.intakeCount(),
                 summary.lockedCount(),
                 summary.electronicFileCount());
     }
 
     public record WorkspaceSummaryResponse(
-            long archiveItemCount, long draftCount, long lockedCount, long electronicFileCount) {}
+            long archiveItemCount, long intakeCount, long lockedCount, long electronicFileCount) {}
 }

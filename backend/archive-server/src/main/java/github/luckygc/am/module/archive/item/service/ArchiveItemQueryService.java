@@ -29,6 +29,7 @@ import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeRe
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
 import github.luckygc.am.module.archive.item.ArchiveItemQueryOperator;
 import github.luckygc.am.module.archive.item.ArchiveItemRelationDirection;
+import github.luckygc.am.module.archive.library.ArchiveRepositoryRole;
 import github.luckygc.am.module.archive.mapper.ArchiveDynamicItemCriteria;
 import github.luckygc.am.module.archive.mapper.ArchiveDynamicItemSource;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
@@ -135,7 +136,7 @@ public class ArchiveItemQueryService {
         ArchiveCategoryDto category = archiveCategoryService.getCategory(categoryId);
         ArchiveLevel archiveLevel = ArchiveLevel.ITEM;
         ensureArchiveLevelAllowed(category, archiveLevel);
-        ArchiveDynamicItemSource source = dynamicItemSource(category, archiveLevel, false);
+        ArchiveDynamicItemSource source = dynamicItemSource(category, archiveLevel, false, null);
         ArchiveDynamicItemCriteria criteria =
                 dynamicItemCriteria(userId, categoryId, null, null, List.of(), List.of(), null);
         if (criteria == null) {
@@ -319,7 +320,6 @@ public class ArchiveItemQueryService {
                     case "archiveYear" -> "i.archive_year";
                     case "fondsCode" -> "i.fonds_code";
                     case "categoryCode" -> "i.category_code";
-                    case "electronicStatus" -> "i.electronic_status";
                     case "id" -> "i.id";
                     default -> null;
                 };
@@ -369,8 +369,17 @@ public class ArchiveItemQueryService {
 
     private ArchiveDynamicItemSource dynamicItemSource(
             ArchiveCategoryDto category, ArchiveLevel archiveLevel, boolean deleted) {
+        return dynamicItemSource(category, archiveLevel, deleted, ArchiveRepositoryRole.HOLDING);
+    }
+
+    private ArchiveDynamicItemSource dynamicItemSource(
+            ArchiveCategoryDto category,
+            ArchiveLevel archiveLevel,
+            boolean deleted,
+            @Nullable ArchiveRepositoryRole repositoryRole) {
         String tableName = dynamicTableName(category, archiveLevel);
-        ArchiveDynamicItemSource source = new ArchiveDynamicItemSource(tableName, deleted);
+        ArchiveDynamicItemSource source =
+                new ArchiveDynamicItemSource(tableName, deleted, repositoryRole);
         if (archiveMapper.tableExists(source.tableName()) <= 0) {
             throw new ResponseStatusException(HttpStatus.PRECONDITION_FAILED, "档案分类动态表未创建");
         }

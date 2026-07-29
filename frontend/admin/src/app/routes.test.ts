@@ -95,7 +95,11 @@ describe("workspaceRoutes", () => {
         expect(router.resolve("/system/authentication-events").meta.permission).toBe(
             "authentication:audit:read",
         );
-        expect(router.resolve("/intake").meta.menu).toBe(false);
+        expect(router.resolve("/intake").meta).toMatchObject({
+            menu: true,
+            cache: false,
+            permission: "archive:item:read",
+        });
         expect(router.resolve("/system/storage").matched).toHaveLength(0);
         expect(router.resolve("/system/settings").matched).toHaveLength(0);
     });

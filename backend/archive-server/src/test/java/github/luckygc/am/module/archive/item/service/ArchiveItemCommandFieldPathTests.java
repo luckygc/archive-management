@@ -82,7 +82,6 @@ class ArchiveItemCommandFieldPathTests {
                                                 "F001",
                                                 "A-001",
                                                 2026,
-                                                "DRAFT",
                                                 null,
                                                 null,
                                                 Map.of("box_no", "BOX-001"),

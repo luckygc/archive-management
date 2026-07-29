@@ -264,7 +264,6 @@ export function detail(id = 9, title = "建设工程档案") {
             categoryCode: "contract",
             categoryName: "合同档案",
             archiveNo: "A-001",
-            electronicStatus: "DRAFT",
             securityLevelId: 2,
             retentionPeriodId: 3,
             archiveYear: 2026,

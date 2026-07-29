@@ -145,9 +145,8 @@ class ArchiveExportRuntimePolicyIntegrationTests extends PostgreSqlContainerTest
         jdbcTemplate.update(
                 "insert into am_archive_item "
                         + "(id, fonds_code, fonds_name, category_code, category_name, archive_no, "
-                        + "electronic_status, archive_year) "
-                        + "values (?, 'F001', '全宗', 'CONTRACT', '合同', 'A-001', "
-                        + "'DRAFT', 2026)",
+                        + "archive_year) "
+                        + "values (?, 'F001', '全宗', 'CONTRACT', '合同', 'A-001', 2026)",
                 ITEM_ID);
     }
 

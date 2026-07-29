@@ -255,7 +255,6 @@ function formatTime(value: string) {
                     </template>
                 </el-table-column>
                 <el-table-column label="年度" prop="archiveYear" width="90" />
-                <el-table-column label="电子状态" prop="electronicStatus" width="110" />
                 <el-table-column label="创建时间" min-width="170">
                     <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
                 </el-table-column>

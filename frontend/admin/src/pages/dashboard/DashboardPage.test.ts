@@ -15,7 +15,7 @@ vi.mock("@/shared/api/workspace", () => ({
 beforeEach(() => {
     mocks.getWorkspaceSummary.mockResolvedValue({
         archiveItemCount: 12,
-        draftCount: 3,
+        intakeCount: 3,
         lockedCount: 2,
         electronicFileCount: 7,
     });
@@ -33,7 +33,7 @@ describe("DashboardPage", () => {
 
         expect(await screen.findByText("12")).toBeVisible();
         expect(screen.getByText("档案总数")).toBeVisible();
-        expect(screen.getByText("草稿档案")).toBeVisible();
+        expect(screen.getByText("预归档档案")).toBeVisible();
         expect(screen.getByText("已锁定档案")).toBeVisible();
         expect(screen.getByText("电子文件")).toBeVisible();
         expect(screen.getByText("3")).toBeVisible();
@@ -140,7 +140,7 @@ describe("DashboardPage", () => {
 
 interface WorkspaceSummary {
     archiveItemCount: number;
-    draftCount: number;
+    intakeCount: number;
     lockedCount: number;
     electronicFileCount: number;
 }
@@ -148,7 +148,7 @@ interface WorkspaceSummary {
 function summary(): WorkspaceSummary {
     return {
         archiveItemCount: 12,
-        draftCount: 3,
+        intakeCount: 3,
         lockedCount: 2,
         electronicFileCount: 7,
     };

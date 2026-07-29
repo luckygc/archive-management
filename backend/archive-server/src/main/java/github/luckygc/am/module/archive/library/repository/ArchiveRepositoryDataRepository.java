@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import github.luckygc.am.module.archive.library.ArchiveRepository;
+import github.luckygc.am.module.archive.library.ArchiveRepositoryRole;
 
 @Transactional(rollbackFor = Throwable.class, isolation = Isolation.READ_COMMITTED)
 @Repository
@@ -23,6 +24,13 @@ public interface ArchiveRepositoryDataRepository {
 
     @Find
     Optional<ArchiveRepository> findById(@By(By.ID) @Nonnull Long id);
+
+    @Transactional(readOnly = true)
+    @Find
+    Optional<ArchiveRepository> findSystemByRole(
+            @By("repositoryRole") @Nonnull ArchiveRepositoryRole repositoryRole,
+            @By("systemFlag") boolean systemFlag,
+            @By("enabled") boolean enabled);
 
     @Transactional(readOnly = true)
     @Find

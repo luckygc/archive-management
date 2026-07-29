@@ -62,7 +62,6 @@
                i.category_code,
                i.category_name,
                i.archive_no,
-               i.electronic_status,
                i.security_level_id,
                i.retention_period_id,
                i.archive_year,
@@ -122,7 +121,9 @@
         join am_archive_repository repository
           on repository.id = i.repository_id
          and repository.deleted_flag = false
-         and repository.repository_role = 'HOLDING'
+        <if test="source.repositoryRole != null">
+         and repository.repository_role = #{source.repositoryRole}
+        </if>
         where i.deleted_flag = #{source.deleted}
           and d.deleted_flag = #{source.deleted}
         <if test="criteria.requestedFondsCode != null and criteria.requestedFondsCode != ''">
@@ -310,7 +311,6 @@
                i.category_code,
                i.category_name,
                i.archive_no,
-               i.electronic_status,
                i.security_level_id,
                i.retention_period_id,
                i.archive_year,
@@ -368,15 +368,18 @@
     </select>
 
     <select id="summarizeDynamicItems" resultType="map">
-        select count(distinct visible.id) as archive_item_count,
+        select count(distinct visible.id)
+                   filter (where visible.repository_role = 'HOLDING') as archive_item_count,
                count(distinct visible.id)
-                   filter (where visible.electronic_status = 'DRAFT') as draft_count,
+                   filter (where visible.repository_role = 'INTAKE') as intake_count,
                count(distinct visible.id)
-                   filter (where visible.locked_flag = true) as locked_count,
-               count(distinct ef.id) as electronic_file_count
+                   filter (where visible.repository_role = 'HOLDING'
+                               and visible.locked_flag = true) as locked_count,
+               count(distinct ef.id)
+                   filter (where visible.repository_role = 'HOLDING') as electronic_file_count
         from (
             select i.id,
-                   i.electronic_status,
+                   repository.repository_role,
                    i.locked_flag
             <include refid="dynamicItemFromWhere"/>
         ) visible
@@ -398,11 +401,11 @@
     <select id="insertArchiveItem" resultType="long" affectData="true" flushCache="true">
         insert into am_archive_item
             (volume_id, fonds_code, fonds_name, category_code, category_name,
-             archive_no, electronic_status, security_level_id, retention_period_id,
+             archive_no, security_level_id, retention_period_id,
              archive_year, created_by, created_at, updated_by, updated_at)
         values
             (#{volumeId}, #{fondsCode}, #{fondsName}, #{categoryCode}, #{categoryName},
-             #{archiveNo}, #{electronicStatus}, #{securityLevelId}, #{retentionPeriodId},
+             #{archiveNo}, #{securityLevelId}, #{retentionPeriodId},
              #{archiveYear}, #{_audit.userId}, #{_audit.now}, #{_audit.userId}, #{_audit.now})
         returning id
     </select>
@@ -450,7 +453,6 @@
             volume_id = #{volumeId},
             fonds_code = #{fondsCode},
             fonds_name = #{fondsName},
-            electronic_status = #{electronicStatus},
             security_level_id = #{securityLevelId},
             retention_period_id = #{retentionPeriodId},
             archive_year = #{archiveYear},
@@ -493,7 +495,6 @@
                category_code,
                category_name,
                archive_no,
-               electronic_status,
                security_level_id,
                retention_period_id,
                archive_year,
@@ -513,7 +514,6 @@
                volume.category_code,
                volume.category_name,
                volume.archive_no,
-               volume.electronic_status,
                volume.security_level_id,
                volume.retention_period_id,
                volume.archive_year,
@@ -543,7 +543,6 @@
                category_code,
                category_name,
                archive_no,
-               electronic_status,
                security_level_id,
                retention_period_id,
                archive_year,
@@ -559,11 +558,11 @@
     <select id="insertArchiveVolume" resultType="long" affectData="true" flushCache="true">
         insert into am_archive_volume
             (fonds_code, fonds_name, category_code, category_name,
-             archive_no, electronic_status, archive_year,
+             archive_no, archive_year,
              created_by, created_at, updated_by, updated_at)
         values
             (#{fondsCode}, #{fondsName}, #{categoryCode}, #{categoryName},
-             #{archiveNo}, #{electronicStatus}, #{archiveYear},
+             #{archiveNo}, #{archiveYear},
              #{_audit.userId}, #{_audit.now}, #{_audit.userId}, #{_audit.now})
         returning id
     </select>

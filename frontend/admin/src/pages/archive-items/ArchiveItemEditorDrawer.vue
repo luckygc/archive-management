@@ -10,10 +10,7 @@ import type {
     ArchiveRetentionPeriodDto,
     ArchiveSecurityLevelDto,
 } from "@/shared/types/archive-metadata";
-import type {
-    ArchiveElectronicStatus,
-    ArchiveRecordDetailDto,
-} from "@/shared/types/archive-records";
+import type { ArchiveRecordDetailDto } from "@/shared/types/archive-records";
 
 const props = defineProps<{
     state?: { mode: "create" | "detail" | "edit"; archiveItemId?: number };
@@ -23,7 +20,6 @@ const props = defineProps<{
         fondsCode: string;
         archiveNo: string;
         archiveYear: number;
-        electronicStatus: ArchiveElectronicStatus;
         securityLevelId?: number;
         retentionPeriodId?: number;
         physicalFields: Record<string, unknown>;
@@ -163,28 +159,16 @@ function fieldErrorGroup(prefix: "physicalFields" | "dynamicFields") {
                     /></el-select>
                 </el-form-item>
                 <el-row :gutter="16">
-                    <el-col :span="8"
+                    <el-col :span="12"
                         ><el-form-item label="档号" prop="archiveNo" :error="fieldErrors.archiveNo"
                             ><el-input v-model="form.archiveNo" /></el-form-item
                     ></el-col>
-                    <el-col :span="8"
+                    <el-col :span="12"
                         ><el-form-item
                             label="年度"
                             prop="archiveYear"
                             :error="fieldErrors.archiveYear"
                             ><el-input-number v-model="form.archiveYear" :min="1" /></el-form-item
-                    ></el-col>
-                    <el-col :span="8"
-                        ><el-form-item
-                            label="电子状态"
-                            prop="electronicStatus"
-                            :error="fieldErrors.electronicStatus"
-                            ><el-select v-model="form.electronicStatus"
-                                ><el-option label="草稿" value="DRAFT" /><el-option
-                                    label="已归档"
-                                    value="ARCHIVED" /><el-option
-                                    label="借出"
-                                    value="BORROWED" /></el-select></el-form-item
                     ></el-col>
                 </el-row>
                 <el-row :gutter="16">

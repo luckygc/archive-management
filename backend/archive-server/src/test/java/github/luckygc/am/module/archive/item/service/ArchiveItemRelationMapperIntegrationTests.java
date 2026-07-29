@@ -91,8 +91,8 @@ class ArchiveItemRelationMapperIntegrationTests extends PostgreSqlContainerTest 
         jdbcTemplate.update(
                 "insert into am_archive_item "
                         + "(id, fonds_code, fonds_name, category_code, category_name, archive_no, "
-                        + "electronic_status, archive_year) values (?, 'TASK6', '任务六全宗', ?, "
-                        + "'任务六分类', ?, 'DRAFT', 2026)",
+                        + "archive_year) values (?, 'TASK6', '任务六全宗', ?, "
+                        + "'任务六分类', ?, 2026)",
                 id,
                 categoryCode,
                 archiveNo);

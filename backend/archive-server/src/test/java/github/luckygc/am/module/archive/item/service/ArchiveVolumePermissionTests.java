@@ -201,8 +201,7 @@ class ArchiveVolumePermissionTests {
         assertThatThrownBy(
                         () ->
                                 archiveVolumeService.createVolume(
-                                        new CreateArchiveVolumeRequest(
-                                                1L, "F001", "V-001", 2026, "DRAFT"),
+                                        new CreateArchiveVolumeRequest(1L, "F001", "V-001", 2026),
                                         9L))
                 .isInstanceOfSatisfying(
                         ResponseStatusException.class,
@@ -212,13 +211,7 @@ class ArchiveVolumePermissionTests {
 
         verify(archiveMapper, never())
                 .insertArchiveVolume(
-                        anyString(),
-                        anyString(),
-                        anyString(),
-                        anyString(),
-                        any(),
-                        anyString(),
-                        anyInt());
+                        anyString(), anyString(), anyString(), anyString(), any(), anyInt());
     }
 
     @Test
@@ -269,8 +262,7 @@ class ArchiveVolumePermissionTests {
         assertThatThrownBy(
                         () ->
                                 archiveVolumeService.createVolume(
-                                        new CreateArchiveVolumeRequest(
-                                                1L, "F001", "V-001", 2026, "DRAFT"),
+                                        new CreateArchiveVolumeRequest(1L, "F001", "V-001", 2026),
                                         9L))
                 .isInstanceOfSatisfying(
                         ResponseStatusException.class,
@@ -285,7 +277,6 @@ class ArchiveVolumePermissionTests {
                         anyString(),
                         anyString(),
                         org.mockito.ArgumentMatchers.any(),
-                        anyString(),
                         org.mockito.ArgumentMatchers.anyInt());
     }
 
@@ -302,19 +293,13 @@ class ArchiveVolumePermissionTests {
         when(dataScopeService.buildItemFilter(9L, 1L, "F001"))
                 .thenReturn(ArchiveDataScopeFilter.all());
         when(archiveMapper.insertArchiveVolume(
-                        eq("F001"),
-                        eq("启用全宗"),
-                        eq("contract"),
-                        eq("合同档案"),
-                        eq("V-001"),
-                        eq("DRAFT"),
-                        eq(2026)))
+                        eq("F001"), eq("启用全宗"), eq("contract"), eq("合同档案"), eq("V-001"), eq(2026)))
                 .thenReturn(31L);
         when(archiveMapper.getArchiveVolume(31L)).thenReturn(volumeRow());
 
         ArchiveVolumeService.ArchiveVolumeDto volume =
                 archiveVolumeService.createVolume(
-                        new CreateArchiveVolumeRequest(1L, "F001", "V-001", 2026, "DRAFT"), 9L);
+                        new CreateArchiveVolumeRequest(1L, "F001", "V-001", 2026), 9L);
 
         assertThat(volume.id()).isEqualTo(31L);
     }
@@ -362,7 +347,6 @@ class ArchiveVolumePermissionTests {
         row.put("categoryCode", "contract");
         row.put("categoryName", "合同档案");
         row.put("archiveNo", "V-001");
-        row.put("electronicStatus", "DRAFT");
         row.put("securityLevelId", 4L);
         row.put("retentionPeriodId", 5L);
         row.put("archiveYear", 2026);

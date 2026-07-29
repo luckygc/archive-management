@@ -67,7 +67,6 @@ public interface ArchiveMapper {
             @Param("categoryCode") String categoryCode,
             @Param("categoryName") String categoryName,
             @Param("archiveNo") String archiveNo,
-            @Param("electronicStatus") String electronicStatus,
             @Param("securityLevelId") Long securityLevelId,
             @Param("retentionPeriodId") Long retentionPeriodId,
             @Param("archiveYear") int archiveYear);
@@ -92,7 +91,6 @@ public interface ArchiveMapper {
             @Param("fondsCode") String fondsCode,
             @Param("fondsName") String fondsName,
             @Param("archiveNo") String archiveNo,
-            @Param("electronicStatus") String electronicStatus,
             @Param("securityLevelId") Long securityLevelId,
             @Param("retentionPeriodId") Long retentionPeriodId,
             @Param("archiveYear") int archiveYear);
@@ -123,7 +121,6 @@ public interface ArchiveMapper {
             @Param("categoryCode") String categoryCode,
             @Param("categoryName") String categoryName,
             @Param("archiveNo") String archiveNo,
-            @Param("electronicStatus") String electronicStatus,
             @Param("archiveYear") int archiveYear);
 
     int updateArchiveVolumeRepository(

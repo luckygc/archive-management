@@ -227,7 +227,6 @@ class ArchiveItemRuntimePolicyIntegrationTests extends PostgreSqlContainerTest {
                 "F001",
                 archiveNo,
                 archiveYear,
-                "DRAFT",
                 null,
                 null,
                 null,

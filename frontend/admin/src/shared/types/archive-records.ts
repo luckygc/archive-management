@@ -1,6 +1,5 @@
 import type { ArchiveCategoryDto, ArchiveFieldDto } from "./archive-metadata";
 
-export type ArchiveElectronicStatus = "DRAFT" | "ARCHIVED" | "BORROWED";
 export type ArchivePhysicalStatus =
     | "NONE"
     | "REGISTERED"
@@ -48,7 +47,6 @@ export type ArchiveRecordSortField =
     | "archiveYear"
     | "fondsCode"
     | "categoryCode"
-    | "electronicStatus"
     | "id"
     | (string & {});
 
@@ -109,7 +107,6 @@ export interface CreateArchiveRecordRequest {
     fondsCode: string;
     archiveNo?: string;
     archiveYear?: number;
-    electronicStatus?: ArchiveElectronicStatus;
     securityLevelId?: number;
     retentionPeriodId?: number;
     physicalFields?: Record<string, unknown>;
@@ -121,7 +118,6 @@ export interface UpdateArchiveRecordRequest {
     fondsCode: string;
     archiveNo?: string;
     archiveYear?: number;
-    electronicStatus?: ArchiveElectronicStatus;
     securityLevelId?: number;
     retentionPeriodId?: number;
     physicalFields?: Record<string, unknown>;
@@ -144,7 +140,6 @@ export interface ArchiveRecordDto {
     categoryCode: string;
     categoryName: string;
     archiveNo?: string;
-    electronicStatus: ArchiveElectronicStatus;
     securityLevelId?: number;
     retentionPeriodId?: number;
     archiveYear: number;

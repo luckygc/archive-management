@@ -267,7 +267,6 @@ create table am_archive_volume
     category_code  varchar(100) not null,
     category_name  varchar(255) not null,
     archive_no     varchar(100),
-    electronic_status varchar(50)  not null,
     security_level_id bigint references am_archive_security_level (id),
     retention_period_id bigint references am_archive_retention_period (id),
     sort_order     integer      not null default 0,
@@ -320,7 +319,6 @@ comment on column am_archive_volume.fonds_name is '全宗名称';
 comment on column am_archive_volume.category_code is '档案分类编码';
 comment on column am_archive_volume.category_name is '档案分类名称';
 comment on column am_archive_volume.archive_no is '档号';
-comment on column am_archive_volume.electronic_status is '电子档案状态';
 comment on column am_archive_volume.security_level_id is '密级 ID';
 comment on column am_archive_volume.retention_period_id is '保管期限 ID';
 comment on column am_archive_volume.sort_order is '排序字段';
@@ -349,7 +347,6 @@ create table am_archive_item
     category_code  varchar(100) not null,
     category_name  varchar(255) not null,
     archive_no     varchar(100),
-    electronic_status varchar(50)  not null,
     security_level_id bigint references am_archive_security_level (id),
     retention_period_id bigint references am_archive_retention_period (id),
     sort_order     integer      not null default 0,
@@ -406,7 +403,6 @@ comment on column am_archive_item.fonds_name is '全宗名称';
 comment on column am_archive_item.category_code is '档案分类编码';
 comment on column am_archive_item.category_name is '档案分类名称';
 comment on column am_archive_item.archive_no is '档号';
-comment on column am_archive_item.electronic_status is '电子档案状态';
 comment on column am_archive_item.security_level_id is '密级 ID';
 comment on column am_archive_item.retention_period_id is '保管期限 ID';
 comment on column am_archive_item.sort_order is '排序字段';

@@ -62,7 +62,6 @@ public class ArchiveItemImportExportService {
     private static final String HEADER_FONDS_CODE = "全宗编码";
     private static final String HEADER_ARCHIVE_NO = "档号";
     private static final String HEADER_ARCHIVE_YEAR = "年度";
-    private static final String HEADER_ELECTRONIC_STATUS = "电子状态";
     private static final int EXPORT_BATCH_LIMIT = 1000;
     private static final int EXPORT_MAX_ROWS = 5000;
     private static final Duration DOWNLOAD_LINK_TTL = Duration.ofMinutes(10);
@@ -291,7 +290,6 @@ public class ArchiveItemImportExportService {
         head.add(List.of(HEADER_FONDS_CODE));
         head.add(List.of(HEADER_ARCHIVE_NO));
         head.add(List.of(HEADER_ARCHIVE_YEAR));
-        head.add(List.of(HEADER_ELECTRONIC_STATUS));
         fields.stream()
                 .sorted(
                         java.util.Comparator.comparingInt(ArchiveFieldDto::editSortOrder)
@@ -369,7 +367,6 @@ public class ArchiveItemImportExportService {
                             cell(rawRow, indexes.get(HEADER_FONDS_CODE)),
                             cell(rawRow, indexes.get(HEADER_ARCHIVE_NO)),
                             archiveYear,
-                            cell(rawRow, indexes.get(HEADER_ELECTRONIC_STATUS)),
                             null,
                             null,
                             null,

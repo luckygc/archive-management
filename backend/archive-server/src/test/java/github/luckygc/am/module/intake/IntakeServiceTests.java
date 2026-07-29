@@ -13,12 +13,12 @@ class IntakeServiceTests {
     private final IntakeService intakeService = new IntakeService();
 
     @Test
-    @DisplayName("入口概览声明暂未配置外部连接")
-    void getOverviewShouldExposeUnconfiguredEntry() {
+    @DisplayName("入口概览声明本地信息包可用且暂未配置外部连接")
+    void getOverviewShouldExposeLocalPackageEntry() {
         IntakeOverviewDto overview = intakeService.getOverview();
 
         assertThat(overview.externalConnectionConfigured()).isFalse();
-        assertThat(overview.status()).isEqualTo(IntakeService.STATUS_NOT_CONFIGURED);
-        assertThat(overview.message()).contains("暂未对接外部系统");
+        assertThat(overview.status()).isEqualTo(IntakeService.STATUS_LOCAL_PACKAGE_AVAILABLE);
+        assertThat(overview.message()).contains("本地档案信息包接收可用").contains("外部连接");
     }
 }

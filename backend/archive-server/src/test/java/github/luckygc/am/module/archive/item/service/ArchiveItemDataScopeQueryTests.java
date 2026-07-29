@@ -423,8 +423,8 @@ class ArchiveItemDataScopeQueryTests {
                         () ->
                                 archiveItemRoutingService.createItem(
                                         new CreateArchiveItemRequest(
-                                                1L, null, "F001", "A-001", 2026, "DRAFT", null,
-                                                null, null, Map.of()),
+                                                1L, null, "F001", "A-001", 2026, null, null, null,
+                                                Map.of()),
                                         9L))
                 .isInstanceOfSatisfying(
                         ResponseStatusException.class,
@@ -436,7 +436,6 @@ class ArchiveItemDataScopeQueryTests {
                 .insertArchiveItem(
                         anyString(),
                         any(),
-                        anyString(),
                         anyString(),
                         anyString(),
                         anyString(),
@@ -478,7 +477,6 @@ class ArchiveItemDataScopeQueryTests {
                 Map.entry("category_code", "contract"),
                 Map.entry("category_name", "合同档案"),
                 Map.entry("archive_no", archiveNo),
-                Map.entry("electronic_status", "DRAFT"),
                 Map.entry("archive_year", 2026),
                 Map.entry("created_at", LocalDateTime.of(2026, 6, 30, 10, 0)),
                 Map.entry("locked_flag", false));

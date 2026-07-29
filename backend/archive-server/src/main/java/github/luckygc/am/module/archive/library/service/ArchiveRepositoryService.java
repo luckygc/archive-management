@@ -129,6 +129,15 @@ public class ArchiveRepositoryService {
         return entity;
     }
 
+    public ArchiveRepository getEnabledSystemRepository(ArchiveRepositoryRole repositoryRole) {
+        if (repositoryRole == null) {
+            throw new BadRequestException("业务库角色不能为空");
+        }
+        return repository
+                .findSystemByRole(repositoryRole, true, true)
+                .orElseThrow(() -> new BadRequestException("系统业务库不存在或已禁用"));
+    }
+
     private ArchiveRepository get(Long id) {
         if (id == null || id <= 0) {
             throw new BadRequestException("业务库 ID 不合法");

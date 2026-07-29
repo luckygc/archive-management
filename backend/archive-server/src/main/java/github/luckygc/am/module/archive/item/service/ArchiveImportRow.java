@@ -39,7 +39,6 @@ final class ArchiveImportRow {
                 createRequest.fondsCode(),
                 createRequest.archiveNo(),
                 createRequest.archiveYear(),
-                createRequest.electronicStatus(),
                 createRequest.securityLevelId(),
                 createRequest.retentionPeriodId(),
                 createRequest.physicalFields(),

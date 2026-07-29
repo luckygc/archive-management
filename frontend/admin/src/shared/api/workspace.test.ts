@@ -12,14 +12,14 @@ describe("workspace API", () => {
     it("从完整工作台摘要资源读取四项统计", async () => {
         httpClientMock.get.mockResolvedValue({
             archiveItemCount: 12,
-            draftCount: 3,
+            intakeCount: 3,
             lockedCount: 2,
             electronicFileCount: 7,
         });
 
         await expect(getWorkspaceSummary()).resolves.toEqual({
             archiveItemCount: 12,
-            draftCount: 3,
+            intakeCount: 3,
             lockedCount: 2,
             electronicFileCount: 7,
         });

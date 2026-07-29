@@ -1,6 +1,6 @@
 export interface WorkspaceSummaryResponse {
     archiveItemCount: number;
-    draftCount: number;
+    intakeCount: number;
     lockedCount: number;
     electronicFileCount: number;
 }

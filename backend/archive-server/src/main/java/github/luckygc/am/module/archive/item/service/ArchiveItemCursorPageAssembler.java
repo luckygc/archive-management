@@ -149,7 +149,6 @@ class ArchiveItemCursorPageAssembler {
             case "i.archive_year" -> integerCursorValue(row, "archiveYear");
             case "i.fonds_code" -> value(row, "fondsCode");
             case "i.category_code" -> value(row, "categoryCode");
-            case "i.electronic_status" -> value(row, "electronicStatus");
             default -> dynamicCursorRowValue(row, expression);
         };
     }

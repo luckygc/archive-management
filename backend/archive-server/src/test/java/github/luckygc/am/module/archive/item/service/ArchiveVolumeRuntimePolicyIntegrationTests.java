@@ -90,7 +90,7 @@ class ArchiveVolumeRuntimePolicyIntegrationTests extends PostgreSqlContainerTest
                         () ->
                                 volumeService.createVolume(
                                         new CreateArchiveVolumeRequest(
-                                                CATEGORY_ID, "F001", "BLOCKED", 2026, "DRAFT"),
+                                                CATEGORY_ID, "F001", "BLOCKED", 2026),
                                         9L))
                 .hasMessageContaining("volume-create-block");
 
@@ -132,16 +132,16 @@ class ArchiveVolumeRuntimePolicyIntegrationTests extends PostgreSqlContainerTest
         jdbcTemplate.update(
                 "insert into am_archive_volume "
                         + "(id, fonds_code, fonds_name, category_code, category_name, archive_no, "
-                        + "electronic_status, archive_year) "
+                        + "archive_year) "
                         + "values (?, 'F001', '测试全宗', 'VOLUME_DOC', '案卷档案', "
-                        + "'V-001', 'DRAFT', 2026)",
+                        + "'V-001', 2026)",
                 VOLUME_ID);
         jdbcTemplate.update(
                 "insert into am_archive_item "
                         + "(id, fonds_code, fonds_name, category_code, category_name, archive_no, "
-                        + "electronic_status, archive_year) "
+                        + "archive_year) "
                         + "values (?, 'F001', '测试全宗', 'VOLUME_DOC', '案卷档案', "
-                        + "'I-001', 'DRAFT', 2026)",
+                        + "'I-001', 2026)",
                 ITEM_ID);
     }
 

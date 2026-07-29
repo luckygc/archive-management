@@ -113,8 +113,8 @@ class ArchiveNoUniquenessTests {
                         () ->
                                 archiveItemRoutingService.createItem(
                                         new CreateArchiveItemRequest(
-                                                1L, null, "F001", "A-001", 2026, "DRAFT", null,
-                                                null, null, Map.of()),
+                                                1L, null, "F001", "A-001", 2026, null, null, null,
+                                                Map.of()),
                                         9L))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("档号已存在");
@@ -128,7 +128,6 @@ class ArchiveNoUniquenessTests {
                         anyString(),
                         anyString(),
                         any(),
-                        anyString(),
                         any(),
                         any(),
                         anyInt());
@@ -150,7 +149,6 @@ class ArchiveNoUniquenessTests {
                         anyString(),
                         anyString(),
                         any(),
-                        anyString(),
                         any(),
                         any(),
                         anyInt()))
@@ -160,8 +158,8 @@ class ArchiveNoUniquenessTests {
                         () ->
                                 archiveItemRoutingService.createItem(
                                         new CreateArchiveItemRequest(
-                                                1L, null, "F001", "A-001", 2026, "DRAFT", null,
-                                                null, null, Map.of()),
+                                                1L, null, "F001", "A-001", 2026, null, null, null,
+                                                Map.of()),
                                         9L))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("档号已存在");
@@ -187,23 +185,15 @@ class ArchiveNoUniquenessTests {
                                 archiveItemRoutingService.updateItem(
                                         10L,
                                         new UpdateArchiveItemRequest(
-                                                null, "F001", "A-002", 2026, "DRAFT", null, null,
-                                                null, Map.of()),
+                                                null, "F001", "A-002", 2026, null, null, null,
+                                                Map.of()),
                                         9L))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("档号已存在");
 
         verify(archiveMapper, never())
                 .updateArchiveItem(
-                        anyLong(),
-                        any(),
-                        anyString(),
-                        anyString(),
-                        any(),
-                        anyString(),
-                        any(),
-                        any(),
-                        anyInt());
+                        anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyInt());
     }
 
     @Test
@@ -221,15 +211,7 @@ class ArchiveNoUniquenessTests {
                 .thenReturn(activeFonds());
         when(archiveMapper.countArchiveItemsByArchiveNo("contract", "A-002", 10L)).thenReturn(0);
         when(archiveMapper.updateArchiveItem(
-                        anyLong(),
-                        any(),
-                        anyString(),
-                        anyString(),
-                        any(),
-                        anyString(),
-                        any(),
-                        any(),
-                        anyInt()))
+                        anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyInt()))
                 .thenThrow(new DuplicateKeyException("duplicate archive_no"));
 
         assertThatThrownBy(
@@ -237,8 +219,8 @@ class ArchiveNoUniquenessTests {
                                 archiveItemRoutingService.updateItem(
                                         10L,
                                         new UpdateArchiveItemRequest(
-                                                null, "F001", "A-002", 2026, "DRAFT", null, null,
-                                                null, Map.of()),
+                                                null, "F001", "A-002", 2026, null, null, null,
+                                                Map.of()),
                                         9L))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("档号已存在");
@@ -255,21 +237,14 @@ class ArchiveNoUniquenessTests {
         assertThatThrownBy(
                         () ->
                                 archiveVolumeService.createVolume(
-                                        new CreateArchiveVolumeRequest(
-                                                1L, "F001", "V-001", 2026, "DRAFT"),
+                                        new CreateArchiveVolumeRequest(1L, "F001", "V-001", 2026),
                                         9L))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("档号已存在");
 
         verify(archiveMapper, never())
                 .insertArchiveVolume(
-                        anyString(),
-                        anyString(),
-                        anyString(),
-                        anyString(),
-                        any(),
-                        anyString(),
-                        anyInt());
+                        anyString(), anyString(), anyString(), anyString(), any(), anyInt());
     }
 
     @Test
@@ -280,20 +255,13 @@ class ArchiveNoUniquenessTests {
                 .thenReturn(activeFonds());
         when(archiveMapper.countArchiveVolumesByArchiveNo("contract", "V-001", null)).thenReturn(0);
         when(archiveMapper.insertArchiveVolume(
-                        anyString(),
-                        anyString(),
-                        anyString(),
-                        anyString(),
-                        any(),
-                        anyString(),
-                        anyInt()))
+                        anyString(), anyString(), anyString(), anyString(), any(), anyInt()))
                 .thenThrow(new DuplicateKeyException("duplicate archive_no"));
 
         assertThatThrownBy(
                         () ->
                                 archiveVolumeService.createVolume(
-                                        new CreateArchiveVolumeRequest(
-                                                1L, "F001", "V-001", 2026, "DRAFT"),
+                                        new CreateArchiveVolumeRequest(1L, "F001", "V-001", 2026),
                                         9L))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("档号已存在");
@@ -346,7 +314,6 @@ class ArchiveNoUniquenessTests {
                 Map.entry("categoryCode", "contract"),
                 Map.entry("categoryName", "合同档案"),
                 Map.entry("archiveNo", "A-001"),
-                Map.entry("electronicStatus", "DRAFT"),
                 Map.entry("archiveYear", 2026),
                 Map.entry("lockedFlag", false));
     }

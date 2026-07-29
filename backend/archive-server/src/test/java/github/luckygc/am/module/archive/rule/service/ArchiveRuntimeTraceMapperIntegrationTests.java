@@ -112,8 +112,8 @@ class ArchiveRuntimeTraceMapperIntegrationTests extends PostgreSqlContainerTest 
         jdbcTemplate.update(
                 "insert into am_archive_item "
                         + "(id, fonds_code, fonds_name, category_code, category_name, "
-                        + "electronic_status, archive_year) "
-                        + "values (?, ?, '全宗', ?, '分类', 'DRAFT', 2026)",
+                        + "archive_year) "
+                        + "values (?, ?, '全宗', ?, '分类', 2026)",
                 id,
                 fondsCode,
                 categoryCode);

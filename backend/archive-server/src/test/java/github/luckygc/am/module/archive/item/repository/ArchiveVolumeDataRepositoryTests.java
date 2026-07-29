@@ -98,9 +98,9 @@ class ArchiveVolumeDataRepositoryTests extends PostgreSqlContainerTest {
         jdbcTemplate.update(
                 "insert into am_archive_volume "
                         + "(id, fonds_code, fonds_name, category_code, category_name, archive_no, "
-                        + "electronic_status, archive_year, created_at, updated_at) "
+                        + "archive_year, created_at, updated_at) "
                         + "values (?, 'TASK5', '任务五全宗', 'TASK5_CATEGORY', '任务五分类', ?, "
-                        + "'DRAFT', 2026, ?, ?)",
+                        + "2026, ?, ?)",
                 id,
                 archiveNo,
                 SAME_CREATED_AT,
