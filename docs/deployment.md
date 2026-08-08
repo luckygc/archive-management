@@ -40,6 +40,7 @@ docker build -f frontend/admin/Dockerfile --target web .
 - PostgreSQL 地址、数据库、用户名、密码和连接池容量。
 - S3 endpoint、region、bucket、access key、secret key 和 path-style 行为。
 - 可信前端 Origin、请求签名策略、管理员初始化策略和 Actuator 暴露范围。
+- 通过 Secret 提供 `ARCHIVE_TOTP_ENCRYPTION_KEY`，值为 Base64 编码的 32 字节随机主密钥；例如在受控终端以 `openssl rand -base64 32` 生成。
 
 密钥、生产连接串、客户环境参数和管理员口令不得写入 Git。
 
@@ -72,6 +73,8 @@ archive:
 
 生产环境必须把 CORS Origin 改为实际可信前端地址，并按风险决定是否启用请求签名；启用时通过外部 Secret 提供至少 32 个字符的密钥。Actuator 不向公网暴露全部端点，并结合监控角色、网关、网络策略或安全组限制来源。完整配置指引见 [`security.md`](security.md)。
 
+TOTP 依赖准确时间，所有应用节点必须启用 NTP 并监控时间偏移。`ARCHIVE_TOTP_ENCRYPTION_KEY` 必须在首次允许用户启用 TOTP 前配置，并在所有节点保持一致；当前版本不支持在线轮换，误换或丢失会使既有凭据无法解密。用户遗失验证设备时，管理员通过 `POST /api/v1/authentication-users/{id}:resetTotp` 清除其凭据，再由用户重新绑定。
+
 管理员初始化默认关闭。首次部署可在受控窗口临时启用 `archive.authentication.bootstrap-admin.enabled` 并通过外部 Secret 提供密码；初始化完成后立即关闭。
 
 ## 部署顺序
@@ -87,4 +90,5 @@ archive:
 - 代码回滚前确认数据库迁移是否兼容旧版本；生产环境不使用 Flyway clean 回滚。
 - 当前项目未正式发布前，迁移脚本按目标结构维护；正式发布后不得修改已经发布的迁移历史。
 - 数据库与 S3 对象状态一起评估和恢复，避免记录与文件内容不一致。
+- 旧版本不识别 TOTP 登录边界；回滚应用前必须暂停登录或先通过 `resetTotp` 清除已启用凭据，避免无声降级为仅密码登录。TOTP 表可保留供前滚恢复。
 - 保留发布产物、配置版本、数据库备份和对象存储恢复点，使回滚路径可验证。

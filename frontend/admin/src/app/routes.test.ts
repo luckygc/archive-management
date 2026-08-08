@@ -95,6 +95,12 @@ describe("workspaceRoutes", () => {
         expect(router.resolve("/system/authentication-events").meta.permission).toBe(
             "authentication:audit:read",
         );
+        expect(router.resolve("/account/security").meta).toMatchObject({
+            title: "账号安全",
+            menu: false,
+            cache: false,
+        });
+        expect(router.resolve("/account/security").meta.permission).toBeUndefined();
         expect(router.resolve("/intake").meta).toMatchObject({
             menu: true,
             cache: false,
@@ -284,6 +290,7 @@ async function authenticate({
         username: "reader",
         displayName: "只读用户",
         roles: [],
+        totpEnabled: false,
     };
     const permissionStore = usePermissionStore();
     if (initializedPermissions) {

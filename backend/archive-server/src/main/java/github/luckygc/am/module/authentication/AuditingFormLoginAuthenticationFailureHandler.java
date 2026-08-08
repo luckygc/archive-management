@@ -34,11 +34,11 @@ public class AuditingFormLoginAuthenticationFailureHandler implements Authentica
             HttpServletResponse response,
             AuthenticationException exception)
             throws IOException {
-        authenticationAuditService.recordLoginFailure(request, "账号或密码错误");
+        authenticationAuditService.recordLoginFailure(request, "账号或凭证错误");
         failureLimitService.recordFailure(request.getParameter("username"));
         response.setStatus(HttpStatus.UNAUTHORIZED.value());
         response.setContentType(MediaType.TEXT_PLAIN_VALUE);
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
-        response.getWriter().write("账号或密码错误");
+        response.getWriter().write("账号或凭证错误");
     }
 }

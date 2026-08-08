@@ -31,6 +31,7 @@ import github.luckygc.am.common.security.AuthenticatedUser;
 import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.authentication.AuthenticationLoginEventType;
 import github.luckygc.am.module.authentication.AuthenticationLoginLog;
+import github.luckygc.am.module.authentication.AuthenticationUser;
 import github.luckygc.am.module.authentication.ClientInfo;
 import github.luckygc.am.module.authentication.ClientRequestContext;
 import github.luckygc.am.module.authentication.ClientRequestContextResolver;
@@ -86,9 +87,20 @@ public class AuthenticationAuditService {
 
     @Transactional(rollbackFor = Throwable.class)
     public void recordLoginFailure(HttpServletRequest request, String reason) {
+        recordLoginFailureCore(request, reason, request.getParameter("username"));
+    }
+
+    @Transactional(rollbackFor = Throwable.class)
+    public void recordLoginFailure(
+            HttpServletRequest request, String reason, @Nullable String username) {
+        recordLoginFailureCore(request, reason, username);
+    }
+
+    private void recordLoginFailureCore(
+            HttpServletRequest request, String reason, @Nullable String username) {
         ClientRequestContext context = contextResolver.resolve(request);
         AuthenticationLoginLog log = baseLog(AuthenticationLoginEventType.LOGIN_FAILURE, context);
-        log.setUsername(request.getParameter("username"));
+        log.setUsername(username);
         log.setFailureReason(reason);
         loginLogRepository.insert(log);
     }
@@ -104,6 +116,22 @@ public class AuthenticationAuditService {
         }
         HttpSession session = request.getSession(false);
         log.setSessionId(session == null ? null : session.getId());
+        loginLogRepository.insert(log);
+    }
+
+    @Transactional(rollbackFor = Throwable.class)
+    public void recordTotpCredentialEvent(
+            HttpServletRequest request,
+            AuthenticationLoginEventType eventType,
+            AuthenticationUser targetUser,
+            Long operatorUserId,
+            String operatorUsername) {
+        AuthenticationLoginLog log = baseLog(eventType, contextResolver.resolve(request));
+        log.setUserId(targetUser.getId());
+        log.setUsername(targetUser.getUsername());
+        log.setDisplayName(targetUser.getDisplayName());
+        log.setOperatorUserId(operatorUserId);
+        log.setOperatorUsername(operatorUsername);
         loginLogRepository.insert(log);
     }
 

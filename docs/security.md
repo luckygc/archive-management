@@ -26,12 +26,17 @@
 
 登录前安全验证和账号密码登录按 `login-authentication` 执行。登录成功后，Spring Security 把认证状态保存在服务端 HTTP Session，Spring Session JDBC 持久化会话；浏览器只持有配置的 session cookie。
 
+用户可以自主启用 RFC 6238 TOTP。已启用用户只有在密码与 CAP 通过后再完成 TOTP 验证才会创建认证会话；中间挑战与 enrollment 均短时有效、一次性消费，数据库只保存随机 token 的 SHA-256 摘要。验证码时间步只允许接受一次，服务器必须通过 NTP 保持可靠时间同步。
+
+TOTP secret 使用 AES-256-GCM 加密。`ARCHIVE_TOTP_ENCRYPTION_KEY`（对应 `archive.authentication.totp.encryption-key`）必须由外部 Secret 提供 Base64 编码的 32 字节随机值。源码和生产配置不设置固定值，也不得把 secret、密文、验证码、challenge/enrollment token 或 `otpauth` URI 写入日志。密钥缺失、错误或密文损坏时相关登录失败关闭；持有用户管理权限的管理员仍可调用 `POST /api/v1/authentication-users/{id}:resetTotp` 清除凭据，供设备遗失恢复。
+
 会话超时、cookie 名称和 JDBC 表配置以 `application.yaml` 为准。Spring Session 表由 Flyway 管理，不由运行期自动建表。退出、踢下线、失败限制和认证审计属于认证业务合同，不在本文复制接口表。
 
 部署时确认：
 
 - cookie 只在预期域和路径发送，并按 HTTPS 部署策略设置安全属性。
 - 代理或网关不记录密码、CAP token、session cookie、CSRF token 或签名密钥。
+- 代理、APM 和应用日志不记录 TOTP secret、验证码、密文、challenge/enrollment token 或 `otpauth` URI。
 - 管理员初始化只在受控窗口启用，完成后立即关闭。
 
 ## 功能权限与数据范围
@@ -79,7 +84,7 @@ PostgreSQL 与 S3 服务只允许应用和受控运维入口访问。
 ## 密码、密钥与本机配置
 
 - 用户密码由 Spring Security `DelegatingPasswordEncoder` 处理，不记录明文或可逆密文。
-- 数据库密码、S3 凭证、管理员初始化密码和请求签名密钥不提交到 Git。
+- 数据库密码、S3 凭证、管理员初始化密码、请求签名密钥和 TOTP 主密钥不提交到 Git。
 - `application-local.yaml` 只用于本机覆盖，不是交付配置或 Secret 管理方案。
 - 生产 Secret 应支持最小权限、轮换、撤销和审计；轮换前验证旧新凭证切换与回滚路径。
 

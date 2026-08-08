@@ -332,6 +332,12 @@ a {
     width: 100%;
 }
 
+.am-login__secondary-action {
+    width: 100%;
+    margin-top: 8px;
+    margin-left: 0;
+}
+
 .am-text-secondary {
     color: #596579;
 }

@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 import org.apache.commons.lang3.StringUtils;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import github.luckygc.am.module.authentication.LoginBlockedException;
@@ -32,20 +33,28 @@ public class LoginFailureLimitService {
 
     @Transactional(readOnly = true)
     public void assertLoginAllowed(@Nullable String rawUsername) {
+        LoginBlockedException blocked = blockedException(rawUsername);
+        if (blocked != null) {
+            throw blocked;
+        }
+    }
+
+    private @Nullable LoginBlockedException blockedException(@Nullable String rawUsername) {
         String username = normalizedUsername(rawUsername);
         if (username == null) {
-            return;
+            return null;
         }
         LocalDateTime now = LocalDateTime.now();
         LoginFailureLimit limit = repository.findById(username).orElse(null);
         if (limit != null
                 && limit.getLockedUntil() != null
                 && limit.getLockedUntil().isAfter(now)) {
-            throw new LoginBlockedException(limit.getLockedUntil());
+            return new LoginBlockedException(limit.getLockedUntil());
         }
+        return null;
     }
 
-    @Transactional(rollbackFor = Throwable.class)
+    @Transactional(rollbackFor = Throwable.class, propagation = Propagation.REQUIRES_NEW)
     public void recordFailure(@Nullable String rawUsername) {
         String username = normalizedUsername(rawUsername);
         if (username == null) {

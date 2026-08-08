@@ -22,6 +22,7 @@
         "dayjs": "catalog:",
         "element-plus": "catalog:",
         "pinia": "catalog:",
+        "uqr": "catalog:",
         "vue": "catalog:",
         "vue-router": "catalog:",
         "zod": "catalog:"

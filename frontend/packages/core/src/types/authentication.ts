@@ -9,6 +9,43 @@ export interface CurrentUserDto {
     username: string;
     displayName: string;
     roles: string[];
+    totpEnabled: boolean;
+}
+
+export interface TotpLoginChallengeDto {
+    challengeToken: string;
+    expiresAt: string;
+}
+
+export type LoginResult =
+    | { status: 200; session: LoginSessionDto }
+    | { status: 202; challenge: TotpLoginChallengeDto };
+
+export interface VerifyTotpLoginChallengeRequest {
+    challengeToken: string;
+    code: string;
+}
+
+export interface TotpEnrollmentDto {
+    enrollmentToken: string;
+    manualKey: string;
+    otpauthUri: string;
+    expiresAt: string;
+}
+
+export interface TotpCredentialStatusDto {
+    totpEnabled: boolean;
+}
+
+export interface CreateTotpCredentialRequest {
+    enrollmentToken: string;
+    currentPassword: string;
+    code: string;
+}
+
+export interface DisableTotpCredentialRequest {
+    currentPassword: string;
+    code: string;
 }
 
 export interface ClientInfoDto {

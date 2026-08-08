@@ -79,6 +79,7 @@ public class ApiRequestSignatureFilter extends OncePerRequestFilter {
     private boolean isLoginBootstrapRequest(HttpServletRequest request) {
         String uri = request.getRequestURI();
         return "/api/v1/login-sessions".equals(uri)
+                || "/api/v1/login-session-challenges:verifyTotp".equals(uri)
                 || "/api/v1/cap-challenges".equals(uri)
                 || "/api/v1/cap-tokens".equals(uri)
                 || "/api/v1/cap-tokens:validate".equals(uri);

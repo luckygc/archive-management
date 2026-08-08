@@ -65,11 +65,15 @@ const axiosClient = axios.create({
 
 export const httpClient = {
     request: requestJson,
+    requestResponse,
     get<T>(path: string, init: RequestInit = {}) {
         return requestJson<T>(path, { ...init, method: "GET" });
     },
     post<T>(path: string, body?: RequestBody, init: RequestInit = {}) {
         return requestJson<T>(path, withBody(init, "POST", body));
+    },
+    postResponse<T>(path: string, body?: RequestBody, init: RequestInit = {}) {
+        return requestResponse<T>(path, withBody(init, "POST", body));
     },
     patch<T>(path: string, body?: RequestBody, init: RequestInit = {}) {
         return requestJson<T>(path, withBody(init, "PATCH", body));
@@ -85,15 +89,24 @@ export const httpClient = {
     },
 };
 
+export interface HttpResponse<T> {
+    status: number;
+    data: T;
+}
+
 async function requestJson<T>(path: string, init: RequestInit = {}): Promise<T> {
+    return (await requestResponse<T>(path, init)).data;
+}
+
+async function requestResponse<T>(path: string, init: RequestInit = {}): Promise<HttpResponse<T>> {
     try {
         const response = await axiosClient.request<T>(axiosConfig(path, init));
 
         if (response.status === 204) {
-            return undefined as T;
+            return { status: response.status, data: undefined as T };
         }
 
-        return response.data;
+        return { status: response.status, data: response.data };
     } catch (error) {
         const clientError = toHttpClientError(error);
         if (shouldNotifyUnauthenticated(path, clientError) && typeof window !== "undefined") {
@@ -177,7 +190,17 @@ function requestHeaders(init: RequestInit): RawAxiosRequestHeaders {
 }
 
 function shouldNotifyUnauthenticated(path: string, error: HttpClientError) {
-    return error.status === 401 && path !== "/api/v1/me" && path !== "/api/v1/login-sessions";
+    return (
+        error.status === 401 &&
+        path !== "/api/v1/me" &&
+        path !== "/api/v1/login-sessions" &&
+        !isTotpLoginChallengePath(path)
+    );
+}
+
+function isTotpLoginChallengePath(path: string) {
+    const pathname = new URL(path, "http://localhost").pathname;
+    return pathname === "/api/v1/login-session-challenges:verifyTotp";
 }
 
 function toHttpClientError(error: unknown) {

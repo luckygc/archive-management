@@ -20,6 +20,7 @@ import org.springframework.web.server.ResponseStatusException;
 import github.luckygc.am.module.authentication.ArchiveUserDetails;
 import github.luckygc.am.module.authentication.service.AuthenticationAuditService;
 import github.luckygc.am.module.authentication.service.LoginFailureLimitService;
+import github.luckygc.am.module.authentication.service.TotpCredentialService;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionCode;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
 
@@ -34,7 +35,10 @@ class LoginSessionControllerTests {
                 mock(AuthorizationPermissionService.class);
         LoginSessionController controller =
                 new LoginSessionController(
-                        auditService, mock(LoginFailureLimitService.class), permissionService);
+                        auditService,
+                        mock(LoginFailureLimitService.class),
+                        permissionService,
+                        mock(TotpCredentialService.class));
         UsernamePasswordAuthenticationToken authentication = authentication(7L);
         when(permissionService.hasPermission(
                         7L, AuthorizationPermissionCode.AUTHENTICATION_SESSION_MANAGE.code()))
@@ -62,7 +66,10 @@ class LoginSessionControllerTests {
                 mock(AuthorizationPermissionService.class);
         LoginSessionController controller =
                 new LoginSessionController(
-                        auditService, mock(LoginFailureLimitService.class), permissionService);
+                        auditService,
+                        mock(LoginFailureLimitService.class),
+                        permissionService,
+                        mock(TotpCredentialService.class));
         UsernamePasswordAuthenticationToken authentication = authentication(7L);
         when(permissionService.hasPermission(
                         7L, AuthorizationPermissionCode.AUTHENTICATION_AUDIT_READ.code()))
@@ -94,7 +101,10 @@ class LoginSessionControllerTests {
                 mock(AuthorizationPermissionService.class);
         LoginSessionController controller =
                 new LoginSessionController(
-                        auditService, mock(LoginFailureLimitService.class), permissionService);
+                        auditService,
+                        mock(LoginFailureLimitService.class),
+                        permissionService,
+                        mock(TotpCredentialService.class));
         UsernamePasswordAuthenticationToken authentication = authentication(7L);
         HttpServletRequest request = mock(HttpServletRequest.class);
         when(permissionService.hasPermission(
@@ -118,7 +128,11 @@ class LoginSessionControllerTests {
         AuthorizationPermissionService permissionService =
                 mock(AuthorizationPermissionService.class);
         LoginSessionController controller =
-                new LoginSessionController(auditService, failureLimitService, permissionService);
+                new LoginSessionController(
+                        auditService,
+                        failureLimitService,
+                        permissionService,
+                        mock(TotpCredentialService.class));
         UsernamePasswordAuthenticationToken authentication = authentication(7L);
         when(permissionService.hasPermission(
                         7L, AuthorizationPermissionCode.AUTHENTICATION_SESSION_MANAGE.code()))
@@ -136,7 +150,7 @@ class LoginSessionControllerTests {
                 UsernamePasswordAuthenticationToken.authenticated("zhangsan", "N/A", List.of());
 
         LoginSessionController.CurrentUserDto currentUser =
-                LoginSessionController.CurrentUserDto.from(authentication, "session-1");
+                LoginSessionController.CurrentUserDto.from(authentication, "session-1", false);
 
         assertThat(currentUser.username()).isEqualTo("zhangsan");
         assertThat(currentUser.displayName()).isEmpty();

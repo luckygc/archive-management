@@ -149,6 +149,14 @@ export const workspaceRoutes: RouteRecordRaw[] = [
             { permission: "archive:rule:manage" },
         ),
     ]),
+    route(
+        "account/security",
+        "account-security",
+        "账号安全",
+        Lock,
+        () => import("@/pages/account-security/AccountSecurityPage.vue"),
+        { menu: false, cache: false },
+    ),
     group("system", "系统配置", Setting, [
         route(
             "users",

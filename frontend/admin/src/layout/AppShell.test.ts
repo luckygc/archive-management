@@ -23,6 +23,12 @@ const PERMISSION_REFRESH_INTERVAL_MS = 60_000;
 const PERMISSION_SNAPSHOT_TTL_MS = 300_000;
 
 describe("AppShell", () => {
+    it("所有已登录用户都能看到账号安全入口", async () => {
+        await renderShell({ initialPath: "/", permissionCodes: [] });
+
+        expect(screen.getByText("账号安全")).toBeInTheDocument();
+    });
+
     it("当前页权限被收回时立即卸载缓存内容、清理页签并进入 403", async () => {
         const { permissionStore, router, tabsStore } = await renderShell({
             initialPath: "/archive/items",
@@ -453,6 +459,7 @@ async function renderShell({
         username: "reader",
         displayName: "只读用户",
         roles: [],
+        totpEnabled: false,
     };
     const permissionStore = usePermissionStore();
     permissionApiMocks.getCurrentUserPermissions.mockResolvedValue({

@@ -64,6 +64,15 @@ archive:
 
 `db/sample` 只用于本地演示或测试。管理员初始化只在本地初始化或受控部署窗口启用；共享环境不启用 Flyway clean。部署环境通过 Spring Boot 标准外部配置提供数据库、S3 endpoint、bucket 和密钥，详见 [`deployment.md`](deployment.md)。
 
+需要在本机测试 TOTP 启用和登录时，先为当前终端生成临时主密钥再启动后端：
+
+```bash
+export ARCHIVE_TOTP_ENCRYPTION_KEY="$(openssl rand -base64 32)"
+task server-run
+```
+
+该变量只作用于当前终端，不写入仓库或 Compose。保留已有 TOTP 测试数据时必须继续使用同一密钥；本地数据库重建后可以重新生成。
+
 ## 运行入口
 
 Spring Boot 主应用：

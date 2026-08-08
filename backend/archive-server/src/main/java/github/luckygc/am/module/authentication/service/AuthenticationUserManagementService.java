@@ -36,6 +36,7 @@ public class AuthenticationUserManagementService {
     private final AuthorizationPermissionService permissionService;
     private final OrganizationDepartmentService departmentService;
     private final PasswordEncoder passwordEncoder;
+    private final TotpCredentialService totpCredentialService;
 
     public AuthenticationUserManagementService(
             AuthenticationUserDataRepository userRepository,
@@ -43,13 +44,15 @@ public class AuthenticationUserManagementService {
             AuthorizationUserRoleRelationDataRepository userRoleRelationRepository,
             AuthorizationPermissionService permissionService,
             OrganizationDepartmentService departmentService,
-            PasswordEncoder passwordEncoder) {
+            PasswordEncoder passwordEncoder,
+            TotpCredentialService totpCredentialService) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.userRoleRelationRepository = userRoleRelationRepository;
         this.permissionService = permissionService;
         this.departmentService = departmentService;
         this.passwordEncoder = passwordEncoder;
+        this.totpCredentialService = totpCredentialService;
     }
 
     @Transactional(readOnly = true)
@@ -165,6 +168,9 @@ public class AuthenticationUserManagementService {
         }
         if (request.enabled() != null) {
             user.setEnabled(request.enabled());
+            if (!request.enabled()) {
+                totpCredentialService.clearTransientState(user.getId());
+            }
         }
         DepartmentUpdate departmentUpdate = request.departmentUpdate();
         if (departmentUpdate.changing()) {
@@ -186,6 +192,7 @@ public class AuthenticationUserManagementService {
                         .orElseThrow(() -> new BadRequestException("用户不存在", "id", "用户不存在"));
         user.setPassword(passwordEncoder.encode(request.newPassword()));
         userRepository.update(user);
+        totpCredentialService.clearTransientState(user.getId());
     }
 
     @Transactional(readOnly = true)

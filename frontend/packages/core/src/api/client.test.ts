@@ -38,4 +38,48 @@ describe("httpClient", () => {
         });
         fetchSpy.mockRestore();
     });
+
+    it("returns the HTTP status when a caller needs to distinguish accepted responses", async () => {
+        const fetchSpy = vi.spyOn(window, "fetch").mockResolvedValue(
+            new Response(JSON.stringify({ challengeToken: "challenge-1", expiresAt: "soon" }), {
+                status: 202,
+                headers: { "content-type": "application/json" },
+            }),
+        );
+
+        await expect(
+            httpClient.postResponse("http://localhost/api/v1/login-sessions", {}),
+        ).resolves.toEqual({
+            status: 202,
+            data: { challengeToken: "challenge-1", expiresAt: "soon" },
+        });
+        fetchSpy.mockRestore();
+    });
+
+    it("does not treat an invalid anonymous TOTP challenge as an expired session", async () => {
+        const unauthenticated = vi.fn();
+        window.addEventListener("archive-management:unauthenticated", unauthenticated);
+        const fetchSpy = vi.spyOn(window, "fetch").mockResolvedValue(
+            new Response(
+                JSON.stringify({
+                    title: "认证失败",
+                    status: 401,
+                    detail: "账号或凭证错误",
+                    code: "TOTP_CODE_INVALID",
+                }),
+                { status: 401, headers: { "content-type": "application/problem+json" } },
+            ),
+        );
+
+        await expect(
+            httpClient.post("http://localhost/api/v1/login-session-challenges:verifyTotp", {
+                challengeToken: "challenge-1",
+                code: "123456",
+            }),
+        ).rejects.toMatchObject({ code: "TOTP_CODE_INVALID" });
+        expect(unauthenticated).not.toHaveBeenCalled();
+
+        window.removeEventListener("archive-management:unauthenticated", unauthenticated);
+        fetchSpy.mockRestore();
+    });
 });

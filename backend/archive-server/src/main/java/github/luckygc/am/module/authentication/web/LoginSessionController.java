@@ -28,6 +28,7 @@ import github.luckygc.am.common.security.AuthenticatedUser;
 import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.authentication.service.AuthenticationAuditService;
 import github.luckygc.am.module.authentication.service.LoginFailureLimitService;
+import github.luckygc.am.module.authentication.service.TotpCredentialService;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionCode;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
 
@@ -37,21 +38,26 @@ public class LoginSessionController {
     private final AuthenticationAuditService authenticationAuditService;
     private final LoginFailureLimitService failureLimitService;
     private final AuthorizationPermissionService permissionService;
+    private final TotpCredentialService totpCredentialService;
     private final SecurityContextLogoutHandler securityContextLogoutHandler =
             new SecurityContextLogoutHandler();
 
     public LoginSessionController(
             AuthenticationAuditService authenticationAuditService,
             LoginFailureLimitService failureLimitService,
-            AuthorizationPermissionService permissionService) {
+            AuthorizationPermissionService permissionService,
+            TotpCredentialService totpCredentialService) {
         this.authenticationAuditService = authenticationAuditService;
         this.failureLimitService = failureLimitService;
         this.permissionService = permissionService;
+        this.totpCredentialService = totpCredentialService;
     }
 
     @GetMapping("/api/v1/me")
     public CurrentUserDto me(Authentication authentication, HttpServletRequest request) {
-        return CurrentUserDto.from(authentication, currentSessionId(request));
+        Long userId = AuthenticatedUsers.requireUserId(authentication.getPrincipal());
+        return CurrentUserDto.from(
+                authentication, currentSessionId(request), totpCredentialService.isEnabled(userId));
     }
 
     @GetMapping("/api/v1/login-sessions")
@@ -121,10 +127,14 @@ public class LoginSessionController {
     }
 
     public record CurrentUserDto(
-            @Nullable String sessionId, String username, String displayName, List<String> roles) {
+            @Nullable String sessionId,
+            String username,
+            String displayName,
+            List<String> roles,
+            boolean totpEnabled) {
 
         public static CurrentUserDto from(
-                Authentication authentication, @Nullable String sessionId) {
+                Authentication authentication, @Nullable String sessionId, boolean totpEnabled) {
             List<String> roles =
                     authentication.getAuthorities().stream()
                             .map(GrantedAuthority::getAuthority)
@@ -135,7 +145,7 @@ public class LoginSessionController {
                     authentication.getPrincipal() instanceof AuthenticatedUser userDetails
                             ? userDetails.displayName()
                             : "";
-            return new CurrentUserDto(sessionId, username, displayName, roles);
+            return new CurrentUserDto(sessionId, username, displayName, roles, totpEnabled);
         }
     }
 }

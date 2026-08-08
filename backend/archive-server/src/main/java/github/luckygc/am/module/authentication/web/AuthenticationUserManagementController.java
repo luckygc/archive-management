@@ -1,6 +1,7 @@
 package github.luckygc.am.module.authentication.web;
 
 import jakarta.data.page.PageRequest;
+import jakarta.servlet.http.HttpServletRequest;
 
 import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
@@ -28,6 +29,7 @@ import github.luckygc.am.module.authentication.service.AuthenticationUserManagem
 import github.luckygc.am.module.authentication.service.AuthenticationUserManagementService.RoleSummary;
 import github.luckygc.am.module.authentication.service.AuthenticationUserManagementService.SaveUserRolesRequest;
 import github.luckygc.am.module.authentication.service.AuthenticationUserManagementService.UpdateAuthenticationUserRequest;
+import github.luckygc.am.module.authentication.service.TotpCredentialService;
 
 import tools.jackson.databind.JsonNode;
 
@@ -35,9 +37,13 @@ import tools.jackson.databind.JsonNode;
 public class AuthenticationUserManagementController {
 
     private final AuthenticationUserManagementService userService;
+    private final TotpCredentialService totpCredentialService;
 
-    public AuthenticationUserManagementController(AuthenticationUserManagementService userService) {
+    public AuthenticationUserManagementController(
+            AuthenticationUserManagementService userService,
+            TotpCredentialService totpCredentialService) {
         this.userService = userService;
+        this.totpCredentialService = totpCredentialService;
     }
 
     @GetMapping("/api/v1/authentication-users")
@@ -104,6 +110,22 @@ public class AuthenticationUserManagementController {
                 request,
                 AuthenticatedUsers.requireUserId(
                         authentication == null ? null : authentication.getPrincipal()));
+    }
+
+    @PostMapping("/api/v1/authentication-users/{id}:resetTotp")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void resetTotp(
+            @PathVariable Long id,
+            HttpServletRequest request,
+            @Nullable Authentication authentication) {
+        Long operatorUserId =
+                AuthenticatedUsers.requireUserId(
+                        authentication == null ? null : authentication.getPrincipal());
+        totpCredentialService.resetCredential(
+                id,
+                operatorUserId,
+                authentication == null ? "" : authentication.getName(),
+                request);
     }
 
     @GetMapping("/api/v1/authentication-users/{id}/roles")

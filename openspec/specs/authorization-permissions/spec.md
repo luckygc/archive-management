@@ -3,9 +3,7 @@
 ## Purpose
 
 定义项目稳定功能权限点、角色权限绑定、角色与用户管理以及服务端最终授权合同，确保功能权限与档案数据范围分离。
-
 ## Requirements
-
 ### Requirement: 功能权限点枚举
 
 系统 SHALL 提供项目内稳定功能权限点枚举，并将功能权限与数据范围分开表达。
@@ -70,7 +68,7 @@
 
 ### Requirement: 用户管理
 
-系统 SHALL 支持管理员维护本地认证用户、重置密码并绑定用户角色。
+系统 SHALL 支持管理员维护本地认证用户、重置密码、清除 TOTP 凭据并绑定用户角色。
 
 #### Scenario: 创建和查询本地用户
 
@@ -85,6 +83,22 @@
 - **THEN** 系统 SHALL 校验目标用户存在
 - **AND** 重置密码 SHALL 使用 `POST /api/v1/authentication-users/{id}:resetPassword`
 - **AND** 新密码 SHALL 只以哈希结果写入本地用户表
+- **AND** 重置密码或停用用户 SHALL 使该用户未完成的 TOTP enrollment 与登录挑战失效
+
+#### Scenario: 管理员清除 TOTP
+
+- **WHEN** 拥有 `authentication:user:manage` 权限的管理员请求 `POST /api/v1/authentication-users/{id}:resetTotp`
+- **THEN** 系统 SHALL 校验目标用户存在
+- **AND** 系统 SHALL 删除目标用户的 TOTP 凭据
+- **AND** 系统 SHALL 删除目标用户未完成的 enrollment 与登录挑战
+- **AND** 目标凭据原本不存在时 SHALL 幂等成功
+- **AND** 系统 SHALL 记录操作人与目标用户且不得记录密钥或验证码
+
+#### Scenario: 无权限禁止清除 TOTP
+
+- **WHEN** 未拥有 `authentication:user:manage` 权限的用户请求清除目标用户 TOTP
+- **THEN** 系统 SHALL 返回 `403 Forbidden`
+- **AND** 系统 SHALL 保留目标用户现有 TOTP 凭据
 
 #### Scenario: 绑定用户角色
 

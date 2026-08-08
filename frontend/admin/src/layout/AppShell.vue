@@ -173,6 +173,14 @@ async function logout() {
     tabsStore.reset();
     await router.replace("/login");
 }
+
+async function handleUserCommand(command: string) {
+    if (command === "account-security") {
+        await router.push("/account/security");
+        return;
+    }
+    if (command === "logout") await logout();
+}
 </script>
 
 <template>
@@ -200,16 +208,14 @@ async function logout() {
                         >{{ item.title }}</ElBreadcrumbItem
                     >
                 </ElBreadcrumb>
-                <ElDropdown
-                    trigger="click"
-                    @command="(command: string) => command === 'logout' && logout()"
-                >
+                <ElDropdown trigger="click" @command="handleUserCommand">
                     <ElButton text
                         ><ElIcon><User /></ElIcon>{{ displayName }}</ElButton
                     >
                     <template #dropdown
                         ><ElDropdownMenu
-                            ><ElDropdownItem command="logout"
+                            ><ElDropdownItem command="account-security">账号安全</ElDropdownItem
+                            ><ElDropdownItem command="logout" divided
                                 >退出登录</ElDropdownItem
                             ></ElDropdownMenu
                         ></template

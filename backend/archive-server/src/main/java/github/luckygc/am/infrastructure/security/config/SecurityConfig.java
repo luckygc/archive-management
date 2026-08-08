@@ -15,16 +15,17 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.annotation.web.configurers.AuthorizeHttpRequestsConfigurer;
 import org.springframework.security.config.annotation.web.configurers.CorsConfigurer;
 import org.springframework.security.config.annotation.web.configurers.ExceptionHandlingConfigurer;
-import org.springframework.security.config.annotation.web.configurers.FormLoginConfigurer;
 import org.springframework.security.config.annotation.web.configurers.SecurityContextConfigurer;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.authentication.session.ChangeSessionIdAuthenticationStrategy;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
@@ -42,6 +43,7 @@ public class SecurityConfig {
     private final OncePerRequestFilter powLoginFilter;
     private final AuthenticationSuccessHandler authenticationSuccessHandler;
     private final AuthenticationFailureHandler authenticationFailureHandler;
+    private final AuthenticationFailureHandler totpChallengeAuthenticationFailureHandler;
     private final SecurityCorsProperties corsProperties;
     private final SecurityAuthorizationProperties authorizationProperties;
 
@@ -51,6 +53,7 @@ public class SecurityConfig {
             @Qualifier("powLoginFilter") OncePerRequestFilter powLoginFilter,
             @Qualifier("formLoginAuthenticationSuccessHandler") AuthenticationSuccessHandler authenticationSuccessHandler,
             @Qualifier("formLoginAuthenticationFailureHandler") AuthenticationFailureHandler authenticationFailureHandler,
+            @Qualifier("totpChallengeAuthenticationFailureHandler") AuthenticationFailureHandler totpChallengeAuthenticationFailureHandler,
             SecurityCorsProperties corsProperties,
             SecurityAuthorizationProperties authorizationProperties) {
         this.securityContextRepository = securityContextRepository;
@@ -58,12 +61,20 @@ public class SecurityConfig {
         this.powLoginFilter = powLoginFilter;
         this.authenticationSuccessHandler = authenticationSuccessHandler;
         this.authenticationFailureHandler = authenticationFailureHandler;
+        this.totpChallengeAuthenticationFailureHandler = totpChallengeAuthenticationFailureHandler;
         this.corsProperties = corsProperties;
         this.authorizationProperties = authorizationProperties;
     }
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http) {
+    SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            @Qualifier("loginSessionAuthenticationFilter") AbstractAuthenticationProcessingFilter loginSessionAuthenticationFilter,
+            @Qualifier("totpChallengeAuthenticationFilter") AbstractAuthenticationProcessingFilter totpChallengeAuthenticationFilter) {
+        configureAuthenticationFilter(
+                loginSessionAuthenticationFilter, authenticationFailureHandler);
+        configureAuthenticationFilter(
+                totpChallengeAuthenticationFilter, totpChallengeAuthenticationFailureHandler);
         return http.cors(this::configureCors)
                 .csrf(
                         csrf ->
@@ -77,8 +88,13 @@ public class SecurityConfig {
                 .addFilterBefore(
                         apiRequestSignatureFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(powLoginFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(
+                        totpChallengeAuthenticationFilter,
+                        UsernamePasswordAuthenticationFilter.class)
+                .addFilterAt(
+                        loginSessionAuthenticationFilter,
+                        UsernamePasswordAuthenticationFilter.class)
                 .httpBasic(AbstractHttpConfigurer::disable)
-                .formLogin(this::configureFormLogin)
                 .logout(AbstractHttpConfigurer::disable)
                 .exceptionHandling(this::configureExceptionHandling)
                 .build();
@@ -102,6 +118,8 @@ public class SecurityConfig {
                 .permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/login-sessions")
                 .permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/v1/login-session-challenges:verifyTotp")
+                .permitAll()
                 .requestMatchers(
                         HttpMethod.POST,
                         "/api/v1/cap-challenges",
@@ -116,14 +134,13 @@ public class SecurityConfig {
                 .authenticated();
     }
 
-    private void configureFormLogin(FormLoginConfigurer<HttpSecurity> formLogin) {
-        formLogin
-                .loginPage("/login")
-                .loginProcessingUrl("/api/v1/login-sessions")
-                .securityContextRepository(securityContextRepository)
-                .successHandler(authenticationSuccessHandler)
-                .failureHandler(authenticationFailureHandler)
-                .permitAll();
+    private void configureAuthenticationFilter(
+            AbstractAuthenticationProcessingFilter filter,
+            AuthenticationFailureHandler failureHandler) {
+        filter.setSecurityContextRepository(securityContextRepository);
+        filter.setSessionAuthenticationStrategy(new ChangeSessionIdAuthenticationStrategy());
+        filter.setAuthenticationSuccessHandler(authenticationSuccessHandler);
+        filter.setAuthenticationFailureHandler(failureHandler);
     }
 
     private void configureExceptionHandling(

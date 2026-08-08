@@ -68,7 +68,8 @@ class AuthenticationUserManagementServiceTests {
                         userRoleRelationRepository,
                         permissionService,
                         departmentService,
-                        passwordEncoder);
+                        passwordEncoder,
+                        mock(TotpCredentialService.class));
     }
 
     // ── createUser ──
