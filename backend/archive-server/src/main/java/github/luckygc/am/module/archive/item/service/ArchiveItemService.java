@@ -49,6 +49,7 @@ public class ArchiveItemService {
 
     private static final String AUDIT_OPERATION_CREATE = "CREATE";
     private static final String AUDIT_OPERATION_UPDATE = "UPDATE";
+    private static final String AUDIT_OPERATION_REASSIGN_FONDS = "REASSIGN_FONDS";
     private static final String AUDIT_OPERATION_DELETE = "DELETE";
     private static final DateTimeFormatter DATE_TIME_FORMATTER =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -114,7 +115,7 @@ public class ArchiveItemService {
             throw badRequest("全宗不能为空", "fondsCode", "全宗不能为空");
         }
         ArchiveFondsDto fonds =
-                archiveMetadataReferenceService.getEnabledFondsByCode(request.fondsCode());
+                archiveMetadataReferenceService.getWritableFondsByCode(request.fondsCode());
         archiveCategoryService.requireCategoryAvailableForFonds(fonds.fondsCode(), category.id());
         Long volumeId =
                 validateParentForWrite(
@@ -222,6 +223,55 @@ public class ArchiveItemService {
         if (request == null) {
             throw badRequest("请求体不能为空");
         }
+        return updateItemCore(id, request, userId, null, false);
+    }
+
+    @Transactional
+    public ArchiveItemDetailDto reassignFonds(
+            Long id, @Nullable ReassignArchiveItemFondsRequest request, Long userId) {
+        requirePermission(userId, "archive:item:update");
+        if (request == null) {
+            throw badRequest("请求体不能为空");
+        }
+        String targetFondsCode = StringUtils.trimToNull(request.targetFondsCode());
+        if (targetFondsCode == null) {
+            throw badRequest("目标全宗不能为空", "targetFondsCode", "目标全宗不能为空");
+        }
+        String reason = StringUtils.trimToNull(request.reason());
+        if (reason == null) {
+            throw badRequest("调整原因不能为空", "reason", "调整原因不能为空");
+        }
+        ArchiveItemDetailDto before =
+                archiveItemReadService.getItemDetail(id, userId, ArchiveLayoutSurface.EDIT);
+        archiveItemReadService.assertItemInDataScope(userId, before.category(), before.item());
+        if (before.item().volumeId() != null) {
+            throw new ResponseStatusException(HttpStatus.PRECONDITION_FAILED, "卷内档案不能单独调整全宗");
+        }
+        if (targetFondsCode.equals(before.item().fondsCode())) {
+            throw badRequest("目标全宗不能与原全宗相同", "targetFondsCode", "目标全宗不能与原全宗相同");
+        }
+        UpdateArchiveItemRequest updateRequest =
+                new UpdateArchiveItemRequest(
+                        null,
+                        targetFondsCode,
+                        before.item().archiveNo(),
+                        before.item().archiveYear(),
+                        before.item().securityLevelId(),
+                        before.item().retentionPeriodId(),
+                        null,
+                        null);
+        String auditReason =
+                "原全宗 %s -> 目标全宗 %s；%s"
+                        .formatted(before.item().fondsCode(), targetFondsCode, reason);
+        return updateItemCore(id, updateRequest, userId, auditReason, true);
+    }
+
+    private ArchiveItemDetailDto updateItemCore(
+            Long id,
+            UpdateArchiveItemRequest request,
+            Long userId,
+            @Nullable String auditReason,
+            boolean allowArchivedReassignment) {
         ArchiveItemDetailDto before =
                 archiveItemReadService.getItemDetail(id, userId, ArchiveLayoutSurface.EDIT);
         archiveItemReadService.assertItemInDataScope(userId, before.category(), before.item());
@@ -235,7 +285,11 @@ public class ArchiveItemService {
             throw badRequest("全宗不能为空", "fondsCode", "全宗不能为空");
         }
         ArchiveFondsDto fonds =
-                archiveMetadataReferenceService.getEnabledFondsByCode(request.fondsCode());
+                archiveMetadataReferenceService.getWritableFondsByCode(request.fondsCode());
+        boolean fondsChanged = !fonds.fondsCode().equals(before.item().fondsCode());
+        if (fondsChanged && before.item().archivedAt() != null && !allowArchivedReassignment) {
+            throw new ResponseStatusException(HttpStatus.PRECONDITION_FAILED, "已归档档案必须通过调整全宗动作办理");
+        }
         archiveCategoryService.requireCategoryAvailableForFonds(fonds.fondsCode(), category.id());
         Long volumeId =
                 validateParentForWrite(
@@ -330,11 +384,13 @@ public class ArchiveItemService {
         if (updated == 0) {
             throw badRequest("档案条目已锁定，不能修改");
         }
-        try {
-            archiveMapper.updateDynamicRecord(
-                    tableName, id, dynamicAssignments(allFields, convertedDynamicFields));
-        } catch (DuplicateKeyException | MyBatisSystemException exception) {
-            throw badRequest("档案条目违反唯一约束");
+        if (!allFields.isEmpty()) {
+            try {
+                archiveMapper.updateDynamicRecord(
+                        tableName, id, dynamicAssignments(allFields, convertedDynamicFields));
+            } catch (DuplicateKeyException | MyBatisSystemException exception) {
+                throw badRequest("档案条目违反唯一约束");
+            }
         }
         if (requestPhysicalFields != null || hasAssignment(runtimeResult, "physical.")) {
             upsertPhysicalFieldsIfPresent(
@@ -343,7 +399,11 @@ public class ArchiveItemService {
         searchProjectionSynchronizer.synchronize(id);
         ArchiveItemDetailDto after =
                 archiveItemReadService.getItemDetail(id, userId, ArchiveLayoutSurface.EDIT);
-        insertItemAudit(AUDIT_OPERATION_UPDATE, after.item(), null, userId);
+        insertItemAudit(
+                allowArchivedReassignment ? AUDIT_OPERATION_REASSIGN_FONDS : AUDIT_OPERATION_UPDATE,
+                after.item(),
+                auditReason,
+                userId);
         runtimeTraceService.saveSuccessfulExecution(policyExecution.request(), runtimeResult, id);
         return after;
     }
@@ -767,6 +827,9 @@ public class ArchiveItemService {
             @Nullable Long retentionPeriodId,
             @Nullable Map<String, @Nullable Object> physicalFields,
             @Nullable Map<String, @Nullable Object> dynamicFields) {}
+
+    public record ReassignArchiveItemFondsRequest(
+            @Nullable String targetFondsCode, @Nullable String reason) {}
 
     public record DeleteItemRequest(@Nullable String reason) {}
 }

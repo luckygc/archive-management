@@ -1,5 +1,6 @@
 package github.luckygc.am.module.archive.item.service;
 
+import static github.luckygc.am.test.ArchiveTestFixtures.insertActiveFonds;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -71,6 +72,7 @@ class ArchiveExportRuntimePolicyIntegrationTests extends PostgreSqlContainerTest
 
     @BeforeEach
     void setUp() {
+        insertActiveFonds(jdbcTemplate, "F001", "全宗");
         seedItem();
         when(permissionService.hasPermission(USER_ID, "archive:export")).thenReturn(true);
         when(queryService.searchItems(any(), eq(USER_ID)))

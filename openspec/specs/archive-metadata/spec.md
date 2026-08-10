@@ -279,25 +279,79 @@
 
 ### Requirement: 全宗管理
 
-系统 SHALL 提供全宗管理能力，全宗作为档案记录归属维度，不作为档案分类字段模板的一部分。
+系统 SHALL 提供稳定、可追溯的全宗管理能力；系统全宗编码作为档案记录、规则和权限的稳定归属维度，业务全宗号与系统编码分开，全宗不作为档案分类字段模板的一部分。
 
 #### Scenario: 创建全宗
 
-- **WHEN** 客户端提交全宗编码和全宗名称
-- **THEN** 系统 SHALL 创建一条全宗记录
-- **AND** 全宗编码 SHALL 在未删除记录中唯一
+- **WHEN** 客户端向 `POST /api/v1/archive-fonds` 提交系统全宗编码、全宗名称及可选的起止日期、沿革说明和排序
+- **THEN** 系统 SHALL 创建状态为 `ACTIVE` 的全宗记录
+- **AND** 系统全宗编码 SHALL 在全部历史全宗记录中唯一
+- **AND** 创建请求 SHALL NOT 直接登记业务全宗号
 
-#### Scenario: 查询启用全宗
+#### Scenario: 更新全宗基本信息
+
+- **WHEN** 客户端向 `PATCH /api/v1/archive-fonds/{id}` 提交全宗名称、起止日期、沿革说明或排序
+- **THEN** 系统 SHALL 更新对应基本信息
+- **AND** 更新请求 SHALL NOT 修改系统全宗编码、业务全宗号或生命周期状态
+
+#### Scenario: 查询全宗
 
 - **WHEN** 客户端查询全宗列表
-- **THEN** 系统 SHALL 返回未删除全宗
-- **AND** 系统 SHALL 支持按启用状态筛选
+- **THEN** 系统 SHALL 返回全部全宗并包含系统编码、可空业务全宗号和生命周期状态
+- **AND** 系统 SHALL 支持按 `ACTIVE` 或 `CLOSED` 状态筛选
+- **AND** 系统 SHALL NOT 因全宗封闭而隐藏其历史档案
 
-#### Scenario: 禁用全宗
+#### Scenario: 分配业务全宗号
 
-- **WHEN** 客户端禁用一个全宗
-- **THEN** 系统 SHALL 保留历史档案记录上的全宗编码和名称
-- **AND** 系统 SHALL NOT 删除该全宗关联的档案记录
+- **WHEN** 客户端向 `POST /api/v1/archive-fonds/{id}:assignNumber` 提交尚无业务全宗号的全宗、非空号码、原因及可选的分配机关和生效时间
+- **THEN** 系统 SHALL 保存业务全宗号、分配机关和分配时间
+- **AND** 系统 SHALL 在同一事务写入 `NUMBER_ASSIGNED` 全宗事件
+- **AND** 非空业务全宗号 SHALL 在全部历史全宗记录中唯一
+
+#### Scenario: 拒绝重复分配业务全宗号
+
+- **WHEN** 客户端为已有业务全宗号的全宗再次分配号码，或提交已被其他全宗使用的号码
+- **THEN** 系统 SHALL 拒绝请求并返回冲突错误
+- **AND** 原业务全宗号和事件记录 SHALL 保持不变
+
+#### Scenario: 封闭全宗
+
+- **WHEN** 客户端向 `POST /api/v1/archive-fonds/{id}:close` 提交 `ACTIVE` 全宗、非空原因及可选生效时间
+- **THEN** 系统 SHALL 将全宗状态变为 `CLOSED`
+- **AND** 系统 SHALL 保存封闭时间和原因
+- **AND** 系统 SHALL 在同一事务写入 `CLOSED` 全宗事件
+- **AND** 历史档案、全宗分类范围和事件 SHALL 保持可查询
+
+#### Scenario: 封闭全宗拒绝新增档案
+
+- **WHEN** 创建档案、创建案卷、导入或变更档案归属时目标全宗状态为 `CLOSED`
+- **THEN** 系统 SHALL 在任何档案写入前拒绝请求
+- **AND** 响应 SHALL 指出目标全宗已封闭
+
+#### Scenario: 恢复全宗
+
+- **WHEN** 客户端向 `POST /api/v1/archive-fonds/{id}:reopen` 提交 `CLOSED` 全宗、非空原因及可选生效时间
+- **THEN** 系统 SHALL 将全宗状态恢复为 `ACTIVE`
+- **AND** 系统 SHALL 清除当前封闭时间和原因
+- **AND** 系统 SHALL 在同一事务写入 `REOPENED` 全宗事件
+
+#### Scenario: 拒绝非法状态动作
+
+- **WHEN** 客户端关闭已封闭全宗、恢复有效全宗或提交晚于当前时间的生效时间
+- **THEN** 系统 SHALL 拒绝请求
+- **AND** 全宗状态和事件 SHALL 保持不变
+
+#### Scenario: 查询全宗事件
+
+- **WHEN** 客户端请求 `GET /api/v1/archive-fonds/{id}/events`
+- **THEN** 系统 SHALL 按生效时间和事件 ID 倒序返回该全宗的号码登记、封闭和恢复事件
+- **AND** 每条事件 SHALL 包含事件类型、前后值、原因、生效时间和可空操作人
+
+#### Scenario: 不再删除或复用全宗编码
+
+- **WHEN** 客户端尝试调用普通全宗删除能力或通过普通更新修改系统全宗编码
+- **THEN** 系统 SHALL NOT 提供对应业务入口
+- **AND** 已使用过的系统全宗编码 SHALL NOT 因封闭而释放复用
 
 ### Requirement: 档案分类管理
 

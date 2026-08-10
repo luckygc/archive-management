@@ -5,7 +5,7 @@ create table am_archive_runtime_definition
     definition_code         varchar(100)  not null,
     definition_name         varchar(255)  not null,
     trigger_point           varchar(50)   not null,
-    scope_fonds_code        varchar(100),
+    scope_fonds_code        varchar(100) references am_archive_fonds (fonds_code),
     scope_category_code     varchar(100),
     scope_archive_level     varchar(30),
     priority                integer       not null default 0,

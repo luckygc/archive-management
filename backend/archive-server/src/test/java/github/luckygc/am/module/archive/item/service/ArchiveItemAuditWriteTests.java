@@ -1,5 +1,6 @@
 package github.luckygc.am.module.archive.item.service;
 
+import static github.luckygc.am.test.ArchiveTestFixtures.activeFondsDto;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -94,7 +95,7 @@ class ArchiveItemAuditWriteTests {
     void createItemShouldWriteAudit() {
         when(archiveCategoryService.getCategory(1L)).thenReturn(category());
         when(archiveMapper.tableExists("am_archive_item_contract")).thenReturn(1);
-        when(archiveMetadataReferenceService.getEnabledFondsByCode("F001"))
+        when(archiveMetadataReferenceService.getWritableFondsByCode("F001"))
                 .thenReturn(activeFonds());
         when(archiveMapper.countArchiveItemsByArchiveNo("contract", "A-001", null)).thenReturn(0);
         when(archiveMetadataService.listEnabledFields(eq(1L), eq(ArchiveLevel.ITEM)))
@@ -128,7 +129,7 @@ class ArchiveItemAuditWriteTests {
     void updateItemShouldWriteAudit() {
         stubItemDetailLoad(false);
         when(archiveMapper.tableExists("am_archive_item_contract")).thenReturn(1);
-        when(archiveMetadataReferenceService.getEnabledFondsByCode("F001"))
+        when(archiveMetadataReferenceService.getWritableFondsByCode("F001"))
                 .thenReturn(activeFonds());
         when(archiveMapper.countArchiveItemsByArchiveNo("contract", "A-002", 10L)).thenReturn(0);
         when(archiveMapper.updateArchiveItem(
@@ -215,7 +216,7 @@ class ArchiveItemAuditWriteTests {
 
     private ArchiveFondsDto activeFonds() {
         LocalDateTime now = LocalDateTime.of(2026, 6, 30, 10, 0);
-        return new ArchiveFondsDto(1L, "F001", "启用全宗", true, 0, now, now);
+        return activeFondsDto(1L, "F001", "启用全宗", now);
     }
 
     private ArchiveCategoryDto category() {

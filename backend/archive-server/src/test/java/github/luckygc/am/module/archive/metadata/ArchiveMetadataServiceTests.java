@@ -507,27 +507,27 @@ class ArchiveMetadataServiceTests {
 
     @Test
     @DisplayName("获取可用全宗时拒绝停用全宗")
-    void getEnabledFondsByCodeShouldRejectDisabledFonds() {
+    void getWritableFondsByCodeShouldRejectClosedFonds() {
         ArchiveFonds fonds = new ArchiveFonds();
         fonds.setId(1L);
         fonds.setFondsCode("F001");
         fonds.setFondsName("停用全宗");
-        fonds.setEnabled(false);
+        fonds.setStatus(ArchiveFondsStatus.CLOSED);
         when(fondsRepository.find("F001")).thenReturn(Optional.of(fonds));
 
-        assertThatThrownBy(() -> referenceService.getEnabledFondsByCode(" F001 "))
+        assertThatThrownBy(() -> referenceService.getWritableFondsByCode(" F001 "))
                 .isInstanceOf(github.luckygc.am.common.exception.BadRequestException.class)
-                .hasMessageContaining("全宗不可用");
+                .hasMessageContaining("全宗不存在或已封闭");
     }
 
     @Test
     @DisplayName("获取可用全宗时将不存在全宗视为不可用")
-    void getEnabledFondsByCodeShouldRejectMissingFonds() {
+    void getWritableFondsByCodeShouldRejectMissingFonds() {
         when(fondsRepository.find("F001")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> referenceService.getEnabledFondsByCode("F001"))
+        assertThatThrownBy(() -> referenceService.getWritableFondsByCode("F001"))
                 .isInstanceOf(github.luckygc.am.common.exception.BadRequestException.class)
-                .hasMessageContaining("全宗不可用");
+                .hasMessageContaining("全宗不存在或已封闭");
     }
 
     @Test
@@ -636,7 +636,7 @@ class ArchiveMetadataServiceTests {
         fonds.setId(1L);
         fonds.setFondsCode(fondsCode);
         fonds.setFondsName("默认全宗");
-        fonds.setEnabled(true);
+        fonds.setStatus(ArchiveFondsStatus.ACTIVE);
         return fonds;
     }
 

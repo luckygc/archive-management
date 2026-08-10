@@ -124,6 +124,11 @@ export interface UpdateArchiveRecordRequest {
     dynamicFields: Record<string, unknown>;
 }
 
+export interface ReassignArchiveRecordFondsRequest {
+    targetFondsCode: string;
+    reason: string;
+}
+
 export interface ArchivePhysicalObjectRequest {
     physicalStatus: ArchivePhysicalStatus;
     boxNo?: string;

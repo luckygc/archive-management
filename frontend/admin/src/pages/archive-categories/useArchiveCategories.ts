@@ -228,7 +228,7 @@ export function useArchiveCategories() {
         try {
             const [categoryResponse, fondsResponse] = await Promise.all([
                 listArchiveCategories(),
-                listArchiveFonds(true),
+                listArchiveFonds("ACTIVE"),
             ]);
             categories.value = categoryResponse.items;
             fonds.value = fondsResponse.items;

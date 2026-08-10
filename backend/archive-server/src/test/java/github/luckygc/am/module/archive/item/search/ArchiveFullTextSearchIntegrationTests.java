@@ -1,5 +1,6 @@
 package github.luckygc.am.module.archive.item.search;
 
+import static github.luckygc.am.test.ArchiveTestFixtures.insertActiveFonds;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.charset.StandardCharsets;
@@ -244,6 +245,7 @@ class ArchiveFullTextSearchIntegrationTests {
                         "select item_table_name from am_archive_category where id = ?",
                         String.class,
                         categoryId);
+        insertActiveFonds(jdbcTemplate, "TASK12", "分页验收全宗");
         deleteTask12Rows(itemTableName);
         try {
             jdbcTemplate.update(

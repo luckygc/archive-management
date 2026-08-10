@@ -1,5 +1,6 @@
 package github.luckygc.am.module.archive.item.service;
 
+import static github.luckygc.am.test.ArchiveTestFixtures.activeFondsDto;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -81,7 +82,7 @@ class ArchiveImportRuntimePolicyTests {
 
         when(categoryService.getCategory(1L)).thenReturn(category());
         when(metadataService.listEnabledFields(1L, ArchiveLevel.ITEM)).thenReturn(List.of());
-        when(referenceService.getEnabledFondsByCode("F001")).thenReturn(fonds());
+        when(referenceService.getWritableFondsByCode("F001")).thenReturn(fonds());
         when(permissionService.hasPermission(9L, "archive:item:create")).thenReturn(true);
         when(dataScopeService.buildItemFilter(9L, 1L, null))
                 .thenReturn(ArchiveDataScopeFilter.all());
@@ -151,6 +152,6 @@ class ArchiveImportRuntimePolicyTests {
 
     private static ArchiveFondsDto fonds() {
         LocalDateTime now = LocalDateTime.of(2026, 7, 18, 10, 0);
-        return new ArchiveFondsDto(1L, "F001", "全宗", true, 0, now, now);
+        return activeFondsDto(1L, "F001", "全宗", now);
     }
 }

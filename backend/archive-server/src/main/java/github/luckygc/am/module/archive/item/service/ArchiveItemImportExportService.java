@@ -443,7 +443,7 @@ public class ArchiveItemImportExportService {
         } else {
             boolean validFonds = true;
             try {
-                archiveMetadataReferenceService.getEnabledFondsByCode(request.fondsCode());
+                archiveMetadataReferenceService.getWritableFondsByCode(request.fondsCode());
             } catch (RuntimeException exception) {
                 validFonds = false;
                 errors.add(

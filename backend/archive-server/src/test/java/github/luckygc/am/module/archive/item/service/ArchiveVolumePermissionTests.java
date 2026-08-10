@@ -1,5 +1,6 @@
 package github.luckygc.am.module.archive.item.service;
 
+import static github.luckygc.am.test.ArchiveTestFixtures.activeFondsDto;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -191,7 +192,7 @@ class ArchiveVolumePermissionTests {
     void createVolumeShouldFailClosedForDynamicScopeCondition() {
         when(permissionService.hasPermission(9L, "archive:item:create")).thenReturn(true);
         when(archiveCategoryService.getCategory(1L)).thenReturn(volumeCategory());
-        when(archiveMetadataReferenceService.getEnabledFondsByCode("F001"))
+        when(archiveMetadataReferenceService.getWritableFondsByCode("F001"))
                 .thenReturn(activeFonds());
         ArchiveDataScopeFilter filter = dynamicConditionFilter();
         when(dataScopeService.buildItemFilter(9L, 1L, "F001")).thenReturn(filter);
@@ -253,7 +254,7 @@ class ArchiveVolumePermissionTests {
         when(archiveCategoryService.getCategory(1L)).thenReturn(volumeCategory());
         when(archiveCategoryService.listCategories(null))
                 .thenReturn(java.util.List.of(volumeCategory()));
-        when(archiveMetadataReferenceService.getEnabledFondsByCode("F001"))
+        when(archiveMetadataReferenceService.getWritableFondsByCode("F001"))
                 .thenReturn(activeFonds());
         when(archiveMapper.countArchiveVolumesByArchiveNo("contract", "V-001", null)).thenReturn(0);
         when(dataScopeService.buildItemFilter(9L, 1L, "F001"))
@@ -287,7 +288,7 @@ class ArchiveVolumePermissionTests {
         when(archiveCategoryService.getCategory(1L)).thenReturn(volumeCategory());
         when(archiveCategoryService.listCategories(null))
                 .thenReturn(java.util.List.of(volumeCategory()));
-        when(archiveMetadataReferenceService.getEnabledFondsByCode("F001"))
+        when(archiveMetadataReferenceService.getWritableFondsByCode("F001"))
                 .thenReturn(activeFonds());
         when(archiveMapper.countArchiveVolumesByArchiveNo("contract", "V-001", null)).thenReturn(0);
         when(dataScopeService.buildItemFilter(9L, 1L, "F001"))
@@ -306,7 +307,7 @@ class ArchiveVolumePermissionTests {
 
     private ArchiveFondsDto activeFonds() {
         LocalDateTime now = LocalDateTime.of(2026, 6, 30, 10, 0);
-        return new ArchiveFondsDto(1L, "F001", "启用全宗", true, 0, now, now);
+        return activeFondsDto(1L, "F001", "启用全宗", now);
     }
 
     private void assertInvalidItemId(Long itemId) {

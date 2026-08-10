@@ -1,5 +1,7 @@
 package github.luckygc.am.module.archive.item.service;
 
+import static github.luckygc.am.test.ArchiveTestFixtures.activeFondsDto;
+import static github.luckygc.am.test.ArchiveTestFixtures.insertActiveFonds;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -76,13 +78,14 @@ class ArchiveItemRuntimePolicyIntegrationTests extends PostgreSqlContainerTest {
 
     @BeforeEach
     void setUp() {
+        insertActiveFonds(jdbcTemplate, "F001", "测试全宗");
         seedCategory();
         category = category();
         titleField = titleField();
         when(permissionService.hasPermission(anyLong(), anyString())).thenReturn(true);
         when(categoryService.getCategory(CATEGORY_ID)).thenReturn(category);
         when(categoryService.listCategories(null)).thenReturn(List.of(category));
-        when(metadataReferenceService.getEnabledFondsByCode("F001")).thenReturn(fonds());
+        when(metadataReferenceService.getWritableFondsByCode("F001")).thenReturn(fonds());
         when(metadataService.listEnabledFields(CATEGORY_ID, ArchiveLevel.ITEM))
                 .thenReturn(List.of(titleField));
         when(metadataService.listEnabledFields(
@@ -287,7 +290,7 @@ class ArchiveItemRuntimePolicyIntegrationTests extends PostgreSqlContainerTest {
 
     private ArchiveFondsDto fonds() {
         LocalDateTime now = LocalDateTime.of(2026, 7, 18, 10, 0);
-        return new ArchiveFondsDto(1L, "F001", "测试全宗", true, 0, now, now);
+        return activeFondsDto(1L, "F001", "测试全宗", now);
     }
 
     private long count(String tableName) {

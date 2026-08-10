@@ -1,5 +1,6 @@
 package github.luckygc.am.module.archive.item.service;
 
+import static github.luckygc.am.test.ArchiveTestFixtures.activeFondsDto;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -105,7 +106,7 @@ class ArchiveNoUniquenessTests {
     void createItemShouldRejectDuplicateArchiveNo() {
         when(archiveCategoryService.getCategory(1L)).thenReturn(itemCategory());
         when(archiveMapper.tableExists("am_archive_item_contract")).thenReturn(1);
-        when(archiveMetadataReferenceService.getEnabledFondsByCode("F001"))
+        when(archiveMetadataReferenceService.getWritableFondsByCode("F001"))
                 .thenReturn(activeFonds());
         when(archiveMapper.countArchiveItemsByArchiveNo("contract", "A-001", null)).thenReturn(1);
 
@@ -138,7 +139,7 @@ class ArchiveNoUniquenessTests {
     void createItemShouldMapDuplicateArchiveNoFromDatabase() {
         when(archiveCategoryService.getCategory(1L)).thenReturn(itemCategory());
         when(archiveMapper.tableExists("am_archive_item_contract")).thenReturn(1);
-        when(archiveMetadataReferenceService.getEnabledFondsByCode("F001"))
+        when(archiveMetadataReferenceService.getWritableFondsByCode("F001"))
                 .thenReturn(activeFonds());
         when(archiveMapper.countArchiveItemsByArchiveNo("contract", "A-001", null)).thenReturn(0);
         when(archiveMapper.insertArchiveItem(
@@ -176,7 +177,7 @@ class ArchiveNoUniquenessTests {
                 .thenReturn(List.of());
         when(archiveMapper.loadDynamicRecord(anyString(), eq(10L))).thenReturn(Map.of());
         when(archiveMapper.tableExists("am_archive_item_contract")).thenReturn(1);
-        when(archiveMetadataReferenceService.getEnabledFondsByCode("F001"))
+        when(archiveMetadataReferenceService.getWritableFondsByCode("F001"))
                 .thenReturn(activeFonds());
         when(archiveMapper.countArchiveItemsByArchiveNo("contract", "A-002", 10L)).thenReturn(1);
 
@@ -207,7 +208,7 @@ class ArchiveNoUniquenessTests {
                 .thenReturn(List.of());
         when(archiveMapper.loadDynamicRecord(anyString(), eq(10L))).thenReturn(Map.of());
         when(archiveMapper.tableExists("am_archive_item_contract")).thenReturn(1);
-        when(archiveMetadataReferenceService.getEnabledFondsByCode("F001"))
+        when(archiveMetadataReferenceService.getWritableFondsByCode("F001"))
                 .thenReturn(activeFonds());
         when(archiveMapper.countArchiveItemsByArchiveNo("contract", "A-002", 10L)).thenReturn(0);
         when(archiveMapper.updateArchiveItem(
@@ -230,7 +231,7 @@ class ArchiveNoUniquenessTests {
     @DisplayName("创建案卷时拒绝同分类重复档号")
     void createVolumeShouldRejectDuplicateArchiveNo() {
         when(archiveCategoryService.getCategory(1L)).thenReturn(volumeCategory());
-        when(archiveMetadataReferenceService.getEnabledFondsByCode("F001"))
+        when(archiveMetadataReferenceService.getWritableFondsByCode("F001"))
                 .thenReturn(activeFonds());
         when(archiveMapper.countArchiveVolumesByArchiveNo("contract", "V-001", null)).thenReturn(1);
 
@@ -251,7 +252,7 @@ class ArchiveNoUniquenessTests {
     @DisplayName("创建案卷遇到数据库档号唯一冲突时返回业务错误")
     void createVolumeShouldMapDuplicateArchiveNoFromDatabase() {
         when(archiveCategoryService.getCategory(1L)).thenReturn(volumeCategory());
-        when(archiveMetadataReferenceService.getEnabledFondsByCode("F001"))
+        when(archiveMetadataReferenceService.getWritableFondsByCode("F001"))
                 .thenReturn(activeFonds());
         when(archiveMapper.countArchiveVolumesByArchiveNo("contract", "V-001", null)).thenReturn(0);
         when(archiveMapper.insertArchiveVolume(
@@ -269,7 +270,7 @@ class ArchiveNoUniquenessTests {
 
     private ArchiveFondsDto activeFonds() {
         LocalDateTime now = LocalDateTime.of(2026, 6, 30, 10, 0);
-        return new ArchiveFondsDto(1L, "F001", "启用全宗", true, 0, now, now);
+        return activeFondsDto(1L, "F001", "启用全宗", now);
     }
 
     private ArchiveCategoryDto itemCategory() {

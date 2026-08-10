@@ -329,14 +329,27 @@ declare
     item_id bigint;
     gw_volume_id bigint;
 begin
-    insert into am_archive_fonds (fonds_code, fonds_name, enabled, sort_order)
+    insert into am_archive_fonds
+        (fonds_code, fonds_no, fonds_name, status, number_assigned_at, sort_order)
     values
-        ('Z000', '集团全宗', true, 10),
-        ('Z001', '总部全宗', true, 20),
-        ('Z002', '华东分公司全宗', true, 30),
-        ('Z003', '华南分公司全宗', true, 40),
-        ('Z004', '研发中心全宗', true, 50)
+        ('Z000', 'Z000', '集团全宗', 'ACTIVE', localtimestamp, 10),
+        ('Z001', 'Z001', '总部全宗', 'ACTIVE', localtimestamp, 20),
+        ('Z002', 'Z002', '华东分公司全宗', 'ACTIVE', localtimestamp, 30),
+        ('Z003', 'Z003', '华南分公司全宗', 'ACTIVE', localtimestamp, 40),
+        ('Z004', 'Z004', '研发中心全宗', 'ACTIVE', localtimestamp, 50)
     on conflict do nothing;
+
+    insert into am_archive_fonds_event
+        (fonds_code, event_type, current_value, reason, effective_at)
+    select fonds_code, 'NUMBER_ASSIGNED', fonds_no, '示例数据初始化', number_assigned_at
+    from am_archive_fonds
+    where fonds_no is not null
+      and not exists (
+          select 1
+          from am_archive_fonds_event event
+          where event.fonds_code = am_archive_fonds.fonds_code
+            and event.event_type = 'NUMBER_ASSIGNED'
+      );
 
     ws_category_id := seed_archive_category('WS', '文书档案', null, 'ITEM_ONLY', false, 10);
     zy_category_id := seed_archive_category('ZY', '专业档案', null, 'ITEM_ONLY', false, 20);

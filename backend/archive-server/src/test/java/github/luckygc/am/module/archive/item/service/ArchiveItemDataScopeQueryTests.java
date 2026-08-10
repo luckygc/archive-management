@@ -1,5 +1,6 @@
 package github.luckygc.am.module.archive.item.service;
 
+import static github.luckygc.am.test.ArchiveTestFixtures.activeFondsDto;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -42,7 +43,6 @@ import github.luckygc.am.module.archive.metadata.ArchiveTableStatus;
 import github.luckygc.am.module.archive.metadata.service.ArchiveCategoryService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataReferenceService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveCategoryDto;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
 
@@ -401,16 +401,9 @@ class ArchiveItemDataScopeQueryTests {
     void createItemShouldRejectTargetOutsideDataScope() {
         when(archiveCategoryService.getCategory(1L)).thenReturn(category());
         when(archiveMapper.tableExists("am_archive_item_contract")).thenReturn(1);
-        when(archiveMetadataReferenceService.getEnabledFondsByCode("F001"))
+        when(archiveMetadataReferenceService.getWritableFondsByCode("F001"))
                 .thenReturn(
-                        new ArchiveMetadataTypes.ArchiveFondsDto(
-                                1L,
-                                "F001",
-                                "启用全宗",
-                                true,
-                                0,
-                                LocalDateTime.of(2026, 6, 30, 10, 0),
-                                LocalDateTime.of(2026, 6, 30, 10, 0)));
+                        activeFondsDto(1L, "F001", "启用全宗", LocalDateTime.of(2026, 6, 30, 10, 0)));
         when(archiveMapper.countArchiveItemsByArchiveNo("contract", "A-001", null)).thenReturn(0);
         when(archiveMetadataService.listEnabledFields(eq(1L), eq(ArchiveLevel.ITEM)))
                 .thenReturn(List.of());

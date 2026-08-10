@@ -1,5 +1,6 @@
 package github.luckygc.am.module.archive.item.repository;
 
+import static github.luckygc.am.test.ArchiveTestFixtures.insertActiveFonds;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.LocalDateTime;
@@ -95,6 +96,7 @@ class ArchiveVolumeDataRepositoryTests extends PostgreSqlContainerTest {
     }
 
     private void insertVolume(long id, String archiveNo) {
+        insertActiveFonds(jdbcTemplate, "TASK5", "任务五全宗");
         jdbcTemplate.update(
                 "insert into am_archive_volume "
                         + "(id, fonds_code, fonds_name, category_code, category_name, archive_no, "

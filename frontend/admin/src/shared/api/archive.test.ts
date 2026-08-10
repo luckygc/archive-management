@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vite-plus/test";
 
-import { updateArchiveFonds } from "./archive-metadata";
+import { closeArchiveFonds, updateArchiveFonds } from "./archive-metadata";
 import {
     createArchiveItemRelation,
     deleteArchiveRecord,
@@ -28,9 +28,7 @@ vi.mock("@archive-management/frontend-core/api", () => ({
 describe("archive API", () => {
     it("updates archive fonds through the resource PATCH endpoint", async () => {
         const payload = {
-            fondsCode: "HD",
             fondsName: "华东公司",
-            enabled: false,
             sortOrder: 10,
         };
         httpClientMock.patch.mockResolvedValue({ id: 1, ...payload });
@@ -38,6 +36,15 @@ describe("archive API", () => {
         await updateArchiveFonds(1, payload);
 
         expect(httpClientMock.patch).toHaveBeenCalledWith("/api/v1/archive-fonds/1", payload);
+    });
+
+    it("通过自定义动作封闭全宗", async () => {
+        const payload = { reason: "机构撤并", effectiveAt: "2026-08-01T10:00:00" };
+        httpClientMock.post.mockResolvedValue({ id: 1, status: "CLOSED" });
+
+        await closeArchiveFonds(1, payload);
+
+        expect(httpClientMock.post).toHaveBeenCalledWith("/api/v1/archive-fonds/1:close", payload);
     });
 
     it("sends archive record cursor controls in URL and keeps orderBy in body", async () => {

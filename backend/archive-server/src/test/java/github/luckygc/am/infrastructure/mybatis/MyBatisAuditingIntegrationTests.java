@@ -1,5 +1,6 @@
 package github.luckygc.am.infrastructure.mybatis;
 
+import static github.luckygc.am.test.ArchiveTestFixtures.insertActiveFonds;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Clock;
@@ -62,6 +63,7 @@ class MyBatisAuditingIntegrationTests extends PostgreSqlContainerTest {
     @BeforeEach
     void cleanFixtureBeforeTest() {
         clearSecurityAndFixtures();
+        insertActiveFonds(jdbcTemplate, "AUDIT-FONDS", "审计测试全宗");
     }
 
     @AfterEach

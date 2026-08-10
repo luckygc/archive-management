@@ -59,7 +59,7 @@ onBeforeUnmount(() => {
 async function loadReferences() {
     try {
         const [fondsResponse, categoryResponse] = await Promise.all([
-            listArchiveFonds(true),
+            listArchiveFonds("ACTIVE"),
             listArchiveCategories(true),
         ]);
         if (disposed) return;

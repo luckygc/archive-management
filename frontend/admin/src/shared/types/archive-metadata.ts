@@ -5,22 +5,66 @@ export type ArchiveLayoutSurface = "TABLE" | "DETAIL" | "EDIT";
 export type ArchiveLayoutScope = "public" | "effective";
 export type ArchiveLevel = "VOLUME" | "ITEM";
 export type ArchiveManagementMode = "ITEM_ONLY" | "VOLUME_ITEM";
+export type ArchiveFondsStatus = "ACTIVE" | "CLOSED";
+export type ArchiveFondsEventType = "NUMBER_ASSIGNED" | "CLOSED" | "REOPENED";
 
 export interface ArchiveFondsDto {
     id: number;
     fondsCode: string;
+    fondsNo: string | null;
     fondsName: string;
-    enabled: boolean;
+    status: ArchiveFondsStatus;
+    numberAssignedBy: string | null;
+    numberAssignedAt: string | null;
+    startDate: string | null;
+    endDate: string | null;
+    historyNote: string | null;
+    closedAt: string | null;
+    closureReason: string | null;
     sortOrder: number;
     createdAt: string;
     updatedAt: string;
 }
 
-export interface ArchiveFondsRequest {
+export interface CreateArchiveFondsRequest {
     fondsCode: string;
     fondsName: string;
-    enabled: boolean;
+    startDate?: string;
+    endDate?: string;
+    historyNote?: string;
     sortOrder: number;
+}
+
+export interface UpdateArchiveFondsRequest {
+    fondsName: string;
+    startDate?: string;
+    endDate?: string;
+    historyNote?: string;
+    sortOrder: number;
+}
+
+export interface AssignArchiveFondsNumberRequest {
+    fondsNo: string;
+    assignedBy?: string;
+    reason: string;
+    effectiveAt?: string;
+}
+
+export interface ArchiveFondsLifecycleRequest {
+    reason: string;
+    effectiveAt?: string;
+}
+
+export interface ArchiveFondsEventDto {
+    id: number;
+    fondsCode: string;
+    eventType: ArchiveFondsEventType;
+    previousValue: string | null;
+    currentValue: string | null;
+    reason: string;
+    effectiveAt: string;
+    operatedBy: number | null;
+    createdAt: string;
 }
 
 export interface ArchiveFondsCategoryScopeDto {

@@ -57,7 +57,7 @@ export function useArchiveDataScopes() {
         loading.value = true;
         const results = await Promise.allSettled([
             listArchiveDataScopes(false),
-            listArchiveFonds(true),
+            listArchiveFonds("ACTIVE"),
             listArchiveCategories(true),
             listArchiveSecurityLevels(true),
             listArchiveRetentionPeriods(true),

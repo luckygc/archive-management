@@ -1,5 +1,6 @@
 package github.luckygc.am.module.intake.service;
 
+import static github.luckygc.am.test.ArchiveTestFixtures.insertActiveFonds;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -80,6 +81,7 @@ class ArchiveIntakePackageTransactionIntegrationTests extends PostgreSqlContaine
     @Test
     @DisplayName("第二个条目失败时回滚已写入的档案条目和包关联")
     void processShouldRollbackEveryItemAndRelation() {
+        insertActiveFonds(jdbcTemplate, "F001", "测试全宗");
         Long storageObjectId =
                 jdbcTemplate.queryForObject(
                         """
@@ -194,6 +196,6 @@ class ArchiveIntakePackageTransactionIntegrationTests extends PostgreSqlContaine
     private ArchiveItemDto item(Long id, String archiveNo) {
         return new ArchiveItemDto(
                 id, null, "F001", "测试全宗", "WS", "文书", archiveNo, 3L, 4L, 2026, false, null, null,
-                null, 1L);
+                null, 1L, null);
     }
 }

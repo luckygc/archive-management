@@ -1,39 +1,127 @@
 create table am_archive_fonds
 (
-    id          bigserial primary key,
-    fonds_code  varchar(100) not null,
-    fonds_name  varchar(255) not null,
-    enabled     boolean      not null default true,
-    sort_order  integer      not null default 0,
-    deleted_flag boolean     not null default false,
-    version      integer     not null default 0,
-    created_by  bigint,
-    created_at  timestamp    not null default localtimestamp,
-    updated_by  bigint,
-    updated_at  timestamp    not null default localtimestamp
+    id                 bigserial primary key,
+    fonds_code         varchar(100) not null unique,
+    fonds_no           varchar(100) unique,
+    fonds_name         varchar(255) not null,
+    status             varchar(30)  not null default 'ACTIVE',
+    number_assigned_by varchar(255),
+    number_assigned_at timestamp,
+    start_date         date,
+    end_date           date,
+    history_note       text,
+    closed_at          timestamp,
+    closure_reason     varchar(500),
+    sort_order         integer      not null default 0,
+    version            integer      not null default 0,
+    created_by         bigint,
+    created_at         timestamp    not null default localtimestamp,
+    updated_by         bigint,
+    updated_at         timestamp    not null default localtimestamp,
+    constraint ck_am_archive_fonds_code_not_blank check (btrim(fonds_code) <> ''),
+    constraint ck_am_archive_fonds_no_not_blank check (fonds_no is null or btrim(fonds_no) <> ''),
+    constraint ck_am_archive_fonds_name_not_blank check (btrim(fonds_name) <> ''),
+    constraint ck_am_archive_fonds_status check (status in ('ACTIVE', 'CLOSED')),
+    constraint ck_am_archive_fonds_dates check (end_date is null or start_date is null or end_date >= start_date),
+    constraint ck_am_archive_fonds_number_assignment check (
+        (fonds_no is null and number_assigned_at is null and number_assigned_by is null)
+        or (fonds_no is not null and number_assigned_at is not null)
+    ),
+    constraint ck_am_archive_fonds_lifecycle check (
+        (status = 'ACTIVE' and closed_at is null and closure_reason is null)
+        or (status = 'CLOSED' and closed_at is not null and btrim(closure_reason) <> '')
+    )
 );
 
 create extension if not exists pg_trgm;
 
-create unique index uk_am_archive_fonds_code_active
-    on am_archive_fonds (fonds_code)
-    where deleted_flag = false;
-create index idx_am_archive_fonds_sort_active
-    on am_archive_fonds (sort_order, id)
-    where deleted_flag = false;
+create index idx_am_archive_fonds_status_sort
+    on am_archive_fonds (status, sort_order, id);
 
 comment on table am_archive_fonds is '档案全宗表';
 comment on column am_archive_fonds.id is '主键';
-comment on column am_archive_fonds.fonds_code is '全宗编码';
+comment on column am_archive_fonds.fonds_code is '创建后不可修改、不可复用的系统全宗编码';
+comment on column am_archive_fonds.fonds_no is '可空业务全宗号，分配后不可修改';
 comment on column am_archive_fonds.fonds_name is '全宗名称';
-comment on column am_archive_fonds.enabled is '是否启用';
+comment on column am_archive_fonds.status is '全宗生命周期状态：ACTIVE 有效，CLOSED 封闭';
+comment on column am_archive_fonds.number_assigned_by is '业务全宗号分配机关';
+comment on column am_archive_fonds.number_assigned_at is '业务全宗号分配时间';
+comment on column am_archive_fonds.start_date is '全宗起始日期';
+comment on column am_archive_fonds.end_date is '全宗终止日期';
+comment on column am_archive_fonds.history_note is '全宗及立档单位沿革说明';
+comment on column am_archive_fonds.closed_at is '全宗封闭时间';
+comment on column am_archive_fonds.closure_reason is '全宗封闭原因';
 comment on column am_archive_fonds.sort_order is '排序字段';
-comment on column am_archive_fonds.deleted_flag is '删除标记';
 comment on column am_archive_fonds.version is '乐观锁版本号';
 comment on column am_archive_fonds.created_by is '创建人用户 ID';
 comment on column am_archive_fonds.created_at is '创建时间';
 comment on column am_archive_fonds.updated_by is '更新人用户 ID';
 comment on column am_archive_fonds.updated_at is '更新时间';
+
+create or replace function am_archive_fonds_reject_identity_change()
+returns trigger
+language plpgsql
+as
+$$
+begin
+    if new.fonds_code is distinct from old.fonds_code then
+        raise exception '系统全宗编码创建后不可修改';
+    end if;
+    if old.fonds_no is not null and new.fonds_no is distinct from old.fonds_no then
+        raise exception '业务全宗号分配后不可修改';
+    end if;
+    return new;
+end
+$$;
+
+create trigger trg_am_archive_fonds_immutable_identity
+    before update on am_archive_fonds
+    for each row
+execute function am_archive_fonds_reject_identity_change();
+
+create table am_archive_fonds_event
+(
+    id             bigserial primary key,
+    fonds_code     varchar(100) not null references am_archive_fonds (fonds_code),
+    event_type     varchar(30)  not null,
+    previous_value varchar(500),
+    current_value  varchar(500),
+    reason         varchar(500) not null,
+    effective_at   timestamp    not null,
+    operated_by    bigint,
+    created_at     timestamp    not null default localtimestamp,
+    constraint ck_am_archive_fonds_event_type
+        check (event_type in ('NUMBER_ASSIGNED', 'CLOSED', 'REOPENED')),
+    constraint ck_am_archive_fonds_event_reason_not_blank check (btrim(reason) <> '')
+);
+
+create index idx_am_archive_fonds_event_fonds
+    on am_archive_fonds_event (fonds_code, effective_at desc, id desc);
+
+comment on table am_archive_fonds_event is '只追加的全宗业务事件';
+comment on column am_archive_fonds_event.fonds_code is '稳定系统全宗编码';
+comment on column am_archive_fonds_event.event_type is '事件类型：NUMBER_ASSIGNED、CLOSED、REOPENED';
+comment on column am_archive_fonds_event.previous_value is '动作前业务值';
+comment on column am_archive_fonds_event.current_value is '动作后业务值';
+comment on column am_archive_fonds_event.reason is '业务动作原因';
+comment on column am_archive_fonds_event.effective_at is '业务生效时间';
+comment on column am_archive_fonds_event.operated_by is '操作人用户 ID';
+comment on column am_archive_fonds_event.created_at is '记录创建时间';
+
+create or replace function am_archive_fonds_event_reject_change()
+returns trigger
+language plpgsql
+as
+$$
+begin
+    raise exception '全宗事件只允许追加';
+end
+$$;
+
+create trigger trg_am_archive_fonds_event_append_only
+    before update or delete on am_archive_fonds_event
+    for each row
+execute function am_archive_fonds_event_reject_change();
 
 create table am_archive_category
 (
@@ -88,7 +176,7 @@ comment on column am_archive_category.updated_at is '更新时间';
 create table am_archive_fonds_category_scope
 (
     id           bigserial primary key,
-    fonds_code   varchar(100) not null,
+    fonds_code   varchar(100) not null references am_archive_fonds (fonds_code),
     category_id  bigint       not null references am_archive_category (id),
     sort_order   integer      not null default 0,
     version      integer      not null default 0,
@@ -262,7 +350,7 @@ create sequence am_archive_volume_id_seq
 create table am_archive_volume
 (
     id             bigint primary key default nextval('am_archive_volume_id_seq'),
-    fonds_code     varchar(100) not null,
+    fonds_code     varchar(100) not null references am_archive_fonds (fonds_code),
     fonds_name     varchar(255) not null,
     category_code  varchar(100) not null,
     category_name  varchar(255) not null,
@@ -342,7 +430,7 @@ create table am_archive_item
 (
     id             bigint primary key default nextval('am_archive_item_id_seq'),
     volume_id      bigint references am_archive_volume (id),
-    fonds_code     varchar(100) not null,
+    fonds_code     varchar(100) not null references am_archive_fonds (fonds_code),
     fonds_name     varchar(255) not null,
     category_code  varchar(100) not null,
     category_name  varchar(255) not null,

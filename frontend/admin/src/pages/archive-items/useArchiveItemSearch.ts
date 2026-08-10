@@ -56,7 +56,7 @@ export function useArchiveItemSearch() {
         try {
             const [categoryResponse, fondsResponse] = await Promise.all([
                 listArchiveCategories(true),
-                listArchiveFonds(true),
+                listArchiveFonds("ACTIVE"),
             ]);
             if (disposed) return;
             categories.value = categoryResponse.items;

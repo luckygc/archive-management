@@ -13,6 +13,7 @@ import type {
     CreateArchiveRecordRequest,
     ListArchiveItemAuditsRequest,
     ListArchiveItemRelationsQuery,
+    ReassignArchiveRecordFondsRequest,
     SearchArchiveRecordsQuery,
     SearchArchiveRecordsRequest,
     UpdateArchiveRecordRequest,
@@ -52,6 +53,13 @@ export function getArchiveRecord(id: number, surface?: ArchiveLayoutSurface) {
 
 export function updateArchiveRecord(id: number, payload: UpdateArchiveRecordRequest) {
     return httpClient.patch<ArchiveRecordDetailDto>(`/api/v1/archive-items/${id}`, payload);
+}
+
+export function reassignArchiveRecordFonds(id: number, payload: ReassignArchiveRecordFondsRequest) {
+    return httpClient.post<ArchiveRecordDetailDto>(
+        `/api/v1/archive-items/${id}:reassignFonds`,
+        payload,
+    );
 }
 
 export function deleteArchiveRecord(id: number, reason?: string) {

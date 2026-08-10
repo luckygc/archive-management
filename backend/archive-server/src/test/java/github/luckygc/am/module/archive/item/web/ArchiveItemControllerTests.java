@@ -22,6 +22,7 @@ import github.luckygc.am.module.archive.item.service.ArchiveItemRelationService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemSearchService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemSearchService.SearchArchiveItemsRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemService;
+import github.luckygc.am.module.archive.item.service.ArchiveItemService.ReassignArchiveItemFondsRequest;
 
 @DisplayName("档案条目 HTTP 入口")
 class ArchiveItemControllerTests {
@@ -73,6 +74,17 @@ class ArchiveItemControllerTests {
 
         org.assertj.core.api.Assertions.assertThat(actual).isSameAs(response);
         verify(archiveItemRelationService).listRelations(1L, 2, page, 9L);
+    }
+
+    @Test
+    @DisplayName("调整全宗动作转发目标全宗、原因与认证用户")
+    void reassignFondsShouldForwardBusinessAction() {
+        ReassignArchiveItemFondsRequest request =
+                new ReassignArchiveItemFondsRequest("F002", "纠正历史归属");
+
+        controller.reassignItemFonds(10L, request, authentication(9L));
+
+        verify(archiveItemService).reassignFonds(10L, request, 9L);
     }
 
     private Authentication authentication(Long userId) {

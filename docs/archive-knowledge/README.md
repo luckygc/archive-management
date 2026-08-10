@@ -16,6 +16,7 @@
 - [档案专业术语](./professional-terminology.md)：档案工作、整理、著录、档号和电子档案常用术语。
 - [常用档案分类](./classification-reference.md)：机关、高校和通用业务系统常见门类、分类层级和项目建模建议。
 - [档号与全宗规则](./reference-code-and-fonds-rules.md)：全宗设置、档号组成、编号模板和唯一性边界。
+- [GB/T 13967—2026《全宗管理规则》分析](./fonds-management-rule-2026-analysis.md)：新版标准变化、产品边界、本轮对齐结果和后续能力边界。
 - [档号与批量归档处理讨论纪要](./archive-numbering-and-batch-processing-discussion.md)：档号生命周期、预归档与室藏录入、Batch/Bulk 语义和并发取号权衡。
 - [高校与档案馆实践](./archive-institution-practices.md)：国内高校、国外大学档案馆和综合档案馆的公开管理做法。
 - [档案系统能力地图](./archive-system-capability-map.md)：完整能力、基础能力、最小 POC 和 MVP 分层。

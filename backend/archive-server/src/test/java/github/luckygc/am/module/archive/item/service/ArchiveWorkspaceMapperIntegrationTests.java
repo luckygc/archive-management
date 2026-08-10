@@ -1,5 +1,6 @@
 package github.luckygc.am.module.archive.item.service;
 
+import static github.luckygc.am.test.ArchiveTestFixtures.insertActiveFonds;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
@@ -44,6 +45,8 @@ class ArchiveWorkspaceMapperIntegrationTests extends PostgreSqlContainerTest {
     @Transactional
     @DisplayName("PostgreSQL 聚合复用数据范围并排除主表和动态表逻辑删除记录")
     void summaryExecutesPostgreSqlFiltersAgainstVisibleItems() {
+        insertActiveFonds(jdbcTemplate, "F001", "Task 10 全宗");
+        insertActiveFonds(jdbcTemplate, "F002", "Task 10 全宗");
         createDynamicTable();
         insertItem(9_100_001L, "F001", 1L, false, false, false);
         insertItem(9_100_002L, "F002", 2L, true, false, false);

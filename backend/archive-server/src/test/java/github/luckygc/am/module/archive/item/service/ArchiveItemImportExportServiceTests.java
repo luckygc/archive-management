@@ -1,5 +1,6 @@
 package github.luckygc.am.module.archive.item.service;
 
+import static github.luckygc.am.test.ArchiveTestFixtures.activeFondsDto;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -184,7 +185,7 @@ class ArchiveItemImportExportServiceTests {
         when(archiveCategoryService.getCategory(1L)).thenReturn(category());
         when(archiveMetadataService.listEnabledFields(1L, ArchiveLevel.ITEM))
                 .thenReturn(List.of(textField()));
-        when(archiveMetadataReferenceService.getEnabledFondsByCode("F001")).thenReturn(fonds());
+        when(archiveMetadataReferenceService.getWritableFondsByCode("F001")).thenReturn(fonds());
         when(archiveItemRepository.findByArchiveNo("contract", "A-002")).thenReturn(existingItem());
 
         ArchiveImportResult result =
@@ -215,7 +216,7 @@ class ArchiveItemImportExportServiceTests {
         when(archiveCategoryService.getCategory(1L)).thenReturn(category());
         when(archiveMetadataService.listEnabledFields(1L, ArchiveLevel.ITEM))
                 .thenReturn(List.of(textField()));
-        when(archiveMetadataReferenceService.getEnabledFondsByCode("F001")).thenReturn(fonds());
+        when(archiveMetadataReferenceService.getWritableFondsByCode("F001")).thenReturn(fonds());
 
         ArchiveImportResult result =
                 importExportService.importItems(
@@ -241,7 +242,7 @@ class ArchiveItemImportExportServiceTests {
         when(archiveCategoryService.getCategory(1L)).thenReturn(category());
         when(archiveMetadataService.listEnabledFields(1L, ArchiveLevel.ITEM))
                 .thenReturn(List.of(textField()));
-        when(archiveMetadataReferenceService.getEnabledFondsByCode("F001")).thenReturn(fonds());
+        when(archiveMetadataReferenceService.getWritableFondsByCode("F001")).thenReturn(fonds());
         doThrow(new github.luckygc.am.common.exception.BadRequestException("该全宗未配置此分类"))
                 .when(archiveCategoryService)
                 .requireCategoryAvailableForFonds("F001", 1L);
@@ -574,7 +575,7 @@ class ArchiveItemImportExportServiceTests {
 
     private static ArchiveFondsDto fonds() {
         LocalDateTime now = LocalDateTime.of(2026, 6, 30, 10, 0);
-        return new ArchiveFondsDto(1L, "F001", "全宗", true, 0, now, now);
+        return activeFondsDto(1L, "F001", "全宗", now);
     }
 
     private static ArchiveItem existingItem() {

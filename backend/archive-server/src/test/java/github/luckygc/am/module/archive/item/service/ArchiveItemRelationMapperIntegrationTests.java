@@ -1,5 +1,6 @@
 package github.luckygc.am.module.archive.item.service;
 
+import static github.luckygc.am.test.ArchiveTestFixtures.insertActiveFonds;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
@@ -88,6 +89,7 @@ class ArchiveItemRelationMapperIntegrationTests extends PostgreSqlContainerTest 
     }
 
     private void insertItem(long id, String categoryCode, String archiveNo) {
+        insertActiveFonds(jdbcTemplate, "TASK6", "任务六全宗");
         jdbcTemplate.update(
                 "insert into am_archive_item "
                         + "(id, fonds_code, fonds_name, category_code, category_name, archive_no, "

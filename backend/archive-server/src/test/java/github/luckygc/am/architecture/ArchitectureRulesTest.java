@@ -57,7 +57,6 @@ class ArchitectureRulesTest {
 
     private static final Set<String> SOFT_DELETE_ENTITY_NAMES =
             Set.of(
-                    "github.luckygc.am.module.archive.metadata.ArchiveFonds",
                     "github.luckygc.am.module.archive.metadata.ArchiveCategory",
                     "github.luckygc.am.module.archive.metadata.ArchiveField",
                     "github.luckygc.am.module.archive.metadata.ArchiveFieldLayout",

@@ -1,5 +1,6 @@
 package github.luckygc.am.module.archive.metadata.service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -10,26 +11,68 @@ import github.luckygc.am.module.archive.metadata.ArchiveFieldControl;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldScope;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldSource;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldType;
+import github.luckygc.am.module.archive.metadata.ArchiveFondsEventType;
+import github.luckygc.am.module.archive.metadata.ArchiveFondsStatus;
 import github.luckygc.am.module.archive.metadata.ArchiveLayoutSurface;
 import github.luckygc.am.module.archive.metadata.ArchiveManagementMode;
 import github.luckygc.am.module.archive.metadata.ArchiveTableStatus;
 
 public abstract class ArchiveMetadataTypes {
 
-    public record ArchiveFondsRequest(
+    public record CreateArchiveFondsRequest(
             @Nullable String fondsCode,
             @Nullable String fondsName,
-            @Nullable Boolean enabled,
+            @Nullable LocalDate startDate,
+            @Nullable LocalDate endDate,
+            @Nullable String historyNote,
             @Nullable Integer sortOrder) {}
+
+    public record UpdateArchiveFondsRequest(
+            @Nullable String fondsName,
+            @Nullable LocalDate startDate,
+            @Nullable LocalDate endDate,
+            @Nullable String historyNote,
+            @Nullable Integer sortOrder) {}
+
+    public record AssignArchiveFondsNumberRequest(
+            @Nullable String fondsNo,
+            @Nullable String assignedBy,
+            @Nullable String reason,
+            @Nullable LocalDateTime effectiveAt) {}
+
+    public record CloseArchiveFondsRequest(
+            @Nullable String reason, @Nullable LocalDateTime effectiveAt) {}
+
+    public record ReopenArchiveFondsRequest(
+            @Nullable String reason, @Nullable LocalDateTime effectiveAt) {}
 
     public record ArchiveFondsDto(
             Long id,
             String fondsCode,
+            @Nullable String fondsNo,
             String fondsName,
-            boolean enabled,
+            ArchiveFondsStatus status,
+            @Nullable String numberAssignedBy,
+            @Nullable LocalDateTime numberAssignedAt,
+            @Nullable LocalDate startDate,
+            @Nullable LocalDate endDate,
+            @Nullable String historyNote,
+            @Nullable LocalDateTime closedAt,
+            @Nullable String closureReason,
             int sortOrder,
             LocalDateTime createdAt,
             LocalDateTime updatedAt) {}
+
+    public record ArchiveFondsEventDto(
+            Long id,
+            String fondsCode,
+            ArchiveFondsEventType eventType,
+            @Nullable String previousValue,
+            @Nullable String currentValue,
+            String reason,
+            LocalDateTime effectiveAt,
+            @Nullable Long operatedBy,
+            LocalDateTime createdAt) {}
 
     public record ArchiveFondsCategoryScopeRequest(
             @Nullable Long categoryId, @Nullable Integer sortOrder) {}

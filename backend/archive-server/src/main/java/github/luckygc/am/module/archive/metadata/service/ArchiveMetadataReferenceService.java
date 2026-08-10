@@ -11,6 +11,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.archive.metadata.ArchiveFonds;
+import github.luckygc.am.module.archive.metadata.ArchiveFondsStatus;
 import github.luckygc.am.module.archive.metadata.ArchiveRetentionPeriod;
 import github.luckygc.am.module.archive.metadata.ArchiveSecurityLevel;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveFondsDataRepository;
@@ -50,14 +51,18 @@ public class ArchiveMetadataReferenceService {
                 .orElseThrow(() -> notFound("全宗不存在"));
     }
 
-    public ArchiveFondsDto getEnabledFondsByCode(String fondsCode) {
+    public ArchiveFondsDto getWritableFondsByCode(String fondsCode) {
+        return loadWritableFondsByCode(fondsCode);
+    }
+
+    private ArchiveFondsDto loadWritableFondsByCode(String fondsCode) {
         String normalizedCode = StringUtils.trimToNull(fondsCode);
         if (normalizedCode == null) throw new BadRequestException("全宗不可用");
         return fondsRepository
                 .find(normalizedCode)
-                .filter(ArchiveFonds::isEnabled)
+                .filter(fonds -> fonds.getStatus() == ArchiveFondsStatus.ACTIVE)
                 .map(this::mapFonds)
-                .orElseThrow(() -> new BadRequestException("全宗不可用"));
+                .orElseThrow(() -> new BadRequestException("全宗不存在或已封闭"));
     }
 
     public List<ArchiveSecurityLevelDto> listSecurityLevels(@Nullable Boolean enabled) {
@@ -146,8 +151,16 @@ public class ArchiveMetadataReferenceService {
         return new ArchiveFondsDto(
                 fonds.getId(),
                 fonds.getFondsCode(),
+                fonds.getFondsNo(),
                 fonds.getFondsName(),
-                fonds.isEnabled(),
+                fonds.getStatus(),
+                fonds.getNumberAssignedBy(),
+                fonds.getNumberAssignedAt(),
+                fonds.getStartDate(),
+                fonds.getEndDate(),
+                fonds.getHistoryNote(),
+                fonds.getClosedAt(),
+                fonds.getClosureReason(),
                 fonds.getSortOrder(),
                 fonds.getCreatedAt(),
                 fonds.getUpdatedAt());

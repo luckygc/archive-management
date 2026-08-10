@@ -23,6 +23,7 @@ import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.metadata.ArchiveCategory;
 import github.luckygc.am.module.archive.metadata.ArchiveFonds;
 import github.luckygc.am.module.archive.metadata.ArchiveFondsCategoryScope;
+import github.luckygc.am.module.archive.metadata.ArchiveFondsStatus;
 import github.luckygc.am.module.archive.metadata.ArchiveManagementMode;
 import github.luckygc.am.module.archive.metadata.ArchiveTableStatus;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveCategoryDataRepository;
@@ -218,8 +219,8 @@ public class ArchiveCategoryService {
         }
         return fondsRepository
                 .find(normalizedCode)
-                .filter(ArchiveFonds::isEnabled)
-                .orElseThrow(() -> new BadRequestException("全宗不可用"));
+                .filter(fonds -> fonds.getStatus() == ArchiveFondsStatus.ACTIVE)
+                .orElseThrow(() -> new BadRequestException("全宗不存在或已封闭"));
     }
 
     private List<ArchiveCategory> scopedCategories(

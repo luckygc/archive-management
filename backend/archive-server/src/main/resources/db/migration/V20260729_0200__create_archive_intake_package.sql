@@ -80,7 +80,7 @@ create table am_archive_intake_package_item
     intake_package_id bigint       not null references am_archive_intake_package (id) on delete cascade,
     archive_item_id   bigint       not null references am_archive_item (id),
     item_order        integer      not null,
-    fonds_code        varchar(100) not null,
+    fonds_code        varchar(100) not null references am_archive_fonds (fonds_code),
     category_code     varchar(100) not null,
     archive_no        varchar(255),
     electronic_file_count integer not null default 0,

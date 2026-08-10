@@ -1,5 +1,6 @@
 package github.luckygc.am.module.archive.item.service;
 
+import static github.luckygc.am.test.ArchiveTestFixtures.activeFondsDto;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -53,7 +54,7 @@ class ArchiveItemCommandFieldPathTests {
         when(permissionService.hasPermission(anyLong(), anyString())).thenReturn(true);
         when(categoryService.getCategory(1L)).thenReturn(category());
         when(archiveMapper.tableExists("am_archive_item_contract")).thenReturn(1);
-        when(referenceService.getEnabledFondsByCode("F001")).thenReturn(fonds());
+        when(referenceService.getWritableFondsByCode("F001")).thenReturn(fonds());
         when(metadataService.listEnabledFields(1L, ArchiveLevel.ITEM))
                 .thenReturn(List.of(dynamicField));
         when(metadataService.listEnabledFields(1L, ArchiveLevel.ITEM, ArchiveFieldScope.PHYSICAL))
@@ -117,6 +118,6 @@ class ArchiveItemCommandFieldPathTests {
 
     private static ArchiveFondsDto fonds() {
         LocalDateTime now = LocalDateTime.of(2026, 7, 15, 10, 0);
-        return new ArchiveFondsDto(1L, "F001", "默认全宗", true, 0, now, now);
+        return activeFondsDto(1L, "F001", "默认全宗", now);
     }
 }

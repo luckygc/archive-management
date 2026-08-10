@@ -34,6 +34,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import github.luckygc.am.app.ArchiveManagementApplication;
 import github.luckygc.am.module.archive.metadata.ArchiveFonds;
+import github.luckygc.am.module.archive.metadata.ArchiveFondsStatus;
 import github.luckygc.am.module.archive.metadata.ArchiveManagementMode;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveCategoryDataRepository;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveFondsDataRepository;
@@ -368,7 +369,7 @@ class ServerApplicationTests extends PostgreSqlContainerTest {
             ArchiveFonds fonds = new ArchiveFonds();
             fonds.setFondsCode("AUDIT_TEST");
             fonds.setFondsName("审计测试全宗");
-            fonds.setEnabled(true);
+            fonds.setStatus(ArchiveFondsStatus.ACTIVE);
             fonds.setSortOrder(0);
             fonds.setCreatedAt(forgedCreatedAt);
             fonds.setCreatedBy(-1L);

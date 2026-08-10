@@ -130,17 +130,16 @@ public class ArchiveItemReadService {
                 string(row, "lockReason"),
                 longOrNull(row, "lockedBy"),
                 dateTime(row, "lockedAt"),
-                longOrNull(row, "repositoryId"));
+                longOrNull(row, "repositoryId"),
+                dateTime(row, "archivedAt"));
     }
 
     private Map<String, @Nullable Object> loadDynamicRecord(ArchiveCategoryDto category, Long id) {
-        ArchiveItemDto record = getItem(id);
         return loadDynamicRecord(category, ArchiveLevel.ITEM, id, ArchiveFieldScope.METADATA);
     }
 
     private Map<String, @Nullable Object> loadDynamicRecord(
             ArchiveCategoryDto category, Long id, ArchiveFieldScope fieldScope) {
-        ArchiveItemDto record = getItem(id);
         return loadDynamicRecord(category, ArchiveLevel.ITEM, id, fieldScope);
     }
 
@@ -329,41 +328,8 @@ public class ArchiveItemReadService {
             @Nullable String lockReason,
             @Nullable Long lockedBy,
             @Nullable LocalDateTime lockedAt,
-            @Nullable Long repositoryId) {
-
-        public ArchiveItemDto(
-                Long id,
-                @Nullable Long volumeId,
-                String fondsCode,
-                String fondsName,
-                String categoryCode,
-                String categoryName,
-                @Nullable String archiveNo,
-                @Nullable Long securityLevelId,
-                @Nullable Long retentionPeriodId,
-                int archiveYear,
-                boolean lockedFlag,
-                @Nullable String lockReason,
-                @Nullable Long lockedBy,
-                @Nullable LocalDateTime lockedAt) {
-            this(
-                    id,
-                    volumeId,
-                    fondsCode,
-                    fondsName,
-                    categoryCode,
-                    categoryName,
-                    archiveNo,
-                    securityLevelId,
-                    retentionPeriodId,
-                    archiveYear,
-                    lockedFlag,
-                    lockReason,
-                    lockedBy,
-                    lockedAt,
-                    null);
-        }
-    }
+            @Nullable Long repositoryId,
+            @Nullable LocalDateTime archivedAt) {}
 
     public record ArchiveItemDetailDto(
             ArchiveItemDto item,

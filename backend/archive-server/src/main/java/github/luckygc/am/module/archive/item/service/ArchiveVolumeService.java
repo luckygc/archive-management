@@ -266,7 +266,7 @@ public class ArchiveVolumeService {
             throw new BadRequestException("该分类未启用案卷管理");
         }
         ArchiveFondsDto fonds =
-                archiveMetadataReferenceService.getEnabledFondsByCode(request.fondsCode());
+                archiveMetadataReferenceService.getWritableFondsByCode(request.fondsCode());
         archiveCategoryService.requireCategoryAvailableForFonds(fonds.fondsCode(), category.id());
         int archiveYear =
                 request.archiveYear() == null ? Year.now().getValue() : request.archiveYear();

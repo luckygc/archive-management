@@ -17,6 +17,7 @@ import github.luckygc.am.common.api.CollectionResponse;
 import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldScope;
+import github.luckygc.am.module.archive.metadata.ArchiveFondsStatus;
 import github.luckygc.am.module.archive.metadata.ArchiveLayoutSurface;
 import github.luckygc.am.module.archive.metadata.service.ArchiveCategoryService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveFondsService;
@@ -31,11 +32,16 @@ import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.Ar
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFondsCategoryScopeDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFondsCategoryScopeRequest;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFondsDto;
-import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFondsRequest;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFondsEventDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveRetentionPeriodDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveSecurityLevelDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveUniqueConstraintDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveUniqueConstraintRequest;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.AssignArchiveFondsNumberRequest;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.CloseArchiveFondsRequest;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.CreateArchiveFondsRequest;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ReopenArchiveFondsRequest;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.UpdateArchiveFondsRequest;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.UpdateArchiveRetentionPeriodRequest;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.UpdateArchiveSecurityLevelRequest;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionCode;
@@ -64,29 +70,53 @@ public class ArchiveMetadataController {
     }
 
     @GetMapping("/api/v1/archive-fonds")
-    public CollectionResponse<ArchiveFondsDto> listFonds(Boolean enabled) {
-        return CollectionResponse.of(archiveFondsService.listFonds(enabled));
+    public CollectionResponse<ArchiveFondsDto> listFonds(
+            @RequestParam(required = false) ArchiveFondsStatus status) {
+        return CollectionResponse.of(archiveFondsService.listFonds(status));
     }
 
     @PostMapping("/api/v1/archive-fonds")
     @ResponseStatus(HttpStatus.CREATED)
     public ArchiveFondsDto createFonds(
-            @RequestBody ArchiveFondsRequest request, Authentication authentication) {
+            @RequestBody CreateArchiveFondsRequest request, Authentication authentication) {
         return archiveFondsService.createFonds(request, requireMetadataManage(authentication));
     }
 
     @PatchMapping("/api/v1/archive-fonds/{id}")
     public ArchiveFondsDto updateFonds(
             @PathVariable Long id,
-            @RequestBody ArchiveFondsRequest request,
+            @RequestBody UpdateArchiveFondsRequest request,
             Authentication authentication) {
         return archiveFondsService.updateFonds(id, request, requireMetadataManage(authentication));
     }
 
-    @DeleteMapping("/api/v1/archive-fonds/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteFonds(@PathVariable Long id, Authentication authentication) {
-        archiveFondsService.deleteFonds(id, requireMetadataManage(authentication));
+    @PostMapping("/api/v1/archive-fonds/{id}:assignNumber")
+    public ArchiveFondsDto assignFondsNumber(
+            @PathVariable Long id,
+            @RequestBody AssignArchiveFondsNumberRequest request,
+            Authentication authentication) {
+        return archiveFondsService.assignNumber(id, request, requireMetadataManage(authentication));
+    }
+
+    @PostMapping("/api/v1/archive-fonds/{id}:close")
+    public ArchiveFondsDto closeFonds(
+            @PathVariable Long id,
+            @RequestBody CloseArchiveFondsRequest request,
+            Authentication authentication) {
+        return archiveFondsService.closeFonds(id, request, requireMetadataManage(authentication));
+    }
+
+    @PostMapping("/api/v1/archive-fonds/{id}:reopen")
+    public ArchiveFondsDto reopenFonds(
+            @PathVariable Long id,
+            @RequestBody ReopenArchiveFondsRequest request,
+            Authentication authentication) {
+        return archiveFondsService.reopenFonds(id, request, requireMetadataManage(authentication));
+    }
+
+    @GetMapping("/api/v1/archive-fonds/{id}/events")
+    public CollectionResponse<ArchiveFondsEventDto> listFondsEvents(@PathVariable Long id) {
+        return CollectionResponse.of(archiveFondsService.listEvents(id));
     }
 
     @GetMapping("/api/v1/archive-fonds/{fondsCode}/category-scopes")

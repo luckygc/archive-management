@@ -219,7 +219,7 @@ class ArchiveIntakePackageServiceTests {
     private ArchiveItemDto item(Long id, String archiveNo) {
         return new ArchiveItemDto(
                 id, null, "F001", "测试全宗", "WS", "文书", archiveNo, 3L, 4L, 2026, false, null, null,
-                null, 2L);
+                null, 2L, null);
     }
 
     private ArchiveIntakePackage intakePackage(Long id, ArchiveIntakePackageStatus status) {

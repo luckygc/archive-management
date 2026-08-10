@@ -33,6 +33,7 @@ import github.luckygc.am.module.archive.item.service.ArchiveItemSearchService.Se
 import github.luckygc.am.module.archive.item.service.ArchiveItemService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemService.CreateArchiveItemRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemService.DeleteItemRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemService.ReassignArchiveItemFondsRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemService.UpdateArchiveItemRequest;
 import github.luckygc.am.module.archive.metadata.ArchiveLayoutSurface;
 
@@ -138,6 +139,18 @@ public class ArchiveItemController {
             @RequestBody UpdateArchiveItemRequest request,
             Authentication authentication) {
         return archiveItemService.updateItem(
+                id,
+                request,
+                AuthenticatedUsers.requireUserId(
+                        authentication == null ? null : authentication.getPrincipal()));
+    }
+
+    @PostMapping("/api/v1/archive-items/{id}:reassignFonds")
+    public ArchiveItemDetailDto reassignItemFonds(
+            @PathVariable Long id,
+            @RequestBody ReassignArchiveItemFondsRequest request,
+            Authentication authentication) {
+        return archiveItemService.reassignFonds(
                 id,
                 request,
                 AuthenticatedUsers.requireUserId(

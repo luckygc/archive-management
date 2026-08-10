@@ -520,7 +520,8 @@
                lock_reason,
                locked_by,
                locked_at,
-               repository_id
+               repository_id,
+               archived_at
         from am_archive_item
         where id = #{id} and deleted_flag = false
     </select>

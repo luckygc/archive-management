@@ -9,7 +9,11 @@ import type {
     ArchiveFondsCategoryScopeDto,
     ArchiveFondsCategoryScopeRequest,
     ArchiveFondsDto,
-    ArchiveFondsRequest,
+    ArchiveFondsEventDto,
+    ArchiveFondsLifecycleRequest,
+    ArchiveFondsStatus,
+    AssignArchiveFondsNumberRequest,
+    CreateArchiveFondsRequest,
     ArchiveLayoutSurface,
     ArchiveLevel,
     ArchiveRetentionPeriodDto,
@@ -18,27 +22,42 @@ import type {
     ArchiveSecurityLevelRequest,
     ArchiveUniqueConstraintDto,
     ArchiveUniqueConstraintRequest,
+    UpdateArchiveFondsRequest,
 } from "../types/archive-metadata";
 import type { ArchiveRelatedFilterCategoryDto } from "../types/archive-records";
 import type { CollectionResponse } from "../types/pagination";
 import { queryString } from "./query-string";
 
-export function listArchiveFonds(enabled?: boolean) {
+export function listArchiveFonds(status?: ArchiveFondsStatus) {
     return httpClient.get<CollectionResponse<ArchiveFondsDto>>(
-        `/api/v1/archive-fonds${queryString({ enabled })}`,
+        `/api/v1/archive-fonds${queryString({ status })}`,
     );
 }
 
-export function createArchiveFonds(payload: ArchiveFondsRequest) {
+export function createArchiveFonds(payload: CreateArchiveFondsRequest) {
     return httpClient.post<ArchiveFondsDto>("/api/v1/archive-fonds", payload);
 }
 
-export function updateArchiveFonds(id: number, payload: ArchiveFondsRequest) {
+export function updateArchiveFonds(id: number, payload: UpdateArchiveFondsRequest) {
     return httpClient.patch<ArchiveFondsDto>(`/api/v1/archive-fonds/${id}`, payload);
 }
 
-export function deleteArchiveFonds(id: number) {
-    return httpClient.delete<void>(`/api/v1/archive-fonds/${id}`);
+export function assignArchiveFondsNumber(id: number, payload: AssignArchiveFondsNumberRequest) {
+    return httpClient.post<ArchiveFondsDto>(`/api/v1/archive-fonds/${id}:assignNumber`, payload);
+}
+
+export function closeArchiveFonds(id: number, payload: ArchiveFondsLifecycleRequest) {
+    return httpClient.post<ArchiveFondsDto>(`/api/v1/archive-fonds/${id}:close`, payload);
+}
+
+export function reopenArchiveFonds(id: number, payload: ArchiveFondsLifecycleRequest) {
+    return httpClient.post<ArchiveFondsDto>(`/api/v1/archive-fonds/${id}:reopen`, payload);
+}
+
+export function listArchiveFondsEvents(id: number) {
+    return httpClient.get<CollectionResponse<ArchiveFondsEventDto>>(
+        `/api/v1/archive-fonds/${id}/events`,
+    );
 }
 
 export function listArchiveFondsCategoryScopes(fondsCode: string) {
