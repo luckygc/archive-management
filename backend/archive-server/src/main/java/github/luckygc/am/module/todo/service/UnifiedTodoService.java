@@ -31,14 +31,14 @@ public class UnifiedTodoService {
     }
 
     @Transactional
-    public List<UnifiedTodoItem> dispatch(DispatchUnifiedTodoCommand command) {
-        String sourceType = requiredCode(command.sourceType(), "sourceType");
-        String sourceTaskId = requiredText(command.sourceTaskId(), "sourceTaskId");
-        String sourcePath = validateSourcePath(command.sourcePath());
+    public List<UnifiedTodoItem> dispatch(DispatchUnifiedTodoRequest request) {
+        String sourceType = requiredCode(request.sourceType(), "sourceType");
+        String sourceTaskId = requiredText(request.sourceTaskId(), "sourceTaskId");
+        String sourcePath = validateSourcePath(request.sourcePath());
         List<Long> assigneeUserIds =
-                command.assigneeUserIds() == null
+                request.assigneeUserIds() == null
                         ? List.of()
-                        : command.assigneeUserIds().stream().distinct().sorted().toList();
+                        : request.assigneeUserIds().stream().distinct().sorted().toList();
         if (assigneeUserIds.isEmpty()
                 || assigneeUserIds.stream().anyMatch(userId -> userId == null || userId <= 0)) {
             throw new BadRequestException("统一待办办理人不能为空", "assigneeUserIds", "办理人必须是去重后的正整数 ID");
@@ -47,7 +47,7 @@ public class UnifiedTodoService {
                 .map(
                         assigneeUserId ->
                                 dispatchOne(
-                                        command,
+                                        request,
                                         sourceType,
                                         sourceTaskId,
                                         sourcePath,
@@ -118,7 +118,7 @@ public class UnifiedTodoService {
     }
 
     private UnifiedTodoItem dispatchOne(
-            DispatchUnifiedTodoCommand command,
+            DispatchUnifiedTodoRequest request,
             String sourceType,
             String sourceTaskId,
             String sourcePath,
@@ -132,10 +132,10 @@ public class UnifiedTodoService {
         UnifiedTodo todo = new UnifiedTodo();
         todo.setSourceType(sourceType);
         todo.setSourceTaskId(sourceTaskId);
-        todo.setBusinessType(requiredCode(command.businessType(), "businessType"));
-        todo.setBusinessId(requiredText(command.businessId(), "businessId"));
-        todo.setTitle(requiredText(command.title(), "title"));
-        todo.setNodeName(normalizeNullable(command.nodeName()));
+        todo.setBusinessType(requiredCode(request.businessType(), "businessType"));
+        todo.setBusinessId(requiredText(request.businessId(), "businessId"));
+        todo.setTitle(requiredText(request.title(), "title"));
+        todo.setNodeName(normalizeNullable(request.nodeName()));
         todo.setAssigneeUserId(assigneeUserId);
         todo.setSourcePath(sourcePath);
         return toItem(repository.insert(todo));
@@ -184,7 +184,7 @@ public class UnifiedTodoService {
                 todo.getCompletedAt());
     }
 
-    public record DispatchUnifiedTodoCommand(
+    public record DispatchUnifiedTodoRequest(
             String sourceType,
             String sourceTaskId,
             String businessType,

@@ -8,22 +8,22 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 @DisplayName("档案查询职责边界")
-class ArchiveItemQueryServiceBoundaryTests {
+class ArchiveItemSearchServiceBoundaryTests {
 
     @Test
     @DisplayName("查询入口不自行编译动态筛选条件")
-    void queryEntryShouldDelegateCriteriaCompilation() {
+    void searchEntryShouldDelegateCriteriaCompilation() {
         assertThat(
-                        Arrays.stream(ArchiveItemQueryService.class.getDeclaredMethods())
+                        Arrays.stream(ArchiveItemSearchService.class.getDeclaredMethods())
                                 .map(method -> method.getName()))
                 .doesNotContain("buildSearchConditions", "buildRelatedGroups", "toSqlCondition");
     }
 
     @Test
     @DisplayName("查询入口不自行装配动态游标分页")
-    void queryEntryShouldDelegateCursorPageAssembly() {
+    void searchEntryShouldDelegateCursorPageAssembly() {
         assertThat(
-                        Arrays.stream(ArchiveItemQueryService.class.getDeclaredMethods())
+                        Arrays.stream(ArchiveItemSearchService.class.getDeclaredMethods())
                                 .map(method -> method.getName()))
                 .doesNotContain(
                         "queryDynamicItemPage",

@@ -35,7 +35,7 @@ import github.luckygc.am.module.approval.repository.ApprovalWorkflowInstanceData
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionCode;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
 import github.luckygc.am.module.todo.service.UnifiedTodoService;
-import github.luckygc.am.module.todo.service.UnifiedTodoService.DispatchUnifiedTodoCommand;
+import github.luckygc.am.module.todo.service.UnifiedTodoService.DispatchUnifiedTodoRequest;
 import github.luckygc.am.module.todo.service.UnifiedTodoService.UnifiedTodoItem;
 
 @Service
@@ -227,7 +227,7 @@ public class ApprovalWorkflowInstanceService {
             throw new IllegalStateException("Flowable 审批任务没有候选用户: " + activeTask.nodeCode());
         }
         todoService.dispatch(
-                new DispatchUnifiedTodoCommand(
+                new DispatchUnifiedTodoRequest(
                         UnifiedTodoService.APPROVAL_SOURCE_TYPE,
                         activeTask.taskId(),
                         instance.getBusinessType(),

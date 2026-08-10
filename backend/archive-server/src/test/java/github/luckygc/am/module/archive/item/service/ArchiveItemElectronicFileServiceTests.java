@@ -29,7 +29,7 @@ import github.luckygc.am.module.archive.item.ArchiveItemAudit;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemAuditDataRepository;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemDataRepository;
 import github.luckygc.am.module.archive.item.service.ArchiveItemElectronicFileService.ArchiveItemElectronicFileResponse;
-import github.luckygc.am.module.archive.item.service.ArchiveItemElectronicFileService.UploadArchiveItemElectronicFileCommand;
+import github.luckygc.am.module.archive.item.service.ArchiveItemElectronicFileService.UploadArchiveItemElectronicFileRequest;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.metadata.ArchiveManagementMode;
 import github.luckygc.am.module.archive.metadata.ArchiveTableStatus;
@@ -91,7 +91,7 @@ class ArchiveItemElectronicFileServiceTests {
     void uploadElectronicFileShouldStoreObjectAndInsertElectronicFile() {
         when(archiveMapper.getArchiveItem(10L)).thenReturn(Map.of("id", 10L));
         when(storageObjectService.storeObject(
-                        any(StorageObjectService.StoreStorageObjectCommand.class), eq(9L)))
+                        any(StorageObjectService.StoreStorageObjectRequest.class), eq(9L)))
                 .thenReturn(storageObject());
         when(archiveMapper.insertArchiveItemElectronicFile(10L, 20L, "ORIGINAL", 7))
                 .thenReturn(30L);
@@ -99,7 +99,7 @@ class ArchiveItemElectronicFileServiceTests {
         ArchiveItemElectronicFileResponse response =
                 electronicFileService.uploadFile(
                         10L,
-                        new UploadArchiveItemElectronicFileCommand(
+                        new UploadArchiveItemElectronicFileRequest(
                                 "demo.pdf",
                                 "application/pdf",
                                 1024,
@@ -123,7 +123,7 @@ class ArchiveItemElectronicFileServiceTests {
     void uploadElectronicFileShouldAllowItemCreatePermission() {
         when(archiveMapper.getArchiveItem(10L)).thenReturn(Map.of("id", 10L));
         when(storageObjectService.storeObject(
-                        any(StorageObjectService.StoreStorageObjectCommand.class), eq(9L)))
+                        any(StorageObjectService.StoreStorageObjectRequest.class), eq(9L)))
                 .thenReturn(storageObject());
         when(archiveMapper.insertArchiveItemElectronicFile(10L, 20L, "ORIGINAL", 7))
                 .thenReturn(30L);
@@ -140,7 +140,7 @@ class ArchiveItemElectronicFileServiceTests {
         when(permissionService.hasPermission(9L, "archive:item:create")).thenReturn(false);
         when(archiveMapper.getArchiveItem(10L)).thenReturn(Map.of("id", 10L));
         when(storageObjectService.storeObject(
-                        any(StorageObjectService.StoreStorageObjectCommand.class), eq(9L)))
+                        any(StorageObjectService.StoreStorageObjectRequest.class), eq(9L)))
                 .thenReturn(storageObject());
         when(archiveMapper.insertArchiveItemElectronicFile(10L, 20L, "ORIGINAL", 7))
                 .thenReturn(30L);
@@ -340,8 +340,8 @@ class ArchiveItemElectronicFileServiceTests {
                 now);
     }
 
-    private UploadArchiveItemElectronicFileCommand uploadCommand() {
-        return new UploadArchiveItemElectronicFileCommand(
+    private UploadArchiveItemElectronicFileRequest uploadCommand() {
+        return new UploadArchiveItemElectronicFileRequest(
                 "demo.pdf",
                 "application/pdf",
                 1024,

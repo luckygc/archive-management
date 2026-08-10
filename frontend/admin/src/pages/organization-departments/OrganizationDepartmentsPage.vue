@@ -8,6 +8,7 @@ import {
     listOrganizationDepartments,
     updateOrganizationDepartment,
 } from "@/shared/api/organization";
+import { AmDataTable } from "@/shared/components/data-table";
 import type { OrganizationDepartmentDto } from "@/shared/types/organization";
 
 interface DepartmentFormValues {
@@ -125,41 +126,41 @@ onMounted(loadDepartments);
             >
         </div>
         <el-card shadow="never">
-            <el-table
-                v-loading="loading"
+            <AmDataTable
                 :data="treeData"
+                :loading="loading"
                 row-key="id"
-                default-expand-all
+                children-key="children"
+                :default-expand-all="true"
                 empty-text="暂无部门"
+                :columns="[
+                    { key: 'departmentCode', label: '部门编码', width: 160, sortable: true },
+                    { key: 'departmentName', label: '部门名称', sortable: true },
+                    { key: 'parentName', label: '上级部门', width: 180 },
+                    { key: 'sortOrder', label: '排序', width: 90, sortable: true },
+                    { key: 'enabled', label: '状态', width: 90, sortable: true },
+                    { key: 'actions', label: '操作', width: 180 },
+                ]"
             >
-                <el-table-column label="部门编码" prop="departmentCode" width="160" />
-                <el-table-column label="部门名称" prop="departmentName" />
-                <el-table-column label="上级部门" width="180">
-                    <template #default="{ row }">
-                        {{
-                            row.parentId
-                                ? (departmentsById.get(row.parentId)?.departmentName ?? "-")
-                                : "-"
-                        }}
-                    </template>
-                </el-table-column>
-                <el-table-column label="排序" prop="sortOrder" width="90" />
-                <el-table-column label="状态" width="90">
-                    <template #default="{ row }">
-                        <el-tag :type="row.enabled ? 'success' : 'info'">
-                            {{ row.enabled ? "启用" : "停用" }}
-                        </el-tag>
-                    </template>
-                </el-table-column>
-                <el-table-column label="操作" width="180">
-                    <template #default="{ row }">
-                        <el-button size="small" @click="openEdit(row)">编辑</el-button>
-                        <el-button link size="small" type="primary" @click="openCreate(row.id)">
-                            新增下级
-                        </el-button>
-                    </template>
-                </el-table-column>
-            </el-table>
+                <template #cell-parentName="{ row }">
+                    {{
+                        row.parentId
+                            ? (departmentsById.get(row.parentId)?.departmentName ?? "-")
+                            : "-"
+                    }}
+                </template>
+                <template #cell-enabled="{ row }">
+                    <el-tag :type="row.enabled ? 'success' : 'info'">
+                        {{ row.enabled ? "启用" : "停用" }}
+                    </el-tag>
+                </template>
+                <template #cell-actions="{ row }">
+                    <el-button size="small" @click="openEdit(row)">编辑</el-button>
+                    <el-button link size="small" type="primary" @click="openCreate(row.id)">
+                        新增下级
+                    </el-button>
+                </template>
+            </AmDataTable>
         </el-card>
 
         <el-dialog

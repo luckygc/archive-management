@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { AmDataTable } from "@/shared/components/data-table";
+
 import {
     actionName,
     moduleName,
@@ -141,30 +143,29 @@ const {
                             v-if="displayPermissionCodes.length === 0"
                             description="暂无功能权限"
                         />
-                        <el-table
+                        <AmDataTable
                             v-else
                             :data="displayedPermissions"
                             row-key="permissionCode"
                             size="small"
+                            :columns="[
+                                { key: 'moduleCode', label: '模块', width: 80, sortable: true },
+                                { key: 'resource', label: '资源', width: 120 },
+                                { key: 'action', label: '动作', width: 120 },
+                                { key: 'permissionName', label: '权限名称', sortable: true },
+                                { key: 'description', label: '说明', sortable: true },
+                            ]"
                         >
-                            <el-table-column label="模块" width="80">
-                                <template #default="{ row }">{{
-                                    moduleName(row.moduleCode)
-                                }}</template>
-                            </el-table-column>
-                            <el-table-column label="资源" width="120">
-                                <template #default="{ row }">{{
-                                    resourceName(parsePermissionCode(row.permissionCode).resource)
-                                }}</template>
-                            </el-table-column>
-                            <el-table-column label="动作" width="120">
-                                <template #default="{ row }">{{
-                                    actionName(parsePermissionCode(row.permissionCode).action)
-                                }}</template>
-                            </el-table-column>
-                            <el-table-column label="权限名称" prop="permissionName" />
-                            <el-table-column label="说明" prop="description" />
-                        </el-table>
+                            <template #cell-moduleCode="{ row }">{{
+                                moduleName(row.moduleCode)
+                            }}</template>
+                            <template #cell-resource="{ row }">{{
+                                resourceName(parsePermissionCode(row.permissionCode).resource)
+                            }}</template>
+                            <template #cell-action="{ row }">{{
+                                actionName(parsePermissionCode(row.permissionCode).action)
+                            }}</template>
+                        </AmDataTable>
                     </el-card>
 
                     <el-card v-if="canManageDataScopes" shadow="never">
@@ -177,27 +178,33 @@ const {
                             </div>
                         </template>
                         <el-empty v-if="displayScopeIds.length === 0" description="暂无数据范围" />
-                        <el-table v-else :data="displayedScopes" row-key="id" size="small">
-                            <el-table-column label="范围编码" prop="scopeCode" width="160" />
-                            <el-table-column label="范围名称" prop="scopeName" />
-                            <el-table-column label="类型" width="100">
-                                <template #default="{ row }">
-                                    <el-tag :type="row.scopeType === 'ALL' ? 'primary' : 'info'">
-                                        {{ row.scopeType === "ALL" ? "*" : "条件" }}
-                                    </el-tag>
-                                </template>
-                            </el-table-column>
-                            <el-table-column label="启用" width="80">
-                                <template #default="{ row }">
-                                    <el-tag :type="row.enabled ? 'success' : 'info'">{{
-                                        row.enabled ? "启用" : "停用"
-                                    }}</el-tag>
-                                </template>
-                            </el-table-column>
-                            <el-table-column label="说明">
-                                <template #default="{ row }">{{ row.description ?? "-" }}</template>
-                            </el-table-column>
-                        </el-table>
+                        <AmDataTable
+                            v-else
+                            :data="displayedScopes"
+                            row-key="id"
+                            size="small"
+                            :columns="[
+                                { key: 'scopeCode', label: '范围编码', width: 160, sortable: true },
+                                { key: 'scopeName', label: '范围名称', sortable: true },
+                                { key: 'scopeType', label: '类型', width: 100, sortable: true },
+                                { key: 'enabled', label: '启用', width: 80, sortable: true },
+                                { key: 'description', label: '说明', sortable: true },
+                            ]"
+                        >
+                            <template #cell-scopeType="{ row }">
+                                <el-tag :type="row.scopeType === 'ALL' ? 'primary' : 'info'">
+                                    {{ row.scopeType === "ALL" ? "*" : "条件" }}
+                                </el-tag>
+                            </template>
+                            <template #cell-enabled="{ row }">
+                                <el-tag :type="row.enabled ? 'success' : 'info'">{{
+                                    row.enabled ? "启用" : "停用"
+                                }}</el-tag>
+                            </template>
+                            <template #cell-description="{ row }">{{
+                                row.description ?? "-"
+                            }}</template>
+                        </AmDataTable>
                     </el-card>
                 </div>
             </el-col>

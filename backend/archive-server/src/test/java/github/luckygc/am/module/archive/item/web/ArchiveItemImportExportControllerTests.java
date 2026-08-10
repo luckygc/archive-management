@@ -15,7 +15,7 @@ import org.springframework.security.core.Authentication;
 import github.luckygc.am.common.security.AuthenticatedUser;
 import github.luckygc.am.module.archive.item.service.ArchiveItemImportExportService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemImportExportService.DownloadLinkCreated;
-import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService.SearchArchiveItemsRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemSearchService.SearchArchiveItemsRequest;
 import github.luckygc.am.module.archive.item.web.ArchiveItemImportExportController.ExportArchiveRecordsRequest;
 
 @DisplayName("档案导入导出 HTTP 入口")

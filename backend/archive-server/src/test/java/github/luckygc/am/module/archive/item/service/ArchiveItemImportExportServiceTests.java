@@ -40,8 +40,8 @@ import github.luckygc.am.module.archive.item.ArchiveItemAudit;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemAuditDataRepository;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemDataRepository;
 import github.luckygc.am.module.archive.item.service.ArchiveItemImportExportService.ArchiveImportResult;
-import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService.ArchiveItemListDto;
-import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService.SearchArchiveItemsRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemSearchService.ArchiveItemListDto;
+import github.luckygc.am.module.archive.item.service.ArchiveItemSearchService.SearchArchiveItemsRequest;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldControl;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldScope;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldType;
@@ -68,8 +68,8 @@ class ArchiveItemImportExportServiceTests {
     private ArchiveMetadataService archiveMetadataService;
     private ArchiveMetadataReferenceService archiveMetadataReferenceService;
     private ArchiveCategoryService archiveCategoryService;
-    private ArchiveItemCommandService archiveItemRoutingService;
-    private ArchiveItemQueryService archiveItemQueryService;
+    private ArchiveItemService archiveItemRoutingService;
+    private ArchiveItemSearchService archiveItemQueryService;
     private AuthorizationPermissionService permissionService;
     private ArchiveDataScopeService dataScopeService;
     private ArchiveItemDataRepository archiveItemRepository;
@@ -84,8 +84,8 @@ class ArchiveItemImportExportServiceTests {
         archiveMetadataService = mock(ArchiveMetadataService.class);
         archiveMetadataReferenceService = mock(ArchiveMetadataReferenceService.class);
         archiveCategoryService = mock(ArchiveCategoryService.class);
-        archiveItemRoutingService = mock(ArchiveItemCommandService.class);
-        archiveItemQueryService = mock(ArchiveItemQueryService.class);
+        archiveItemRoutingService = mock(ArchiveItemService.class);
+        archiveItemQueryService = mock(ArchiveItemSearchService.class);
         permissionService = mock(AuthorizationPermissionService.class);
         dataScopeService = mock(ArchiveDataScopeService.class);
         archiveItemRepository = mock(ArchiveItemDataRepository.class);
@@ -147,7 +147,7 @@ class ArchiveItemImportExportServiceTests {
         assertThat(result.expiresAt()).isEqualTo(LocalDateTime.of(2026, 7, 15, 10, 10));
         var commandCaptor =
                 org.mockito.ArgumentCaptor.forClass(
-                        StorageObjectService.StoreStorageObjectCommand.class);
+                        StorageObjectService.StoreStorageObjectRequest.class);
         verify(storageObjectService).storeObject(commandCaptor.capture(), eq(9L));
         assertThat(commandCaptor.getValue().originalFilename())
                 .contains("archive-import-template-contract");
@@ -300,7 +300,7 @@ class ArchiveItemImportExportServiceTests {
         assertThat(result.code()).isEqualTo("export-code");
         var commandCaptor =
                 org.mockito.ArgumentCaptor.forClass(
-                        StorageObjectService.StoreStorageObjectCommand.class);
+                        StorageObjectService.StoreStorageObjectRequest.class);
         verify(storageObjectService).storeObject(commandCaptor.capture(), eq(9L));
         assertThat(commandCaptor.getValue().originalFilename()).isEqualTo("archive-export.xlsx");
         assertThat(commandCaptor.getValue().inputStream()).isInstanceOf(ByteArrayInputStream.class);
@@ -404,7 +404,7 @@ class ArchiveItemImportExportServiceTests {
                                 20L, "archive", "key", "export.xlsx", 3, null, null, 9L));
         var commandCaptor =
                 org.mockito.ArgumentCaptor.forClass(
-                        StorageObjectService.StoreStorageObjectCommand.class);
+                        StorageObjectService.StoreStorageObjectRequest.class);
 
         var result = importExportService.createExportDownloadLink(null, 9L);
 
@@ -419,7 +419,7 @@ class ArchiveItemImportExportServiceTests {
                 ArchiveItemImportExportService.class
                         .getMethod(
                                 "createExportDownloadLink",
-                                ArchiveItemQueryService.SearchArchiveItemsRequest.class,
+                                ArchiveItemSearchService.SearchArchiveItemsRequest.class,
                                 Long.class)
                         .getAnnotation(Transactional.class);
 

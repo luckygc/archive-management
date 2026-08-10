@@ -53,8 +53,8 @@ class ArchiveImportRuntimePolicyTests {
         ArchiveMetadataReferenceService referenceService =
                 mock(ArchiveMetadataReferenceService.class);
         ArchiveCategoryService categoryService = mock(ArchiveCategoryService.class);
-        ArchiveItemCommandService commandService = mock(ArchiveItemCommandService.class);
-        ArchiveItemQueryService queryService = mock(ArchiveItemQueryService.class);
+        ArchiveItemService commandService = mock(ArchiveItemService.class);
+        ArchiveItemSearchService queryService = mock(ArchiveItemSearchService.class);
         AuthorizationPermissionService permissionService =
                 mock(AuthorizationPermissionService.class);
         ArchiveDataScopeService dataScopeService = mock(ArchiveDataScopeService.class);

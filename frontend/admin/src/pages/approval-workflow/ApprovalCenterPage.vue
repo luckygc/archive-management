@@ -13,6 +13,7 @@ import {
 } from "@/shared/api/approval-workflow";
 import { listMyUnifiedTodos } from "@/shared/api/unified-todo";
 import CursorPagination from "@/shared/components/CursorPagination.vue";
+import { AmDataTable } from "@/shared/components/data-table";
 import type {
     ApprovalAction,
     ApprovalInstanceStatus,
@@ -271,29 +272,33 @@ onMounted(() => void loadTab());
         <el-card shadow="never">
             <el-tabs v-model="activeTab" @tab-change="(name) => loadTab(name as TabName)">
                 <el-tab-pane label="我的待办" name="pending">
-                    <el-table v-loading="loading" :data="pendingTasks" row-key="id">
-                        <el-table-column prop="title" label="标题" min-width="220" />
-                        <el-table-column prop="businessType" label="业务类型" width="140" />
-                        <el-table-column prop="businessId" label="业务标识" width="160" />
-                        <el-table-column prop="nodeName" label="当前节点" width="150" />
-                        <el-table-column label="到达时间" width="180">
-                            <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
-                        </el-table-column>
-                        <el-table-column label="操作" width="210" fixed="right">
-                            <template #default="{ row }">
-                                <el-button link @click="openTodoDetail(row)">详情</el-button>
-                                <el-button
-                                    link
-                                    type="primary"
-                                    @click="openTaskAction(row, 'approve')"
-                                    >同意</el-button
-                                >
-                                <el-button link type="danger" @click="openTaskAction(row, 'reject')"
-                                    >驳回</el-button
-                                >
-                            </template>
-                        </el-table-column>
-                    </el-table>
+                    <AmDataTable
+                        :data="pendingTasks"
+                        :loading="loading"
+                        row-key="id"
+                        sort-mode="none"
+                        :columns="[
+                            { key: 'title', label: '标题', minWidth: 220 },
+                            { key: 'businessType', label: '业务类型', width: 140 },
+                            { key: 'businessId', label: '业务标识', width: 160 },
+                            { key: 'nodeName', label: '当前节点', width: 150 },
+                            { key: 'createdAt', label: '到达时间', width: 180 },
+                            { key: 'actions', label: '操作', width: 210, fixed: 'right' },
+                        ]"
+                    >
+                        <template #cell-createdAt="{ row }">{{
+                            formatTime(row.createdAt)
+                        }}</template>
+                        <template #cell-actions="{ row }">
+                            <el-button link @click="openTodoDetail(row)">详情</el-button>
+                            <el-button link type="primary" @click="openTaskAction(row, 'approve')"
+                                >同意</el-button
+                            >
+                            <el-button link type="danger" @click="openTaskAction(row, 'reject')"
+                                >驳回</el-button
+                            >
+                        </template>
+                    </AmDataTable>
                     <CursorPagination
                         :limit="limit"
                         :total="pendingTotal"
@@ -305,34 +310,40 @@ onMounted(() => void loadTab());
                     />
                 </el-tab-pane>
                 <el-tab-pane label="我发起的" name="started">
-                    <el-table v-loading="loading" :data="startedInstances" row-key="id">
-                        <el-table-column prop="title" label="标题" min-width="220" />
-                        <el-table-column prop="businessType" label="业务类型" width="140" />
-                        <el-table-column prop="businessId" label="业务标识" width="160" />
-                        <el-table-column label="状态" width="110">
-                            <template #default="{ row }">
-                                <el-tag :type="instanceTagType(row.status)">{{
-                                    instanceStatusLabel(row.status)
-                                }}</el-tag>
-                            </template>
-                        </el-table-column>
-                        <el-table-column prop="currentNodeName" label="当前节点" width="150" />
-                        <el-table-column label="发起时间" width="180">
-                            <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
-                        </el-table-column>
-                        <el-table-column label="操作" width="140" fixed="right">
-                            <template #default="{ row }">
-                                <el-button link @click="openDetail(row.id)">详情</el-button>
-                                <el-button
-                                    v-if="row.status === 'RUNNING'"
-                                    link
-                                    type="danger"
-                                    @click="withdraw(row)"
-                                    >撤回</el-button
-                                >
-                            </template>
-                        </el-table-column>
-                    </el-table>
+                    <AmDataTable
+                        :data="startedInstances"
+                        :loading="loading"
+                        row-key="id"
+                        sort-mode="none"
+                        :columns="[
+                            { key: 'title', label: '标题', minWidth: 220 },
+                            { key: 'businessType', label: '业务类型', width: 140 },
+                            { key: 'businessId', label: '业务标识', width: 160 },
+                            { key: 'status', label: '状态', width: 110 },
+                            { key: 'currentNodeName', label: '当前节点', width: 150 },
+                            { key: 'createdAt', label: '发起时间', width: 180 },
+                            { key: 'actions', label: '操作', width: 140, fixed: 'right' },
+                        ]"
+                    >
+                        <template #cell-status="{ row }">
+                            <el-tag :type="instanceTagType(row.status)">{{
+                                instanceStatusLabel(row.status)
+                            }}</el-tag>
+                        </template>
+                        <template #cell-createdAt="{ row }">{{
+                            formatTime(row.createdAt)
+                        }}</template>
+                        <template #cell-actions="{ row }">
+                            <el-button link @click="openDetail(row.id)">详情</el-button>
+                            <el-button
+                                v-if="row.status === 'RUNNING'"
+                                link
+                                type="danger"
+                                @click="withdraw(row)"
+                                >撤回</el-button
+                            >
+                        </template>
+                    </AmDataTable>
                     <CursorPagination
                         :limit="limit"
                         :total="startedTotal"
@@ -344,27 +355,29 @@ onMounted(() => void loadTab());
                     />
                 </el-tab-pane>
                 <el-tab-pane label="已办" name="completed">
-                    <el-table v-loading="loading" :data="completedTasks" row-key="id">
-                        <el-table-column prop="title" label="标题" min-width="220" />
-                        <el-table-column prop="businessType" label="业务类型" width="140" />
-                        <el-table-column prop="businessId" label="业务标识" width="160" />
-                        <el-table-column prop="nodeName" label="办理节点" width="150" />
-                        <el-table-column label="结果" width="110">
-                            <template #default>已完成</template>
-                        </el-table-column>
-                        <el-table-column label="办理时间" width="180">
-                            <template #default="{ row }">{{
-                                formatTime(row.completedAt)
-                            }}</template>
-                        </el-table-column>
-                        <el-table-column label="操作" width="80" fixed="right">
-                            <template #default="{ row }"
-                                ><el-button link @click="openTodoDetail(row)"
-                                    >详情</el-button
-                                ></template
-                            >
-                        </el-table-column>
-                    </el-table>
+                    <AmDataTable
+                        :data="completedTasks"
+                        :loading="loading"
+                        row-key="id"
+                        sort-mode="none"
+                        :columns="[
+                            { key: 'title', label: '标题', minWidth: 220 },
+                            { key: 'businessType', label: '业务类型', width: 140 },
+                            { key: 'businessId', label: '业务标识', width: 160 },
+                            { key: 'nodeName', label: '办理节点', width: 150 },
+                            { key: 'result', label: '结果', width: 110 },
+                            { key: 'completedAt', label: '办理时间', width: 180 },
+                            { key: 'actions', label: '操作', width: 80, fixed: 'right' },
+                        ]"
+                    >
+                        <template #cell-result>已完成</template>
+                        <template #cell-completedAt="{ row }">
+                            {{ formatTime(row.completedAt) }}
+                        </template>
+                        <template #cell-actions="{ row }">
+                            <el-button link @click="openTodoDetail(row)">详情</el-button>
+                        </template>
+                    </AmDataTable>
                     <CursorPagination
                         :limit="limit"
                         :total="completedTotal"
@@ -462,34 +475,51 @@ onMounted(() => void loadTab());
                         }}</el-descriptions-item>
                     </el-descriptions>
                     <h3>流程节点</h3>
-                    <el-table :data="detail.tasks" row-key="id" border>
-                        <el-table-column prop="nodeName" label="节点" />
-                        <el-table-column label="状态" width="110">
-                            <template #default="{ row }">{{
-                                taskStatusLabel(row.status)
-                            }}</template>
-                        </el-table-column>
-                        <el-table-column label="到达时间" width="180">
-                            <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
-                        </el-table-column>
-                        <el-table-column label="完成时间" width="180">
-                            <template #default="{ row }">{{
-                                formatTime(row.completedAt)
-                            }}</template>
-                        </el-table-column>
-                    </el-table>
+                    <AmDataTable
+                        :data="detail.tasks"
+                        row-key="id"
+                        :bordered="true"
+                        :columns="[
+                            { key: 'nodeName', label: '节点', sortable: true },
+                            { key: 'status', label: '状态', width: 110, sortable: true },
+                            { key: 'createdAt', label: '到达时间', width: 180, sortable: true },
+                            { key: 'completedAt', label: '完成时间', width: 180, sortable: true },
+                        ]"
+                    >
+                        <template #cell-status="{ row }">{{
+                            taskStatusLabel(row.status)
+                        }}</template>
+                        <template #cell-createdAt="{ row }">{{
+                            formatTime(row.createdAt)
+                        }}</template>
+                        <template #cell-completedAt="{ row }">
+                            {{ formatTime(row.completedAt) }}
+                        </template>
+                    </AmDataTable>
                     <h3>审批意见</h3>
                     <el-empty v-if="detail.opinions.length === 0" description="暂无审批意见" />
-                    <el-table v-else :data="detail.opinions" row-key="id" border>
-                        <el-table-column label="动作" width="100">
-                            <template #default="{ row }">{{ actionLabel(row.action) }}</template>
-                        </el-table-column>
-                        <el-table-column prop="operatorUserId" label="办理人 ID" width="110" />
-                        <el-table-column prop="comment" label="意见" />
-                        <el-table-column label="时间" width="180">
-                            <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
-                        </el-table-column>
-                    </el-table>
+                    <AmDataTable
+                        v-else
+                        :data="detail.opinions"
+                        row-key="id"
+                        :bordered="true"
+                        :columns="[
+                            { key: 'action', label: '动作', width: 100, sortable: true },
+                            {
+                                key: 'operatorUserId',
+                                label: '办理人 ID',
+                                width: 110,
+                                sortable: true,
+                            },
+                            { key: 'comment', label: '意见', sortable: true },
+                            { key: 'createdAt', label: '时间', width: 180, sortable: true },
+                        ]"
+                    >
+                        <template #cell-action="{ row }">{{ actionLabel(row.action) }}</template>
+                        <template #cell-createdAt="{ row }">{{
+                            formatTime(row.createdAt)
+                        }}</template>
+                    </AmDataTable>
                 </template>
             </div>
         </el-drawer>

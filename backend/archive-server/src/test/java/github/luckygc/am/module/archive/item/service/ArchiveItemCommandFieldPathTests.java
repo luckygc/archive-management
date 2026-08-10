@@ -18,7 +18,7 @@ import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemAuditDataRepository;
-import github.luckygc.am.module.archive.item.service.ArchiveItemCommandService.CreateArchiveItemRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemService.CreateArchiveItemRequest;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldScope;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldType;
@@ -58,13 +58,13 @@ class ArchiveItemCommandFieldPathTests {
                 .thenReturn(List.of(dynamicField));
         when(metadataService.listEnabledFields(1L, ArchiveLevel.ITEM, ArchiveFieldScope.PHYSICAL))
                 .thenReturn(List.of(physicalField));
-        ArchiveItemCommandService service =
-                new ArchiveItemCommandService(
+        ArchiveItemService service =
+                new ArchiveItemService(
                         metadataService,
                         referenceService,
                         categoryService,
                         archiveMapper,
-                        mock(ArchiveItemSearchProjectionService.class),
+                        mock(ArchiveItemSearchProjectionSynchronizer.class),
                         mock(ArchiveDataScopeService.class),
                         permissionService,
                         mock(ArchiveItemAuditDataRepository.class),

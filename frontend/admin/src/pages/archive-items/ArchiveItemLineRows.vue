@@ -12,6 +12,8 @@ import {
     patchArchiveItemLineRow,
 } from "@/shared/api/archive-line-tables";
 import CursorPagination from "@/shared/components/CursorPagination.vue";
+import { AmDataTable } from "@/shared/components/data-table";
+import type { AmDataTableColumn } from "@/shared/components/data-table";
 import type {
     ArchiveItemLineRowResponse,
     ArchiveItemLineFieldDefinitionResponse,
@@ -351,6 +353,24 @@ function numberFormValue(fieldCode: string) {
 function setFormValue(fieldCode: string, value: unknown) {
     formValues[fieldCode] = formValue(value);
 }
+
+function lineColumns(
+    table: ArchiveItemLineTableDefinitionResponse,
+): AmDataTableColumn<ArchiveItemLineRowResponse>[] {
+    return [
+        { key: "lineOrder", label: "顺序", width: 80 },
+        ...table.fields.map((field) => ({
+            key: field.fieldCode,
+            label: field.fieldName,
+            minWidth: 140,
+            accessor: (row: ArchiveItemLineRowResponse) =>
+                displayValue(row.values[field.fieldCode]),
+        })),
+        ...(props.readonly
+            ? []
+            : ([{ key: "actions", label: "操作", width: 140, fixed: "right" }] as const)),
+    ];
+}
 </script>
 
 <template>
@@ -396,43 +416,33 @@ function setFormValue(fieldCode: string, value: unknown) {
                             >重试明细行</el-button
                         >
                     </div>
-                    <el-table
+                    <AmDataTable
                         v-else
-                        v-loading="states[table.id].loading"
                         :data="states[table.id].page?.items ?? []"
-                        border
+                        :columns="lineColumns(table)"
+                        :loading="states[table.id].loading"
+                        row-key="id"
+                        sort-mode="none"
+                        :bordered="true"
                     >
-                        <el-table-column prop="lineOrder" label="顺序" width="80" />
-                        <el-table-column
-                            v-for="field in table.fields"
-                            :key="field.id"
-                            :label="field.fieldName"
-                            min-width="140"
-                        >
-                            <template #default="{ row }">{{
-                                displayValue(row.values[field.fieldCode])
-                            }}</template>
-                        </el-table-column>
-                        <el-table-column v-if="!readonly" label="操作" width="140" fixed="right">
-                            <template #default="{ row }">
-                                <el-button
-                                    link
-                                    type="primary"
-                                    :disabled="commandBusy"
-                                    @click="startEdit(row)"
-                                    >编辑</el-button
-                                >
-                                <el-button
-                                    link
-                                    type="danger"
-                                    :loading="deletingRowId === row.id"
-                                    :disabled="commandBusy"
-                                    @click="removeRow(row)"
-                                    >删除</el-button
-                                >
-                            </template>
-                        </el-table-column>
-                    </el-table>
+                        <template #cell-actions="{ row }">
+                            <el-button
+                                link
+                                type="primary"
+                                :disabled="commandBusy"
+                                @click="startEdit(row)"
+                                >编辑</el-button
+                            >
+                            <el-button
+                                link
+                                type="danger"
+                                :loading="deletingRowId === row.id"
+                                :disabled="commandBusy"
+                                @click="removeRow(row)"
+                                >删除</el-button
+                            >
+                        </template>
+                    </AmDataTable>
                     <CursorPagination
                         v-if="states[table.id].page"
                         :limit="states[table.id].limit"

@@ -2,8 +2,10 @@
 import { Lock, Setting } from "@element-plus/icons-vue";
 import { computed, ref, watch } from "vue";
 
+import { AmDataTable } from "@/shared/components/data-table";
+import type { AmDataTableColumn, AmDataTableSortingState } from "@/shared/components/data-table";
 import type { ArchiveRecordListDto, ArchiveRecordOrderBy } from "@/shared/types/archive-records";
-import { toArchiveRecordOrder } from "./archiveResultTable";
+import { toArchiveRecordOrder, toTableSorting } from "./archiveResultTable";
 
 type RecordRow = Record<string, unknown>;
 type TableDensity = "large" | "default" | "small";
@@ -20,33 +22,57 @@ const props = withDefaults(
 );
 const emit = defineEmits<{ orderChange: [orderBy: ArchiveRecordOrderBy[]] }>();
 const density = ref<TableDensity>("default");
+type ResultColumn = AmDataTableColumn<RecordRow> & { configurable?: boolean };
 
 const baseColumns = computed(() => {
-    const columns: Array<{
-        key: string;
-        label: string;
-        prop?: string;
-        width: number;
-        sortable?: boolean;
-        configurable?: boolean;
-    }> = [
-        { key: "archive_no", label: "档号", prop: "archive_no", width: 150, sortable: true },
-        { key: "fonds_name", label: "全宗", prop: "fonds_name", width: 160, sortable: true },
-        { key: "category_name", label: "分类", prop: "category_name", width: 150, sortable: true },
-        { key: "archive_year", label: "年度", prop: "archive_year", width: 90, sortable: true },
+    const columns: ResultColumn[] = [
+        {
+            key: "archiveNo",
+            label: "档号",
+            accessorKey: "archive_no",
+            width: 150,
+            sortable: true,
+        },
+        {
+            key: "fondsCode",
+            label: "全宗",
+            accessorKey: "fonds_name",
+            width: 160,
+            sortable: true,
+        },
+        {
+            key: "categoryCode",
+            label: "分类",
+            accessorKey: "category_name",
+            width: 150,
+            sortable: true,
+        },
+        {
+            key: "archiveYear",
+            label: "年度",
+            accessorKey: "archive_year",
+            width: 90,
+            sortable: true,
+        },
     ];
     for (const field of props.result.fields.filter((item) => item.listVisible))
         columns.push({
             key: field.fieldCode,
             label: field.fieldName,
-            prop: field.columnName,
+            accessorKey: field.columnName,
             width: field.listWidth ?? 160,
             sortable: field.exactSearchable,
         });
     if (props.showLockColumn)
-        columns.push({ key: "locked_flag", label: "锁定", prop: "locked_flag", width: 90 });
+        columns.push({ key: "locked_flag", label: "锁定", accessorKey: "locked_flag", width: 90 });
     if (props.showActions)
-        columns.push({ key: "actions", label: "操作", width: 220, configurable: false });
+        columns.push({
+            key: "actions",
+            label: "操作",
+            width: 220,
+            fixed: "right",
+            configurable: false,
+        });
     return columns;
 });
 const visibleKeys = ref<string[]>([]);
@@ -64,15 +90,10 @@ const visibleColumns = computed(() =>
         (column) => column.configurable === false || visibleKeys.value.includes(column.key),
     ),
 );
+const tableSorting = computed(() => toTableSorting(props.orderBy));
 
-function sortChange({
-    prop,
-    order,
-}: {
-    prop: string | null;
-    order: "ascending" | "descending" | null;
-}) {
-    emit("orderChange", toArchiveRecordOrder(prop, order, props.result.fields));
+function sortChange(sorting: AmDataTableSortingState) {
+    emit("orderChange", toArchiveRecordOrder(sorting));
 }
 </script>
 
@@ -99,31 +120,22 @@ function sortChange({
                 ]"
             />
         </div>
-        <el-table
-            v-loading="loading"
+        <AmDataTable
             :data="result.items"
+            :columns="visibleColumns"
             :size="density"
+            :loading="loading"
+            :sorting="tableSorting"
+            sort-mode="manual"
             row-key="id"
-            max-height="520"
-            @sort-change="sortChange"
+            :max-height="520"
+            @sorting-change="sortChange"
         >
-            <el-table-column
-                v-for="column in visibleColumns"
-                :key="column.key"
-                :label="column.label"
-                :prop="column.prop"
-                :width="column.width"
-                :sortable="column.sortable ? 'custom' : false"
-                :fixed="column.key === 'actions' ? 'right' : undefined"
-            >
-                <template v-if="column.key === 'locked_flag'" #default="{ row }"
-                    ><el-icon v-if="row.locked_flag" aria-label="已锁定"><Lock /></el-icon
-                ></template>
-                <template v-else-if="column.key === 'actions'" #default="{ row }"
-                    ><slot name="actions" :row="row"
-                /></template>
-            </el-table-column>
-        </el-table>
+            <template #cell-locked_flag="{ row }"
+                ><el-icon v-if="row.locked_flag" aria-label="已锁定"><Lock /></el-icon
+            ></template>
+            <template #cell-actions="{ row }"><slot name="actions" :row="row" /></template>
+        </AmDataTable>
     </div>
 </template>
 

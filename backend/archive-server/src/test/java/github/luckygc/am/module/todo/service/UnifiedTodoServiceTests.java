@@ -19,7 +19,7 @@ import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.authentication.AuthenticationUser;
 import github.luckygc.am.module.authentication.repository.AuthenticationUserDataRepository;
 import github.luckygc.am.module.todo.UnifiedTodoStatus;
-import github.luckygc.am.module.todo.service.UnifiedTodoService.DispatchUnifiedTodoCommand;
+import github.luckygc.am.module.todo.service.UnifiedTodoService.DispatchUnifiedTodoRequest;
 import github.luckygc.am.test.PostgreSqlContainerTest;
 
 @Testcontainers(disabledWithoutDocker = true)
@@ -42,10 +42,10 @@ class UnifiedTodoServiceTests extends PostgreSqlContainerTest {
     @DisplayName("重复投递保持每名候选人一条记录")
     void dispatchShouldBeIdempotentPerAssignee() {
         List<Long> users = users(2);
-        DispatchUnifiedTodoCommand command = command("task-idempotent", users);
+        DispatchUnifiedTodoRequest request = request("task-idempotent", users);
 
-        service.dispatch(command);
-        service.dispatch(command);
+        service.dispatch(request);
+        service.dispatch(request);
 
         assertThat(service.listMy(false, PageRequest.ofSize(100), users.get(0)).items()).hasSize(1);
         assertThat(service.listMy(false, PageRequest.ofSize(100), users.get(1)).items()).hasSize(1);
@@ -55,7 +55,7 @@ class UnifiedTodoServiceTests extends PostgreSqlContainerTest {
     @DisplayName("一名候选人完成后其他候选投影被取消")
     void completeSourceShouldCompleteActorAndCancelOthers() {
         List<Long> users = users(2);
-        service.dispatch(command("task-complete", users));
+        service.dispatch(request("task-complete", users));
 
         service.completeSource(
                 UnifiedTodoService.APPROVAL_SOURCE_TYPE, "task-complete", users.getFirst());
@@ -72,7 +72,7 @@ class UnifiedTodoServiceTests extends PostgreSqlContainerTest {
     @DisplayName("来源取消后所有候选待办消失")
     void cancelSourceShouldCancelAllPendingRows() {
         List<Long> users = users(2);
-        service.dispatch(command("task-cancel", users));
+        service.dispatch(request("task-cancel", users));
 
         service.cancelSource(UnifiedTodoService.APPROVAL_SOURCE_TYPE, "task-cancel");
 
@@ -84,8 +84,8 @@ class UnifiedTodoServiceTests extends PostgreSqlContainerTest {
     @Test
     @DisplayName("拒绝站外来源路径")
     void dispatchShouldRejectExternalSourcePath() {
-        DispatchUnifiedTodoCommand command =
-                new DispatchUnifiedTodoCommand(
+        DispatchUnifiedTodoRequest request =
+                new DispatchUnifiedTodoRequest(
                         UnifiedTodoService.APPROVAL_SOURCE_TYPE,
                         "task-external",
                         "contract",
@@ -95,13 +95,13 @@ class UnifiedTodoServiceTests extends PostgreSqlContainerTest {
                         List.of(401L),
                         "https://example.com/task");
 
-        assertThatThrownBy(() -> service.dispatch(command))
+        assertThatThrownBy(() -> service.dispatch(request))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("来源路径非法");
     }
 
-    private DispatchUnifiedTodoCommand command(String sourceTaskId, List<Long> assignees) {
-        return new DispatchUnifiedTodoCommand(
+    private DispatchUnifiedTodoRequest request(String sourceTaskId, List<Long> assignees) {
+        return new DispatchUnifiedTodoRequest(
                 UnifiedTodoService.APPROVAL_SOURCE_TYPE,
                 sourceTaskId,
                 "contract",

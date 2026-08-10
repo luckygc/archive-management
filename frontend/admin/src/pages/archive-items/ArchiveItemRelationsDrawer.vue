@@ -12,6 +12,7 @@ import {
     listArchiveItemRelations,
 } from "@/shared/api/archive-records";
 import CursorPagination from "@/shared/components/CursorPagination.vue";
+import { AmDataTable } from "@/shared/components/data-table";
 import type { ArchiveCategoryDto } from "@/shared/types/archive-metadata";
 import type {
     ArchiveItemRelationResponse,
@@ -269,32 +270,46 @@ function archiveNo(value: unknown) {
         >
             <el-button link :loading="relationLoading" @click="loadRelations()">重试</el-button>
         </el-alert>
-        <el-table v-loading="relationLoading" :data="relations?.items || []" row-key="id">
-            <el-table-column label="方向" width="100">
-                <template #default="{ row }">
-                    {{ row.direction === "OUTGOING" ? "关联到" : "关联自" }}
-                </template>
-            </el-table-column>
-            <el-table-column label="档号">
-                <template #default="{ row }">{{ archiveNo(row.relatedItem) }}</template>
-            </el-table-column>
-            <el-table-column label="分类" prop="relatedItem.categoryName" width="160" />
-            <el-table-column label="全宗" prop="relatedItem.fondsName" width="160" />
-            <el-table-column label="创建时间" prop="createdAt" width="180" />
-            <el-table-column v-if="canUpdate" label="操作" width="90">
-                <template #default="{ row }">
-                    <el-button
-                        link
-                        type="danger"
-                        :loading="deletingRelationId === row.id"
-                        :disabled="Boolean(deletingRelationId)"
-                        @click="removeRelation(row)"
-                    >
-                        删除
-                    </el-button>
-                </template>
-            </el-table-column>
-        </el-table>
+        <AmDataTable
+            :data="relations?.items || []"
+            :loading="relationLoading"
+            row-key="id"
+            sort-mode="none"
+            :columns="[
+                { key: 'direction', label: '方向', width: 100 },
+                { key: 'archiveNo', label: '档号' },
+                {
+                    key: 'categoryName',
+                    label: '分类',
+                    accessorKey: 'relatedItem.categoryName',
+                    width: 160,
+                },
+                {
+                    key: 'fondsName',
+                    label: '全宗',
+                    accessorKey: 'relatedItem.fondsName',
+                    width: 160,
+                },
+                { key: 'createdAt', label: '创建时间', width: 180 },
+                ...(canUpdate ? [{ key: 'actions', label: '操作', width: 90 }] : []),
+            ]"
+        >
+            <template #cell-direction="{ row }">
+                {{ row.direction === "OUTGOING" ? "关联到" : "关联自" }}
+            </template>
+            <template #cell-archiveNo="{ row }">{{ archiveNo(row.relatedItem) }}</template>
+            <template #cell-actions="{ row }">
+                <el-button
+                    link
+                    type="danger"
+                    :loading="deletingRelationId === row.id"
+                    :disabled="Boolean(deletingRelationId)"
+                    @click="removeRelation(row)"
+                >
+                    删除
+                </el-button>
+            </template>
+        </AmDataTable>
         <CursorPagination
             :limit="relationLimit"
             :total="relations?.total"

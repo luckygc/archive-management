@@ -11,6 +11,7 @@ import {
     saveRolePermissions,
     updateAuthorizationRole,
 } from "@/shared/api/authorization";
+import { AmDataTable } from "@/shared/components/data-table";
 import type {
     AuthorizationPermissionDto,
     AuthorizationRoleDto,
@@ -182,35 +183,34 @@ async function savePermissions() {
             <h1>角色管理</h1>
             <el-button type="primary" @click="openCreateModal">新建角色</el-button>
         </div>
-        <el-table v-loading="loading" :data="roles" row-key="id" empty-text="暂无角色">
-            <el-table-column prop="roleName" label="角色名称" width="160" />
-            <el-table-column label="说明"
-                ><template #default="{ row }">{{
-                    row.description ?? "-"
-                }}</template></el-table-column
-            >
-            <el-table-column label="状态" width="80"
-                ><template #default="{ row }"
-                    ><el-tag :type="row.enabled ? 'success' : 'info'">{{
-                        row.enabled ? "启用" : "停用"
-                    }}</el-tag></template
-                ></el-table-column
-            >
-            <el-table-column prop="createdAt" label="创建时间" width="180" />
-            <el-table-column label="操作" width="220"
-                ><template #default="{ row }"
-                    ><el-button size="small" @click="openEditModal(row)">编辑</el-button
-                    ><el-button size="small" @click="openPermissionModal(row)">权限</el-button
-                    ><el-button
-                        size="small"
-                        type="danger"
-                        :loading="loading"
-                        @click="removeRole(row)"
-                        >删除</el-button
-                    ></template
-                ></el-table-column
-            >
-        </el-table>
+        <AmDataTable
+            :data="roles"
+            :loading="loading"
+            row-key="id"
+            sort-mode="none"
+            empty-text="暂无角色"
+            :columns="[
+                { key: 'roleName', label: '角色名称', width: 160 },
+                { key: 'description', label: '说明' },
+                { key: 'enabled', label: '状态', width: 80 },
+                { key: 'createdAt', label: '创建时间', width: 180 },
+                { key: 'actions', label: '操作', width: 220, fixed: 'right' },
+            ]"
+        >
+            <template #cell-description="{ row }">{{ row.description ?? "-" }}</template>
+            <template #cell-enabled="{ row }">
+                <el-tag :type="row.enabled ? 'success' : 'info'">
+                    {{ row.enabled ? "启用" : "停用" }}
+                </el-tag>
+            </template>
+            <template #cell-actions="{ row }">
+                <el-button size="small" @click="openEditModal(row)">编辑</el-button>
+                <el-button size="small" @click="openPermissionModal(row)">权限</el-button>
+                <el-button size="small" type="danger" :loading="loading" @click="removeRole(row)"
+                    >删除</el-button
+                >
+            </template>
+        </AmDataTable>
         <div v-if="prevCursor || nextCursor" class="am-pagination">
             <el-button
                 :disabled="!prevCursor"

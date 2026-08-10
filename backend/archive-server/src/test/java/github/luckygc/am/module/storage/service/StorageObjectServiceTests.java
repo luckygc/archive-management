@@ -76,7 +76,7 @@ class StorageObjectServiceTests {
 
         StorageObjectService.StorageObjectDto dto =
                 storageObjectService.storeObject(
-                        new StorageObjectService.StoreStorageObjectCommand(
+                        new StorageObjectService.StoreStorageObjectRequest(
                                 "合同.pdf",
                                 "application/pdf",
                                 4,
@@ -262,8 +262,8 @@ class StorageObjectServiceTests {
                         });
     }
 
-    private StorageObjectService.StoreStorageObjectCommand command(LocalDateTime expiresAt) {
-        return new StorageObjectService.StoreStorageObjectCommand(
+    private StorageObjectService.StoreStorageObjectRequest command(LocalDateTime expiresAt) {
+        return new StorageObjectService.StoreStorageObjectRequest(
                 "archive-export.xlsx",
                 "application/test",
                 3,

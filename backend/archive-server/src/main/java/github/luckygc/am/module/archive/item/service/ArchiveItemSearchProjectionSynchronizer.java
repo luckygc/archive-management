@@ -6,6 +6,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -14,11 +15,10 @@ import org.apache.commons.lang3.StringUtils;
 import org.jspecify.annotations.Nullable;
 import org.springframework.jdbc.support.JdbcUtils;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.archive.ArchiveLevel;
-import github.luckygc.am.module.archive.mapper.ArchiveItemLineRowCommands.ArchiveItemLineRowProjectionQuery;
+import github.luckygc.am.module.archive.mapper.ArchiveItemLineRowRequests.ArchiveItemLineRowProjectionRequest;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.metadata.ArchiveDynamicTableNames;
 import github.luckygc.am.module.archive.metadata.service.ArchiveCategoryService;
@@ -27,9 +27,8 @@ import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.Ar
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFieldDto;
 
 @Service
-public class ArchiveItemSearchProjectionService {
+public class ArchiveItemSearchProjectionSynchronizer {
 
-    private static final String SEARCH_EVENT_UPSERT = "UPSERT";
     private static final String SEARCH_EVENT_DELETE = "DELETE";
     private static final int SEARCH_OUTBOX_DRAIN_LIMIT = 100;
     private static final int POSTGRESQL_IDENTIFIER_LIMIT = 63;
@@ -41,17 +40,13 @@ public class ArchiveItemSearchProjectionService {
     private final ArchiveCategoryService archiveCategoryService;
     private final ArchiveMapper archiveMapper;
 
-    ArchiveItemSearchProjectionService(
+    ArchiveItemSearchProjectionSynchronizer(
             ArchiveMetadataService archiveMetadataService,
             ArchiveCategoryService archiveCategoryService,
             ArchiveMapper archiveMapper) {
         this.archiveMetadataService = archiveMetadataService;
         this.archiveCategoryService = archiveCategoryService;
         this.archiveMapper = archiveMapper;
-    }
-
-    void enqueueUpsert(Long recordId) {
-        archiveMapper.insertSearchOutbox(recordId, SEARCH_EVENT_UPSERT);
     }
 
     void drainOutbox() {
@@ -67,29 +62,22 @@ public class ArchiveItemSearchProjectionService {
         }
     }
 
-    @Transactional
-    public SearchProjectionRebuildResult rebuild(Long categoryId) {
-        ArchiveCategoryDto category = archiveCategoryService.getCategory(categoryId);
+    void synchronize(Long recordId) {
+        Map<String, @Nullable Object> recordRow = archiveMapper.getArchiveItem(recordId);
+        if (recordRow == null) {
+            removeProjection(recordId);
+            return;
+        }
+        ArchiveCategoryDto category = getCategoryByCode(string(recordRow, "categoryCode"));
         ArchiveLevel archiveLevel = ArchiveLevel.ITEM;
         if (!isDynamicTableBuilt(category, archiveLevel)) {
-            return new SearchProjectionRebuildResult(categoryId, 0);
+            removeProjection(recordId);
+            return;
         }
-        List<ArchiveFieldDto> fields =
-                archiveMetadataService.listEnabledFields(categoryId, archiveLevel);
-        if (fields.isEmpty()) {
-            return new SearchProjectionRebuildResult(categoryId, 0);
-        }
-        String tableName = ArchiveDynamicTableNames.tableName(category, archiveLevel);
-        List<Map<String, @Nullable Object>> rows =
-                archiveMapper.listItemsForSearchRebuild(tableName, "", archiveLevel.value());
-        for (Map<String, @Nullable Object> row : rows) {
-            enqueueUpsert(number(row, "id").longValue());
-        }
-        drainOutbox();
-        return new SearchProjectionRebuildResult(categoryId, rows.size());
+        refreshProjection(recordId, category, archiveLevel);
     }
 
-    void refreshFromDynamicRecord(
+    private void refreshProjection(
             Long recordId, ArchiveCategoryDto category, ArchiveLevel archiveLevel) {
         String tableName = ArchiveDynamicTableNames.tableName(category, archiveLevel);
         List<ArchiveFieldDto> fields =
@@ -97,13 +85,13 @@ public class ArchiveItemSearchProjectionService {
         Map<String, @Nullable Object> dynamicRecord =
                 archiveMapper.loadDynamicRecord(tableName, recordId);
         if (dynamicRecord == null) {
-            delete(recordId);
+            removeProjection(recordId);
             return;
         }
-        upsert(recordId, category, fields, dynamicFieldsByCode(dynamicRecord, fields));
+        replaceProjection(recordId, category, fields, dynamicFieldsByCode(dynamicRecord, fields));
     }
 
-    void upsert(
+    private void replaceProjection(
             Long recordId,
             ArchiveCategoryDto category,
             List<ArchiveFieldDto> fields,
@@ -120,10 +108,10 @@ public class ArchiveItemSearchProjectionService {
             searchText.append(lineText);
         }
         if (searchText.isEmpty()) {
-            delete(recordId);
+            removeProjection(recordId);
             return;
         }
-        archiveMapper.insertSearchProjection(recordId, searchText.toString(), 1);
+        archiveMapper.replaceSearchProjection(recordId, searchText.toString(), 1);
     }
 
     private void appendFieldText(
@@ -169,7 +157,7 @@ public class ArchiveItemSearchProjectionService {
             }
             List<Map<String, @Nullable Object>> rows =
                     archiveMapper.listItemLineRowsForProjection(
-                            new ArchiveItemLineRowProjectionQuery(
+                            new ArchiveItemLineRowProjectionRequest(
                                     tableName, itemId, selectColumns));
             for (Map<String, @Nullable Object> row : rows) {
                 StringBuilder lineText = new StringBuilder();
@@ -198,7 +186,7 @@ public class ArchiveItemSearchProjectionService {
         return lines;
     }
 
-    void delete(Long recordId) {
+    private void removeProjection(Long recordId) {
         archiveMapper.deleteSearchProjection(recordId);
     }
 
@@ -206,35 +194,21 @@ public class ArchiveItemSearchProjectionService {
         Long recordId = number(outbox, "archiveItemId").longValue();
         String eventType = string(outbox, "eventType");
         if (SEARCH_EVENT_DELETE.equals(eventType)) {
-            delete(recordId);
+            removeProjection(recordId);
             return;
         }
-
-        Map<String, @Nullable Object> recordRow = archiveMapper.getArchiveItem(recordId);
-        if (recordRow == null) {
-            delete(recordId);
-            return;
-        }
-        ArchiveCategoryDto category = getCategoryByCode(string(recordRow, "categoryCode"));
-        ArchiveLevel archiveLevel = ArchiveLevel.ITEM;
-        if (!isDynamicTableBuilt(category, archiveLevel)) {
-            delete(recordId);
-            return;
-        }
-        refreshFromDynamicRecord(recordId, category, archiveLevel);
+        synchronize(recordId);
     }
 
     private Map<String, @Nullable Object> dynamicFieldsByCode(
             Map<String, @Nullable Object> dynamicRecord, List<ArchiveFieldDto> fields) {
-        return fields.stream()
-                .collect(
-                        java.util.stream.Collectors.toMap(
-                                ArchiveFieldDto::fieldCode,
-                                field ->
-                                        normalizeDynamicFieldValue(
-                                                field, dynamicRecord.get(field.columnName())),
-                                (_, right) -> right,
-                                java.util.LinkedHashMap::new));
+        Map<String, @Nullable Object> dynamicFields = new LinkedHashMap<>();
+        for (ArchiveFieldDto field : fields) {
+            dynamicFields.put(
+                    field.fieldCode(),
+                    normalizeDynamicFieldValue(field, dynamicRecord.get(field.columnName())));
+        }
+        return dynamicFields;
     }
 
     private @Nullable Object normalizeDynamicFieldValue(
@@ -304,6 +278,4 @@ public class ArchiveItemSearchProjectionService {
             throw new BadRequestException(message);
         }
     }
-
-    public record SearchProjectionRebuildResult(Long categoryId, int rebuiltCount) {}
 }

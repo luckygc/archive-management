@@ -62,7 +62,7 @@ class ArchiveItemElectronicFileControllerTests {
                         org.mockito.ArgumentMatchers.eq(10L),
                         any(
                                 ArchiveItemElectronicFileService
-                                        .UploadArchiveItemElectronicFileCommand.class),
+                                        .UploadArchiveItemElectronicFileRequest.class),
                         org.mockito.ArgumentMatchers.eq(9L)))
                 .thenReturn(
                         new ArchiveItemElectronicFileService.ArchiveItemElectronicFileResponse(
@@ -87,7 +87,7 @@ class ArchiveItemElectronicFileControllerTests {
                         org.mockito.ArgumentMatchers.eq(10L),
                         any(
                                 ArchiveItemElectronicFileService
-                                        .UploadArchiveItemElectronicFileCommand.class),
+                                        .UploadArchiveItemElectronicFileRequest.class),
                         org.mockito.ArgumentMatchers.eq(9L));
     }
 

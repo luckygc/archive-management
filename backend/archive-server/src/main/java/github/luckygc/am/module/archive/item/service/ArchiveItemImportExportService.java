@@ -54,7 +54,7 @@ import github.luckygc.am.module.authorization.service.AuthorizationPermissionSer
 import github.luckygc.am.module.storage.FileLinkTargetType;
 import github.luckygc.am.module.storage.service.FileLinkService;
 import github.luckygc.am.module.storage.service.StorageObjectService;
-import github.luckygc.am.module.storage.service.StorageObjectService.StoreStorageObjectCommand;
+import github.luckygc.am.module.storage.service.StorageObjectService.StoreStorageObjectRequest;
 
 @Service
 public class ArchiveItemImportExportService {
@@ -71,8 +71,8 @@ public class ArchiveItemImportExportService {
     private final ArchiveMetadataService archiveMetadataService;
     private final ArchiveMetadataReferenceService archiveMetadataReferenceService;
     private final ArchiveCategoryService archiveCategoryService;
-    private final ArchiveItemCommandService archiveItemRoutingService;
-    private final ArchiveItemQueryService archiveItemQueryService;
+    private final ArchiveItemService archiveItemService;
+    private final ArchiveItemSearchService archiveItemSearchService;
     private final AuthorizationPermissionService permissionService;
     private final ArchiveDataScopeService dataScopeService;
     private final ArchiveItemDataRepository archiveItemRepository;
@@ -87,8 +87,8 @@ public class ArchiveItemImportExportService {
             ArchiveMetadataService archiveMetadataService,
             ArchiveMetadataReferenceService archiveMetadataReferenceService,
             ArchiveCategoryService archiveCategoryService,
-            ArchiveItemCommandService archiveItemRoutingService,
-            ArchiveItemQueryService archiveItemQueryService,
+            ArchiveItemService archiveItemService,
+            ArchiveItemSearchService archiveItemSearchService,
             AuthorizationPermissionService permissionService,
             ArchiveDataScopeService dataScopeService,
             ArchiveItemDataRepository archiveItemRepository,
@@ -101,8 +101,8 @@ public class ArchiveItemImportExportService {
         this.archiveMetadataService = archiveMetadataService;
         this.archiveMetadataReferenceService = archiveMetadataReferenceService;
         this.archiveCategoryService = archiveCategoryService;
-        this.archiveItemRoutingService = archiveItemRoutingService;
-        this.archiveItemQueryService = archiveItemQueryService;
+        this.archiveItemService = archiveItemService;
+        this.archiveItemSearchService = archiveItemSearchService;
         this.permissionService = permissionService;
         this.dataScopeService = dataScopeService;
         this.archiveItemRepository = archiveItemRepository;
@@ -148,9 +148,9 @@ public class ArchiveItemImportExportService {
         int imported = 0;
         for (ArchiveImportRow row : rows) {
             if (row.existingItem() == null) {
-                archiveItemRoutingService.createItem(row.createRequest(), userId);
+                archiveItemService.createItem(row.createRequest(), userId);
             } else {
-                archiveItemRoutingService.updateItem(
+                archiveItemService.updateItem(
                         row.existingItem().getId(), row.updateRequest(), userId);
             }
             imported++;
@@ -160,22 +160,22 @@ public class ArchiveItemImportExportService {
 
     @Transactional
     public DownloadLinkCreated createExportDownloadLink(
-            ArchiveItemQueryService.@Nullable SearchArchiveItemsRequest request, Long userId) {
+            ArchiveItemSearchService.@Nullable SearchArchiveItemsRequest request, Long userId) {
         requirePermission(userId, AuthorizationPermissionCode.ARCHIVE_EXPORT);
-        ArchiveItemQueryService.SearchArchiveItemsRequest base =
+        ArchiveItemSearchService.SearchArchiveItemsRequest base =
                 request == null
-                        ? new ArchiveItemQueryService.SearchArchiveItemsRequest(
+                        ? new ArchiveItemSearchService.SearchArchiveItemsRequest(
                                 null, null, null, null, null, EXPORT_BATCH_LIMIT, null, null)
                         : request;
         List<ArchiveFieldDto> fields = List.of();
         List<Map<String, @Nullable Object>> exportedRows = new ArrayList<>();
         @Nullable String cursor = null;
         do {
-            ArchiveItemQueryService.SearchArchiveItemsRequest pageRequest =
+            ArchiveItemSearchService.SearchArchiveItemsRequest pageRequest =
                     base.withPage(EXPORT_BATCH_LIMIT, cursor);
-            ArchiveItemQueryService.ArchiveItemListDto page =
-                    archiveItemQueryService.searchItems(pageRequest, userId);
-            ArchiveItemQueryService.ArchiveItemListDto encodedPage =
+            ArchiveItemSearchService.ArchiveItemListDto page =
+                    archiveItemSearchService.searchItems(pageRequest, userId);
+            ArchiveItemSearchService.ArchiveItemListDto encodedPage =
                     page.encodeCursorTokens(new CursorPageTokenContext(""));
             fields = page.fields();
             exportedRows.addAll(page.items());
@@ -244,7 +244,7 @@ public class ArchiveItemImportExportService {
         LocalDateTime expiresAt = LocalDateTime.now(clock).plus(DOWNLOAD_LINK_TTL);
         var storageObject =
                 storageObjectService.storeObject(
-                        new StoreStorageObjectCommand(
+                        new StoreStorageObjectRequest(
                                 file.filename(),
                                 XLSX_CONTENT_TYPE,
                                 file.bytes().length,
@@ -360,8 +360,8 @@ public class ArchiveItemImportExportService {
             for (ArchiveFieldDto field : fields) {
                 dynamicFields.put(field.fieldCode(), cell(rawRow, indexes.get(field.fieldName())));
             }
-            ArchiveItemCommandService.CreateArchiveItemRequest request =
-                    new ArchiveItemCommandService.CreateArchiveItemRequest(
+            ArchiveItemService.CreateArchiveItemRequest request =
+                    new ArchiveItemService.CreateArchiveItemRequest(
                             categoryId,
                             null,
                             cell(rawRow, indexes.get(HEADER_FONDS_CODE)),
@@ -437,7 +437,7 @@ public class ArchiveItemImportExportService {
             ArchiveImportRow row,
             Set<String> batchArchiveNos,
             List<ArchiveImportRowError> errors) {
-        ArchiveItemCommandService.CreateArchiveItemRequest request = row.createRequest();
+        ArchiveItemService.CreateArchiveItemRequest request = row.createRequest();
         if (StringUtils.isBlank(request.fondsCode())) {
             errors.add(new ArchiveImportRowError(row.rowNumber(), HEADER_FONDS_CODE, "全宗不能为空"));
         } else {
@@ -573,7 +573,7 @@ public class ArchiveItemImportExportService {
     }
 
     private void writeExportAudit(
-            ArchiveItemQueryService.SearchArchiveItemsRequest request, Long userId, int rowCount) {
+            ArchiveItemSearchService.SearchArchiveItemsRequest request, Long userId, int rowCount) {
         ArchiveItemAudit audit = new ArchiveItemAudit();
         audit.setSourceTableName("am_archive_item");
         audit.setSourceRecordId(0L);
@@ -591,7 +591,7 @@ public class ArchiveItemImportExportService {
     private record ImportRowDataScopeCheck(
             ArchiveCategoryDto category,
             List<ArchiveFieldDto> fields,
-            ArchiveItemCommandService.CreateArchiveItemRequest request,
+            ArchiveItemService.CreateArchiveItemRequest request,
             Map<String, @Nullable Object> convertedFields,
             Long userId,
             int rowNumber,

@@ -31,7 +31,7 @@ import github.luckygc.am.module.archive.authorization.repository.ArchiveDataScop
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeResolutionTypes.ArchiveDataScopeFilter;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeResolutionTypes.ResolvedArchiveDataScope;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeResolutionTypes.ResolvedScope;
-import github.luckygc.am.module.archive.item.ArchiveItemQueryOperator;
+import github.luckygc.am.module.archive.item.ArchiveItemFilterOperator;
 import github.luckygc.am.module.archive.mapper.ArchiveDataScopeSqlGroup;
 import github.luckygc.am.module.archive.mapper.ArchiveSqlCondition;
 import github.luckygc.am.module.archive.metadata.service.ArchiveCategoryService;
@@ -383,7 +383,7 @@ public class ArchiveDataScopeResolver {
             if (field == null || !field.enabled() || !field.dataScopeFilterable()) {
                 throw new BadRequestException("动态字段不允许用于数据范围", "dynamicCondition", "动态字段不允许用于数据范围");
             }
-            ArchiveItemQueryOperator operator = requireDynamicOperator(condition.operator());
+            ArchiveItemFilterOperator operator = requireDynamicOperator(condition.operator());
             List<String> values = condition.values() == null ? List.of() : condition.values();
             conditions.add(toSqlCondition(field, operator, values));
         }
@@ -391,26 +391,26 @@ public class ArchiveDataScopeResolver {
     }
 
     private ArchiveSqlCondition toSqlCondition(
-            ArchiveFieldDto field, ArchiveItemQueryOperator operator, List<String> values) {
+            ArchiveFieldDto field, ArchiveItemFilterOperator operator, List<String> values) {
         return switch (operator) {
             case EQ ->
                     new ArchiveSqlCondition(
                             field.columnName(),
-                            ArchiveItemQueryOperator.EQ,
+                            ArchiveItemFilterOperator.EQ,
                             convertDynamicConditionValue(field, values.getFirst()));
             case IN ->
                     new ArchiveSqlCondition(
                             field.columnName(),
-                            ArchiveItemQueryOperator.IN,
+                            ArchiveItemFilterOperator.IN,
                             values.stream()
                                     .map(value -> convertDynamicConditionValue(field, value))
                                     .toList());
             case IS_NULL ->
                     new ArchiveSqlCondition(
-                            field.columnName(), ArchiveItemQueryOperator.IS_NULL, null);
+                            field.columnName(), ArchiveItemFilterOperator.IS_NULL, null);
             case IS_NOT_NULL ->
                     new ArchiveSqlCondition(
-                            field.columnName(), ArchiveItemQueryOperator.IS_NOT_NULL, null);
+                            field.columnName(), ArchiveItemFilterOperator.IS_NOT_NULL, null);
             default ->
                     throw new BadRequestException(
                             "动态字段条件操作符不支持", "dynamicCondition", "动态字段条件操作符不支持");
@@ -436,8 +436,8 @@ public class ArchiveDataScopeResolver {
         }
     }
 
-    private ArchiveItemQueryOperator requireDynamicOperator(
-            @Nullable ArchiveItemQueryOperator operator) {
+    private ArchiveItemFilterOperator requireDynamicOperator(
+            @Nullable ArchiveItemFilterOperator operator) {
         if (operator == null) {
             throw new BadRequestException("动态字段条件操作符不能为空", "dynamicCondition", "动态字段条件操作符不能为空");
         }

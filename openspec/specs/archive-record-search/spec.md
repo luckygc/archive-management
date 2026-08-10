@@ -166,6 +166,34 @@
 - **THEN** 系统 SHALL NOT 阻塞字段定义保存来同步重建历史投影
 - **AND** 系统 SHALL 允许通过单独重建流程补齐历史投影
 
+### Requirement: 搜索投影重建任务
+
+系统 SHALL 通过可恢复的异步任务重建分类下的档案条目搜索投影。
+
+#### Scenario: 启动搜索投影重建任务
+
+- **WHEN** 具有档案元数据管理权限的用户调用 `POST /api/v1/archive-categories/{categoryId}:rebuildSearchProjection`
+- **THEN** 系统 SHALL 返回 `202 Accepted` 和 `JobAcceptedResponse`
+- **AND** 响应 SHALL 提供指向 `/api/v1/archive-search-projection-rebuild-jobs/{jobId}` 的 `operationLocation`
+- **AND** 系统 SHALL 冻结任务创建时待处理档案条目的 ID 上界
+- **AND** 系统 SHALL NOT 在启动请求内同步遍历该分类全部档案条目
+
+#### Scenario: 分批执行搜索投影重建任务
+
+- **WHEN** 后台处理搜索投影重建任务
+- **THEN** 系统 SHALL 使用有界批次处理任务创建时 ID 上界内的全部未删除档案条目
+- **AND** 每个批次成功后系统 SHALL 持久化处理进度和最近完成的档案条目 ID
+- **AND** 应用重启后系统 SHALL 从最近完成的档案条目 ID 继续处理
+- **AND** 全部批次完成前任务 SHALL NOT 进入 `succeeded`
+
+#### Scenario: 查询搜索投影重建任务
+
+- **WHEN** 具有档案元数据管理权限的用户调用 `GET /api/v1/archive-search-projection-rebuild-jobs/{jobId}`
+- **THEN** 系统 SHALL 返回 `JobStatusResponse`
+- **AND** 成功任务的 `status` SHALL 为 `succeeded` 且 `progress` SHALL 为 `100`
+- **AND** 成功任务的 `result` SHALL 包含分类 ID 和实际重建数量
+- **AND** 失败任务 SHALL 返回稳定的 `errorCode` 和可展示的 `errorMessage`
+
 ### Requirement: 条目关联检索边界
 
 条目关联 SHALL 作为结构化关系查询能力，不参与全文投影拼接。

@@ -1,23 +1,17 @@
-import type { ArchiveFieldDto } from "@/shared/types/archive-metadata";
-import type { ArchiveRecordOrderBy, ArchiveRecordSortField } from "@/shared/types/archive-records";
+import type { SortingState } from "@tanstack/vue-table";
 
-export function toArchiveRecordOrder(
-    prop: string | null,
-    order: "ascending" | "descending" | null,
-    fields: ArchiveFieldDto[],
-): ArchiveRecordOrderBy[] {
-    if (!prop || !order) return [];
-    const fixed: Record<string, ArchiveRecordSortField> = {
-        archive_no: "archiveNo",
-        archive_year: "archiveYear",
-        fonds_name: "fondsCode",
-        category_name: "categoryCode",
-    };
-    const dynamic = fields.find((field) => field.columnName === prop);
-    return [
-        {
-            field: fixed[prop] ?? dynamic?.fieldCode ?? prop,
-            direction: order === "ascending" ? "ASC" : "DESC",
-        },
-    ];
+import type { ArchiveRecordOrderBy } from "@/shared/types/archive-records";
+
+export function toArchiveRecordOrder(sorting: SortingState): ArchiveRecordOrderBy[] {
+    return sorting.map(({ id, desc }) => ({
+        field: id,
+        direction: desc ? "DESC" : "ASC",
+    }));
+}
+
+export function toTableSorting(orderBy: ArchiveRecordOrderBy[]): SortingState {
+    return orderBy.map(({ field, direction }) => ({
+        id: field,
+        desc: direction === "DESC",
+    }));
 }

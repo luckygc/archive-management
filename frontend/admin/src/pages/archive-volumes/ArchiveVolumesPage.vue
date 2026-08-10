@@ -8,6 +8,7 @@ import { listArchiveCategories, listArchiveFonds } from "@/shared/api/archive-me
 import { listArchiveVolumes } from "@/shared/api/archive-volumes";
 import CursorPagination from "@/shared/components/CursorPagination.vue";
 import RequestErrorState from "@/shared/components/RequestErrorState.vue";
+import { AmDataTable } from "@/shared/components/data-table";
 import {
     isCursorFieldViolation,
     requestErrorMessage,
@@ -242,37 +243,37 @@ function formatTime(value: string) {
                 :retrying="loading"
                 @retry="refresh"
             />
-            <el-table v-loading="loading" :data="result?.items || []" row-key="id">
-                <el-table-column label="档号" prop="archiveNo" min-width="160">
-                    <template #default="{ row }">{{ row.archiveNo || "-" }}</template>
-                </el-table-column>
-                <el-table-column label="全宗" min-width="180">
-                    <template #default="{ row }">{{ row.fondsCode }} {{ row.fondsName }}</template>
-                </el-table-column>
-                <el-table-column label="档案分类" min-width="180">
-                    <template #default="{ row }">
-                        {{ row.categoryCode }} {{ row.categoryName }}
-                    </template>
-                </el-table-column>
-                <el-table-column label="年度" prop="archiveYear" width="90" />
-                <el-table-column label="创建时间" min-width="170">
-                    <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
-                </el-table-column>
-                <el-table-column label="操作" fixed="right" width="210">
-                    <template #default="{ row }">
-                        <el-button
-                            link
-                            type="primary"
-                            @click="editorState = { mode: 'detail', volumeId: row.id }"
-                        >
-                            查看详情
-                        </el-button>
-                        <el-button link type="primary" @click="openItems(row)">
-                            查看卷内档案
-                        </el-button>
-                    </template>
-                </el-table-column>
-            </el-table>
+            <AmDataTable
+                :data="result?.items || []"
+                :loading="loading"
+                row-key="id"
+                sort-mode="none"
+                :columns="[
+                    { key: 'archiveNo', label: '档号', minWidth: 160 },
+                    { key: 'fonds', label: '全宗', minWidth: 180 },
+                    { key: 'category', label: '档案分类', minWidth: 180 },
+                    { key: 'archiveYear', label: '年度', width: 90 },
+                    { key: 'createdAt', label: '创建时间', minWidth: 170 },
+                    { key: 'actions', label: '操作', width: 210, fixed: 'right' },
+                ]"
+            >
+                <template #cell-archiveNo="{ row }">{{ row.archiveNo || "-" }}</template>
+                <template #cell-fonds="{ row }">{{ row.fondsCode }} {{ row.fondsName }}</template>
+                <template #cell-category="{ row }">
+                    {{ row.categoryCode }} {{ row.categoryName }}
+                </template>
+                <template #cell-createdAt="{ row }">{{ formatTime(row.createdAt) }}</template>
+                <template #cell-actions="{ row }">
+                    <el-button
+                        link
+                        type="primary"
+                        @click="editorState = { mode: 'detail', volumeId: row.id }"
+                    >
+                        查看详情
+                    </el-button>
+                    <el-button link type="primary" @click="openItems(row)">查看卷内档案</el-button>
+                </template>
+            </AmDataTable>
             <div class="am-table-footer">
                 <CursorPagination
                     :limit="limit"

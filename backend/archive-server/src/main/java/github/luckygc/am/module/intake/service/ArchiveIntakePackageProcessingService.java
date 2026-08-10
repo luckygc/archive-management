@@ -20,11 +20,11 @@ import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.archive.ArchiveLevel;
-import github.luckygc.am.module.archive.item.service.ArchiveItemCommandService;
-import github.luckygc.am.module.archive.item.service.ArchiveItemCommandService.CreateArchiveItemRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemElectronicFileService;
-import github.luckygc.am.module.archive.item.service.ArchiveItemElectronicFileService.UploadArchiveItemElectronicFileCommand;
+import github.luckygc.am.module.archive.item.service.ArchiveItemElectronicFileService.UploadArchiveItemElectronicFileRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemReadService.ArchiveItemDto;
+import github.luckygc.am.module.archive.item.service.ArchiveItemService;
+import github.luckygc.am.module.archive.item.service.ArchiveItemService.CreateArchiveItemRequest;
 import github.luckygc.am.module.archive.library.ArchiveRepository;
 import github.luckygc.am.module.archive.library.ArchiveRepositoryRole;
 import github.luckygc.am.module.archive.library.service.ArchiveRepositoryService;
@@ -54,7 +54,7 @@ public class ArchiveIntakePackageProcessingService {
     private final ArchiveCategoryService archiveCategoryService;
     private final ArchiveMetadataReferenceService metadataReferenceService;
     private final ArchiveMetadataService archiveMetadataService;
-    private final ArchiveItemCommandService archiveItemCommandService;
+    private final ArchiveItemService archiveItemService;
     private final ArchiveItemElectronicFileService electronicFileService;
     private final Clock clock;
 
@@ -65,7 +65,7 @@ public class ArchiveIntakePackageProcessingService {
             ArchiveCategoryService archiveCategoryService,
             ArchiveMetadataReferenceService metadataReferenceService,
             ArchiveMetadataService archiveMetadataService,
-            ArchiveItemCommandService archiveItemCommandService,
+            ArchiveItemService archiveItemService,
             ArchiveItemElectronicFileService electronicFileService,
             Clock clock) {
         this.packageRepository = packageRepository;
@@ -74,7 +74,7 @@ public class ArchiveIntakePackageProcessingService {
         this.archiveCategoryService = archiveCategoryService;
         this.metadataReferenceService = metadataReferenceService;
         this.archiveMetadataService = archiveMetadataService;
-        this.archiveItemCommandService = archiveItemCommandService;
+        this.archiveItemService = archiveItemService;
         this.electronicFileService = electronicFileService;
         this.clock = clock;
     }
@@ -127,7 +127,7 @@ public class ArchiveIntakePackageProcessingService {
                             .getEnabledRetentionPeriodByName(item.retentionPeriod())
                             .id();
             ArchiveItemDto archiveItem =
-                    archiveItemCommandService.createItem(
+                    archiveItemService.createItem(
                             new CreateArchiveItemRequest(
                                     category.id(),
                                     null,
@@ -177,7 +177,7 @@ public class ArchiveIntakePackageProcessingService {
         try (InputStream inputStream = Files.newInputStream(file.temporaryPath())) {
             electronicFileService.uploadFile(
                     archiveItemId,
-                    new UploadArchiveItemElectronicFileCommand(
+                    new UploadArchiveItemElectronicFileRequest(
                             file.originalName(),
                             contentType(file),
                             file.size(),

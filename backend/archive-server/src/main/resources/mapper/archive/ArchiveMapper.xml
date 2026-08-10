@@ -387,15 +387,33 @@
           on ef.archive_item_id = visible.id
     </select>
 
-    <select id="listItemsForSearchRebuild" resultType="map">
-        select i.id,
-               i.fonds_code
-               ${selectColumns}
+    <select id="getMaxItemIdForSearchRebuild" resultType="long">
+        select max(i.id)
         from am_archive_item i
         join ${tableName} d on d.id = i.id
         where i.deleted_flag = false
           and d.deleted_flag = false
+    </select>
+
+    <select id="countItemsForSearchRebuild" resultType="int">
+        select count(*)
+        from am_archive_item i
+        join ${tableName} d on d.id = i.id
+        where i.deleted_flag = false
+          and d.deleted_flag = false
+          and i.id &lt;= #{maxItemId}
+    </select>
+
+    <select id="listItemIdsForSearchRebuild" resultType="long">
+        select i.id
+        from am_archive_item i
+        join ${tableName} d on d.id = i.id
+        where i.deleted_flag = false
+          and d.deleted_flag = false
+          and i.id &gt; #{afterId}
+          and i.id &lt;= #{maxItemId}
         order by i.id
+        limit #{limit}
     </select>
 
     <select id="insertArchiveItem" resultType="long" affectData="true" flushCache="true">
@@ -662,7 +680,7 @@
         where id = #{id} and deleted_flag = false
     </update>
 
-    <insert id="insertSearchProjection">
+    <insert id="replaceSearchProjection">
         insert into am_archive_item_search
             (archive_item_id, search_text, index_version, created_at, updated_at)
         values
@@ -677,13 +695,6 @@
         delete from am_archive_item_search
         where archive_item_id = #{archiveItemId}
     </delete>
-
-    <insert id="insertSearchOutbox">
-        insert into am_archive_item_search_outbox
-            (archive_item_id, event_type, created_at, updated_at)
-        values
-            (#{archiveItemId}, #{eventType}, #{_audit.now}, #{_audit.now})
-    </insert>
 
     <select id="listPendingSearchOutbox" resultType="map">
         select id,
@@ -1055,48 +1066,48 @@
         select id,
                item_id,
                line_order
-        <if test="query.requestTotal">, count(*) over () as total</if>
-        <foreach collection="query.selectColumns" item="columnName">
+        <if test="request.requestTotal">, count(*) over () as total</if>
+        <foreach collection="request.selectColumns" item="columnName">
                , ${columnName}
         </foreach>
-        from ${query.tableName}
-        where item_id = #{query.itemId}
+        from ${request.tableName}
+        where item_id = #{request.itemId}
           and deleted_flag = false
-        <if test="query.cursorLineOrder != null and query.cursorId != null">
+        <if test="request.cursorLineOrder != null and request.cursorId != null">
             <choose>
-                <when test="query.previous">
-                    and (line_order &lt; #{query.cursorLineOrder}
-                         or (line_order = #{query.cursorLineOrder} and id &lt; #{query.cursorId}))
+                <when test="request.previous">
+                    and (line_order &lt; #{request.cursorLineOrder}
+                         or (line_order = #{request.cursorLineOrder} and id &lt; #{request.cursorId}))
                 </when>
                 <otherwise>
-                    and (line_order &gt; #{query.cursorLineOrder}
-                         or (line_order = #{query.cursorLineOrder} and id &gt; #{query.cursorId}))
+                    and (line_order &gt; #{request.cursorLineOrder}
+                         or (line_order = #{request.cursorLineOrder} and id &gt; #{request.cursorId}))
                 </otherwise>
             </choose>
         </if>
         order by line_order
         <choose>
-            <when test="query.previous">desc</when>
+            <when test="request.previous">desc</when>
             <otherwise>asc</otherwise>
         </choose>,
         id
         <choose>
-            <when test="query.previous">desc</when>
+            <when test="request.previous">desc</when>
             <otherwise>asc</otherwise>
         </choose>
-        limit #{query.rowLimit}
+        limit #{request.rowLimit}
     </select>
 
     <select id="getItemLineRow" resultType="map">
         select id,
                item_id,
                line_order
-        <foreach collection="lookup.selectColumns" item="columnName">
+        <foreach collection="request.selectColumns" item="columnName">
                , ${columnName}
         </foreach>
-        from ${lookup.tableName}
-        where id = #{lookup.rowId}
-          and item_id = #{lookup.itemId}
+        from ${request.tableName}
+        where id = #{request.rowId}
+          and item_id = #{request.itemId}
           and deleted_flag = false
     </select>
 
@@ -1104,25 +1115,25 @@
         select id,
                item_id,
                line_order
-        <foreach collection="query.selectColumns" item="columnName">
+        <foreach collection="request.selectColumns" item="columnName">
                , ${columnName}
         </foreach>
-        from ${query.tableName}
-        where item_id = #{query.itemId}
+        from ${request.tableName}
+        where item_id = #{request.itemId}
           and deleted_flag = false
         order by line_order, id
     </select>
 
     <select id="insertItemLineRow" resultType="long" affectData="true" flushCache="true">
-        insert into ${command.tableName}
+        insert into ${request.tableName}
             (item_id, line_order
-            <foreach collection="command.assignments" item="assignment">
+            <foreach collection="request.assignments" item="assignment">
                 , ${assignment.columnName}
             </foreach>
             , created_at, updated_at)
         values
-            (#{command.itemId}, #{command.lineOrder}
-            <foreach collection="command.assignments" item="assignment">
+            (#{request.itemId}, #{request.lineOrder}
+            <foreach collection="request.assignments" item="assignment">
                 , #{assignment.value}
             </foreach>
             , #{_audit.now}, #{_audit.now})
@@ -1130,29 +1141,29 @@
     </select>
 
     <update id="updateItemLineRow">
-        update ${command.tableName}
+        update ${request.tableName}
         <set>
-            <if test="command.lineOrderPresent">
-                line_order = #{command.lineOrder},
+            <if test="request.lineOrderPresent">
+                line_order = #{request.lineOrder},
             </if>
-            <foreach collection="command.assignments" item="assignment">
+            <foreach collection="request.assignments" item="assignment">
                 ${assignment.columnName} = #{assignment.value},
             </foreach>
             updated_at = #{_audit.now}
         </set>
-        where id = #{command.rowId}
-          and item_id = #{command.itemId}
+        where id = #{request.rowId}
+          and item_id = #{request.itemId}
           and deleted_flag = false
     </update>
 
     <update id="deleteItemLineRow">
-        update ${command.tableName}
+        update ${request.tableName}
         set deleted_flag = true,
             deleted_at = localtimestamp,
-            deleted_by = #{command.userId},
+            deleted_by = #{request.userId},
             updated_at = #{_audit.now}
-        where id = #{command.rowId}
-          and item_id = #{command.itemId}
+        where id = #{request.rowId}
+          and item_id = #{request.itemId}
           and deleted_flag = false
     </update>
 </mapper>

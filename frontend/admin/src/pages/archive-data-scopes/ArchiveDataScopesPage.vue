@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { AmDataTable } from "@/shared/components/data-table";
+
 import {
     archiveDataScopeConditionText as conditionText,
     archiveDataScopeFieldOptions as fieldOptions,
@@ -39,40 +41,42 @@ const {
             </el-button>
         </div>
         <el-card shadow="never">
-            <el-table v-loading="loading" :data="scopes" row-key="id">
-                <el-table-column label="范围编码" prop="scopeCode" width="180" />
-                <el-table-column label="范围名称" prop="scopeName" />
-                <el-table-column label="范围" width="120">
-                    <template #default="{ row }">
-                        <el-tag :type="row.scopeType === 'ALL' ? 'primary' : 'info'">
-                            {{ row.scopeType === "ALL" ? "*" : "条件" }}
-                        </el-tag>
-                    </template>
-                </el-table-column>
-                <el-table-column label="条件">
-                    <template #default="{ row }">{{ conditionText(row) }}</template>
-                </el-table-column>
-                <el-table-column label="启用" width="100">
-                    <template #default="{ row }">
-                        <el-tag :type="row.enabled ? 'success' : 'info'">
-                            {{ row.enabled ? "启用" : "停用" }}
-                        </el-tag>
-                    </template>
-                </el-table-column>
-                <el-table-column label="操作" width="100">
-                    <template #default="{ row }">
-                        <el-button
-                            :disabled="!canManageDataScopes"
-                            link
-                            size="small"
-                            type="primary"
-                            @click="editScope(row)"
-                        >
-                            编辑
-                        </el-button>
-                    </template>
-                </el-table-column>
-            </el-table>
+            <AmDataTable
+                :data="scopes"
+                :loading="loading"
+                row-key="id"
+                :columns="[
+                    { key: 'scopeCode', label: '范围编码', width: 180, sortable: true },
+                    { key: 'scopeName', label: '范围名称', sortable: true },
+                    { key: 'scopeType', label: '范围', width: 120, sortable: true },
+                    { key: 'condition', label: '条件' },
+                    { key: 'enabled', label: '启用', width: 100, sortable: true },
+                    { key: 'actions', label: '操作', width: 100 },
+                ]"
+            >
+                <template #cell-scopeType="{ row }">
+                    <el-tag :type="row.scopeType === 'ALL' ? 'primary' : 'info'">
+                        {{ row.scopeType === "ALL" ? "*" : "条件" }}
+                    </el-tag>
+                </template>
+                <template #cell-condition="{ row }">{{ conditionText(row) }}</template>
+                <template #cell-enabled="{ row }">
+                    <el-tag :type="row.enabled ? 'success' : 'info'">
+                        {{ row.enabled ? "启用" : "停用" }}
+                    </el-tag>
+                </template>
+                <template #cell-actions="{ row }">
+                    <el-button
+                        :disabled="!canManageDataScopes"
+                        link
+                        size="small"
+                        type="primary"
+                        @click="editScope(row)"
+                    >
+                        编辑
+                    </el-button>
+                </template>
+            </AmDataTable>
         </el-card>
 
         <el-drawer

@@ -11,15 +11,15 @@ import github.luckygc.am.module.authorization.service.AuthorizationPermissionSer
 public class ArchiveWorkspaceService {
 
     private final ArchiveCategoryService categoryService;
-    private final ArchiveItemQueryService queryService;
+    private final ArchiveItemSearchService searchService;
     private final AuthorizationPermissionService permissionService;
 
     public ArchiveWorkspaceService(
             ArchiveCategoryService categoryService,
-            ArchiveItemQueryService queryService,
+            ArchiveItemSearchService searchService,
             AuthorizationPermissionService permissionService) {
         this.categoryService = categoryService;
-        this.queryService = queryService;
+        this.searchService = searchService;
         this.permissionService = permissionService;
     }
 
@@ -31,7 +31,7 @@ public class ArchiveWorkspaceService {
         }
         ArchiveWorkspaceSummary total = ArchiveWorkspaceSummary.empty();
         for (var category : categoryService.listCategories(true)) {
-            total = total.plus(queryService.summarizeCategoryForWorkspace(category.id(), userId));
+            total = total.plus(searchService.summarizeCategoryForWorkspace(category.id(), userId));
         }
         return total;
     }

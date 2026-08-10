@@ -3,12 +3,14 @@ package github.luckygc.am.common.api;
 import java.time.LocalDateTime;
 import java.util.Map;
 
+import org.jspecify.annotations.Nullable;
+
 public record JobStatusResponse(
-        String jobId,
+        Long jobId,
         String status,
         int progress,
         LocalDateTime createdAt,
         LocalDateTime updatedAt,
-        Map<String, Object> result,
-        String errorCode,
-        String errorMessage) {}
+        @Nullable Map<String, Object> result,
+        @Nullable String errorCode,
+        @Nullable String errorMessage) {}

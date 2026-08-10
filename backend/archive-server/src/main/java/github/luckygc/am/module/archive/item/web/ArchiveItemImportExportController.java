@@ -19,10 +19,10 @@ import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.archive.item.service.ArchiveItemImportExportService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemImportExportService.ArchiveImportResult;
 import github.luckygc.am.module.archive.item.service.ArchiveItemImportExportService.DownloadLinkCreated;
-import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService.ArchiveItemOrderBy;
-import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService.ArchiveItemRelatedGroup;
-import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService.ArchiveItemWhere;
-import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService.SearchArchiveItemsRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemSearchService.ArchiveItemOrderByRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemSearchService.ArchiveItemRelatedGroupRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemSearchService.ArchiveItemWhereRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemSearchService.SearchArchiveItemsRequest;
 import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeExecutionService.ArchiveRuntimeWarning;
 
 @RestController
@@ -89,9 +89,9 @@ public class ArchiveItemImportExportController {
             @Nullable String fondsCode,
             @Nullable Long volumeId,
             @Nullable String keyword,
-            @Nullable ArchiveItemWhere where,
-            @Nullable List<@Nullable ArchiveItemRelatedGroup> relatedGroups,
-            @Nullable List<@Nullable ArchiveItemOrderBy> orderBy) {
+            @Nullable ArchiveItemWhereRequest where,
+            @Nullable List<@Nullable ArchiveItemRelatedGroupRequest> relatedGroups,
+            @Nullable List<@Nullable ArchiveItemOrderByRequest> orderBy) {
 
         private SearchArchiveItemsRequest toSearchRequest() {
             return new SearchArchiveItemsRequest(

@@ -32,10 +32,10 @@ import github.luckygc.am.module.archive.item.service.ArchiveItemLineRowService.A
 import github.luckygc.am.module.archive.item.service.ArchiveItemLineRowService.CreateArchiveItemLineRowRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemLineRowService.PatchArchiveItemLineRowRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemReadService.ArchiveItemDto;
-import github.luckygc.am.module.archive.mapper.ArchiveItemLineRowCommands.ArchiveItemLineRowDeleteCommand;
-import github.luckygc.am.module.archive.mapper.ArchiveItemLineRowCommands.ArchiveItemLineRowInsertCommand;
-import github.luckygc.am.module.archive.mapper.ArchiveItemLineRowCommands.ArchiveItemLineRowPageQuery;
-import github.luckygc.am.module.archive.mapper.ArchiveItemLineRowCommands.ArchiveItemLineRowUpdateCommand;
+import github.luckygc.am.module.archive.mapper.ArchiveItemLineRowRequests.ArchiveItemLineRowDeleteRequest;
+import github.luckygc.am.module.archive.mapper.ArchiveItemLineRowRequests.ArchiveItemLineRowInsertRequest;
+import github.luckygc.am.module.archive.mapper.ArchiveItemLineRowRequests.ArchiveItemLineRowPageRequest;
+import github.luckygc.am.module.archive.mapper.ArchiveItemLineRowRequests.ArchiveItemLineRowUpdateRequest;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.mapper.ArchiveSqlAssignment;
 import github.luckygc.am.module.archive.metadata.ArchiveManagementMode;
@@ -49,11 +49,18 @@ class ArchiveItemLineRowServiceTests {
 
     private final ArchiveMapper archiveMapper = mock(ArchiveMapper.class);
     private final ArchiveItemReadService readService = mock(ArchiveItemReadService.class);
+    private final ArchiveItemSearchProjectionSynchronizer searchProjectionSynchronizer =
+            mock(ArchiveItemSearchProjectionSynchronizer.class);
     private final AuthorizationPermissionService permissionService =
             mock(AuthorizationPermissionService.class);
     private final ArchiveItemFieldValueConverter converter = new ArchiveItemFieldValueConverter();
     private final ArchiveItemLineRowService service =
-            new ArchiveItemLineRowService(archiveMapper, readService, permissionService, converter);
+            new ArchiveItemLineRowService(
+                    archiveMapper,
+                    readService,
+                    searchProjectionSynchronizer,
+                    permissionService,
+                    converter);
 
     @Test
     @DisplayName("数据范围不足时读取在加载明细定义前停止")
@@ -183,7 +190,7 @@ class ArchiveItemLineRowServiceTests {
     @DisplayName("列表要求读取权限和数据范围并按正向游标多取一行")
     void listRowsShouldEnforceReadScopeAndBuildForwardPage() {
         stubBuiltTable(false);
-        when(archiveMapper.listItemLineRows(any(ArchiveItemLineRowPageQuery.class)))
+        when(archiveMapper.listItemLineRows(any(ArchiveItemLineRowPageRequest.class)))
                 .thenReturn(
                         List.of(row(9L, 0, "甲", 3L), row(10L, 0, "乙", 3L), row(11L, 1, "丙", 3L)));
 
@@ -193,8 +200,8 @@ class ArchiveItemLineRowServiceTests {
         verify(permissionService)
                 .requirePermission(8L, AuthorizationPermissionCode.ARCHIVE_ITEM_READ);
         verify(readService).assertItemInDataScope(3L, 8L);
-        ArgumentCaptor<ArchiveItemLineRowPageQuery> captor =
-                ArgumentCaptor.forClass(ArchiveItemLineRowPageQuery.class);
+        ArgumentCaptor<ArchiveItemLineRowPageRequest> captor =
+                ArgumentCaptor.forClass(ArchiveItemLineRowPageRequest.class);
         verify(archiveMapper).listItemLineRows(captor.capture());
         assertThat(captor.getValue().rowLimit()).isEqualTo(3);
         assertThat(captor.getValue().requestTotal()).isTrue();
@@ -212,7 +219,7 @@ class ArchiveItemLineRowServiceTests {
     @DisplayName("反向游标查询恢复为正序并生成上一页游标")
     void listRowsShouldReversePreviousQueryResults() {
         stubBuiltTable(false);
-        when(archiveMapper.listItemLineRows(any(ArchiveItemLineRowPageQuery.class)))
+        when(archiveMapper.listItemLineRows(any(ArchiveItemLineRowPageRequest.class)))
                 .thenReturn(List.of(row(8L, 0, "乙"), row(7L, 0, "甲")));
         PageRequest request = PageRequest.ofSize(1).beforeCursor(PageRequest.Cursor.forKey(0, 9L));
 
@@ -228,7 +235,7 @@ class ArchiveItemLineRowServiceTests {
     @DisplayName("创建校验更新权限、数据范围、可编辑状态并映射字段白名单")
     void createRowShouldValidateBoundaryAndConvertValues() {
         stubBuiltTable(false);
-        when(archiveMapper.insertItemLineRow(any(ArchiveItemLineRowInsertCommand.class)))
+        when(archiveMapper.insertItemLineRow(any(ArchiveItemLineRowInsertRequest.class)))
                 .thenReturn(9L);
         when(archiveMapper.getItemLineRow(any())).thenReturn(row(9L, 0, "甲"));
 
@@ -243,9 +250,10 @@ class ArchiveItemLineRowServiceTests {
                 .requirePermission(8L, AuthorizationPermissionCode.ARCHIVE_ITEM_UPDATE);
         verify(readService).assertItemInDataScope(3L, 8L);
         verify(readService).ensureItemEditable(3L);
-        ArgumentCaptor<ArchiveItemLineRowInsertCommand> captor =
-                ArgumentCaptor.forClass(ArchiveItemLineRowInsertCommand.class);
+        ArgumentCaptor<ArchiveItemLineRowInsertRequest> captor =
+                ArgumentCaptor.forClass(ArchiveItemLineRowInsertRequest.class);
         verify(archiveMapper).insertItemLineRow(captor.capture());
+        verify(searchProjectionSynchronizer).synchronize(3L);
         assertThat(captor.getValue().assignments())
                 .singleElement()
                 .satisfies(
@@ -269,9 +277,10 @@ class ArchiveItemLineRowServiceTests {
         service.patchRow(
                 3L, 4L, 9L, new PatchArchiveItemLineRowRequest(false, null, true, values), 8L);
 
-        ArgumentCaptor<ArchiveItemLineRowUpdateCommand> captor =
-                ArgumentCaptor.forClass(ArchiveItemLineRowUpdateCommand.class);
+        ArgumentCaptor<ArchiveItemLineRowUpdateRequest> captor =
+                ArgumentCaptor.forClass(ArchiveItemLineRowUpdateRequest.class);
         verify(archiveMapper).updateItemLineRow(captor.capture());
+        verify(searchProjectionSynchronizer).synchronize(3L);
         assertThat(captor.getValue().lineOrderPresent()).isFalse();
         assertThat(captor.getValue().assignments())
                 .extracting(ArchiveSqlAssignment::columnName, ArchiveSqlAssignment::value)
@@ -332,7 +341,7 @@ class ArchiveItemLineRowServiceTests {
                                 assertThat(exception.getStatusCode())
                                         .isEqualTo(HttpStatus.NOT_FOUND));
 
-        verify(archiveMapper, never()).listItemLineRows(any(ArchiveItemLineRowPageQuery.class));
+        verify(archiveMapper, never()).listItemLineRows(any(ArchiveItemLineRowPageRequest.class));
     }
 
     @Test
@@ -357,7 +366,7 @@ class ArchiveItemLineRowServiceTests {
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("未构建");
 
-        verify(archiveMapper, never()).listItemLineRows(any(ArchiveItemLineRowPageQuery.class));
+        verify(archiveMapper, never()).listItemLineRows(any(ArchiveItemLineRowPageRequest.class));
     }
 
     @Test
@@ -369,9 +378,10 @@ class ArchiveItemLineRowServiceTests {
 
         service.deleteRow(3L, 4L, 9L, 8L);
 
-        ArgumentCaptor<ArchiveItemLineRowDeleteCommand> captor =
-                ArgumentCaptor.forClass(ArchiveItemLineRowDeleteCommand.class);
+        ArgumentCaptor<ArchiveItemLineRowDeleteRequest> captor =
+                ArgumentCaptor.forClass(ArchiveItemLineRowDeleteRequest.class);
         verify(archiveMapper).deleteItemLineRow(captor.capture());
+        verify(searchProjectionSynchronizer).synchronize(3L);
         assertThat(captor.getValue().itemId()).isEqualTo(3L);
         assertThat(captor.getValue().rowId()).isEqualTo(9L);
         assertThat(captor.getValue().userId()).isEqualTo(8L);

@@ -45,7 +45,7 @@ import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeTraceService;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
 
 @Service
-public class ArchiveItemCommandService {
+public class ArchiveItemService {
 
     private static final String AUDIT_OPERATION_CREATE = "CREATE";
     private static final String AUDIT_OPERATION_UPDATE = "UPDATE";
@@ -58,7 +58,7 @@ public class ArchiveItemCommandService {
     private final ArchiveMetadataReferenceService archiveMetadataReferenceService;
     private final ArchiveCategoryService archiveCategoryService;
     private final ArchiveMapper archiveMapper;
-    private final ArchiveItemSearchProjectionService searchProjectionService;
+    private final ArchiveItemSearchProjectionSynchronizer searchProjectionSynchronizer;
     private final ArchiveDataScopeService dataScopeService;
     private final AuthorizationPermissionService permissionService;
     private final ArchiveItemAuditDataRepository auditRepository;
@@ -67,12 +67,12 @@ public class ArchiveItemCommandService {
     private final ArchiveRuntimeExecutionService runtimeExecutionService;
     private final ArchiveRuntimeTraceService runtimeTraceService;
 
-    public ArchiveItemCommandService(
+    public ArchiveItemService(
             ArchiveMetadataService archiveMetadataService,
             ArchiveMetadataReferenceService archiveMetadataReferenceService,
             ArchiveCategoryService archiveCategoryService,
             ArchiveMapper archiveMapper,
-            ArchiveItemSearchProjectionService searchProjectionService,
+            ArchiveItemSearchProjectionSynchronizer searchProjectionSynchronizer,
             ArchiveDataScopeService dataScopeService,
             AuthorizationPermissionService permissionService,
             ArchiveItemAuditDataRepository auditRepository,
@@ -84,7 +84,7 @@ public class ArchiveItemCommandService {
         this.archiveMetadataReferenceService = archiveMetadataReferenceService;
         this.archiveCategoryService = archiveCategoryService;
         this.archiveMapper = archiveMapper;
-        this.searchProjectionService = searchProjectionService;
+        this.searchProjectionSynchronizer = searchProjectionSynchronizer;
         this.dataScopeService = dataScopeService;
         this.permissionService = permissionService;
         this.auditRepository = auditRepository;
@@ -207,7 +207,7 @@ public class ArchiveItemCommandService {
             upsertPhysicalFieldsIfPresent(
                     category, archiveLevel, recordId, physicalFields, convertedPhysicalFields);
         }
-        searchProjectionService.upsert(recordId, category, fields, convertedDynamicFields);
+        searchProjectionSynchronizer.synchronize(recordId);
         ArchiveItemDto record = archiveItemReadService.getItem(recordId);
         insertItemAudit(AUDIT_OPERATION_CREATE, record, null, userId);
         runtimeTraceService.saveSuccessfulExecution(
@@ -340,7 +340,7 @@ public class ArchiveItemCommandService {
             upsertPhysicalFieldsIfPresent(
                     category, ArchiveLevel.ITEM, id, allPhysicalFields, convertedPhysicalFields);
         }
-        searchProjectionService.refreshFromDynamicRecord(id, category, ArchiveLevel.ITEM);
+        searchProjectionSynchronizer.synchronize(id);
         ArchiveItemDetailDto after =
                 archiveItemReadService.getItemDetail(id, userId, ArchiveLayoutSurface.EDIT);
         insertItemAudit(AUDIT_OPERATION_UPDATE, after.item(), null, userId);
@@ -400,7 +400,7 @@ public class ArchiveItemCommandService {
         if (updated == 0) {
             throw badRequest("档案条目已锁定，不能删除");
         }
-        searchProjectionService.delete(id);
+        searchProjectionSynchronizer.synchronize(id);
         runtimeTraceService.saveSuccessfulExecution(
                 policyExecution.request(), policyExecution.result(), id);
     }

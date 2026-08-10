@@ -4,11 +4,11 @@ import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
-public final class ArchiveItemLineRowCommands {
+public final class ArchiveItemLineRowRequests {
 
-    private ArchiveItemLineRowCommands() {}
+    private ArchiveItemLineRowRequests() {}
 
-    public record ArchiveItemLineRowPageQuery(
+    public record ArchiveItemLineRowPageRequest(
             String tableName,
             Long itemId,
             List<String> selectColumns,
@@ -18,16 +18,16 @@ public final class ArchiveItemLineRowCommands {
             boolean requestTotal,
             int rowLimit) {}
 
-    public record ArchiveItemLineRowLookup(
+    public record ArchiveItemLineRowLookupRequest(
             String tableName, Long itemId, Long rowId, List<String> selectColumns) {}
 
-    public record ArchiveItemLineRowProjectionQuery(
+    public record ArchiveItemLineRowProjectionRequest(
             String tableName, Long itemId, List<String> selectColumns) {}
 
-    public record ArchiveItemLineRowInsertCommand(
+    public record ArchiveItemLineRowInsertRequest(
             String tableName, Long itemId, int lineOrder, List<ArchiveSqlAssignment> assignments) {}
 
-    public record ArchiveItemLineRowUpdateCommand(
+    public record ArchiveItemLineRowUpdateRequest(
             String tableName,
             Long itemId,
             Long rowId,
@@ -35,6 +35,6 @@ public final class ArchiveItemLineRowCommands {
             @Nullable Integer lineOrder,
             List<ArchiveSqlAssignment> assignments) {}
 
-    public record ArchiveItemLineRowDeleteCommand(
+    public record ArchiveItemLineRowDeleteRequest(
             String tableName, Long itemId, Long rowId, Long userId) {}
 }

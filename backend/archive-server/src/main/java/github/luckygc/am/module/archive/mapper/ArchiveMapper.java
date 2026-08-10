@@ -7,12 +7,12 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.jspecify.annotations.Nullable;
 
-import github.luckygc.am.module.archive.mapper.ArchiveItemLineRowCommands.ArchiveItemLineRowDeleteCommand;
-import github.luckygc.am.module.archive.mapper.ArchiveItemLineRowCommands.ArchiveItemLineRowInsertCommand;
-import github.luckygc.am.module.archive.mapper.ArchiveItemLineRowCommands.ArchiveItemLineRowLookup;
-import github.luckygc.am.module.archive.mapper.ArchiveItemLineRowCommands.ArchiveItemLineRowPageQuery;
-import github.luckygc.am.module.archive.mapper.ArchiveItemLineRowCommands.ArchiveItemLineRowProjectionQuery;
-import github.luckygc.am.module.archive.mapper.ArchiveItemLineRowCommands.ArchiveItemLineRowUpdateCommand;
+import github.luckygc.am.module.archive.mapper.ArchiveItemLineRowRequests.ArchiveItemLineRowDeleteRequest;
+import github.luckygc.am.module.archive.mapper.ArchiveItemLineRowRequests.ArchiveItemLineRowInsertRequest;
+import github.luckygc.am.module.archive.mapper.ArchiveItemLineRowRequests.ArchiveItemLineRowLookupRequest;
+import github.luckygc.am.module.archive.mapper.ArchiveItemLineRowRequests.ArchiveItemLineRowPageRequest;
+import github.luckygc.am.module.archive.mapper.ArchiveItemLineRowRequests.ArchiveItemLineRowProjectionRequest;
+import github.luckygc.am.module.archive.mapper.ArchiveItemLineRowRequests.ArchiveItemLineRowUpdateRequest;
 
 @Mapper
 public interface ArchiveMapper {
@@ -54,10 +54,16 @@ public interface ArchiveMapper {
             @Param("source") ArchiveDynamicItemSource source,
             @Param("criteria") ArchiveDynamicItemCriteria criteria);
 
-    List<Map<String, Object>> listItemsForSearchRebuild(
+    @Nullable Long getMaxItemIdForSearchRebuild(@Param("tableName") String tableName);
+
+    int countItemsForSearchRebuild(
+            @Param("tableName") String tableName, @Param("maxItemId") Long maxItemId);
+
+    List<Long> listItemIdsForSearchRebuild(
             @Param("tableName") String tableName,
-            @Param("selectColumns") String selectColumns,
-            @Param("archiveLevel") String archiveLevel);
+            @Param("afterId") long afterId,
+            @Param("maxItemId") Long maxItemId,
+            @Param("limit") int limit);
 
     Long insertArchiveItem(
             @Param("archiveLevel") String archiveLevel,
@@ -157,15 +163,12 @@ public interface ArchiveMapper {
 
     int unlockArchiveItem(@Param("id") Long id);
 
-    int insertSearchProjection(
+    int replaceSearchProjection(
             @Param("archiveItemId") Long archiveItemId,
             @Param("searchText") String searchText,
             @Param("indexVersion") int indexVersion);
 
     int deleteSearchProjection(@Param("archiveItemId") Long archiveItemId);
-
-    int insertSearchOutbox(
-            @Param("archiveItemId") Long archiveItemId, @Param("eventType") String eventType);
 
     List<Map<String, Object>> listPendingSearchOutbox(@Param("limit") int limit);
 
@@ -251,16 +254,17 @@ public interface ArchiveMapper {
             @Param("exactSearchable") boolean exactSearchable,
             @Param("sortOrder") int sortOrder);
 
-    List<Map<String, Object>> listItemLineRows(@Param("query") ArchiveItemLineRowPageQuery query);
+    List<Map<String, Object>> listItemLineRows(
+            @Param("request") ArchiveItemLineRowPageRequest request);
 
     List<Map<String, Object>> listItemLineRowsForProjection(
-            @Param("query") ArchiveItemLineRowProjectionQuery query);
+            @Param("request") ArchiveItemLineRowProjectionRequest request);
 
-    Map<String, Object> getItemLineRow(@Param("lookup") ArchiveItemLineRowLookup lookup);
+    Map<String, Object> getItemLineRow(@Param("request") ArchiveItemLineRowLookupRequest request);
 
-    Long insertItemLineRow(@Param("command") ArchiveItemLineRowInsertCommand command);
+    Long insertItemLineRow(@Param("request") ArchiveItemLineRowInsertRequest request);
 
-    int updateItemLineRow(@Param("command") ArchiveItemLineRowUpdateCommand command);
+    int updateItemLineRow(@Param("request") ArchiveItemLineRowUpdateRequest request);
 
-    int deleteItemLineRow(@Param("command") ArchiveItemLineRowDeleteCommand command);
+    int deleteItemLineRow(@Param("request") ArchiveItemLineRowDeleteRequest request);
 }

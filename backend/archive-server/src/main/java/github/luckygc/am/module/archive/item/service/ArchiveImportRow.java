@@ -10,13 +10,13 @@ import github.luckygc.am.module.archive.item.service.ArchiveItemImportExportServ
 final class ArchiveImportRow {
 
     private final int rowNumber;
-    private final ArchiveItemCommandService.CreateArchiveItemRequest createRequest;
+    private final ArchiveItemService.CreateArchiveItemRequest createRequest;
     private final List<ArchiveImportRowError> parseErrors;
     private @Nullable ArchiveItem existingItem;
 
     ArchiveImportRow(
             int rowNumber,
-            ArchiveItemCommandService.CreateArchiveItemRequest createRequest,
+            ArchiveItemService.CreateArchiveItemRequest createRequest,
             @Nullable ArchiveItem existingItem,
             List<ArchiveImportRowError> parseErrors) {
         this.rowNumber = rowNumber;
@@ -29,12 +29,12 @@ final class ArchiveImportRow {
         return rowNumber;
     }
 
-    ArchiveItemCommandService.CreateArchiveItemRequest createRequest() {
+    ArchiveItemService.CreateArchiveItemRequest createRequest() {
         return createRequest;
     }
 
-    ArchiveItemCommandService.UpdateArchiveItemRequest updateRequest() {
-        return new ArchiveItemCommandService.UpdateArchiveItemRequest(
+    ArchiveItemService.UpdateArchiveItemRequest updateRequest() {
+        return new ArchiveItemService.UpdateArchiveItemRequest(
                 createRequest.volumeId(),
                 createRequest.fondsCode(),
                 createRequest.archiveNo(),

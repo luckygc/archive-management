@@ -8,13 +8,13 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 @DisplayName("档案写入职责边界")
-class ArchiveItemCommandServiceBoundaryTests {
+class ArchiveItemServiceBoundaryTests {
 
     @Test
     @DisplayName("写入入口不承担读取模型和数据范围读取校验")
-    void commandEntryShouldDelegateReadModel() {
+    void writeEntryShouldDelegateReadModel() {
         assertThat(
-                        Arrays.stream(ArchiveItemCommandService.class.getDeclaredMethods())
+                        Arrays.stream(ArchiveItemService.class.getDeclaredMethods())
                                 .map(method -> method.getName()))
                 .doesNotContain(
                         "getItem",

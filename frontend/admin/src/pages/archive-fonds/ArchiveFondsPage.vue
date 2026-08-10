@@ -2,6 +2,7 @@
 import { onMounted, ref } from "vue";
 
 import { listArchiveFonds, updateArchiveFonds } from "@/shared/api/archive-metadata";
+import { AmDataTable } from "@/shared/components/data-table";
 import type { ArchiveFondsDto } from "@/shared/types/archive-metadata";
 
 const fonds = ref<ArchiveFondsDto[]>([]);
@@ -44,24 +45,29 @@ onMounted(loadFonds);
             <el-button type="primary">新建全宗</el-button>
         </div>
         <el-card shadow="never">
-            <el-table v-loading="loading" :data="fonds" row-key="id">
-                <el-table-column label="全宗号" prop="fondsCode" width="140" />
-                <el-table-column label="全宗名称" prop="fondsName" />
-                <el-table-column label="排序" prop="sortOrder" width="100" />
-                <el-table-column label="启用" width="120">
-                    <template #default="{ row }">
-                        <el-switch
-                            :model-value="row.enabled"
-                            :loading="updatingId === row.id"
-                            active-text="启用"
-                            inactive-text="停用"
-                            inline-prompt
-                            :aria-label="`${row.enabled ? '停用' : '启用'}全宗：${row.fondsName}`"
-                            @change="(enabled) => toggleFonds(row, enabled)"
-                        />
-                    </template>
-                </el-table-column>
-            </el-table>
+            <AmDataTable
+                :data="fonds"
+                :loading="loading"
+                row-key="id"
+                :columns="[
+                    { key: 'fondsCode', label: '全宗号', width: 140, sortable: true },
+                    { key: 'fondsName', label: '全宗名称', sortable: true },
+                    { key: 'sortOrder', label: '排序', width: 100, sortable: true },
+                    { key: 'enabled', label: '启用', width: 120, sortable: true },
+                ]"
+            >
+                <template #cell-enabled="{ row }">
+                    <el-switch
+                        :model-value="row.enabled"
+                        :loading="updatingId === row.id"
+                        active-text="启用"
+                        inactive-text="停用"
+                        inline-prompt
+                        :aria-label="`${row.enabled ? '停用' : '启用'}全宗：${row.fondsName}`"
+                        @change="(enabled) => toggleFonds(row, enabled)"
+                    />
+                </template>
+            </AmDataTable>
         </el-card>
     </section>
 </template>

@@ -17,7 +17,6 @@ my @violations;
 check_active_changes($root, \@violations);
 check_archived_changes($root, \@violations);
 check_spec_index($root, \@violations);
-check_history_notice($root, \@violations);
 
 if (@violations) {
     print STDERR join("\n", @violations), "\n";
@@ -112,16 +111,6 @@ sub check_spec_index {
         next if $actual{$path};
         push @{$violations}, "openspec/README.md: 规格索引包含不存在的 $path";
     }
-}
-
-sub check_history_notice {
-    my ($repository_root, $violations) = @_;
-    my $path = File::Spec->catfile($repository_root, 'docs', 'superpowers', 'README.md');
-    my $content = read_utf8_file($path, 'docs/superpowers/README.md', $violations);
-    return if !defined $content;
-    return if index($content, '历史资料，非当前规范') >= 0;
-
-    push @{$violations}, 'docs/superpowers/README.md: 缺少历史资料声明';
 }
 
 sub read_utf8_file {

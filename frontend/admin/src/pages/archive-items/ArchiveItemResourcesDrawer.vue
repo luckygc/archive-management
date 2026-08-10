@@ -6,6 +6,7 @@ import type {
     ArchiveItemElectronicFileDto,
 } from "@/shared/types/archive-records";
 import RequestErrorState from "@/shared/components/RequestErrorState.vue";
+import { AmDataTable } from "@/shared/components/data-table";
 import ArchiveItemRelationsDrawer from "./ArchiveItemRelationsDrawer.vue";
 
 defineProps<{
@@ -85,32 +86,40 @@ function formatSize(size: number) {
                             @change="emit('upload', $event)"
                         />
                     </div>
-                    <el-table :data="files" row-key="id">
-                        <el-table-column label="文件名" prop="originalFilename" />
-                        <el-table-column label="大小" width="100">
-                            <template #default="{ row }">{{ formatSize(row.fileSize) }}</template>
-                        </el-table-column>
-                        <el-table-column label="用途" prop="usageType" width="100" />
-                        <el-table-column label="操作" width="140">
-                            <template #default="{ row }">
-                                <el-button
-                                    link
-                                    :disabled="!canDownloadFile || downloadingFileId === row.id"
-                                    :loading="downloadingFileId === row.id"
-                                    @click="emit('download', row.id)"
-                                    >下载</el-button
-                                >
-                                <el-button
-                                    link
-                                    type="danger"
-                                    :disabled="!canDeleteFile || unbindingFileId === row.id"
-                                    :loading="unbindingFileId === row.id"
-                                    @click="emit('unbind', row.id)"
-                                    >解绑</el-button
-                                >
-                            </template>
-                        </el-table-column>
-                    </el-table>
+                    <AmDataTable
+                        :data="files"
+                        :loading="loading"
+                        row-key="id"
+                        :columns="[
+                            {
+                                key: 'originalFilename',
+                                label: '文件名',
+                                sortable: true,
+                            },
+                            { key: 'fileSize', label: '大小', width: 100, sortable: true },
+                            { key: 'usageType', label: '用途', width: 100, sortable: true },
+                            { key: 'actions', label: '操作', width: 140 },
+                        ]"
+                    >
+                        <template #cell-fileSize="{ row }">{{ formatSize(row.fileSize) }}</template>
+                        <template #cell-actions="{ row }">
+                            <el-button
+                                link
+                                :disabled="!canDownloadFile || downloadingFileId === row.id"
+                                :loading="downloadingFileId === row.id"
+                                @click="emit('download', row.id)"
+                                >下载</el-button
+                            >
+                            <el-button
+                                link
+                                type="danger"
+                                :disabled="!canDeleteFile || unbindingFileId === row.id"
+                                :loading="unbindingFileId === row.id"
+                                @click="emit('unbind', row.id)"
+                                >解绑</el-button
+                            >
+                        </template>
+                    </AmDataTable>
                 </div>
             </el-tab-pane>
             <el-tab-pane label="审计记录" name="audits">
@@ -121,12 +130,17 @@ function formatSize(size: number) {
                         :retrying="loading"
                         @retry="emit('retry')"
                     />
-                    <el-table :data="audits" row-key="id">
-                        <el-table-column label="操作" prop="operationType" width="120" />
-                        <el-table-column label="原因" prop="operationReason" />
-                        <el-table-column label="操作人" prop="operatedBy" width="120" />
-                        <el-table-column label="时间" prop="operatedAt" width="180" />
-                    </el-table>
+                    <AmDataTable
+                        :data="audits"
+                        :loading="loading"
+                        row-key="id"
+                        :columns="[
+                            { key: 'operationType', label: '操作', width: 120, sortable: true },
+                            { key: 'operationReason', label: '原因', sortable: true },
+                            { key: 'operatedBy', label: '操作人', width: 120, sortable: true },
+                            { key: 'operatedAt', label: '时间', width: 180, sortable: true },
+                        ]"
+                    />
                 </div>
             </el-tab-pane>
             <el-tab-pane v-if="canReadRelation" label="档案关系" name="relations">

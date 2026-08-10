@@ -21,10 +21,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import github.luckygc.am.common.exception.BadRequestException;
-import github.luckygc.am.module.archive.item.service.ArchiveItemCommandService;
-import github.luckygc.am.module.archive.item.service.ArchiveItemCommandService.CreateArchiveItemRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemElectronicFileService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemReadService.ArchiveItemDto;
+import github.luckygc.am.module.archive.item.service.ArchiveItemService;
+import github.luckygc.am.module.archive.item.service.ArchiveItemService.CreateArchiveItemRequest;
 import github.luckygc.am.module.archive.library.ArchiveRepository;
 import github.luckygc.am.module.archive.library.ArchiveRepositoryRole;
 import github.luckygc.am.module.archive.library.service.ArchiveRepositoryService;
@@ -112,7 +112,7 @@ class ArchiveIntakePackageServiceTests {
         ArchiveMetadataReferenceService referenceService =
                 mock(ArchiveMetadataReferenceService.class);
         ArchiveMetadataService metadataService = mock(ArchiveMetadataService.class);
-        ArchiveItemCommandService itemService = mock(ArchiveItemCommandService.class);
+        ArchiveItemService itemService = mock(ArchiveItemService.class);
         ArchiveItemElectronicFileService electronicFileService =
                 mock(ArchiveItemElectronicFileService.class);
         ArchiveIntakePackage pending =
@@ -183,7 +183,7 @@ class ArchiveIntakePackageServiceTests {
                         mock(ArchiveCategoryService.class),
                         mock(ArchiveMetadataReferenceService.class),
                         mock(ArchiveMetadataService.class),
-                        mock(ArchiveItemCommandService.class),
+                        mock(ArchiveItemService.class),
                         mock(ArchiveItemElectronicFileService.class),
                         CLOCK);
 

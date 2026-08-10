@@ -22,6 +22,7 @@ import {
     updateApprovalWorkflowDefinition,
 } from "@/shared/api/approval-workflow";
 import { listAuthenticationUserOptions } from "@/shared/api/authentication";
+import { AmDataTable } from "@/shared/components/data-table";
 import type {
     ApprovalConditionOperator,
     ApprovalFlowEdgeDto,
@@ -503,13 +504,18 @@ onBeforeUnmount(() => window.removeEventListener("beforeunload", beforeUnload));
         </div>
 
         <el-drawer v-model="versionsOpen" title="发布版本" size="520px">
-            <el-table v-loading="versionsLoading" :data="versions" row-key="id">
-                <el-table-column prop="versionNumber" label="版本" width="90">
-                    <template #default="{ row }">v{{ row.versionNumber }}</template>
-                </el-table-column>
-                <el-table-column prop="publishedBy" label="发布人 ID" width="110" />
-                <el-table-column prop="publishedAt" label="发布时间" min-width="180" />
-            </el-table>
+            <AmDataTable
+                :data="versions"
+                :loading="versionsLoading"
+                row-key="id"
+                :columns="[
+                    { key: 'versionNumber', label: '版本', width: 90, sortable: true },
+                    { key: 'publishedBy', label: '发布人 ID', width: 110, sortable: true },
+                    { key: 'publishedAt', label: '发布时间', minWidth: 180, sortable: true },
+                ]"
+            >
+                <template #cell-versionNumber="{ row }">v{{ row.versionNumber }}</template>
+            </AmDataTable>
             <el-empty v-if="!versionsLoading && versions.length === 0" description="尚未发布版本" />
         </el-drawer>
     </section>

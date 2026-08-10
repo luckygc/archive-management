@@ -16,20 +16,19 @@ import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.common.api.CursorPageTokenCodec;
 import github.luckygc.am.common.api.CursorPageTokenContext;
 import github.luckygc.am.common.security.AuthenticatedUser;
-import github.luckygc.am.module.archive.item.service.ArchiveItemCommandService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemLockService;
-import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService;
-import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService.SearchArchiveItemsRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemReadService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRelationService;
+import github.luckygc.am.module.archive.item.service.ArchiveItemSearchService;
+import github.luckygc.am.module.archive.item.service.ArchiveItemSearchService.SearchArchiveItemsRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemService;
 
 @DisplayName("档案条目 HTTP 入口")
 class ArchiveItemControllerTests {
 
-    private final ArchiveItemCommandService archiveItemRoutingService =
-            mock(ArchiveItemCommandService.class);
-    private final ArchiveItemQueryService archiveItemQueryService =
-            mock(ArchiveItemQueryService.class);
+    private final ArchiveItemService archiveItemService = mock(ArchiveItemService.class);
+    private final ArchiveItemSearchService archiveItemQueryService =
+            mock(ArchiveItemSearchService.class);
     private final ArchiveItemReadService archiveItemReadService =
             mock(ArchiveItemReadService.class);
     private final ArchiveItemRelationService archiveItemRelationService =
@@ -38,7 +37,7 @@ class ArchiveItemControllerTests {
             mock(ArchiveItemLockService.class);
     private final ArchiveItemController controller =
             new ArchiveItemController(
-                    archiveItemRoutingService,
+                    archiveItemService,
                     archiveItemQueryService,
                     archiveItemReadService,
                     archiveItemRelationService,

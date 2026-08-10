@@ -22,7 +22,6 @@ my $script = 'openspec/scripts/governance-check.pl';
 
 subtest '只报告任务全部完成但尚未删除的活动 change' => sub {
     my $root = fixture_root();
-    write_valid_history_notice($root);
     write_file("$root/openspec/README.md", "# 规格索引\n");
     write_file("$root/openspec/changes/completed/tasks.md", "- [x] 已完成任务\n");
     write_file("$root/openspec/changes/active/tasks.md", "- [ ] 待完成任务\n");
@@ -42,7 +41,6 @@ subtest '只报告任务全部完成但尚未删除的活动 change' => sub {
 
 subtest '1.0.0 前拒绝保留已完成 change 历史' => sub {
     my $root = fixture_root();
-    write_valid_history_notice($root);
     write_file("$root/openspec/README.md", "# 规格索引\n");
     write_file("$root/openspec/changes/archive/old-change/tasks.md", "- [x] 已完成任务\n");
 
@@ -59,7 +57,6 @@ subtest '1.0.0 前拒绝保留已完成 change 历史' => sub {
 
 subtest '同一次执行报告规格索引的缺失项和过期项' => sub {
     my $root = fixture_root();
-    write_valid_history_notice($root);
     write_file("$root/openspec/specs/alpha/spec.md", "# Alpha\n");
     write_file("$root/openspec/specs/beta/spec.md", "# Beta\n");
     write_file(
@@ -77,7 +74,6 @@ subtest '同一次执行报告规格索引的缺失项和过期项' => sub {
 
 subtest '规格索引顺序变化不构成违规' => sub {
     my $root = fixture_root();
-    write_valid_history_notice($root);
     write_file("$root/openspec/specs/alpha/spec.md", "# Alpha\n");
     write_file("$root/openspec/specs/beta/spec.md", "# Beta\n");
     write_file(
@@ -94,7 +90,6 @@ subtest '规格索引顺序变化不构成违规' => sub {
 
 subtest '规格索引包含非法 UTF-8 时给出单条可定位诊断' => sub {
     my $root = fixture_root();
-    write_valid_history_notice($root);
     write_raw_file("$root/openspec/README.md", "\xFF\xFE");
 
     my ($status, $stdout, $stderr) = run_script($root);
@@ -107,44 +102,8 @@ subtest '规格索引包含非法 UTF-8 时给出单条可定位诊断' => sub {
     unlike($stderr, qr/does not map to Unicode|at scripts\/governance-check\.pl line/, '不泄漏 Perl 解码 warning');
 };
 
-subtest '历史资料 README 缺失时失败' => sub {
-    my $root = fixture_root();
-    write_file("$root/openspec/README.md", "# 规格索引\n");
-
-    my ($status, $stdout, $stderr) = run_script($root);
-
-    is($status, 1, '历史资料 README 缺失时退出 1');
-    like($stderr, qr{docs/superpowers/README\.md}, '诊断指出缺失的历史资料 README');
-    is($stdout, '', '历史资料 README 缺失时标准输出为空');
-};
-
-subtest '历史资料 README 缺少声明时失败' => sub {
-    my $root = fixture_root();
-    write_file("$root/openspec/README.md", "# 规格索引\n");
-    write_file("$root/docs/superpowers/README.md", "# Superpowers 文档\n");
-
-    my ($status, $stdout, $stderr) = run_script($root);
-
-    is($status, 1, '历史资料 README 缺少精确声明时退出 1');
-    like($stderr, qr{docs/superpowers/README\.md}, '诊断可定位缺少历史声明的 README');
-    is($stdout, '', '历史资料 README 缺少声明时标准输出为空');
-};
-
-subtest '历史资料 README 含精确声明时通过' => sub {
-    my $root = fixture_root();
-    write_file("$root/openspec/README.md", "# 规格索引\n");
-    write_valid_history_notice($root);
-
-    my ($status, $stdout, $stderr) = run_script($root);
-
-    is($status, 0, '历史资料 README 含精确声明时成功');
-    is($stdout, '', '历史资料声明合规时标准输出为空');
-    is($stderr, '', '合规的历史资料声明不产生违规诊断');
-};
-
 subtest '一次执行汇总多类治理违规' => sub {
     my $root = fixture_root();
-    write_file("$root/docs/superpowers/README.md", "# 缺少历史资料声明\n");
     write_file("$root/openspec/changes/completed/tasks.md", "- [x] 已完成任务\n");
     write_file("$root/openspec/specs/alpha/spec.md", "# Alpha\n");
     write_file("$root/openspec/specs/beta/spec.md", "# Beta\n");
@@ -163,7 +122,6 @@ subtest '一次执行汇总多类治理违规' => sub {
     );
     like($stderr, qr{specs/beta/spec\.md}, '汇总规格索引缺失项');
     like($stderr, qr{specs/stale/spec\.md}, '汇总规格索引过期项');
-    like($stderr, qr{docs/superpowers/README\.md}, '汇总可定位历史资料声明违规');
     is($stdout, '', '同时存在多类治理违规时标准输出为空');
 };
 
@@ -171,11 +129,6 @@ done_testing;
 
 sub fixture_root {
     return tempdir(CLEANUP => 1);
-}
-
-sub write_valid_history_notice {
-    my ($root) = @_;
-    write_file("$root/docs/superpowers/README.md", "# Superpowers 文档\n\n历史资料，非当前规范。\n");
 }
 
 sub write_file {

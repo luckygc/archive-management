@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { toRef } from "vue";
 
+import { AmDataTable } from "@/shared/components/data-table";
+
 import { fieldTypeLabels } from "./useArchiveCategories";
 import { useArchiveLineTables } from "./useArchiveLineTables";
 
@@ -60,36 +62,39 @@ const {
             <el-text type="danger">{{ tableLoadError }}</el-text>
             <el-button link type="primary" @click="loadTables()">重试加载</el-button>
         </div>
-        <el-table
-            v-loading="loadingTables"
+        <AmDataTable
             :data="tables"
+            :loading="loadingTables"
             row-key="id"
             empty-text="暂无明细表定义"
-            highlight-current-row
+            :highlight-current-row="true"
+            :current-row-key="selectedTable?.id"
+            :columns="[
+                { key: 'tableCode', label: '表编码', minWidth: 150, sortable: true },
+                { key: 'tableName', label: '表名称', minWidth: 140, sortable: true },
+                {
+                    key: 'physicalTableName',
+                    label: '物理表',
+                    minWidth: 220,
+                    sortable: true,
+                    ellipsis: true,
+                },
+                { key: 'sortOrder', label: '排序', width: 72, sortable: true },
+                { key: 'actions', label: '操作', width: 96 },
+            ]"
             @current-change="selectTable"
         >
-            <el-table-column label="表编码" prop="tableCode" min-width="150" />
-            <el-table-column label="表名称" prop="tableName" min-width="140" />
-            <el-table-column
-                label="物理表"
-                prop="physicalTableName"
-                min-width="220"
-                show-overflow-tooltip
-            />
-            <el-table-column label="排序" prop="sortOrder" width="72" />
-            <el-table-column label="操作" width="96">
-                <template #default="{ row }">
-                    <el-button
-                        link
-                        type="primary"
-                        :aria-label="`配置字段：${row.tableName}`"
-                        @click.stop="selectTable(row)"
-                    >
-                        配置字段
-                    </el-button>
-                </template>
-            </el-table-column>
-        </el-table>
+            <template #cell-actions="{ row }">
+                <el-button
+                    link
+                    type="primary"
+                    :aria-label="`配置字段：${row.tableName}`"
+                    @click.stop="selectTable(row)"
+                >
+                    配置字段
+                </el-button>
+            </template>
+        </AmDataTable>
 
         <template v-if="selectedTable">
             <el-divider />
@@ -127,25 +132,32 @@ const {
                 <el-text type="danger">{{ fieldLoadError }}</el-text>
                 <el-button link type="primary" @click="loadFields()">重试字段</el-button>
             </div>
-            <el-table
-                v-loading="loadingFields"
+            <AmDataTable
                 :data="fields"
+                :loading="loadingFields"
                 row-key="id"
                 empty-text="暂无字段，请先新增字段"
+                :columns="[
+                    { key: 'fieldCode', label: '字段编码', minWidth: 140, sortable: true },
+                    { key: 'fieldName', label: '字段名称', minWidth: 130, sortable: true },
+                    { key: 'fieldType', label: '类型', minWidth: 90, sortable: true },
+                    { key: 'columnName', label: '物理列', minWidth: 150, sortable: true },
+                    {
+                        key: 'exactSearchable',
+                        label: '精确检索',
+                        width: 92,
+                        sortable: true,
+                    },
+                    { key: 'sortOrder', label: '排序', width: 72, sortable: true },
+                ]"
             >
-                <el-table-column label="字段编码" prop="fieldCode" min-width="140" />
-                <el-table-column label="字段名称" prop="fieldName" min-width="130" />
-                <el-table-column label="类型" min-width="90">
-                    <template #default="{ row }">
-                        {{ fieldTypeLabels[row.fieldType] ?? row.fieldType }}
-                    </template>
-                </el-table-column>
-                <el-table-column label="物理列" prop="columnName" min-width="150" />
-                <el-table-column label="精确检索" width="92">
-                    <template #default="{ row }">{{ row.exactSearchable ? "是" : "否" }}</template>
-                </el-table-column>
-                <el-table-column label="排序" prop="sortOrder" width="72" />
-            </el-table>
+                <template #cell-fieldType="{ row }">
+                    {{ fieldTypeLabels[row.fieldType] ?? row.fieldType }}
+                </template>
+                <template #cell-exactSearchable="{ row }">
+                    {{ row.exactSearchable ? "是" : "否" }}
+                </template>
+            </AmDataTable>
         </template>
     </el-card>
 

@@ -16,11 +16,11 @@ import org.springframework.stereotype.Service;
 
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.archive.ArchiveLevel;
-import github.luckygc.am.module.archive.item.ArchiveItemQueryOperator;
+import github.luckygc.am.module.archive.item.ArchiveItemFilterOperator;
 import github.luckygc.am.module.archive.item.ArchiveItemRelationDirection;
-import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService.ArchiveItemQueryCondition;
-import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService.ArchiveItemRelatedGroup;
-import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService.ArchiveItemWhere;
+import github.luckygc.am.module.archive.item.service.ArchiveItemSearchService.ArchiveItemFilterConditionRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemSearchService.ArchiveItemRelatedGroupRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemSearchService.ArchiveItemWhereRequest;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.mapper.ArchiveSqlCondition;
 import github.luckygc.am.module.archive.mapper.ArchiveSqlRelatedGroup;
@@ -84,7 +84,7 @@ class ArchiveItemSearchCriteriaCompiler {
             Long categoryId,
             ArchiveLevel archiveLevel,
             List<ArchiveFieldDto> fields,
-            @Nullable ArchiveItemWhere where) {
+            @Nullable ArchiveItemWhereRequest where) {
         Map<String, ArchiveFieldDto> fieldsByCode =
                 fields.stream()
                         .collect(
@@ -107,13 +107,13 @@ class ArchiveItemSearchCriteriaCompiler {
     private List<ArchiveSqlCondition> buildWhereConditions(
             Map<String, ArchiveFieldDto> fieldsByCode,
             List<String> uniqueFieldCodes,
-            @Nullable ArchiveItemWhere where,
+            @Nullable ArchiveItemWhereRequest where,
             String fieldPath) {
         if (where == null || where.conditions() == null || where.conditions().isEmpty()) {
             return List.of();
         }
         List<ArchiveSqlCondition> conditions = new ArrayList<>();
-        for (ArchiveItemQueryCondition condition : where.conditions()) {
+        for (ArchiveItemFilterConditionRequest condition : where.conditions()) {
             String fieldCode =
                     condition == null ? null : StringUtils.trimToNull(condition.fieldCode());
             if (fieldCode == null) {
@@ -124,8 +124,8 @@ class ArchiveItemSearchCriteriaCompiler {
             ArchiveSqlCondition sqlCondition = toSqlCondition(field, condition, fieldPath);
             if (sqlCondition.value() != null
                     || sqlCondition.endValue() != null
-                    || sqlCondition.operator() == ArchiveItemQueryOperator.IS_EMPTY
-                    || sqlCondition.operator() == ArchiveItemQueryOperator.IS_NOT_EMPTY) {
+                    || sqlCondition.operator() == ArchiveItemFilterOperator.IS_EMPTY
+                    || sqlCondition.operator() == ArchiveItemFilterOperator.IS_NOT_EMPTY) {
                 conditions.add(sqlCondition);
             }
         }
@@ -141,21 +141,21 @@ class ArchiveItemSearchCriteriaCompiler {
     }
 
     private ArchiveSqlCondition toSqlCondition(
-            ArchiveFieldDto field, ArchiveItemQueryCondition condition, String fieldPath) {
-        ArchiveItemQueryOperator operator =
-                condition.op() == null ? ArchiveItemQueryOperator.EQ : condition.op();
+            ArchiveFieldDto field, ArchiveItemFilterConditionRequest condition, String fieldPath) {
+        ArchiveItemFilterOperator operator =
+                condition.op() == null ? ArchiveItemFilterOperator.EQ : condition.op();
         return switch (operator) {
             case EQ ->
                     new ArchiveSqlCondition(
                             field.columnName(),
-                            ArchiveItemQueryOperator.EQ,
+                            ArchiveItemFilterOperator.EQ,
                             convertValue(field, condition.value()));
             case CONTAINS -> {
                 ensureTextOperator(field, operator, fieldPath);
                 String value = convertSearchTextValue(field, condition.value());
                 yield new ArchiveSqlCondition(
                         field.columnName(),
-                        ArchiveItemQueryOperator.CONTAINS,
+                        ArchiveItemFilterOperator.CONTAINS,
                         value == null ? null : "%" + escapeLike(value) + "%");
             }
             case STARTS_WITH -> {
@@ -163,34 +163,34 @@ class ArchiveItemSearchCriteriaCompiler {
                 String value = convertSearchTextValue(field, condition.value());
                 yield new ArchiveSqlCondition(
                         field.columnName(),
-                        ArchiveItemQueryOperator.STARTS_WITH,
+                        ArchiveItemFilterOperator.STARTS_WITH,
                         value == null ? null : escapeLike(value) + "%");
             }
             case GTE ->
                     new ArchiveSqlCondition(
                             field.columnName(),
-                            ArchiveItemQueryOperator.GTE,
+                            ArchiveItemFilterOperator.GTE,
                             convertValue(field, condition.value()));
             case LTE ->
                     new ArchiveSqlCondition(
                             field.columnName(),
-                            ArchiveItemQueryOperator.LTE,
+                            ArchiveItemFilterOperator.LTE,
                             convertValue(field, condition.value()));
             case BETWEEN ->
                     new ArchiveSqlCondition(
                             field.columnName(),
-                            ArchiveItemQueryOperator.BETWEEN,
+                            ArchiveItemFilterOperator.BETWEEN,
                             convertValue(field, condition.startValue()),
                             convertValue(field, condition.endValue()));
             case IS_EMPTY -> {
                 ensureTextOperator(field, operator, fieldPath);
                 yield new ArchiveSqlCondition(
-                        field.columnName(), ArchiveItemQueryOperator.IS_EMPTY, null);
+                        field.columnName(), ArchiveItemFilterOperator.IS_EMPTY, null);
             }
             case IS_NOT_EMPTY -> {
                 ensureTextOperator(field, operator, fieldPath);
                 yield new ArchiveSqlCondition(
-                        field.columnName(), ArchiveItemQueryOperator.IS_NOT_EMPTY, null);
+                        field.columnName(), ArchiveItemFilterOperator.IS_NOT_EMPTY, null);
             }
             case IN, IS_NULL, IS_NOT_NULL ->
                     throw badRequest("不支持的筛选操作符", fieldPath + ".op", "不支持的筛选操作符");
@@ -198,12 +198,12 @@ class ArchiveItemSearchCriteriaCompiler {
     }
 
     List<ArchiveSqlRelatedGroup> buildRelatedGroups(
-            @Nullable List<@Nullable ArchiveItemRelatedGroup> relatedGroups, Long userId) {
+            @Nullable List<@Nullable ArchiveItemRelatedGroupRequest> relatedGroups, Long userId) {
         if (relatedGroups == null || relatedGroups.isEmpty()) {
             return List.of();
         }
         List<ArchiveSqlRelatedGroup> compiled = new ArrayList<>();
-        for (ArchiveItemRelatedGroup group : relatedGroups) {
+        for (ArchiveItemRelatedGroupRequest group : relatedGroups) {
             if (group == null) {
                 continue;
             }
@@ -252,7 +252,7 @@ class ArchiveItemSearchCriteriaCompiler {
     }
 
     private void ensureTextOperator(
-            ArchiveFieldDto field, ArchiveItemQueryOperator operator, String fieldPath) {
+            ArchiveFieldDto field, ArchiveItemFilterOperator operator, String fieldPath) {
         if (field.fieldType() != ArchiveFieldType.TEXT) {
             throw badRequest(
                     field.fieldName() + "不支持操作符：" + operator,

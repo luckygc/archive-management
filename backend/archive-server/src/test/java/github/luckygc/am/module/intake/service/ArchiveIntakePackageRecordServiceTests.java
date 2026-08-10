@@ -30,7 +30,7 @@ import github.luckygc.am.module.intake.repository.ArchiveIntakePackageValidation
 import github.luckygc.am.module.intake.service.ArchiveIntakePackageParser.ArchiveIntakeValidationResult;
 import github.luckygc.am.module.storage.service.StorageObjectService;
 import github.luckygc.am.module.storage.service.StorageObjectService.StorageObjectDto;
-import github.luckygc.am.module.storage.service.StorageObjectService.StoreStorageObjectCommand;
+import github.luckygc.am.module.storage.service.StorageObjectService.StoreStorageObjectRequest;
 
 @DisplayName("档案信息包接收记录")
 class ArchiveIntakePackageRecordServiceTests {
@@ -54,8 +54,8 @@ class ArchiveIntakePackageRecordServiceTests {
         when(storageObjectService.storeObject(any(), eq(9L)))
                 .thenAnswer(
                         invocation -> {
-                            StoreStorageObjectCommand command = invocation.getArgument(0);
-                            assertThat(command.inputStream().readAllBytes())
+                            StoreStorageObjectRequest request = invocation.getArgument(0);
+                            assertThat(request.inputStream().readAllBytes())
                                     .isEqualTo("zip-content".getBytes());
                             return new StorageObjectDto(
                                     8L,

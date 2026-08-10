@@ -9,7 +9,6 @@
 - `../DESIGN.md`：Element Plus 当前设计系统。
 - `../AGENTS.md`：仓库协作规则、强边界和技能路由。
 - `../openspec/README.md`：OpenSpec 规格和 change 状态索引。
-- [Superpowers 历史资料声明](superpowers/README.md)：历史资料范围与当前真相源指引。
 
 ## 工程文档
 

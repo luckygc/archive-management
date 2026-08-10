@@ -52,29 +52,29 @@ public class StorageObjectService {
     }
 
     @Transactional
-    public StorageObjectDto storeObject(StoreStorageObjectCommand command, Long userId) {
+    public StorageObjectDto storeObject(StoreStorageObjectRequest request, Long userId) {
         userId = AuthenticatedUsers.requireResolvedUserId(userId);
-        if (command == null) {
+        if (request == null) {
             throw new BadRequestException("文件不能为空");
         }
-        if (command.contentLength() <= 0) {
+        if (request.contentLength() <= 0) {
             throw new BadRequestException("文件不能为空", "file", "文件不能为空");
         }
-        if (command.inputStream() == null) {
+        if (request.inputStream() == null) {
             throw new BadRequestException("文件内容不能为空", "file", "文件内容不能为空");
         }
-        String originalFilename = normalizeOriginalFilename(command.originalFilename());
+        String originalFilename = normalizeOriginalFilename(request.originalFilename());
         String contentType =
                 StringUtils.defaultIfBlank(
-                        StringUtils.trimToNull(command.contentType()), DEFAULT_CONTENT_TYPE);
+                        StringUtils.trimToNull(request.contentType()), DEFAULT_CONTENT_TYPE);
         String objectKey = ObjectKeys.generate(LocalDate.now(clock), originalFilename);
         MessageDigest digest = DigestUtils.getSha256Digest();
-        DigestInputStream inputStream = new DigestInputStream(command.inputStream(), digest);
+        DigestInputStream inputStream = new DigestInputStream(request.inputStream(), digest);
         StorageObjectInfo objectInfo;
         try {
             objectInfo =
                     fileStorageService.putObject(
-                            objectKey, inputStream, command.contentLength(), contentType);
+                            objectKey, inputStream, request.contentLength(), contentType);
         } catch (IOException exception) {
             throw new ResponseStatusException(
                     HttpStatus.INTERNAL_SERVER_ERROR, "文件保存失败", exception);
@@ -91,7 +91,7 @@ public class StorageObjectService {
         storageObject.setChecksumSha256(checksumSha256);
         storageObject.setEtag(objectInfo.eTag());
         storageObject.setCreatedBy(userId);
-        storageObject.setExpiresAt(command.expiresAt());
+        storageObject.setExpiresAt(request.expiresAt());
         boolean synchronizationActive = TransactionSynchronizationManager.isSynchronizationActive();
         if (synchronizationActive) {
             registerRollbackCompensation(objectInfo);
@@ -217,7 +217,7 @@ public class StorageObjectService {
         }
     }
 
-    public record StoreStorageObjectCommand(
+    public record StoreStorageObjectRequest(
             String originalFilename,
             @Nullable String contentType,
             long contentLength,

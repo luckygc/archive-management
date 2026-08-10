@@ -23,11 +23,13 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import github.luckygc.am.app.ArchiveManagementApplication;
 import github.luckygc.am.common.api.CursorPageTokenContext;
-import github.luckygc.am.module.archive.item.service.ArchiveItemCommandService;
-import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService;
-import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService.ArchiveItemListDto;
-import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService.ArchiveItemOrderBy;
-import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService.SearchArchiveItemsRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemSearchProjectionRebuildProcessor;
+import github.luckygc.am.module.archive.item.service.ArchiveItemSearchProjectionRebuildService;
+import github.luckygc.am.module.archive.item.service.ArchiveItemSearchService;
+import github.luckygc.am.module.archive.item.service.ArchiveItemSearchService.ArchiveItemListDto;
+import github.luckygc.am.module.archive.item.service.ArchiveItemSearchService.ArchiveItemOrderByRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemSearchService.SearchArchiveItemsRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemService;
 
 @Testcontainers(disabledWithoutDocker = true)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
@@ -52,9 +54,13 @@ class ArchiveFullTextSearchIntegrationTests {
                     .withUsername("postgres")
                     .withPassword("postgres");
 
-    @Autowired private ArchiveItemCommandService archiveItemRoutingService;
+    @Autowired private ArchiveItemService archiveItemService;
 
-    @Autowired private ArchiveItemQueryService archiveItemQueryService;
+    @Autowired private ArchiveItemSearchService archiveItemQueryService;
+
+    @Autowired private ArchiveItemSearchProjectionRebuildService projectionRebuildService;
+
+    @Autowired private ArchiveItemSearchProjectionRebuildProcessor projectionRebuildProcessor;
 
     @Autowired private JdbcTemplate jdbcTemplate;
 
@@ -91,6 +97,78 @@ class ArchiveFullTextSearchIntegrationTests {
     }
 
     @Test
+    @DisplayName("搜索投影重建任务分批处理超过一百条档案")
+    void searchProjectionRebuildProcessesAllItemsAcrossBatches() {
+        Long categoryId =
+                jdbcTemplate.queryForObject(
+                        "select id from am_archive_category where category_code = 'HT'",
+                        Long.class);
+        String tableName =
+                jdbcTemplate.queryForObject(
+                        "select item_table_name from am_archive_category where id = ?",
+                        String.class,
+                        categoryId);
+        Long repositoryId =
+                jdbcTemplate.queryForObject(
+                        "select id from am_archive_repository where repository_role = 'HOLDING' and deleted_flag = false order by id limit 1",
+                        Long.class);
+        for (int index = 1; index <= 250; index++) {
+            Long itemId =
+                    jdbcTemplate.queryForObject(
+                            """
+                            insert into am_archive_item
+                                (repository_id, fonds_code, fonds_name, category_code,
+                                 category_name, archive_no, archive_year)
+                            values (?, 'Z001', '总部全宗', 'HT', '合同档案', ?, 2026)
+                            returning id
+                            """,
+                            Long.class,
+                            repositoryId,
+                            "HT-REBUILD-" + index);
+            jdbcTemplate.update(
+                    "insert into " + tableName + " (id, f_contract_no) values (?, ?)",
+                    itemId,
+                    "CONTRACT-" + index);
+        }
+        int expectedCount =
+                jdbcTemplate.queryForObject(
+                        """
+                        select count(*)
+                        from am_archive_item i
+                        join %s d on d.id = i.id and d.deleted_flag = false
+                        where i.category_code = 'HT' and i.deleted_flag = false
+                        """
+                                .formatted(tableName),
+                        Integer.class);
+
+        var accepted = projectionRebuildService.start(categoryId, 1L);
+        Long jobId = accepted.jobId();
+        for (int batch = 0; batch < 10; batch++) {
+            projectionRebuildProcessor.markRunning(jobId);
+            projectionRebuildProcessor.processNextBatch(jobId);
+            if ("succeeded".equals(projectionRebuildService.get(jobId).status())) {
+                break;
+            }
+        }
+
+        var status = projectionRebuildService.get(jobId);
+        assertThat(expectedCount).isGreaterThan(100);
+        assertThat(status.status()).isEqualTo("succeeded");
+        assertThat(status.progress()).isEqualTo(100);
+        assertThat(status.result()).containsEntry("rebuiltCount", expectedCount);
+        assertThat(
+                        jdbcTemplate.queryForObject(
+                                """
+                                select count(*)
+                                from am_archive_item_search search
+                                join am_archive_item item on item.id = search.archive_item_id
+                                where item.category_code = 'HT' and item.deleted_flag = false
+                                """,
+                                Integer.class))
+                .isEqualTo(expectedCount);
+    }
+
+    @Test
     @DisplayName("键集分页使用用户排序并追加兜底排序")
     void searchItemsUsesCursorWithUserOrderAndFallbackOrder() {
         Long categoryId =
@@ -108,7 +186,7 @@ class ArchiveFullTextSearchIntegrationTests {
                                 null,
                                 1,
                                 null,
-                                List.of(new ArchiveItemOrderBy("archiveNo", "ASC"))),
+                                List.of(new ArchiveItemOrderByRequest("archiveNo", "ASC"))),
                         1L);
 
         assertThat(firstPage.items())
@@ -127,7 +205,7 @@ class ArchiveFullTextSearchIntegrationTests {
                                 null,
                                 1,
                                 firstPage.next(),
-                                List.of(new ArchiveItemOrderBy("archiveNo", "ASC"))),
+                                List.of(new ArchiveItemOrderByRequest("archiveNo", "ASC"))),
                         1L);
 
         assertThat(secondPage.items())
@@ -146,7 +224,7 @@ class ArchiveFullTextSearchIntegrationTests {
                                 null,
                                 1,
                                 secondPage.prev(),
-                                List.of(new ArchiveItemOrderBy("archiveNo", "ASC"))),
+                                List.of(new ArchiveItemOrderByRequest("archiveNo", "ASC"))),
                         1L);
 
         assertThat(previousPage.items())
@@ -198,7 +276,9 @@ class ArchiveFullTextSearchIntegrationTests {
                                         null,
                                         100,
                                         cursor,
-                                        List.of(new ArchiveItemOrderBy("archiveYear", "ASC"))),
+                                        List.of(
+                                                new ArchiveItemOrderByRequest(
+                                                        "archiveYear", "ASC"))),
                                 1L);
                 archiveNos.addAll(
                         page.items().stream().map(row -> (String) row.get("archive_no")).toList());
@@ -288,7 +368,7 @@ class ArchiveFullTextSearchIntegrationTests {
                                 null,
                                 1,
                                 null,
-                                List.of(new ArchiveItemOrderBy("formed_date", "DESC"))),
+                                List.of(new ArchiveItemOrderByRequest("formed_date", "DESC"))),
                         1L);
 
         assertThat(firstPage.items())
@@ -307,7 +387,7 @@ class ArchiveFullTextSearchIntegrationTests {
                                 null,
                                 1,
                                 firstPage.next(),
-                                List.of(new ArchiveItemOrderBy("formed_date", "DESC"))),
+                                List.of(new ArchiveItemOrderByRequest("formed_date", "DESC"))),
                         1L);
 
         assertThat(secondPage.items())
@@ -351,8 +431,8 @@ class ArchiveFullTextSearchIntegrationTests {
                 "D-001");
         grantSuperAdminRole(99L);
 
-        archiveItemRoutingService.deleteItem(
-                itemId, 99L, new ArchiveItemCommandService.DeleteItemRequest("测试删除"));
+        archiveItemService.deleteItem(
+                itemId, 99L, new ArchiveItemService.DeleteItemRequest("测试删除"));
 
         assertDeletedMetadata("am_archive_item", itemId, 99L);
         assertDeletedMetadata(itemTableName, itemId, 99L);

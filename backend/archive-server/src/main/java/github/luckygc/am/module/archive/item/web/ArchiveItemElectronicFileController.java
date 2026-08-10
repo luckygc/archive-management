@@ -22,7 +22,7 @@ import github.luckygc.am.common.security.AuthenticatedUser;
 import github.luckygc.am.module.archive.item.service.ArchiveItemElectronicFileLinkService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemElectronicFileService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemElectronicFileService.ArchiveItemElectronicFileResponse;
-import github.luckygc.am.module.archive.item.service.ArchiveItemElectronicFileService.UploadArchiveItemElectronicFileCommand;
+import github.luckygc.am.module.archive.item.service.ArchiveItemElectronicFileService.UploadArchiveItemElectronicFileRequest;
 
 @RestController
 public class ArchiveItemElectronicFileController {
@@ -57,7 +57,7 @@ public class ArchiveItemElectronicFileController {
         try (java.io.InputStream inputStream = file.getInputStream()) {
             return electronicFileService.uploadFile(
                     archiveItem,
-                    new UploadArchiveItemElectronicFileCommand(
+                    new UploadArchiveItemElectronicFileRequest(
                             file.getOriginalFilename(),
                             file.getContentType(),
                             file.getSize(),

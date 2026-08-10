@@ -35,7 +35,7 @@ import github.luckygc.am.common.storage.StorageObjectInfo;
 import github.luckygc.am.module.archive.item.ArchiveItem;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemAuditDataRepository;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemDataRepository;
-import github.luckygc.am.module.archive.item.service.ArchiveItemElectronicFileService.UploadArchiveItemElectronicFileCommand;
+import github.luckygc.am.module.archive.item.service.ArchiveItemElectronicFileService.UploadArchiveItemElectronicFileRequest;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.metadata.ArchiveManagementMode;
 import github.luckygc.am.module.archive.metadata.ArchiveTableStatus;
@@ -191,8 +191,8 @@ class ArchiveElectronicFileRuntimePolicyTests {
         verify(fileStorageService).deleteObject(eq("archive"), anyString());
     }
 
-    private UploadArchiveItemElectronicFileCommand command() {
-        return new UploadArchiveItemElectronicFileCommand(
+    private UploadArchiveItemElectronicFileRequest command() {
+        return new UploadArchiveItemElectronicFileRequest(
                 "demo.pdf",
                 "application/pdf",
                 4,

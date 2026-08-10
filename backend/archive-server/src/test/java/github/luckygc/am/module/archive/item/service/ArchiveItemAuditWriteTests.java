@@ -23,10 +23,10 @@ import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeRe
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
 import github.luckygc.am.module.archive.item.ArchiveItemAudit;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemAuditDataRepository;
-import github.luckygc.am.module.archive.item.service.ArchiveItemCommandService.CreateArchiveItemRequest;
-import github.luckygc.am.module.archive.item.service.ArchiveItemCommandService.DeleteItemRequest;
-import github.luckygc.am.module.archive.item.service.ArchiveItemCommandService.UpdateArchiveItemRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemLockService.LockItemRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemService.CreateArchiveItemRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemService.DeleteItemRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemService.UpdateArchiveItemRequest;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.metadata.ArchiveManagementMode;
 import github.luckygc.am.module.archive.metadata.ArchiveTableStatus;
@@ -44,9 +44,9 @@ class ArchiveItemAuditWriteTests {
     private ArchiveMetadataService archiveMetadataService;
     private ArchiveMetadataReferenceService archiveMetadataReferenceService;
     private ArchiveCategoryService archiveCategoryService;
-    private ArchiveItemSearchProjectionService searchProjectionService;
+    private ArchiveItemSearchProjectionSynchronizer searchProjectionSynchronizer;
     private ArchiveItemAuditDataRepository auditRepository;
-    private ArchiveItemCommandService archiveItemRoutingService;
+    private ArchiveItemService archiveItemRoutingService;
     private ArchiveItemLockService archiveItemLockService;
 
     @BeforeEach
@@ -55,7 +55,7 @@ class ArchiveItemAuditWriteTests {
         archiveMetadataService = mock(ArchiveMetadataService.class);
         archiveMetadataReferenceService = mock(ArchiveMetadataReferenceService.class);
         archiveCategoryService = mock(ArchiveCategoryService.class);
-        searchProjectionService = mock(ArchiveItemSearchProjectionService.class);
+        searchProjectionSynchronizer = mock(ArchiveItemSearchProjectionSynchronizer.class);
         auditRepository = mock(ArchiveItemAuditDataRepository.class);
         ArchiveDataScopeService dataScopeService = mock(ArchiveDataScopeService.class);
         when(dataScopeService.buildItemFilter(anyLong(), anyLong(), anyString()))
@@ -71,12 +71,12 @@ class ArchiveItemAuditWriteTests {
                         dataScopeService,
                         permissionService);
         archiveItemRoutingService =
-                new ArchiveItemCommandService(
+                new ArchiveItemService(
                         archiveMetadataService,
                         archiveMetadataReferenceService,
                         archiveCategoryService,
                         archiveMapper,
-                        searchProjectionService,
+                        searchProjectionSynchronizer,
                         dataScopeService,
                         permissionService,
                         auditRepository,

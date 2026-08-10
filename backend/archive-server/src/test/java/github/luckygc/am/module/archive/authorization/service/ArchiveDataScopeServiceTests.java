@@ -31,7 +31,7 @@ import github.luckygc.am.module.archive.authorization.ArchiveDataScopeType;
 import github.luckygc.am.module.archive.authorization.repository.ArchiveDataScopeDataRepository;
 import github.luckygc.am.module.archive.authorization.repository.ArchiveDataScopeDimensionDataRepository;
 import github.luckygc.am.module.archive.authorization.repository.ArchiveDataScopeSubjectRelationDataRepository;
-import github.luckygc.am.module.archive.item.ArchiveItemQueryOperator;
+import github.luckygc.am.module.archive.item.ArchiveItemFilterOperator;
 import github.luckygc.am.module.archive.mapper.ArchiveDataScopeSqlGroup;
 import github.luckygc.am.module.archive.mapper.ArchiveSqlCondition;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldControl;
@@ -116,7 +116,7 @@ class ArchiveDataScopeServiceTests {
                                 new ArchiveDataScopeDynamicCondition.DynamicFieldCondition(
                                         10L,
                                         "department",
-                                        ArchiveItemQueryOperator.IN,
+                                        ArchiveItemFilterOperator.IN,
                                         List.of("LEGAL")))));
 
         assertThatThrownBy(() -> dataScopeService.validateScopeDefinition(scope, List.of()))
@@ -144,7 +144,7 @@ class ArchiveDataScopeServiceTests {
                                 new ArchiveDataScopeDynamicCondition.DynamicFieldCondition(
                                         10L,
                                         "department",
-                                        ArchiveItemQueryOperator.IN,
+                                        ArchiveItemFilterOperator.IN,
                                         List.of("LEGAL")))));
         when(archiveMetadataService.listFields(10L))
                 .thenReturn(List.of(field(20L, 10L, "department", false)));
@@ -392,7 +392,7 @@ class ArchiveDataScopeServiceTests {
                                 new ArchiveDataScopeDynamicCondition.DynamicFieldCondition(
                                         11L,
                                         "department",
-                                        ArchiveItemQueryOperator.IN,
+                                        ArchiveItemFilterOperator.IN,
                                         List.of("LEGAL", "HR")))));
         bindDirectUserScope(scope, List.of());
         when(archiveCategoryService.listCategories(true)).thenReturn(List.of(category(11L, null)));
@@ -405,7 +405,7 @@ class ArchiveDataScopeServiceTests {
         assertThat(filter.empty()).isFalse();
         ArchiveSqlCondition condition = filter.groups().getFirst().conditions().getFirst();
         assertThat(condition.columnName()).isEqualTo("department");
-        assertThat(condition.operator()).isEqualTo(ArchiveItemQueryOperator.IN);
+        assertThat(condition.operator()).isEqualTo(ArchiveItemFilterOperator.IN);
         assertThat(condition.values()).isEqualTo(List.of("LEGAL", "HR"));
     }
 
@@ -475,12 +475,12 @@ class ArchiveDataScopeServiceTests {
                                 new ArchiveDataScopeDynamicCondition.DynamicFieldCondition(
                                         11L,
                                         "department",
-                                        ArchiveItemQueryOperator.EQ,
+                                        ArchiveItemFilterOperator.EQ,
                                         List.of("LEGAL")),
                                 new ArchiveDataScopeDynamicCondition.DynamicFieldCondition(
                                         12L,
                                         "department",
-                                        ArchiveItemQueryOperator.EQ,
+                                        ArchiveItemFilterOperator.EQ,
                                         List.of("HR")))));
         var resolved =
                 ArchiveDataScopeResolutionTypes.ResolvedArchiveDataScope.conditional(
@@ -567,7 +567,7 @@ class ArchiveDataScopeServiceTests {
                                 new ArchiveDataScopeDynamicCondition.DynamicFieldCondition(
                                         10L,
                                         "department",
-                                        ArchiveItemQueryOperator.EQ,
+                                        ArchiveItemFilterOperator.EQ,
                                         List.of("LEGAL")))));
         bindDirectUserScope(scope, List.of(categoryDimension));
         when(archiveCategoryService.listCategories(true))

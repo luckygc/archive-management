@@ -28,7 +28,7 @@ import github.luckygc.am.module.approval.service.ApprovalWorkflowInstanceService
 import github.luckygc.am.module.approval.service.ApprovalWorkflowInstanceService.StartApprovalWorkflowInstanceRequest;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
 import github.luckygc.am.module.todo.service.UnifiedTodoService;
-import github.luckygc.am.module.todo.service.UnifiedTodoService.DispatchUnifiedTodoCommand;
+import github.luckygc.am.module.todo.service.UnifiedTodoService.DispatchUnifiedTodoRequest;
 
 @DisplayName("审批流实例服务")
 class ApprovalWorkflowInstanceServiceTests {
@@ -92,11 +92,11 @@ class ApprovalWorkflowInstanceServiceTests {
 
         assertThat(response.id()).isEqualTo(30L);
         assertThat(response.currentNodeCode()).isEqualTo("review");
-        ArgumentCaptor<DispatchUnifiedTodoCommand> commandCaptor =
-                ArgumentCaptor.forClass(DispatchUnifiedTodoCommand.class);
-        verify(todoService).dispatch(commandCaptor.capture());
-        assertThat(commandCaptor.getValue().sourceTaskId()).isEqualTo("task-1");
-        assertThat(commandCaptor.getValue().assigneeUserIds()).containsExactly(20L);
+        ArgumentCaptor<DispatchUnifiedTodoRequest> requestCaptor =
+                ArgumentCaptor.forClass(DispatchUnifiedTodoRequest.class);
+        verify(todoService).dispatch(requestCaptor.capture());
+        assertThat(requestCaptor.getValue().sourceTaskId()).isEqualTo("task-1");
+        assertThat(requestCaptor.getValue().assigneeUserIds()).containsExactly(20L);
     }
 
     private ApprovalWorkflowDefinition definition() {

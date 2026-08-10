@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { AmDataTable } from "@/shared/components/data-table";
+
 import { useAuthenticationUsers } from "./useAuthenticationUsers";
 
 const {
@@ -63,42 +65,43 @@ const {
             </div>
         </div>
 
-        <el-table v-loading="loading" :data="users" row-key="id" empty-text="暂无用户">
-            <el-table-column prop="username" label="登录名" width="140" />
-            <el-table-column prop="displayName" label="姓名" width="140" />
-            <el-table-column label="邮箱" width="180"
-                ><template #default="{ row }">{{ row.email ?? "-" }}</template></el-table-column
-            >
-            <el-table-column label="手机号" width="130"
-                ><template #default="{ row }">{{
-                    row.mobilePhone ?? "-"
-                }}</template></el-table-column
-            >
-            <el-table-column label="所属部门" width="160"
-                ><template #default="{ row }">{{
+        <AmDataTable
+            :data="users"
+            :loading="loading"
+            row-key="id"
+            sort-mode="none"
+            empty-text="暂无用户"
+            :columns="[
+                { key: 'username', label: '登录名', width: 140 },
+                { key: 'displayName', label: '姓名', width: 140 },
+                { key: 'email', label: '邮箱', width: 180 },
+                { key: 'mobilePhone', label: '手机号', width: 130 },
+                { key: 'departmentName', label: '所属部门', width: 160 },
+                { key: 'enabled', label: '状态', width: 80 },
+                { key: 'createdAt', label: '创建时间', width: 180 },
+                { key: 'actions', label: '操作', width: 240, fixed: 'right' },
+            ]"
+        >
+            <template #cell-email="{ row }">{{ row.email ?? "-" }}</template>
+            <template #cell-mobilePhone="{ row }">{{ row.mobilePhone ?? "-" }}</template>
+            <template #cell-departmentName="{ row }">
+                {{
                     row.departmentName
                         ? `${row.departmentCode ? `${row.departmentCode} ` : ""}${row.departmentName}`
                         : "-"
-                }}</template></el-table-column
-            >
-            <el-table-column label="状态" width="80"
-                ><template #default="{ row }"
-                    ><el-tag :type="row.enabled ? 'success' : 'info'">{{
-                        row.enabled ? "启用" : "停用"
-                    }}</el-tag></template
-                ></el-table-column
-            >
-            <el-table-column prop="createdAt" label="创建时间" width="180" />
-            <el-table-column label="操作" width="240"
-                ><template #default="{ row }"
-                    ><el-button size="small" @click="openEditModal(row)">编辑</el-button
-                    ><el-button size="small" @click="openRoleModal(row.id)">角色</el-button
-                    ><el-button size="small" @click="openPasswordModal(row.id)"
-                        >重置密码</el-button
-                    ></template
-                ></el-table-column
-            >
-        </el-table>
+                }}
+            </template>
+            <template #cell-enabled="{ row }">
+                <el-tag :type="row.enabled ? 'success' : 'info'">
+                    {{ row.enabled ? "启用" : "停用" }}
+                </el-tag>
+            </template>
+            <template #cell-actions="{ row }">
+                <el-button size="small" @click="openEditModal(row)">编辑</el-button>
+                <el-button size="small" @click="openRoleModal(row.id)">角色</el-button>
+                <el-button size="small" @click="openPasswordModal(row.id)">重置密码</el-button>
+            </template>
+        </AmDataTable>
         <div v-if="prevCursor || nextCursor" class="am-pagination">
             <el-button
                 :disabled="!prevCursor"

@@ -27,8 +27,8 @@ import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeRe
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemAuditDataRepository;
 import github.luckygc.am.module.archive.item.repository.ArchiveVolumeDataRepository;
-import github.luckygc.am.module.archive.item.service.ArchiveItemCommandService.CreateArchiveItemRequest;
-import github.luckygc.am.module.archive.item.service.ArchiveItemCommandService.UpdateArchiveItemRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemService.CreateArchiveItemRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemService.UpdateArchiveItemRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveVolumeService.CreateArchiveVolumeRequest;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.metadata.ArchiveManagementMode;
@@ -47,7 +47,7 @@ class ArchiveItemFondsValidationTests {
     private ArchiveMetadataService archiveMetadataService;
     private ArchiveMetadataReferenceService archiveMetadataReferenceService;
     private ArchiveCategoryService archiveCategoryService;
-    private ArchiveItemCommandService archiveItemRoutingService;
+    private ArchiveItemService archiveItemRoutingService;
     private ArchiveVolumeService archiveVolumeService;
 
     @BeforeEach
@@ -56,8 +56,8 @@ class ArchiveItemFondsValidationTests {
         archiveMetadataService = mock(ArchiveMetadataService.class);
         archiveMetadataReferenceService = mock(ArchiveMetadataReferenceService.class);
         archiveCategoryService = mock(ArchiveCategoryService.class);
-        ArchiveItemSearchProjectionService searchProjectionService =
-                mock(ArchiveItemSearchProjectionService.class);
+        ArchiveItemSearchProjectionSynchronizer searchProjectionSynchronizer =
+                mock(ArchiveItemSearchProjectionSynchronizer.class);
         ArchiveDataScopeService dataScopeService = mock(ArchiveDataScopeService.class);
         when(dataScopeService.buildItemFilter(anyLong(), anyLong(), anyString()))
                 .thenReturn(ArchiveDataScopeFilter.all());
@@ -73,12 +73,12 @@ class ArchiveItemFondsValidationTests {
                         dataScopeService,
                         permissionService);
         archiveItemRoutingService =
-                new ArchiveItemCommandService(
+                new ArchiveItemService(
                         archiveMetadataService,
                         archiveMetadataReferenceService,
                         archiveCategoryService,
                         archiveMapper,
-                        searchProjectionService,
+                        searchProjectionSynchronizer,
                         dataScopeService,
                         permissionService,
                         auditRepository,

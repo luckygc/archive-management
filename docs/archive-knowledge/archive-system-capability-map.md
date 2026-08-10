@@ -9,10 +9,9 @@
 | `docs/archive-knowledge/*` | 行业知识、能力地图、术语、路线图、候选理解           | 适合                       |
 | `openspec/specs/*`         | 已决定要实现的业务合同、接口行为、状态机、验收场景   | 不适合直接写完整愿景       |
 | `openspec/changes/*`       | 某次明确变更的提案、设计、任务和规格增量             | 等确定某一阶段要做时再创建 |
-| `docs/superpowers/plans/*` | 已确认需求后的执行计划，包含具体文件、步骤、验证命令 | 不适合做长期能力地图       |
 | `AGENTS.md`                | 协作规则、架构边界、工具链、代码风格                 | 不适合写业务能力清单       |
 
-结论：本文放在 `docs/archive-knowledge/`。后续如果决定实现某一层能力，再拆成 OpenSpec change；实现计划再写 superpowers plan。
+结论：本文放在 `docs/archive-knowledge/`。后续如果决定实现某一层能力，再拆成 OpenSpec change，并在对应 change 中维护实施任务。
 
 ## 分层定义
 

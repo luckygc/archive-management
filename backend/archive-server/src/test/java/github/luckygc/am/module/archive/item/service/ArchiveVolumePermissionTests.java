@@ -32,7 +32,7 @@ import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeResolutionTypes.ArchiveDataScopeFilter;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeResolutionTypes.ResolvedArchiveDataScope;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
-import github.luckygc.am.module.archive.item.ArchiveItemQueryOperator;
+import github.luckygc.am.module.archive.item.ArchiveItemFilterOperator;
 import github.luckygc.am.module.archive.item.ArchiveVolume;
 import github.luckygc.am.module.archive.item._ArchiveVolume;
 import github.luckygc.am.module.archive.item.repository.ArchiveVolumeDataRepository;
@@ -336,7 +336,7 @@ class ArchiveVolumePermissionTests {
                 List.of(),
                 List.of(
                         new ArchiveSqlCondition(
-                                "f_owner", ArchiveItemQueryOperator.IS_NULL, null)));
+                                "f_owner", ArchiveItemFilterOperator.IS_NULL, null)));
     }
 
     private Map<String, Object> volumeRow() {

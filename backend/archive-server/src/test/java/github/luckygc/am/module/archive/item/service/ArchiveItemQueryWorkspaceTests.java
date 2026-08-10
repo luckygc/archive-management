@@ -46,8 +46,8 @@ class ArchiveItemQueryWorkspaceTests {
             mock(ArchiveItemSearchCriteriaCompiler.class);
     private final ArchiveItemCursorPageAssembler pageAssembler =
             mock(ArchiveItemCursorPageAssembler.class);
-    private final ArchiveItemQueryService service =
-            new ArchiveItemQueryService(
+    private final ArchiveItemSearchService service =
+            new ArchiveItemSearchService(
                     metadataService,
                     categoryService,
                     archiveMapper,

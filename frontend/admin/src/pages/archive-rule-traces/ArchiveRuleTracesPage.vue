@@ -5,6 +5,7 @@ import { ref } from "vue";
 import { searchArchiveRuntimeTraces } from "@/shared/api/archive-rules";
 import CursorPagination from "@/shared/components/CursorPagination.vue";
 import RequestErrorState from "@/shared/components/RequestErrorState.vue";
+import { AmDataTable } from "@/shared/components/data-table";
 import { requestErrorMessage } from "@/shared/requestError";
 import type {
     ArchiveRuntimeDefinitionKind,
@@ -131,26 +132,30 @@ function resetForm() {
                 :retrying="loading"
                 @retry="load(undefined)"
             />
-            <el-table v-loading="loading" :data="result?.items || []" row-key="id">
-                <el-table-column prop="createdAt" label="时间" width="170" />
-                <el-table-column prop="triggerPoint" label="触发点" width="190" />
-                <el-table-column prop="objectTypeCode" label="对象类型" width="130" />
-                <el-table-column prop="objectId" label="对象 ID" width="100" />
-                <el-table-column prop="definitionCode" label="定义" width="160" />
-                <el-table-column prop="definitionKind" label="类型" width="100" />
-                <el-table-column label="结果" width="90">
-                    <template #default="{ row }">
-                        <el-tag
-                            :type="
-                                row.blockingFlag ? 'danger' : row.matchedFlag ? 'primary' : 'info'
-                            "
-                        >
-                            {{ row.blockingFlag ? "阻断" : row.matchedFlag ? "命中" : "跳过" }}
-                        </el-tag>
-                    </template>
-                </el-table-column>
-                <el-table-column prop="message" label="消息" />
-            </el-table>
+            <AmDataTable
+                :data="result?.items || []"
+                :loading="loading"
+                row-key="id"
+                sort-mode="none"
+                :columns="[
+                    { key: 'createdAt', label: '时间', width: 170 },
+                    { key: 'triggerPoint', label: '触发点', width: 190 },
+                    { key: 'objectTypeCode', label: '对象类型', width: 130 },
+                    { key: 'objectId', label: '对象 ID', width: 100 },
+                    { key: 'definitionCode', label: '定义', width: 160 },
+                    { key: 'definitionKind', label: '类型', width: 100 },
+                    { key: 'result', label: '结果', width: 90 },
+                    { key: 'message', label: '消息' },
+                ]"
+            >
+                <template #cell-result="{ row }">
+                    <el-tag
+                        :type="row.blockingFlag ? 'danger' : row.matchedFlag ? 'primary' : 'info'"
+                    >
+                        {{ row.blockingFlag ? "阻断" : row.matchedFlag ? "命中" : "跳过" }}
+                    </el-tag>
+                </template>
+            </AmDataTable>
             <div v-if="result" class="am-table-footer">
                 <CursorPagination
                     :limit="limit"

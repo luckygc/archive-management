@@ -9,6 +9,7 @@ import {
     setApprovalWorkflowDefinitionEnabled,
 } from "@/shared/api/approval-workflow";
 import CursorPagination from "@/shared/components/CursorPagination.vue";
+import { AmDataTable } from "@/shared/components/data-table";
 import type { ApprovalWorkflowDefinitionDto } from "@/shared/types/approval-workflow";
 
 const router = useRouter();
@@ -78,40 +79,41 @@ onMounted(() => void loadDefinitions());
             <el-button type="primary" @click="openDesigner('new')">新建流程</el-button>
         </div>
         <el-card shadow="never">
-            <el-table v-loading="loading" :data="definitions" row-key="id">
-                <el-table-column prop="definitionName" label="流程名称" min-width="190" />
-                <el-table-column prop="definitionCode" label="定义编码" width="190" />
-                <el-table-column prop="businessType" label="业务类型" width="160" />
-                <el-table-column label="画布节点" width="100">
-                    <template #default="{ row }">{{ row.graph.nodes.length }}</template>
-                </el-table-column>
-                <el-table-column prop="draftRevision" label="草稿修订" width="100" />
-                <el-table-column label="发布状态" width="110">
-                    <template #default="{ row }">
-                        <el-tag :type="row.publishedVersionId ? 'primary' : 'info'">
-                            {{ row.publishedVersionId ? "已发布" : "未发布" }}
-                        </el-tag>
-                    </template>
-                </el-table-column>
-                <el-table-column label="启用状态" width="100">
-                    <template #default="{ row }">
-                        <el-tag :type="row.enabled ? 'success' : 'info'">
-                            {{ row.enabled ? "启用" : "停用" }}
-                        </el-tag>
-                    </template>
-                </el-table-column>
-                <el-table-column label="操作" width="230" fixed="right">
-                    <template #default="{ row }">
-                        <el-button link type="primary" @click="openDesigner(row.id)"
-                            >设计</el-button
-                        >
-                        <el-button link @click="publish(row)">发布</el-button>
-                        <el-button link @click="toggleEnabled(row)">
-                            {{ row.enabled ? "停用" : "启用" }}
-                        </el-button>
-                    </template>
-                </el-table-column>
-            </el-table>
+            <AmDataTable
+                :data="definitions"
+                :loading="loading"
+                row-key="id"
+                sort-mode="none"
+                :columns="[
+                    { key: 'definitionName', label: '流程名称', minWidth: 190 },
+                    { key: 'definitionCode', label: '定义编码', width: 190 },
+                    { key: 'businessType', label: '业务类型', width: 160 },
+                    { key: 'nodeCount', label: '画布节点', width: 100 },
+                    { key: 'draftRevision', label: '草稿修订', width: 100 },
+                    { key: 'published', label: '发布状态', width: 110 },
+                    { key: 'enabled', label: '启用状态', width: 100 },
+                    { key: 'actions', label: '操作', width: 230, fixed: 'right' },
+                ]"
+            >
+                <template #cell-nodeCount="{ row }">{{ row.graph.nodes.length }}</template>
+                <template #cell-published="{ row }">
+                    <el-tag :type="row.publishedVersionId ? 'primary' : 'info'">
+                        {{ row.publishedVersionId ? "已发布" : "未发布" }}
+                    </el-tag>
+                </template>
+                <template #cell-enabled="{ row }">
+                    <el-tag :type="row.enabled ? 'success' : 'info'">
+                        {{ row.enabled ? "启用" : "停用" }}
+                    </el-tag>
+                </template>
+                <template #cell-actions="{ row }">
+                    <el-button link type="primary" @click="openDesigner(row.id)">设计</el-button>
+                    <el-button link @click="publish(row)">发布</el-button>
+                    <el-button link @click="toggleEnabled(row)">
+                        {{ row.enabled ? "停用" : "启用" }}
+                    </el-button>
+                </template>
+            </AmDataTable>
             <el-empty v-if="!loading && definitions.length === 0" description="暂无审批流程">
                 <el-button type="primary" @click="openDesigner('new')">创建第一个流程</el-button>
             </el-empty>

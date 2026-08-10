@@ -25,14 +25,14 @@ class ArchiveMapperXmlContractTests {
     void lineRowListShouldUseExplicitProjectionAndCompositeCursor() throws Exception {
         String sql = selectStatement(archiveMapperXml(), "listItemLineRows");
 
-        assertThat(mapperParamNames("listItemLineRows")).containsExactly("query");
+        assertThat(mapperParamNames("listItemLineRows")).containsExactly("request");
         assertThat(sql).doesNotContain("select *");
-        assertThat(sql).contains("collection=\"query.selectColumns\"");
-        assertThat(sql).contains("line_order &gt; #{query.cursorLineOrder}");
-        assertThat(sql).contains("id &gt; #{query.cursorId}");
-        assertThat(sql).contains("line_order &lt; #{query.cursorLineOrder}");
-        assertThat(sql).contains("id &lt; #{query.cursorId}");
-        assertThat(sql).contains("limit #{query.rowLimit}");
+        assertThat(sql).contains("collection=\"request.selectColumns\"");
+        assertThat(sql).contains("line_order &gt; #{request.cursorLineOrder}");
+        assertThat(sql).contains("id &gt; #{request.cursorId}");
+        assertThat(sql).contains("line_order &lt; #{request.cursorLineOrder}");
+        assertThat(sql).contains("id &lt; #{request.cursorId}");
+        assertThat(sql).contains("limit #{request.rowLimit}");
     }
 
     @Test
@@ -42,16 +42,16 @@ class ArchiveMapperXmlContractTests {
         String update = updateStatement(archiveMapperXml(), "updateItemLineRow");
         String delete = updateStatement(archiveMapperXml(), "deleteItemLineRow");
 
-        assertThat(insert).contains("${command.tableName}", "${assignment.columnName}");
+        assertThat(insert).contains("${request.tableName}", "${assignment.columnName}");
         assertThat(insert).contains("#{assignment.value}");
         assertThat(insert).doesNotContain("${assignment.value}");
-        assertThat(update).contains("id = #{command.rowId}", "item_id = #{command.itemId}");
+        assertThat(update).contains("id = #{request.rowId}", "item_id = #{request.itemId}");
         assertThat(delete)
                 .contains(
                         "deleted_flag = true",
                         "deleted_at = localtimestamp",
-                        "deleted_by = #{command.userId}",
-                        "item_id = #{command.itemId}");
+                        "deleted_by = #{request.userId}",
+                        "item_id = #{request.itemId}");
     }
 
     @Test
@@ -60,7 +60,7 @@ class ArchiveMapperXmlContractTests {
         String sql = selectStatement(archiveMapperXml(), "listItemLineRowsForProjection");
 
         assertThat(sql).doesNotContain("select *");
-        assertThat(sql).contains("collection=\"query.selectColumns\"");
+        assertThat(sql).contains("collection=\"request.selectColumns\"");
         assertThat(sql).contains("deleted_flag = false", "order by line_order, id");
     }
 

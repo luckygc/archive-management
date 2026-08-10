@@ -32,9 +32,9 @@ import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeRe
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeResolutionTypes.ResolvedArchiveDataScope;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemAuditDataRepository;
-import github.luckygc.am.module.archive.item.service.ArchiveItemCommandService.CreateArchiveItemRequest;
-import github.luckygc.am.module.archive.item.service.ArchiveItemQueryService.SearchArchiveItemsRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRelationService.ArchiveItemRelationRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemSearchService.SearchArchiveItemsRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemService.CreateArchiveItemRequest;
 import github.luckygc.am.module.archive.mapper.ArchiveDataScopeSqlGroup;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.metadata.ArchiveManagementMode;
@@ -55,8 +55,8 @@ class ArchiveItemDataScopeQueryTests {
     private ArchiveCategoryService archiveCategoryService;
     private ArchiveDataScopeService dataScopeService;
     private AuthorizationPermissionService permissionService;
-    private ArchiveItemCommandService archiveItemRoutingService;
-    private ArchiveItemQueryService archiveItemQueryService;
+    private ArchiveItemService archiveItemRoutingService;
+    private ArchiveItemSearchService archiveItemQueryService;
     private ArchiveItemReadService archiveItemReadService;
     private ArchiveItemRelationService archiveItemRelationService;
 
@@ -66,8 +66,8 @@ class ArchiveItemDataScopeQueryTests {
         archiveMetadataService = mock(ArchiveMetadataService.class);
         archiveMetadataReferenceService = mock(ArchiveMetadataReferenceService.class);
         archiveCategoryService = mock(ArchiveCategoryService.class);
-        ArchiveItemSearchProjectionService searchProjectionService =
-                mock(ArchiveItemSearchProjectionService.class);
+        ArchiveItemSearchProjectionSynchronizer searchProjectionSynchronizer =
+                mock(ArchiveItemSearchProjectionSynchronizer.class);
         dataScopeService = mock(ArchiveDataScopeService.class);
         permissionService = mock(AuthorizationPermissionService.class);
         ArchiveItemAuditDataRepository auditRepository = mock(ArchiveItemAuditDataRepository.class);
@@ -80,12 +80,12 @@ class ArchiveItemDataScopeQueryTests {
                         dataScopeService,
                         permissionService);
         archiveItemRoutingService =
-                new ArchiveItemCommandService(
+                new ArchiveItemService(
                         archiveMetadataService,
                         archiveMetadataReferenceService,
                         archiveCategoryService,
                         archiveMapper,
-                        searchProjectionService,
+                        searchProjectionSynchronizer,
                         dataScopeService,
                         permissionService,
                         auditRepository,
@@ -94,7 +94,7 @@ class ArchiveItemDataScopeQueryTests {
                         ArchiveRuntimeTestSupport.passthroughExecutionService(),
                         ArchiveRuntimeTestSupport.traceService());
         archiveItemQueryService =
-                new ArchiveItemQueryService(
+                new ArchiveItemSearchService(
                         archiveMetadataService,
                         archiveCategoryService,
                         archiveMapper,
@@ -245,7 +245,7 @@ class ArchiveItemDataScopeQueryTests {
     @DisplayName("动态分页复用 Jakarta Data 游标值对象")
     void dynamicPaginationShouldReuseJakartaDataCursorValueObject() {
         assertThat(
-                        Arrays.stream(ArchiveItemQueryService.class.getDeclaredClasses())
+                        Arrays.stream(ArchiveItemSearchService.class.getDeclaredClasses())
                                 .map(Class::getSimpleName))
                 .doesNotContain("Cursor");
     }
@@ -271,7 +271,7 @@ class ArchiveItemDataScopeQueryTests {
                                         LocalDateTime.of(2026, 7, 1, 10, 0))));
         when(archiveMapper.countDynamicItems(any(), any())).thenReturn(3);
 
-        ArchiveItemQueryService.ArchiveItemListDto page =
+        ArchiveItemSearchService.ArchiveItemListDto page =
                 archiveItemQueryService.searchItems(
                         new SearchArchiveItemsRequest(1L, null, null, null, null, null, null, null),
                         9L,

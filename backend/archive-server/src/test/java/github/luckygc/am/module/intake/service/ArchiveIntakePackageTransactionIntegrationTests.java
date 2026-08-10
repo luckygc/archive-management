@@ -22,9 +22,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import github.luckygc.am.app.ArchiveManagementApplication;
 import github.luckygc.am.common.exception.BadRequestException;
-import github.luckygc.am.module.archive.item.service.ArchiveItemCommandService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemElectronicFileService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemReadService.ArchiveItemDto;
+import github.luckygc.am.module.archive.item.service.ArchiveItemService;
 import github.luckygc.am.module.archive.library.ArchiveRepository;
 import github.luckygc.am.module.archive.library.ArchiveRepositoryRole;
 import github.luckygc.am.module.archive.library.service.ArchiveRepositoryService;
@@ -62,7 +62,7 @@ class ArchiveIntakePackageTransactionIntegrationTests extends PostgreSqlContaine
     @MockitoBean private ArchiveCategoryService archiveCategoryService;
     @MockitoBean private ArchiveMetadataReferenceService metadataReferenceService;
     @MockitoBean private ArchiveMetadataService archiveMetadataService;
-    @MockitoBean private ArchiveItemCommandService archiveItemCommandService;
+    @MockitoBean private ArchiveItemService archiveItemCommandService;
     @MockitoBean private ArchiveItemElectronicFileService electronicFileService;
 
     @AfterEach

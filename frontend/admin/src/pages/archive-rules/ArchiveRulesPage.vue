@@ -14,6 +14,7 @@ import {
     simulateArchiveRuntimeDefinitions,
     updateArchiveRuntimeDefinition,
 } from "@/shared/api/archive-rules";
+import { AmDataTable } from "@/shared/components/data-table";
 import { requestErrorMessage } from "@/shared/requestError";
 import type {
     ArchiveRuntimeActionType,
@@ -396,85 +397,93 @@ function defaultSimulation() {
             <el-empty v-if="!loading && definitions.length === 0" description="还没有运行时定义">
                 <el-button type="primary" @click="openCreate">创建第一条约束</el-button>
             </el-empty>
-            <el-table v-else v-loading="loading" :data="definitions" row-key="id" size="small">
-                <el-table-column prop="priority" label="#" width="60" />
-                <el-table-column label="定义" min-width="220">
-                    <template #default="{ row }">
-                        <div class="definition-cell">
-                            <strong>{{ row.definitionName }}</strong>
-                            <code>{{ row.definitionCode }}</code>
-                        </div>
-                    </template>
-                </el-table-column>
-                <el-table-column label="类别" width="100">
-                    <template #default="{ row }"
-                        ><el-tag effect="plain">{{
-                            row.definitionKind === "CONSTRAINT" ? "约束" : "规则"
-                        }}</el-tag></template
+            <AmDataTable
+                v-else
+                :data="definitions"
+                :loading="loading"
+                row-key="id"
+                size="small"
+                :columns="[
+                    { key: 'priority', label: '#', width: 60, sortable: true },
+                    { key: 'definitionName', label: '定义', minWidth: 220, sortable: true },
+                    { key: 'definitionKind', label: '类别', width: 100, sortable: true },
+                    { key: 'triggerPoint', label: '触发点', minWidth: 170, sortable: true },
+                    {
+                        key: 'scopeCategoryCode',
+                        label: '分类范围',
+                        minWidth: 130,
+                        sortable: true,
+                    },
+                    { key: 'actionsSummary', label: '动作', minWidth: 150 },
+                    { key: 'status', label: '状态', width: 100, sortable: true },
+                    { key: 'enabled', label: '启用', width: 78, sortable: true },
+                    { key: 'actions', label: '操作', width: 190, fixed: 'right' },
+                ]"
+            >
+                <template #cell-definitionName="{ row }">
+                    <div class="definition-cell">
+                        <strong>{{ row.definitionName }}</strong>
+                        <code>{{ row.definitionCode }}</code>
+                    </div>
+                </template>
+                <template #cell-definitionKind="{ row }">
+                    <el-tag effect="plain">
+                        {{ row.definitionKind === "CONSTRAINT" ? "约束" : "规则" }}
+                    </el-tag>
+                </template>
+                <template #cell-triggerPoint="{ row }">{{
+                    triggerLabels[row.triggerPoint]
+                }}</template>
+                <template #cell-scopeCategoryCode="{ row }">{{
+                    row.scopeCategoryCode || "全部分类"
+                }}</template>
+                <template #cell-actionsSummary="{ row }">
+                    <span v-if="row.definitionKind === 'CONSTRAINT'">{{
+                        row.constraintAction
+                    }}</span>
+                    <el-tag
+                        v-for="action in row.actions"
+                        v-else
+                        :key="action.id"
+                        class="action-tag"
+                        size="small"
+                        effect="plain"
+                        >{{ action.actionType }}</el-tag
                     >
-                </el-table-column>
-                <el-table-column label="触发点" min-width="170">
-                    <template #default="{ row }">{{ triggerLabels[row.triggerPoint] }}</template>
-                </el-table-column>
-                <el-table-column prop="scopeCategoryCode" label="分类范围" min-width="130">
-                    <template #default="{ row }">{{
-                        row.scopeCategoryCode || "全部分类"
-                    }}</template>
-                </el-table-column>
-                <el-table-column label="动作" min-width="150">
-                    <template #default="{ row }">
-                        <span v-if="row.definitionKind === 'CONSTRAINT'">{{
-                            row.constraintAction
-                        }}</span>
-                        <el-tag
-                            v-for="action in row.actions"
-                            v-else
-                            :key="action.id"
-                            class="action-tag"
-                            size="small"
-                            effect="plain"
-                            >{{ action.actionType }}</el-tag
-                        >
-                    </template>
-                </el-table-column>
-                <el-table-column label="状态" width="100">
-                    <template #default="{ row }"
-                        ><el-tag :type="row.status === 'PUBLISHED' ? 'success' : 'info'">{{
-                            row.status === "PUBLISHED" ? "已发布" : "草稿"
-                        }}</el-tag></template
+                </template>
+                <template #cell-status="{ row }">
+                    <el-tag :type="row.status === 'PUBLISHED' ? 'success' : 'info'">
+                        {{ row.status === "PUBLISHED" ? "已发布" : "草稿" }}
+                    </el-tag>
+                </template>
+                <template #cell-enabled="{ row }">
+                    <el-switch
+                        :model-value="row.enabled"
+                        :disabled="row.status !== 'PUBLISHED'"
+                        @change="changeEnabled(row, Boolean($event))"
+                    />
+                </template>
+                <template #cell-actions="{ row }">
+                    <el-button v-if="row.status === 'DRAFT'" link @click="openEdit(row)"
+                        >编辑</el-button
                     >
-                </el-table-column>
-                <el-table-column label="启用" width="78">
-                    <template #default="{ row }"
-                        ><el-switch
-                            :model-value="row.enabled"
-                            :disabled="row.status !== 'PUBLISHED'"
-                            @change="changeEnabled(row, Boolean($event))"
-                    /></template>
-                </el-table-column>
-                <el-table-column label="操作" width="190" fixed="right">
-                    <template #default="{ row }">
-                        <el-button v-if="row.status === 'DRAFT'" link @click="openEdit(row)"
-                            >编辑</el-button
-                        >
-                        <el-button
-                            v-if="row.status === 'DRAFT'"
-                            link
-                            type="primary"
-                            @click="publishDefinition(row)"
-                            >发布</el-button
-                        >
-                        <el-button
-                            v-if="row.status === 'DRAFT'"
-                            link
-                            type="danger"
-                            @click="removeDefinition(row)"
-                            >删除</el-button
-                        >
-                        <span v-else class="immutable-label">语义已锁定</span>
-                    </template>
-                </el-table-column>
-            </el-table>
+                    <el-button
+                        v-if="row.status === 'DRAFT'"
+                        link
+                        type="primary"
+                        @click="publishDefinition(row)"
+                        >发布</el-button
+                    >
+                    <el-button
+                        v-if="row.status === 'DRAFT'"
+                        link
+                        type="danger"
+                        @click="removeDefinition(row)"
+                        >删除</el-button
+                    >
+                    <span v-else class="immutable-label">语义已锁定</span>
+                </template>
+            </AmDataTable>
         </el-card>
 
         <el-dialog
@@ -712,29 +721,31 @@ function defaultSimulation() {
                         {{ Object.keys(simulationResult.assignments).length }} 项</span
                     >
                 </div>
-                <el-table :data="simulationResult.decisions" size="small"
-                    ><el-table-column prop="definitionCode" label="定义" /><el-table-column
-                        prop="definitionKind"
-                        label="类型"
-                        width="100" /><el-table-column label="命中" width="80"
-                        ><template #default="{ row }">{{
-                            row.matched ? "是" : "否"
-                        }}</template></el-table-column
-                    ><el-table-column label="结果" width="100"
-                        ><template #default="{ row }"
-                            ><el-tag
-                                :type="
-                                    row.blocking
-                                        ? 'danger'
-                                        : row.severity === 'WARNING'
-                                          ? 'warning'
-                                          : 'info'
-                                "
-                                >{{ row.blocking ? "阻断" : row.severity }}</el-tag
-                            ></template
-                        ></el-table-column
-                    ><el-table-column prop="message" label="消息"
-                /></el-table>
+                <AmDataTable
+                    :data="simulationResult.decisions"
+                    size="small"
+                    :columns="[
+                        { key: 'definitionCode', label: '定义', sortable: true },
+                        { key: 'definitionKind', label: '类型', width: 100, sortable: true },
+                        { key: 'matched', label: '命中', width: 80, sortable: true },
+                        { key: 'result', label: '结果', width: 100 },
+                        { key: 'message', label: '消息', sortable: true },
+                    ]"
+                >
+                    <template #cell-matched="{ row }">{{ row.matched ? "是" : "否" }}</template>
+                    <template #cell-result="{ row }">
+                        <el-tag
+                            :type="
+                                row.blocking
+                                    ? 'danger'
+                                    : row.severity === 'WARNING'
+                                      ? 'warning'
+                                      : 'info'
+                            "
+                            >{{ row.blocking ? "阻断" : row.severity }}</el-tag
+                        >
+                    </template>
+                </AmDataTable>
                 <el-collapse
                     ><el-collapse-item title="最终候选事实">
                         <pre>{{ JSON.stringify(simulationResult.candidateFacts, null, 2) }}</pre>

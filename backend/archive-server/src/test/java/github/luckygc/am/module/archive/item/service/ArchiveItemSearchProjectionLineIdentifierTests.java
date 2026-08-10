@@ -10,33 +10,49 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import github.luckygc.am.common.exception.BadRequestException;
+import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
+import github.luckygc.am.module.archive.metadata.ArchiveFieldControl;
+import github.luckygc.am.module.archive.metadata.ArchiveFieldScope;
+import github.luckygc.am.module.archive.metadata.ArchiveFieldType;
 import github.luckygc.am.module.archive.metadata.ArchiveManagementMode;
 import github.luckygc.am.module.archive.metadata.ArchiveTableStatus;
 import github.luckygc.am.module.archive.metadata.service.ArchiveCategoryService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveCategoryDto;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFieldDto;
 
 @DisplayName("搜索投影明细标识符白名单")
 class ArchiveItemSearchProjectionLineIdentifierTests {
 
     private final ArchiveMapper archiveMapper = mock(ArchiveMapper.class);
-    private final ArchiveItemSearchProjectionService service =
-            new ArchiveItemSearchProjectionService(
-                    mock(ArchiveMetadataService.class),
-                    mock(ArchiveCategoryService.class),
-                    archiveMapper);
+    private final ArchiveMetadataService metadataService = mock(ArchiveMetadataService.class);
+    private final ArchiveCategoryService categoryService = mock(ArchiveCategoryService.class);
+    private final ArchiveItemSearchProjectionSynchronizer service =
+            new ArchiveItemSearchProjectionSynchronizer(
+                    metadataService, categoryService, archiveMapper);
+
+    @BeforeEach
+    void setUp() {
+        when(archiveMapper.getArchiveItem(3L)).thenReturn(Map.of("categoryCode", "contract"));
+        when(categoryService.listCategories(null)).thenReturn(List.of(category()));
+        when(archiveMapper.tableExists("am_archive_item_contract")).thenReturn(1);
+        when(metadataService.listEnabledFields(7L, ArchiveLevel.ITEM)).thenReturn(List.of());
+        when(archiveMapper.loadDynamicRecord("am_archive_item_contract", 3L))
+                .thenReturn(Map.of("id", 3L));
+    }
 
     @Test
     @DisplayName("非法明细物理表名不得进入 schema 探测或动态 SQL")
     void shouldRejectInvalidLineTableIdentifierBeforeMapperUse() {
         when(archiveMapper.listItemLineTables(7L)).thenReturn(List.of(lineTable("bad-table")));
 
-        assertThatThrownBy(() -> service.upsert(3L, category(), List.of(), Map.of()))
+        assertThatThrownBy(() -> service.synchronize(3L))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("动态明细表名非法");
 
@@ -53,7 +69,7 @@ class ArchiveItemSearchProjectionLineIdentifierTests {
         when(archiveMapper.tableExists("am_archive_item_line_contract")).thenReturn(1);
         when(archiveMapper.listItemLineFields(4L)).thenReturn(List.of(lineField("a".repeat(64))));
 
-        assertThatThrownBy(() -> service.upsert(3L, category(), List.of(), Map.of()))
+        assertThatThrownBy(() -> service.synchronize(3L))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("字段列名非法");
 
@@ -71,10 +87,21 @@ class ArchiveItemSearchProjectionLineIdentifierTests {
         when(archiveMapper.columnExists("am_archive_item_line_contract", "f_party_name"))
                 .thenReturn(0);
 
-        service.upsert(3L, category(), List.of(), Map.of());
+        service.synchronize(3L);
 
         verify(archiveMapper, never())
                 .listItemLineRowsForProjection(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    @DisplayName("搜索投影允许启用的动态字段为空")
+    void shouldAllowNullDynamicFieldValue() {
+        when(metadataService.listEnabledFields(7L, ArchiveLevel.ITEM))
+                .thenReturn(List.of(textField()));
+
+        service.synchronize(3L);
+
+        verify(archiveMapper).deleteSearchProjection(3L);
     }
 
     private static Map<String, Object> lineTable(String physicalTableName) {
@@ -83,6 +110,38 @@ class ArchiveItemSearchProjectionLineIdentifierTests {
 
     private static Map<String, Object> lineField(String columnName) {
         return Map.of("columnName", columnName, "fieldName", "字段");
+    }
+
+    private static ArchiveFieldDto textField() {
+        return new ArchiveFieldDto(
+                9L,
+                7L,
+                ArchiveLevel.ITEM,
+                ArchiveFieldScope.METADATA,
+                "title",
+                "题名",
+                ArchiveFieldType.TEXT,
+                "f_title",
+                200,
+                null,
+                null,
+                ArchiveFieldControl.INPUT,
+                true,
+                null,
+                0,
+                true,
+                1,
+                0,
+                true,
+                1,
+                0,
+                true,
+                false,
+                true,
+                0,
+                null,
+                null,
+                null);
     }
 
     private static ArchiveCategoryDto category() {

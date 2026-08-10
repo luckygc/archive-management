@@ -13,6 +13,7 @@ import {
 } from "@/shared/api/intake";
 import CursorPagination from "@/shared/components/CursorPagination.vue";
 import RequestErrorState from "@/shared/components/RequestErrorState.vue";
+import { AmDataTable } from "@/shared/components/data-table";
 import { requestErrorMessage } from "@/shared/requestError";
 import type {
     ArchiveIntakePackageDetailResponse,
@@ -315,54 +316,51 @@ function emptyReview() {
             @retry="load(cursor)"
         />
 
-        <el-table
+        <AmDataTable
             v-if="result?.items.length || loading"
-            v-loading="loading"
             :data="result?.items ?? []"
+            :loading="loading"
             row-key="id"
+            sort-mode="none"
+            :columns="[
+                { key: 'createdAt', label: '接收时间', width: 170 },
+                { key: 'package', label: '信息包', minWidth: 190 },
+                { key: 'status', label: '状态', width: 100 },
+                { key: 'counts', label: '档案/电子文件', width: 140 },
+                { key: 'result', label: '处理结果', minWidth: 220 },
+                { key: 'actions', label: '操作', width: 100, fixed: 'right' },
+            ]"
         >
-            <el-table-column label="接收时间" width="170">
-                <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
-            </el-table-column>
-            <el-table-column label="信息包" min-width="190">
-                <template #default="{ row }">
-                    <div>{{ row.originalFileName }}</div>
-                    <div class="secondary-text">
-                        {{ row.packageCode || "未解析包编码" }} ·
-                        {{ formatSize(row.contentLength) }}
-                    </div>
-                </template>
-            </el-table-column>
-            <el-table-column label="状态" width="100">
-                <template #default="{ row }">
-                    <el-tag :type="statusType(row.status)">{{ statusLabel(row.status) }}</el-tag>
-                </template>
-            </el-table-column>
-            <el-table-column label="档案/电子文件" width="140">
-                <template #default="{ row }">
-                    {{ row.itemCount }} 件 / {{ row.electronicFileCount }} 个
-                </template>
-            </el-table-column>
-            <el-table-column label="处理结果" min-width="220">
-                <template #default="{ row }">
-                    <span
-                        v-if="row.status === 'FAILED' || row.status === 'REJECTED'"
-                        class="failure-text"
-                    >
-                        {{ row.failureReason || "信息包未接收" }}
-                    </span>
-                    <span v-else>
-                        自动通过 {{ row.validationPassedCount }} 项，人工
-                        {{ row.validationManualCount }} 项
-                    </span>
-                </template>
-            </el-table-column>
-            <el-table-column label="操作" width="100" fixed="right">
-                <template #default="{ row }">
-                    <el-button link type="primary" @click="showDetail(row.id)">查看结果</el-button>
-                </template>
-            </el-table-column>
-        </el-table>
+            <template #cell-createdAt="{ row }">{{ formatTime(row.createdAt) }}</template>
+            <template #cell-package="{ row }">
+                <div>{{ row.originalFileName }}</div>
+                <div class="secondary-text">
+                    {{ row.packageCode || "未解析包编码" }} ·
+                    {{ formatSize(row.contentLength) }}
+                </div>
+            </template>
+            <template #cell-status="{ row }">
+                <el-tag :type="statusType(row.status)">{{ statusLabel(row.status) }}</el-tag>
+            </template>
+            <template #cell-counts="{ row }">
+                {{ row.itemCount }} 件 / {{ row.electronicFileCount }} 个
+            </template>
+            <template #cell-result="{ row }">
+                <span
+                    v-if="row.status === 'FAILED' || row.status === 'REJECTED'"
+                    class="failure-text"
+                >
+                    {{ row.failureReason || "信息包未接收" }}
+                </span>
+                <span v-else>
+                    自动通过 {{ row.validationPassedCount }} 项，人工
+                    {{ row.validationManualCount }} 项
+                </span>
+            </template>
+            <template #cell-actions="{ row }">
+                <el-button link type="primary" @click="showDetail(row.id)">查看结果</el-button>
+            </template>
+        </AmDataTable>
         <el-empty v-else-if="!loadError" description="暂无接收记录，可选择 ZIP 信息包开始接收" />
 
         <CursorPagination
@@ -428,21 +426,24 @@ function emptyReview() {
                             :closable="false"
                             show-icon
                         />
-                        <el-table :data="detail.validations" size="small">
-                            <el-table-column label="类别" width="90">
-                                <template #default="{ row }">
-                                    {{ validationCategoryLabel(row.category) }}
-                                </template>
-                            </el-table-column>
-                            <el-table-column label="结果" width="120">
-                                <template #default="{ row }">
-                                    <el-tag :type="validationOutcomeType(row.outcome)">
-                                        {{ validationOutcomeLabel(row.outcome) }}
-                                    </el-tag>
-                                </template>
-                            </el-table-column>
-                            <el-table-column label="检测说明" prop="message" />
-                        </el-table>
+                        <AmDataTable
+                            :data="detail.validations"
+                            size="small"
+                            :columns="[
+                                { key: 'category', label: '类别', width: 90, sortable: true },
+                                { key: 'outcome', label: '结果', width: 120, sortable: true },
+                                { key: 'message', label: '检测说明', sortable: true },
+                            ]"
+                        >
+                            <template #cell-category="{ row }">
+                                {{ validationCategoryLabel(row.category) }}
+                            </template>
+                            <template #cell-outcome="{ row }">
+                                <el-tag :type="validationOutcomeType(row.outcome)">
+                                    {{ validationOutcomeLabel(row.outcome) }}
+                                </el-tag>
+                            </template>
+                        </AmDataTable>
                     </section>
                     <section v-if="detail.status === 'PENDING_REVIEW'" class="review-panel">
                         <h2>人工复核与交接确认</h2>
@@ -495,18 +496,24 @@ function emptyReview() {
                             </el-button>
                         </div>
                     </section>
-                    <el-table
+                    <AmDataTable
                         v-if="detail.generatedItems.length"
                         :data="detail.generatedItems"
                         class="generated-items"
                         size="small"
-                    >
-                        <el-table-column label="档案 ID" prop="archiveItemId" width="100" />
-                        <el-table-column label="全宗" prop="fondsCode" width="120" />
-                        <el-table-column label="分类" prop="categoryCode" width="120" />
-                        <el-table-column label="档号" prop="archiveNo" />
-                        <el-table-column label="电子文件" prop="electronicFileCount" width="100" />
-                    </el-table>
+                        :columns="[
+                            { key: 'archiveItemId', label: '档案 ID', width: 100, sortable: true },
+                            { key: 'fondsCode', label: '全宗', width: 120, sortable: true },
+                            { key: 'categoryCode', label: '分类', width: 120, sortable: true },
+                            { key: 'archiveNo', label: '档号', sortable: true },
+                            {
+                                key: 'electronicFileCount',
+                                label: '电子文件',
+                                width: 100,
+                                sortable: true,
+                            },
+                        ]"
+                    />
                     <el-empty
                         v-else
                         :description="generatedItemsEmptyDescription(detail.status)"

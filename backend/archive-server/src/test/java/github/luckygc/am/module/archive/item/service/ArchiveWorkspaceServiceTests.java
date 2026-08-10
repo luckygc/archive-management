@@ -23,7 +23,7 @@ import github.luckygc.am.module.authorization.service.AuthorizationPermissionSer
 class ArchiveWorkspaceServiceTests {
 
     private final ArchiveCategoryService categoryService = mock(ArchiveCategoryService.class);
-    private final ArchiveItemQueryService queryService = mock(ArchiveItemQueryService.class);
+    private final ArchiveItemSearchService queryService = mock(ArchiveItemSearchService.class);
     private final AuthorizationPermissionService permissionService =
             mock(AuthorizationPermissionService.class);
     private final ArchiveWorkspaceService service =

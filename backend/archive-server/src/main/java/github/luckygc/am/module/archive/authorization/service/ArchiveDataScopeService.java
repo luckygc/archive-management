@@ -23,7 +23,7 @@ import github.luckygc.am.module.archive.authorization.repository.ArchiveDataScop
 import github.luckygc.am.module.archive.authorization.repository.ArchiveDataScopeSubjectRelationDataRepository;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeResolutionTypes.ArchiveDataScopeFilter;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeResolutionTypes.ResolvedArchiveDataScope;
-import github.luckygc.am.module.archive.item.ArchiveItemQueryOperator;
+import github.luckygc.am.module.archive.item.ArchiveItemFilterOperator;
 import github.luckygc.am.module.archive.metadata.service.ArchiveCategoryService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataReferenceService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
@@ -345,7 +345,7 @@ public class ArchiveDataScopeService {
     private void validateDynamicOperatorAndValues(
             ArchiveFieldDto field,
             ArchiveDataScopeDynamicCondition.DynamicFieldCondition condition) {
-        ArchiveItemQueryOperator operator = requireDynamicOperator(condition.operator());
+        ArchiveItemFilterOperator operator = requireDynamicOperator(condition.operator());
         List<String> values = condition.values() == null ? List.of() : condition.values();
         switch (operator) {
             case EQ -> requireValue(values, 1, "EQ 操作符必须提供一个值");
@@ -367,8 +367,8 @@ public class ArchiveDataScopeService {
         }
     }
 
-    private ArchiveItemQueryOperator requireDynamicOperator(
-            @Nullable ArchiveItemQueryOperator operator) {
+    private ArchiveItemFilterOperator requireDynamicOperator(
+            @Nullable ArchiveItemFilterOperator operator) {
         if (operator == null) {
             throw new BadRequestException("动态字段条件操作符不能为空", "dynamicCondition", "动态字段条件操作符不能为空");
         }

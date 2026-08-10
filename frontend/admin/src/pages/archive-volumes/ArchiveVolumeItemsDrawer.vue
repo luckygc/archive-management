@@ -7,6 +7,7 @@ import { errorMessage } from "@archive-management/frontend-core/api";
 import { addArchiveItemToVolume } from "@/shared/api/archive-volumes";
 import { discoverArchiveRecords, searchArchiveRecords } from "@/shared/api/archive-records";
 import CursorPagination from "@/shared/components/CursorPagination.vue";
+import { AmDataTable } from "@/shared/components/data-table";
 import type { ArchiveRecordListDto } from "@/shared/types/archive-records";
 import type { ArchiveVolumeResponse } from "@/shared/types/archive-volumes";
 
@@ -170,12 +171,18 @@ function archiveNo(row: Record<string, unknown>) {
             <el-alert v-if="itemError" :title="itemError" type="error" show-icon :closable="false">
                 <el-button link :loading="itemLoading" @click="loadItems()">重试</el-button>
             </el-alert>
-            <el-table v-loading="itemLoading" :data="items?.items || []" row-key="id">
-                <el-table-column label="档号">
-                    <template #default="{ row }">{{ archiveNo(row) }}</template>
-                </el-table-column>
-                <el-table-column label="年度" prop="archiveYear" width="100" />
-            </el-table>
+            <AmDataTable
+                :data="items?.items || []"
+                :loading="itemLoading"
+                row-key="id"
+                sort-mode="none"
+                :columns="[
+                    { key: 'archiveNo', label: '档号' },
+                    { key: 'archiveYear', label: '年度', width: 100 },
+                ]"
+            >
+                <template #cell-archiveNo="{ row }">{{ archiveNo(row) }}</template>
+            </AmDataTable>
             <CursorPagination
                 :limit="itemLimit"
                 :total="items?.total"

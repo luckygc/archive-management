@@ -24,7 +24,7 @@
 | 开发、验证、部署、运维 | `Taskfile.yml`/构建配置 + 对应 `docs/` |
 | OpenSpec 变更 | `openspec/config.yaml` + 对应 OpenSpec 工作流技能 |
 
-发生冲突时，先校准真相源再修改代码。`docs/superpowers/` 是历史资料，不是当前规范，其适用范围只由该目录的 `README.md` 解释。
+发生冲突时，先校准真相源再修改代码。
 
 ## 强边界
 

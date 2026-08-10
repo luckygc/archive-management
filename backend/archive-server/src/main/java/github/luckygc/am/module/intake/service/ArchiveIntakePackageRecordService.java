@@ -59,7 +59,7 @@ public class ArchiveIntakePackageRecordService {
         try (InputStream inputStream = Files.newInputStream(packagePath)) {
             storageObject =
                     storageObjectService.storeObject(
-                            new StorageObjectService.StoreStorageObjectCommand(
+                            new StorageObjectService.StoreStorageObjectRequest(
                                     originalFileName,
                                     contentType,
                                     contentLength,

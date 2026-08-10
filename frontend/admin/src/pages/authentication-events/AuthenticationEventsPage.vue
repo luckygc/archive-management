@@ -8,6 +8,7 @@ import { Search } from "@element-plus/icons-vue";
 import { onMounted, reactive, ref } from "vue";
 
 import CursorPagination from "@/shared/components/CursorPagination.vue";
+import { AmDataTable } from "@/shared/components/data-table";
 
 const eventTypeOptions = [
     { label: "登录成功", value: "login_success" },
@@ -156,44 +157,43 @@ onMounted(loadEvents);
             </el-form>
         </el-card>
         <el-card class="am-page__result" shadow="never">
-            <el-table v-loading="loading" :data="events" row-key="id">
-                <el-table-column label="事件" width="120"
-                    ><template #default="{ row }"
-                        ><el-tag :type="eventTagType(row.eventType)">{{
-                            eventLabel(row.eventType)
-                        }}</el-tag></template
-                    ></el-table-column
-                >
-                <el-table-column label="账号" prop="username" width="150" />
-                <el-table-column label="用户" prop="displayName" width="160" />
-                <el-table-column label="操作人" width="140"
-                    ><template #default="{ row }">{{
-                        row.operatorUsername || "-"
-                    }}</template></el-table-column
-                >
-                <el-table-column label="客户端" width="240"
-                    ><template #default="{ row }"
-                        ><div>{{ clientSummary(row) }}</div>
-                        <el-text type="info">{{ row.client.userAgent || "-" }}</el-text></template
-                    ></el-table-column
-                >
-                <el-table-column label="请求" width="220"
-                    ><template #default="{ row }"
-                        ><div>{{ row.request.remoteAddress || "-" }}</div>
-                        <el-text type="info">{{ row.request.host || "-" }}</el-text></template
-                    ></el-table-column
-                >
-                <el-table-column label="失败原因" width="220"
-                    ><template #default="{ row }">{{
-                        row.failureReason || "-"
-                    }}</template></el-table-column
-                >
-                <el-table-column label="发生时间" width="180"
-                    ><template #default="{ row }">{{
-                        formatDateTime(row.occurredAt)
-                    }}</template></el-table-column
-                >
-            </el-table>
+            <AmDataTable
+                :data="events"
+                :loading="loading"
+                row-key="id"
+                sort-mode="none"
+                :columns="[
+                    { key: 'eventType', label: '事件', width: 120 },
+                    { key: 'username', label: '账号', width: 150 },
+                    { key: 'displayName', label: '用户', width: 160 },
+                    { key: 'operatorUsername', label: '操作人', width: 140 },
+                    { key: 'client', label: '客户端', width: 240 },
+                    { key: 'request', label: '请求', width: 220 },
+                    { key: 'failureReason', label: '失败原因', width: 220 },
+                    { key: 'occurredAt', label: '发生时间', width: 180 },
+                ]"
+            >
+                <template #cell-eventType="{ row }">
+                    <el-tag :type="eventTagType(row.eventType)">{{
+                        eventLabel(row.eventType)
+                    }}</el-tag>
+                </template>
+                <template #cell-operatorUsername="{ row }">{{
+                    row.operatorUsername || "-"
+                }}</template>
+                <template #cell-client="{ row }">
+                    <div>{{ clientSummary(row) }}</div>
+                    <el-text type="info">{{ row.client.userAgent || "-" }}</el-text>
+                </template>
+                <template #cell-request="{ row }">
+                    <div>{{ row.request.remoteAddress || "-" }}</div>
+                    <el-text type="info">{{ row.request.host || "-" }}</el-text>
+                </template>
+                <template #cell-failureReason="{ row }">{{ row.failureReason || "-" }}</template>
+                <template #cell-occurredAt="{ row }">
+                    {{ formatDateTime(row.occurredAt) }}
+                </template>
+            </AmDataTable>
             <div class="am-table-footer">
                 <CursorPagination
                     :limit="limit"

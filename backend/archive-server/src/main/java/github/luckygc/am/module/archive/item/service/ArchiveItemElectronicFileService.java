@@ -88,29 +88,29 @@ public class ArchiveItemElectronicFileService {
     @Transactional
     public ArchiveItemElectronicFileResponse uploadFile(
             Long archiveItemId,
-            @Nullable UploadArchiveItemElectronicFileCommand command,
+            @Nullable UploadArchiveItemElectronicFileRequest request,
             Long userId) {
         requireAnyPermission(userId, PERMISSION_ITEM_CREATE, PERMISSION_ITEM_UPDATE);
-        if (command == null) {
+        if (request == null) {
             throw new BadRequestException("文件不能为空");
         }
-        if (command.contentLength() <= 0) {
+        if (request.contentLength() <= 0) {
             throw new BadRequestException("文件不能为空", "file", "文件不能为空");
         }
         archiveItemRoutingService.assertItemInDataScope(archiveItemId, userId);
         ArchiveItem archiveItem = loadArchiveItem(archiveItemId);
-        FilePolicyExecution policyExecution = enforceUploadPolicy(archiveItem, command, userId);
+        FilePolicyExecution policyExecution = enforceUploadPolicy(archiveItem, request, userId);
         StorageObjectDto storageObject =
                 storageObjectService.storeObject(
-                        new StorageObjectService.StoreStorageObjectCommand(
-                                command.originalFilename(),
-                                command.contentType(),
-                                command.contentLength(),
-                                command.inputStream(),
+                        new StorageObjectService.StoreStorageObjectRequest(
+                                request.originalFilename(),
+                                request.contentType(),
+                                request.contentLength(),
+                                request.inputStream(),
                                 null),
                         userId);
-        String usageType = usageType(command.usageType());
-        int displayOrder = command.displayOrder() == null ? 0 : command.displayOrder();
+        String usageType = usageType(request.usageType());
+        int displayOrder = request.displayOrder() == null ? 0 : request.displayOrder();
         Long electronicFileId;
         try {
             electronicFileId =
@@ -135,7 +135,7 @@ public class ArchiveItemElectronicFileService {
     }
 
     private FilePolicyExecution enforceUploadPolicy(
-            ArchiveItem item, UploadArchiveItemElectronicFileCommand command, Long userId) {
+            ArchiveItem item, UploadArchiveItemElectronicFileRequest request, Long userId) {
         ArchiveCategoryDto category =
                 archiveCategoryService.listCategories(null).stream()
                         .filter(
@@ -171,13 +171,13 @@ public class ArchiveItemElectronicFileService {
                 ArchiveFieldScope.PHYSICAL,
                 item.getId(),
                 physicalFields);
-        facts.put("file.name", command.originalFilename());
-        facts.put("file.contentType", command.contentType());
-        facts.put("file.size", command.contentLength());
+        facts.put("file.name", request.originalFilename());
+        facts.put("file.contentType", request.contentType());
+        facts.put("file.size", request.contentLength());
         facts.put("context.userId", userId);
         facts.put("context.now", LocalDateTime.now());
         facts.put("context.operation", ArchiveRuntimeTriggerPoint.FILE_BEFORE_UPLOAD.name());
-        ArchiveRuntimeExecutionRequest request =
+        ArchiveRuntimeExecutionRequest runtimeRequest =
                 new ArchiveRuntimeExecutionRequest(
                         ArchiveRuntimeTriggerPoint.FILE_BEFORE_UPLOAD,
                         item.getFondsCode(),
@@ -187,7 +187,8 @@ public class ArchiveItemElectronicFileService {
                         item.getId(),
                         facts,
                         userId);
-        return new FilePolicyExecution(request, runtimeExecutionService.enforce(request));
+        return new FilePolicyExecution(
+                runtimeRequest, runtimeExecutionService.enforce(runtimeRequest));
     }
 
     private void addDynamicFacts(
@@ -364,7 +365,7 @@ public class ArchiveItemElectronicFileService {
         return row.get(JdbcUtils.convertPropertyNameToUnderscoreName(key));
     }
 
-    public record UploadArchiveItemElectronicFileCommand(
+    public record UploadArchiveItemElectronicFileRequest(
             String originalFilename,
             @Nullable String contentType,
             long contentLength,

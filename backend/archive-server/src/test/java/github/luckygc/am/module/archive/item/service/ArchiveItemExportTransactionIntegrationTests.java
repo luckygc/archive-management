@@ -46,7 +46,7 @@ class ArchiveItemExportTransactionIntegrationTests extends PostgreSqlContainerTe
     @Autowired private ArchiveItemImportExportService importExportService;
     @Autowired private JdbcTemplate jdbcTemplate;
 
-    @MockitoBean private ArchiveItemQueryService queryService;
+    @MockitoBean private ArchiveItemSearchService queryService;
     @MockitoBean private AuthorizationPermissionService permissionService;
     @MockitoBean private StorageObjectService storageObjectService;
     @MockitoBean private FileLinkService fileLinkService;
@@ -65,7 +65,7 @@ class ArchiveItemExportTransactionIntegrationTests extends PostgreSqlContainerTe
                 .thenReturn(true);
         when(queryService.searchItems(any(), eq(9L)))
                 .thenReturn(
-                        new ArchiveItemQueryService.ArchiveItemListDto(
+                        new ArchiveItemSearchService.ArchiveItemListDto(
                                 null,
                                 List.of(),
                                 CursorPageResponse.withCursorValues(
@@ -91,7 +91,7 @@ class ArchiveItemExportTransactionIntegrationTests extends PostgreSqlContainerTe
                 .thenReturn(true);
         when(queryService.searchItems(any(), eq(9L)))
                 .thenReturn(
-                        new ArchiveItemQueryService.ArchiveItemListDto(
+                        new ArchiveItemSearchService.ArchiveItemListDto(
                                 null,
                                 List.of(),
                                 CursorPageResponse.withCursorValues(

@@ -24,11 +24,11 @@ import org.springframework.web.server.ResponseStatusException;
 import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.archive.item.service.ArchiveItemLineTableService.ArchiveItemLineFieldDto;
-import github.luckygc.am.module.archive.mapper.ArchiveItemLineRowCommands.ArchiveItemLineRowDeleteCommand;
-import github.luckygc.am.module.archive.mapper.ArchiveItemLineRowCommands.ArchiveItemLineRowInsertCommand;
-import github.luckygc.am.module.archive.mapper.ArchiveItemLineRowCommands.ArchiveItemLineRowLookup;
-import github.luckygc.am.module.archive.mapper.ArchiveItemLineRowCommands.ArchiveItemLineRowPageQuery;
-import github.luckygc.am.module.archive.mapper.ArchiveItemLineRowCommands.ArchiveItemLineRowUpdateCommand;
+import github.luckygc.am.module.archive.mapper.ArchiveItemLineRowRequests.ArchiveItemLineRowDeleteRequest;
+import github.luckygc.am.module.archive.mapper.ArchiveItemLineRowRequests.ArchiveItemLineRowInsertRequest;
+import github.luckygc.am.module.archive.mapper.ArchiveItemLineRowRequests.ArchiveItemLineRowLookupRequest;
+import github.luckygc.am.module.archive.mapper.ArchiveItemLineRowRequests.ArchiveItemLineRowPageRequest;
+import github.luckygc.am.module.archive.mapper.ArchiveItemLineRowRequests.ArchiveItemLineRowUpdateRequest;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.mapper.ArchiveSqlAssignment;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldType;
@@ -45,16 +45,19 @@ public class ArchiveItemLineRowService {
 
     private final ArchiveMapper archiveMapper;
     private final ArchiveItemReadService archiveItemReadService;
+    private final ArchiveItemSearchProjectionSynchronizer searchProjectionSynchronizer;
     private final AuthorizationPermissionService permissionService;
     private final ArchiveItemFieldValueConverter fieldValueConverter;
 
     public ArchiveItemLineRowService(
             ArchiveMapper archiveMapper,
             ArchiveItemReadService archiveItemReadService,
+            ArchiveItemSearchProjectionSynchronizer searchProjectionSynchronizer,
             AuthorizationPermissionService permissionService,
             ArchiveItemFieldValueConverter fieldValueConverter) {
         this.archiveMapper = archiveMapper;
         this.archiveItemReadService = archiveItemReadService;
+        this.searchProjectionSynchronizer = searchProjectionSynchronizer;
         this.permissionService = permissionService;
         this.fieldValueConverter = fieldValueConverter;
     }
@@ -67,9 +70,9 @@ public class ArchiveItemLineRowService {
         archiveItemReadService.assertItemInDataScope(archiveItemId, userId);
         LineTableDefinition table = loadBuiltTable(archiveItemId, lineTableId);
         boolean requestTotal = shouldRequestTotal(pageRequest);
-        ArchiveItemLineRowPageQuery query =
-                pageQuery(table, archiveItemId, pageRequest, requestTotal);
-        List<Map<String, Object>> rows = archiveMapper.listItemLineRows(query);
+        ArchiveItemLineRowPageRequest request =
+                pageRequest(table, archiveItemId, pageRequest, requestTotal);
+        List<Map<String, Object>> rows = archiveMapper.listItemLineRows(request);
         return toCursorPage(table, rows, pageRequest, requestTotal);
     }
 
@@ -138,8 +141,9 @@ public class ArchiveItemLineRowService {
         List<ArchiveSqlAssignment> assignments = assignments(table.fields(), values);
         Long rowId =
                 archiveMapper.insertItemLineRow(
-                        new ArchiveItemLineRowInsertCommand(
+                        new ArchiveItemLineRowInsertRequest(
                                 table.tableName(), archiveItemId, lineOrder, assignments));
+        searchProjectionSynchronizer.synchronize(archiveItemId);
         return loadRow(table, archiveItemId, rowId);
     }
 
@@ -165,7 +169,7 @@ public class ArchiveItemLineRowService {
         if (request.lineOrderPresent() || !assignments.isEmpty()) {
             int updated =
                     archiveMapper.updateItemLineRow(
-                            new ArchiveItemLineRowUpdateCommand(
+                            new ArchiveItemLineRowUpdateRequest(
                                     table.tableName(),
                                     archiveItemId,
                                     rowId,
@@ -175,6 +179,7 @@ public class ArchiveItemLineRowService {
             if (updated == 0) {
                 throw notFound();
             }
+            searchProjectionSynchronizer.synchronize(archiveItemId);
             return loadRow(table, archiveItemId, rowId);
         }
         return toResponse(table, current);
@@ -187,11 +192,12 @@ public class ArchiveItemLineRowService {
         LineTableDefinition table = loadBuiltTable(archiveItemId, lineTableId);
         loadRowMap(table, archiveItemId, rowId);
         if (archiveMapper.deleteItemLineRow(
-                        new ArchiveItemLineRowDeleteCommand(
+                        new ArchiveItemLineRowDeleteRequest(
                                 table.tableName(), archiveItemId, rowId, userId))
                 == 0) {
             throw notFound();
         }
+        searchProjectionSynchronizer.synchronize(archiveItemId);
     }
 
     private void requireWriteBoundary(Long archiveItemId, Long lineTableId, Long userId) {
@@ -235,7 +241,7 @@ public class ArchiveItemLineRowService {
                 .allMatch(field -> archiveMapper.columnExists(tableName, field.columnName()) > 0);
     }
 
-    private ArchiveItemLineRowPageQuery pageQuery(
+    private ArchiveItemLineRowPageRequest pageRequest(
             LineTableDefinition table,
             Long archiveItemId,
             PageRequest pageRequest,
@@ -252,7 +258,7 @@ public class ArchiveItemLineRowService {
             cursorLineOrder = lineOrder.intValue();
             cursorId = id.longValue();
         }
-        return new ArchiveItemLineRowPageQuery(
+        return new ArchiveItemLineRowPageRequest(
                 table.tableName(),
                 archiveItemId,
                 selectColumns(table),
@@ -339,7 +345,7 @@ public class ArchiveItemLineRowService {
             LineTableDefinition table, Long archiveItemId, Long rowId) {
         Map<String, Object> row =
                 archiveMapper.getItemLineRow(
-                        new ArchiveItemLineRowLookup(
+                        new ArchiveItemLineRowLookupRequest(
                                 table.tableName(), archiveItemId, rowId, selectColumns(table)));
         if (row == null) {
             throw notFound();

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 
+import { AmDataTable } from "@/shared/components/data-table";
 import { usePermissionStore } from "@/stores/permissionStore";
 import ArchiveCategoryScopeDialog from "./ArchiveCategoryScopeDialog.vue";
 import ArchiveLineTablePanel from "./ArchiveLineTablePanel.vue";
@@ -98,41 +99,40 @@ const canManageMetadata = computed(() => permissionStore.has("archive:metadata:m
                             </div>
                         </div></template
                     >
-                    <el-table :data="fields" row-key="id"
-                        ><el-table-column
-                            label="字段编码"
-                            prop="fieldCode"
-                            width="160"
-                        /><el-table-column label="字段名称" prop="fieldName" /><el-table-column
-                            label="字段类型"
-                            width="100"
-                            ><template #default="{ row }">{{
-                                fieldTypeLabels[row.fieldType] ?? row.fieldType
-                            }}</template></el-table-column
-                        ><el-table-column label="层级" width="80"
-                            ><template #default="{ row }">{{
-                                row.archiveLevel === "VOLUME" ? "案卷" : "条目"
-                            }}</template></el-table-column
-                        ><el-table-column label="列表显示" width="100"
-                            ><template #default="{ row }">{{
-                                row.listVisible ? "是" : "否"
-                            }}</template></el-table-column
-                        ><el-table-column label="启用" width="80"
-                            ><template #default="{ row }"
-                                ><el-tag :type="row.enabled ? 'success' : 'info'">{{
-                                    row.enabled ? "启用" : "停用"
-                                }}</el-tag></template
-                            ></el-table-column
-                        ><el-table-column label="操作" width="130"
-                            ><template #default="{ row }"
-                                ><el-button link type="primary" @click="openEditField(row)"
-                                    >编辑</el-button
-                                ><el-button link type="danger" @click="removeField(row)"
-                                    >删除</el-button
-                                ></template
-                            ></el-table-column
-                        ></el-table
+                    <AmDataTable
+                        :data="fields"
+                        row-key="id"
+                        :columns="[
+                            { key: 'fieldCode', label: '字段编码', width: 160, sortable: true },
+                            { key: 'fieldName', label: '字段名称', sortable: true },
+                            { key: 'fieldType', label: '字段类型', width: 100, sortable: true },
+                            { key: 'archiveLevel', label: '层级', width: 80, sortable: true },
+                            { key: 'listVisible', label: '列表显示', width: 100, sortable: true },
+                            { key: 'enabled', label: '启用', width: 80, sortable: true },
+                            { key: 'actions', label: '操作', width: 130 },
+                        ]"
                     >
+                        <template #cell-fieldType="{ row }">
+                            {{ fieldTypeLabels[row.fieldType] ?? row.fieldType }}
+                        </template>
+                        <template #cell-archiveLevel="{ row }">
+                            {{ row.archiveLevel === "VOLUME" ? "案卷" : "条目" }}
+                        </template>
+                        <template #cell-listVisible="{ row }">
+                            {{ row.listVisible ? "是" : "否" }}
+                        </template>
+                        <template #cell-enabled="{ row }">
+                            <el-tag :type="row.enabled ? 'success' : 'info'">
+                                {{ row.enabled ? "启用" : "停用" }}
+                            </el-tag>
+                        </template>
+                        <template #cell-actions="{ row }">
+                            <el-button link type="primary" @click="openEditField(row)"
+                                >编辑</el-button
+                            >
+                            <el-button link type="danger" @click="removeField(row)">删除</el-button>
+                        </template>
+                    </AmDataTable>
                 </el-card>
                 <div v-if="canManageMetadata && selectedCategoryId" class="line-table-panel">
                     <ArchiveLineTablePanel :category-id="selectedCategoryId" />

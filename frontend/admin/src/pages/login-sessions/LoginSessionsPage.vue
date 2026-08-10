@@ -5,6 +5,7 @@ import { ElMessage, ElMessageBox } from "element-plus";
 import { onMounted, ref } from "vue";
 
 import CursorPagination from "@/shared/components/CursorPagination.vue";
+import { AmDataTable } from "@/shared/components/data-table";
 
 const limit = ref(100);
 const cursor = ref<string | null>(null);
@@ -88,53 +89,52 @@ onMounted(loadSessions);
             <el-text type="info">{{ total == null ? "" : `共 ${total} 条` }}</el-text>
         </div>
         <el-card shadow="never">
-            <el-table v-loading="loading" :data="sessions" row-key="sessionId">
-                <el-table-column label="用户" width="180">
-                    <template #default="{ row }">
-                        <div class="cell-inline">
-                            <span>{{ row.displayName || "-" }}</span
-                            ><el-tag v-if="row.current" type="primary">当前</el-tag>
-                        </div>
-                    </template>
-                </el-table-column>
-                <el-table-column label="账号" prop="username" width="160" />
-                <el-table-column label="客户端" width="260">
-                    <template #default="{ row }"
-                        ><div>{{ clientSummary(row) }}</div>
-                        <el-text type="info">{{ row.client.userAgent || "-" }}</el-text></template
+            <AmDataTable
+                :data="sessions"
+                :loading="loading"
+                row-key="sessionId"
+                sort-mode="none"
+                :columns="[
+                    { key: 'displayName', label: '用户', width: 180 },
+                    { key: 'username', label: '账号', width: 160 },
+                    { key: 'client', label: '客户端', width: 260 },
+                    { key: 'request', label: '请求', width: 220 },
+                    { key: 'lastAccessTime', label: '最后访问', width: 180 },
+                    { key: 'expiresAt', label: '过期时间', width: 180 },
+                    { key: 'actions', label: '操作', width: 110, fixed: 'right' },
+                ]"
+            >
+                <template #cell-displayName="{ row }">
+                    <div class="cell-inline">
+                        <span>{{ row.displayName || "-" }}</span>
+                        <el-tag v-if="row.current" type="primary">当前</el-tag>
+                    </div>
+                </template>
+                <template #cell-client="{ row }">
+                    <div>{{ clientSummary(row) }}</div>
+                    <el-text type="info">{{ row.client.userAgent || "-" }}</el-text>
+                </template>
+                <template #cell-request="{ row }">
+                    <div>{{ row.request.remoteAddress || "-" }}</div>
+                    <el-text type="info">{{ row.request.host || "-" }}</el-text>
+                </template>
+                <template #cell-lastAccessTime="{ row }">
+                    {{ formatDateTime(row.lastAccessTime) }}
+                </template>
+                <template #cell-expiresAt="{ row }">{{ formatDateTime(row.expiresAt) }}</template>
+                <template #cell-actions="{ row }">
+                    <el-button v-if="row.current" disabled size="small">当前会话</el-button>
+                    <el-button
+                        v-else
+                        type="danger"
+                        plain
+                        size="small"
+                        :loading="deletingId === row.sessionId"
+                        @click="kickout(row)"
+                        >踢下线</el-button
                     >
-                </el-table-column>
-                <el-table-column label="请求" width="220">
-                    <template #default="{ row }"
-                        ><div>{{ row.request.remoteAddress || "-" }}</div>
-                        <el-text type="info">{{ row.request.host || "-" }}</el-text></template
-                    >
-                </el-table-column>
-                <el-table-column label="最后访问" width="180"
-                    ><template #default="{ row }">{{
-                        formatDateTime(row.lastAccessTime)
-                    }}</template></el-table-column
-                >
-                <el-table-column label="过期时间" width="180"
-                    ><template #default="{ row }">{{
-                        formatDateTime(row.expiresAt)
-                    }}</template></el-table-column
-                >
-                <el-table-column fixed="right" label="操作" width="110">
-                    <template #default="{ row }">
-                        <el-button v-if="row.current" disabled size="small">当前会话</el-button>
-                        <el-button
-                            v-else
-                            type="danger"
-                            plain
-                            size="small"
-                            :loading="deletingId === row.sessionId"
-                            @click="kickout(row)"
-                            >踢下线</el-button
-                        >
-                    </template>
-                </el-table-column>
-            </el-table>
+                </template>
+            </AmDataTable>
             <div class="am-table-footer">
                 <CursorPagination
                     :limit="limit"

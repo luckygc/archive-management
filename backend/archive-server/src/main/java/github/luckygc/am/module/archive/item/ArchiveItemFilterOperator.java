@@ -1,6 +1,6 @@
 package github.luckygc.am.module.archive.item;
 
-public enum ArchiveItemQueryOperator {
+public enum ArchiveItemFilterOperator {
     EQ,
     CONTAINS,
     STARTS_WITH,
@@ -13,7 +13,7 @@ public enum ArchiveItemQueryOperator {
     IS_EMPTY,
     IS_NOT_EMPTY;
 
-    public static ArchiveItemQueryOperator fromValue(String value) {
-        return ArchiveItemQueryOperator.valueOf(value.trim().toUpperCase());
+    public static ArchiveItemFilterOperator fromValue(String value) {
+        return ArchiveItemFilterOperator.valueOf(value.trim().toUpperCase());
     }
 }

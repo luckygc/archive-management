@@ -27,7 +27,7 @@ import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeResolutionTypes.ArchiveDataScopeFilter;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
-import github.luckygc.am.module.archive.item.ArchiveItemQueryOperator;
+import github.luckygc.am.module.archive.item.ArchiveItemFilterOperator;
 import github.luckygc.am.module.archive.item.ArchiveItemRelationDirection;
 import github.luckygc.am.module.archive.library.ArchiveRepositoryRole;
 import github.luckygc.am.module.archive.mapper.ArchiveDynamicItemCriteria;
@@ -49,7 +49,7 @@ import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.Ar
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
 
 @Service
-public class ArchiveItemQueryService {
+public class ArchiveItemSearchService {
 
     private static final int DEFAULT_PAGE_LIMIT = 100;
     private static final int MAX_PAGE_LIMIT = 1000;
@@ -61,7 +61,7 @@ public class ArchiveItemQueryService {
     private final ArchiveItemSearchCriteriaCompiler criteriaCompiler;
     private final ArchiveItemCursorPageAssembler pageAssembler;
 
-    public ArchiveItemQueryService(
+    public ArchiveItemSearchService(
             ArchiveMetadataService archiveMetadataService,
             ArchiveCategoryService archiveCategoryService,
             ArchiveMapper archiveMapper,
@@ -260,7 +260,7 @@ public class ArchiveItemQueryService {
     }
 
     private List<ArchiveSqlOrder> orderBy(
-            @Nullable List<@Nullable ArchiveItemOrderBy> requestOrderBy,
+            @Nullable List<@Nullable ArchiveItemOrderByRequest> requestOrderBy,
             List<ArchiveFieldDto> fields,
             List<String> indexedFieldCodes) {
         List<ArchiveSqlOrder> orders = new ArrayList<>();
@@ -270,7 +270,7 @@ public class ArchiveItemQueryService {
                             .collect(
                                     java.util.stream.Collectors.toMap(
                                             ArchiveFieldDto::fieldCode, field -> field));
-            for (ArchiveItemOrderBy order : requestOrderBy) {
+            for (ArchiveItemOrderByRequest order : requestOrderBy) {
                 orders.add(toSqlOrder(order, fieldsByCode, indexedFieldCodes));
             }
         }
@@ -296,7 +296,7 @@ public class ArchiveItemQueryService {
     }
 
     private ArchiveSqlOrder toSqlOrder(
-            @Nullable ArchiveItemOrderBy order,
+            @Nullable ArchiveItemOrderByRequest order,
             Map<String, ArchiveFieldDto> fieldsByCode,
             List<String> indexedFieldCodes) {
         String field = order == null ? null : StringUtils.trimToNull(order.field());
@@ -447,22 +447,22 @@ public class ArchiveItemQueryService {
             @Nullable Long categoryId,
             @Nullable String fondsCode,
             @Nullable String keyword,
-            @Nullable ArchiveItemWhere where,
-            @Nullable List<@Nullable ArchiveItemRelatedGroup> relatedGroups,
+            @Nullable ArchiveItemWhereRequest where,
+            @Nullable List<@Nullable ArchiveItemRelatedGroupRequest> relatedGroups,
             @Nullable Integer limit,
             @Nullable String cursor,
-            @Nullable List<@Nullable ArchiveItemOrderBy> orderBy,
+            @Nullable List<@Nullable ArchiveItemOrderByRequest> orderBy,
             @Nullable Long volumeId) {
 
         public SearchArchiveItemsRequest(
                 @Nullable Long categoryId,
                 @Nullable String fondsCode,
                 @Nullable String keyword,
-                @Nullable ArchiveItemWhere where,
-                @Nullable List<@Nullable ArchiveItemRelatedGroup> relatedGroups,
+                @Nullable ArchiveItemWhereRequest where,
+                @Nullable List<@Nullable ArchiveItemRelatedGroupRequest> relatedGroups,
                 @Nullable Integer limit,
                 @Nullable String cursor,
-                @Nullable List<@Nullable ArchiveItemOrderBy> orderBy) {
+                @Nullable List<@Nullable ArchiveItemOrderByRequest> orderBy) {
             this(
                     categoryId,
                     fondsCode,
@@ -490,22 +490,22 @@ public class ArchiveItemQueryService {
         }
     }
 
-    public record ArchiveItemOrderBy(@Nullable String field, @Nullable String direction) {}
+    public record ArchiveItemOrderByRequest(@Nullable String field, @Nullable String direction) {}
 
-    public record ArchiveItemWhere(
-            @Nullable List<@Nullable ArchiveItemQueryCondition> conditions) {}
+    public record ArchiveItemWhereRequest(
+            @Nullable List<@Nullable ArchiveItemFilterConditionRequest> conditions) {}
 
-    public record ArchiveItemQueryCondition(
+    public record ArchiveItemFilterConditionRequest(
             @Nullable String fieldCode,
-            @Nullable ArchiveItemQueryOperator op,
+            @Nullable ArchiveItemFilterOperator op,
             @Nullable Object value,
             @Nullable Object startValue,
             @Nullable Object endValue) {}
 
-    public record ArchiveItemRelatedGroup(
+    public record ArchiveItemRelatedGroupRequest(
             @Nullable Long categoryId,
             @Nullable ArchiveItemRelationDirection direction,
-            @Nullable ArchiveItemWhere where) {}
+            @Nullable ArchiveItemWhereRequest where) {}
 
     public record ArchiveRelatedFilterCategoryDto(
             Long categoryId,

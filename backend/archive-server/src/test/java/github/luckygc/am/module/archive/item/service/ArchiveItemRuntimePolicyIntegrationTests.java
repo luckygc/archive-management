@@ -25,7 +25,7 @@ import github.luckygc.am.app.ArchiveManagementApplication;
 import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeResolutionTypes.ArchiveDataScopeFilter;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
-import github.luckygc.am.module.archive.item.service.ArchiveItemCommandService.CreateArchiveItemRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemService.CreateArchiveItemRequest;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldControl;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldScope;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldType;
@@ -60,7 +60,7 @@ class ArchiveItemRuntimePolicyIntegrationTests extends PostgreSqlContainerTest {
     private static final long CATEGORY_ID = 9_630_000L;
     private static final String DYNAMIC_TABLE = "am_archive_item_runtime_doc";
 
-    @Autowired private ArchiveItemCommandService commandService;
+    @Autowired private ArchiveItemService commandService;
     @Autowired private ArchiveRuntimeFieldCatalogService fieldCatalogService;
     @Autowired private JdbcTemplate jdbcTemplate;
 
@@ -69,7 +69,7 @@ class ArchiveItemRuntimePolicyIntegrationTests extends PostgreSqlContainerTest {
     @MockitoBean private ArchiveCategoryService categoryService;
     @MockitoBean private ArchiveDataScopeService dataScopeService;
     @MockitoBean private AuthorizationPermissionService permissionService;
-    @MockitoBean private ArchiveItemSearchProjectionService searchProjectionService;
+    @MockitoBean private ArchiveItemSearchProjectionSynchronizer searchProjectionSynchronizer;
 
     private ArchiveCategoryDto category;
     private ArchiveFieldDto titleField;
