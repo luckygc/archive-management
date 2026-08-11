@@ -69,11 +69,11 @@ class ArchiveRepositoryServiceTests {
         var response =
                 service.create(
                         new CreateArchiveRepositoryRequest(
-                                "TRANSFER_WEST", "西区移交库", ArchiveRepositoryRole.TRANSFER, true, 10),
+                                "INTAKE_WEST", "西区预归档库", ArchiveRepositoryRole.INTAKE, true, 10),
                         9L);
 
         assertThat(response.id()).isEqualTo(20L);
-        assertThat(response.repositoryRole()).isEqualTo(ArchiveRepositoryRole.TRANSFER);
+        assertThat(response.repositoryRole()).isEqualTo(ArchiveRepositoryRole.INTAKE);
     }
 
     @Test

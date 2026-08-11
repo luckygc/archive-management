@@ -21,10 +21,12 @@ import org.springframework.web.server.ResponseStatusException;
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.archive.item.service.ArchiveItemReadService;
 import github.luckygc.am.module.archive.item.service.ArchiveVolumeService;
+import github.luckygc.am.module.archive.physical.ArchivePhysicalCustodyStatus;
 import github.luckygc.am.module.archive.physical.ArchivePhysicalObject;
 import github.luckygc.am.module.archive.physical.repository.ArchivePhysicalLocationHistoryDataRepository;
 import github.luckygc.am.module.archive.physical.repository.ArchivePhysicalObjectDataRepository;
 import github.luckygc.am.module.archive.physical.service.ArchivePhysicalObjectService.CreateArchivePhysicalObjectRequest;
+import github.luckygc.am.module.archive.physical.service.ArchivePhysicalObjectService.UpdateArchivePhysicalObjectRequest;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
 
 @DisplayName("档案实物对象服务")
@@ -83,6 +85,8 @@ class ArchivePhysicalObjectServiceTests {
         assertThat(response.id()).isEqualTo(51L);
         assertThat(response.archiveItemId()).isEqualTo(31L);
         assertThat(response.archiveVolumeId()).isNull();
+        assertThat(response.custodyStatus())
+                .isEqualTo(ArchivePhysicalCustodyStatus.DEPARTMENT_CUSTODY);
     }
 
     @Test
@@ -111,5 +115,25 @@ class ArchivePhysicalObjectServiceTests {
                                 assertThat(exception.getStatusCode())
                                         .isEqualTo(HttpStatus.NOT_FOUND))
                 .hasMessageContaining("实物对象不存在");
+    }
+
+    @Test
+    @DisplayName("待接收实物不能修改")
+    void updateShouldRejectPendingReceiptObject() {
+        ArchivePhysicalObject object = new ArchivePhysicalObject();
+        object.setId(51L);
+        object.setArchiveItemId(31L);
+        object.setCustodyStatus(ArchivePhysicalCustodyStatus.PENDING_RECEIPT);
+        when(objectRepository.findById(51L)).thenReturn(Optional.of(object));
+
+        assertThatThrownBy(
+                        () ->
+                                service.update(
+                                        51L,
+                                        new UpdateArchivePhysicalObjectRequest(
+                                                null, null, BigDecimal.ONE, "卷", null, null),
+                                        9L))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("待接收实物不能修改或删除");
     }
 }

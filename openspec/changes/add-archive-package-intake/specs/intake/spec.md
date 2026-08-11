@@ -13,7 +13,7 @@
 
 ### Requirement: 归档接收与档案核心边界
 
-归档接收 SHALL 负责电子档案移交信息包、四性检测、交接确认和入库编排，档案核心 SHALL 负责确认接收后形成的正式档案资产。系统 SHALL 以 repository role 作为档案和案卷生命周期的唯一真相源，其中 `INTAKE` 表示预归档、`HOLDING` 表示正式档案、`TRANSFER` 表示移交。
+归档接收 SHALL 负责电子档案移交信息包、四性检测、交接确认和入库编排，档案核心 SHALL 负责确认接收后形成的正式档案资产。系统 SHALL 以 repository role 作为档案和案卷记录阶段的唯一真相源，其中 `INTAKE` 表示预归档、`HOLDING` 表示正式档案；电子档案移交信息包与业务部门实物移交接收均 SHALL 使用独立业务记录表达。
 
 #### Scenario: 档案信息包尚未处理成功
 
@@ -37,7 +37,6 @@
 - **THEN** 系统 SHALL 以条目所在 repository role 判断其生命周期阶段
 - **AND** `INTAKE` 中的条目 SHALL 表示预归档档案
 - **AND** `HOLDING` 中的条目 SHALL 表示正式档案
-- **AND** `TRANSFER` 中的条目 SHALL 表示移交阶段档案
 - **AND** 档案及案卷的 API 和前端 SHALL NOT 暴露或接受 `electronicStatus`
 
 #### Scenario: 数据已经正式成为档案记录

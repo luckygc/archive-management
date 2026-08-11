@@ -129,6 +129,10 @@ public class ArchiveRepositoryService {
         return entity;
     }
 
+    public ArchiveRepository getRequired(Long id) {
+        return get(id);
+    }
+
     public ArchiveRepository getEnabledSystemRepository(ArchiveRepositoryRole repositoryRole) {
         if (repositoryRole == null) {
             throw new BadRequestException("业务库角色不能为空");

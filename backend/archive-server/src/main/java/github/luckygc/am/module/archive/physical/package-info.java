@@ -1,5 +1,5 @@
 /**
- * 档案实物子域，承载实物对象、存放位置和位置历史。
+ * 档案实物子域，承载实物对象、保管状态、移交接收、存放位置和位置历史。
  */
 @NullMarked
 package github.luckygc.am.module.archive.physical;

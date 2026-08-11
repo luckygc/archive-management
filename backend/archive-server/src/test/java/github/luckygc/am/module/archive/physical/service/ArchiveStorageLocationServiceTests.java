@@ -44,7 +44,7 @@ class ArchiveStorageLocationServiceTests {
     }
 
     @Test
-    @DisplayName("位置归属真实库房而不是虚拟移交库")
+    @DisplayName("位置归属真实库房而不是档案业务库")
     void createLocationShouldReferenceWarehouse() {
         when(warehouseRepository.findById(11L)).thenReturn(Optional.of(warehouse(11L)));
         when(locationRepository.insert(any(ArchiveStorageLocation.class)))

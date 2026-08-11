@@ -20,6 +20,7 @@ import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.archive.item.service.ArchiveItemReadService;
 import github.luckygc.am.module.archive.item.service.ArchiveVolumeService;
+import github.luckygc.am.module.archive.physical.ArchivePhysicalCustodyStatus;
 import github.luckygc.am.module.archive.physical.ArchivePhysicalLocationHistory;
 import github.luckygc.am.module.archive.physical.ArchivePhysicalObject;
 import github.luckygc.am.module.archive.physical.ArchiveStorageLocation;
@@ -118,6 +119,7 @@ public class ArchivePhysicalObjectService {
         requireUpdatePermission(userId);
         ArchivePhysicalObject entity = object(id);
         assertOwnerInDataScope(entity.getArchiveItemId(), entity.getArchiveVolumeId(), userId);
+        assertNotPendingReceipt(entity);
         if (request == null) {
             throw new BadRequestException("请求体不能为空");
         }
@@ -137,6 +139,7 @@ public class ArchivePhysicalObjectService {
         requireUpdatePermission(userId);
         ArchivePhysicalObject entity = object(id);
         assertOwnerInDataScope(entity.getArchiveItemId(), entity.getArchiveVolumeId(), userId);
+        assertNotPendingReceipt(entity);
         objectRepository.delete(entity);
     }
 
@@ -158,6 +161,9 @@ public class ArchivePhysicalObjectService {
         List<ArchivePhysicalObject> objects = ids.stream().map(this::object).toList();
         for (ArchivePhysicalObject object : objects) {
             assertOwnerInDataScope(object.getArchiveItemId(), object.getArchiveVolumeId(), userId);
+            if (object.getCustodyStatus() != ArchivePhysicalCustodyStatus.ARCHIVE_ROOM_CUSTODY) {
+                throw new BadRequestException("只有档案室保管的实物才能关联存放位置");
+            }
         }
         int changed = 0;
         for (ArchivePhysicalObject object : objects) {
@@ -245,6 +251,12 @@ public class ArchivePhysicalObjectService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "实物对象不存在"));
     }
 
+    private void assertNotPendingReceipt(ArchivePhysicalObject object) {
+        if (object.getCustodyStatus() == ArchivePhysicalCustodyStatus.PENDING_RECEIPT) {
+            throw new BadRequestException("待接收实物不能修改或删除");
+        }
+    }
+
     private void requireReadPermission(Long userId) {
         requirePermission(userId, AuthorizationPermissionCode.ARCHIVE_ITEM_READ);
     }
@@ -270,6 +282,7 @@ public class ArchivePhysicalObjectService {
                 entity.getQuantity(),
                 entity.getQuantityUnit(),
                 entity.getConditionNote(),
+                entity.getCustodyStatus(),
                 entity.getCurrentLocationId(),
                 entity.getRemark(),
                 entity.getCreatedAt(),
@@ -317,6 +330,7 @@ public class ArchivePhysicalObjectService {
             @Nullable BigDecimal quantity,
             @Nullable String quantityUnit,
             @Nullable String conditionNote,
+            ArchivePhysicalCustodyStatus custodyStatus,
             @Nullable Long currentLocationId,
             @Nullable String remark,
             java.time.LocalDateTime createdAt,

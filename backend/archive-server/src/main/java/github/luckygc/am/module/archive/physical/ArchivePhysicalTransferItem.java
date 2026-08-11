@@ -5,15 +5,12 @@ import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 
-import org.hibernate.annotations.SoftDelete;
 import org.jspecify.annotations.Nullable;
 
 import github.luckygc.am.common.audit.CreationAuditable;
@@ -23,13 +20,18 @@ import lombok.Data;
 
 @Data
 @Entity
-@Table(name = "am_archive_physical_object")
-@SoftDelete(columnName = "deleted_flag")
-public class ArchivePhysicalObject implements CreationAuditable, UpdateAuditable {
+@Table(name = "am_archive_physical_transfer_item")
+public class ArchivePhysicalTransferItem implements CreationAuditable, UpdateAuditable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(name = "transfer_id", nullable = false)
+    private Long transferId;
+
+    @Column(name = "physical_object_id", nullable = false)
+    private Long physicalObjectId;
 
     @Column(name = "archive_item_id")
     private @Nullable Long archiveItemId;
@@ -37,31 +39,23 @@ public class ArchivePhysicalObject implements CreationAuditable, UpdateAuditable
     @Column(name = "archive_volume_id")
     private @Nullable Long archiveVolumeId;
 
-    @Column(length = 120)
-    private @Nullable String barcode;
+    @Column(name = "barcode_snapshot", length = 120)
+    private @Nullable String barcodeSnapshot;
 
-    @Column(name = "carrier_type", length = 80)
-    private @Nullable String carrierType;
+    @Column(name = "carrier_type_snapshot", length = 80)
+    private @Nullable String carrierTypeSnapshot;
 
-    @Column(precision = 18, scale = 4)
-    private @Nullable BigDecimal quantity;
+    @Column(name = "quantity_snapshot", precision = 18, scale = 4)
+    private @Nullable BigDecimal quantitySnapshot;
 
-    @Column(name = "quantity_unit", length = 30)
-    private @Nullable String quantityUnit;
+    @Column(name = "quantity_unit_snapshot", length = 30)
+    private @Nullable String quantityUnitSnapshot;
 
-    @Column(name = "condition_note")
-    private @Nullable String conditionNote;
+    @Column(name = "condition_note_snapshot", length = 255)
+    private @Nullable String conditionNoteSnapshot;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "custody_status", nullable = false, length = 30)
-    private ArchivePhysicalCustodyStatus custodyStatus =
-            ArchivePhysicalCustodyStatus.DEPARTMENT_CUSTODY;
-
-    @Column(name = "current_location_id")
-    private @Nullable Long currentLocationId;
-
-    @Column(length = 1000)
-    private @Nullable String remark;
+    @Column(name = "active_flag", nullable = false)
+    private boolean activeFlag = true;
 
     @Version
     @Column(nullable = false)

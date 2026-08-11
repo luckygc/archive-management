@@ -21,6 +21,7 @@ import github.luckygc.am.module.archive.item.service.ArchiveItemReadService;
 import github.luckygc.am.module.archive.item.service.ArchiveVolumeService;
 import github.luckygc.am.module.archive.library.ArchiveRepository;
 import github.luckygc.am.module.archive.library.ArchiveRepositoryChangeHistory;
+import github.luckygc.am.module.archive.library.ArchiveRepositoryRole;
 import github.luckygc.am.module.archive.library.repository.ArchiveRepositoryChangeHistoryDataRepository;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionCode;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
@@ -69,6 +70,7 @@ public class ArchiveRepositoryAssignmentService {
         Long fromRepositoryId = item.getRepositoryId();
         ArchiveRepository target = target(request);
         if (!fromRepositoryId.equals(target.getId())) {
+            assertTransition(archiveRepositoryService.getRequired(fromRepositoryId), target);
             item.setRepositoryId(target.getId());
             itemRepository.update(item);
             insertHistory(
@@ -96,6 +98,7 @@ public class ArchiveRepositoryAssignmentService {
         Long fromRepositoryId = volume.getRepositoryId();
         ArchiveRepository target = target(request);
         if (!fromRepositoryId.equals(target.getId())) {
+            assertTransition(archiveRepositoryService.getRequired(fromRepositoryId), target);
             volume.setRepositoryId(target.getId());
             volumeRepository.update(volume);
             insertHistory(
@@ -115,6 +118,13 @@ public class ArchiveRepositoryAssignmentService {
             throw new BadRequestException("目标业务库不能为空");
         }
         return archiveRepositoryService.getEnabled(request.targetRepositoryId());
+    }
+
+    private void assertTransition(ArchiveRepository source, ArchiveRepository target) {
+        if (source.getRepositoryRole() == ArchiveRepositoryRole.HOLDING
+                && target.getRepositoryRole() == ArchiveRepositoryRole.INTAKE) {
+            throw new BadRequestException("正式档案不能退回预归档库");
+        }
     }
 
     private void insertHistory(

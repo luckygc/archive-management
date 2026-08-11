@@ -8,7 +8,7 @@
 
 - **WHEN** 有档案元数据管理权限的用户提交唯一编码、名称、业务库角色、启用状态和排序
 - **THEN** 系统 SHALL 创建业务库
-- **AND** 业务库角色 SHALL 为 `INTAKE`、`HOLDING` 或 `TRANSFER`
+- **AND** 业务库角色 SHALL 为 `INTAKE` 或 `HOLDING`
 - **AND** 系统 SHALL 允许同一角色存在多个业务库实例
 
 #### Scenario: 禁用业务库
@@ -56,6 +56,22 @@
 - **THEN** 系统 SHALL 拒绝变更
 - **AND** 档案原业务库 SHALL 保持不变
 
+#### Scenario: 完成归档进入室藏库
+
+- **WHEN** 预归档条目或案卷完成归档并变更到角色为 `HOLDING` 的业务库
+- **THEN** 系统 SHALL 保持档案 ID 不变并记录库变更历史
+
+#### Scenario: 正式档案退回预归档库
+
+- **WHEN** 客户端请求将角色为 `HOLDING` 的条目或案卷变更到角色为 `INTAKE` 的业务库
+- **THEN** 系统 SHALL 拒绝变更
+- **AND** 正式档案原业务库 SHALL 保持不变
+
+#### Scenario: 实物移交接收
+
+- **WHEN** 业务部门向档案室提交、接收或退回实物移交批次
+- **THEN** 系统 SHALL NOT 因实物移交改变档案当前业务库
+
 ### Requirement: 正式档案查询隔离
 
 正式档案列表和搜索 SHALL 默认仅返回当前业务库角色为 `HOLDING` 的档案。
@@ -64,16 +80,16 @@
 
 - **WHEN** 客户端通过现有正式档案条目列表或搜索接口查询
 - **THEN** 系统 SHALL 只返回当前业务库角色为 `HOLDING` 的未删除条目
-- **AND** 当前处于预归档库或移交库的条目 SHALL NOT 出现在结果中
+- **AND** 当前处于预归档库的条目 SHALL NOT 出现在结果中
 
 #### Scenario: 查询正式案卷
 
 - **WHEN** 客户端通过现有案卷列表接口查询
 - **THEN** 系统 SHALL 只返回当前业务库角色为 `HOLDING` 的未删除案卷
-- **AND** 当前处于预归档库或移交库的案卷 SHALL NOT 出现在结果中
+- **AND** 当前处于预归档库的案卷 SHALL NOT 出现在结果中
 
-#### Scenario: 按 ID 读取非室藏档案
+#### Scenario: 按 ID 读取预归档档案
 
-- **WHEN** 有相应档案读取权限和数据范围的客户端按 ID 读取预归档库或移交库档案
+- **WHEN** 有相应档案读取权限和数据范围的客户端按 ID 读取预归档库档案
 - **THEN** 系统 SHALL 允许对应业务入口读取
 - **AND** 正式列表的默认隔离 SHALL NOT 被解释为记录不存在

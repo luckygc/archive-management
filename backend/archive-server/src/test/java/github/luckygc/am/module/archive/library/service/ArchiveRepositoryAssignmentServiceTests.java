@@ -1,8 +1,10 @@
 package github.luckygc.am.module.archive.library.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -24,6 +26,7 @@ import github.luckygc.am.module.archive.item.service.ArchiveItemReadService;
 import github.luckygc.am.module.archive.item.service.ArchiveVolumeService;
 import github.luckygc.am.module.archive.library.ArchiveRepository;
 import github.luckygc.am.module.archive.library.ArchiveRepositoryChangeHistory;
+import github.luckygc.am.module.archive.library.ArchiveRepositoryRole;
 import github.luckygc.am.module.archive.library.repository.ArchiveRepositoryChangeHistoryDataRepository;
 import github.luckygc.am.module.archive.library.service.ArchiveRepositoryAssignmentService.ChangeArchiveRepositoryRequest;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
@@ -59,25 +62,50 @@ class ArchiveRepositoryAssignmentServiceTests {
     }
 
     @Test
-    @DisplayName("进入移交库只改变虚拟业务库并记录历史")
-    void changeItemRepositoryShouldNotTouchPhysicalLocation() {
+    @DisplayName("预归档完成后进入室藏库并记录历史")
+    void changeItemRepositoryShouldMoveIntakeToHolding() {
+        ArchiveItem item = new ArchiveItem();
+        item.setId(31L);
+        item.setRepositoryId(1L);
+        when(itemRepository.findById(31L)).thenReturn(Optional.of(item));
+        ArchiveRepository intake = repository(1L, ArchiveRepositoryRole.INTAKE);
+        ArchiveRepository holding = repository(2L, ArchiveRepositoryRole.HOLDING);
+        when(repositoryService.getRequired(1L)).thenReturn(intake);
+        when(repositoryService.getEnabled(2L)).thenReturn(holding);
+
+        var response =
+                service.changeItemRepository(
+                        31L, new ChangeArchiveRepositoryRequest(2L, "FILING", 88L, "完成归档"), 9L);
+
+        assertThat(response.archiveType()).isEqualTo(ArchiveObjectType.ITEM);
+        assertThat(item.getRepositoryId()).isEqualTo(2L);
+        verify(itemRepository).update(item);
+        verify(historyRepository).insert(any(ArchiveRepositoryChangeHistory.class));
+    }
+
+    @Test
+    @DisplayName("正式档案不能退回预归档库")
+    void changeItemRepositoryShouldRejectHoldingToIntake() {
         ArchiveItem item = new ArchiveItem();
         item.setId(31L);
         item.setRepositoryId(2L);
         when(itemRepository.findById(31L)).thenReturn(Optional.of(item));
-        ArchiveRepository transfer = new ArchiveRepository();
-        transfer.setId(3L);
-        transfer.setEnabled(true);
-        when(repositoryService.getEnabled(3L)).thenReturn(transfer);
+        when(repositoryService.getRequired(2L))
+                .thenReturn(repository(2L, ArchiveRepositoryRole.HOLDING));
+        when(repositoryService.getEnabled(1L))
+                .thenReturn(repository(1L, ArchiveRepositoryRole.INTAKE));
 
-        var response =
-                service.changeItemRepository(
-                        31L, new ChangeArchiveRepositoryRequest(3L, "TRANSFER", 88L, "发起移交"), 9L);
+        assertThatThrownBy(
+                        () ->
+                                service.changeItemRepository(
+                                        31L,
+                                        new ChangeArchiveRepositoryRequest(1L, null, null, "错误退回"),
+                                        9L))
+                .hasMessageContaining("不能退回预归档库");
 
-        assertThat(response.archiveType()).isEqualTo(ArchiveObjectType.ITEM);
-        assertThat(item.getRepositoryId()).isEqualTo(3L);
-        verify(itemRepository).update(item);
-        verify(historyRepository).insert(any(ArchiveRepositoryChangeHistory.class));
+        assertThat(item.getRepositoryId()).isEqualTo(2L);
+        verify(itemRepository, never()).update(any());
+        verifyNoInteractions(historyRepository);
     }
 
     @Test
@@ -85,16 +113,22 @@ class ArchiveRepositoryAssignmentServiceTests {
     void sameRepositoryShouldNotWriteHistory() {
         ArchiveItem item = new ArchiveItem();
         item.setId(31L);
-        item.setRepositoryId(3L);
+        item.setRepositoryId(2L);
         when(itemRepository.findById(31L)).thenReturn(Optional.of(item));
-        ArchiveRepository transfer = new ArchiveRepository();
-        transfer.setId(3L);
-        transfer.setEnabled(true);
-        when(repositoryService.getEnabled(3L)).thenReturn(transfer);
+        ArchiveRepository holding = repository(2L, ArchiveRepositoryRole.HOLDING);
+        when(repositoryService.getEnabled(2L)).thenReturn(holding);
 
         service.changeItemRepository(
-                31L, new ChangeArchiveRepositoryRequest(3L, null, null, null), 9L);
+                31L, new ChangeArchiveRepositoryRequest(2L, null, null, null), 9L);
 
         verifyNoInteractions(historyRepository);
+    }
+
+    private ArchiveRepository repository(Long id, ArchiveRepositoryRole role) {
+        ArchiveRepository repository = new ArchiveRepository();
+        repository.setId(id);
+        repository.setRepositoryRole(role);
+        repository.setEnabled(true);
+        return repository;
     }
 }
