@@ -3,4 +3,151 @@ java = "25"
 maven = "3"
 node = "24"
 pnpm = "11"
-task = "3"
+
+[tasks.governance-check]
+description = "检查 OpenSpec 与项目规范治理状态"
+run = [
+    "openspec validate --all --strict --no-interactive",
+    "prove -v openspec/scripts/governance-check.t",
+    "perl openspec/scripts/governance-check.pl",
+]
+
+[tasks.infra-up]
+description = "清理旧容器和卷，启动全新的 PostgreSQL 和 RustFS 并初始化开发 bucket"
+run = [
+    "docker compose -f deploy/compose.dev.yaml down --volumes --remove-orphans",
+    "docker compose -f deploy/compose.dev.yaml up -d --wait --force-recreate --renew-anon-volumes",
+    "node scripts/ensure-dev-bucket.mjs",
+]
+
+[tasks.infra-down]
+description = "停止本地 PostgreSQL 和 RustFS，并删除容器和卷"
+run = "docker compose -f deploy/compose.dev.yaml down --volumes --remove-orphans"
+
+[tasks.frontend-install]
+description = "安装前端依赖"
+dir = "frontend"
+run = "pnpm install"
+
+[tasks.frontend-check]
+description = "检查全部前端包"
+dir = "frontend"
+run = "pnpm run check"
+
+[tasks.frontend-check-fix]
+description = "自动修复全部前端包 lint 问题"
+dir = "frontend"
+run = "pnpm run check:fix"
+
+[tasks.frontend-deprecated-check]
+description = "检查前端过时 API 使用"
+dir = "frontend"
+run = [
+    "pnpm --filter @archive-management/frontend-core run check:deprecated",
+    "pnpm --filter @archive-management/web run check:deprecated",
+]
+
+[tasks.frontend-test]
+description = "测试全部前端包"
+dir = "frontend"
+run = "pnpm run test"
+
+[tasks.frontend-build]
+description = "构建全部前端包"
+dir = "frontend"
+run = "pnpm run build"
+
+[tasks.frontend-ready]
+description = "前端检查、测试并构建"
+dir = "frontend"
+run = "pnpm run ready"
+
+[tasks.web-check]
+description = "检查 PC 前端"
+dir = "frontend"
+run = "pnpm --filter @archive-management/web run check"
+
+[tasks.web-test]
+description = "测试 PC 前端"
+dir = "frontend"
+run = "pnpm --filter @archive-management/web run test"
+
+[tasks.web-build]
+description = "构建 PC 前端"
+dir = "frontend"
+run = "pnpm --filter @archive-management/web run build"
+
+[tasks.web-dev]
+description = "启动 PC 前端开发服务"
+dir = "frontend"
+run = "pnpm run dev:web"
+
+[tasks.frontend-core-check]
+description = "检查前端共享包"
+dir = "frontend"
+run = "pnpm --filter @archive-management/frontend-core run check"
+
+[tasks.frontend-core-test]
+description = "测试前端共享包"
+dir = "frontend"
+run = "pnpm --filter @archive-management/frontend-core run test"
+
+[tasks.frontend-core-build]
+description = "构建前端共享包"
+dir = "frontend"
+run = "pnpm --filter @archive-management/frontend-core run build"
+
+[tasks.server-java]
+description = "打印 Java/Maven 版本"
+dir = "backend/archive-server"
+run = ["java -version", "mvn -version"]
+
+[tasks.server-deps]
+description = "下载 Maven 依赖"
+dir = "backend/archive-server"
+run = "mvn -q dependency:resolve"
+
+[tasks.server-format-check]
+description = "检查 server 格式"
+dir = "backend/archive-server"
+run = "mvn spotless:check"
+
+[tasks.server-format]
+description = "自动格式化 server"
+dir = "backend/archive-server"
+run = "mvn spotless:apply"
+
+[tasks.server-deprecated-check]
+description = "检查 server 过时 API 使用"
+dir = "backend/archive-server"
+run = "mvn -Drewrite.activeRecipes=org.openrewrite.java.search.FindDeprecatedUses -Drewrite.exportDatatables=true rewrite:dryRun"
+
+[tasks.server-rewrite-dry-run]
+description = "预览 server OpenRewrite 迁移"
+dir = "backend/archive-server"
+run = "mvn rewrite:dryRun"
+
+[tasks.server-rewrite-run]
+description = "执行 server OpenRewrite 迁移"
+dir = "backend/archive-server"
+run = "mvn rewrite:run"
+
+[tasks.server-compile]
+description = "编译 server"
+dir = "backend/archive-server"
+run = "mvn compile"
+
+[tasks.server-test]
+description = "测试 server"
+dir = "backend/archive-server"
+run = "mvn test"
+
+[tasks.server-package]
+description = "打包 server"
+dir = "backend/archive-server"
+run = "mvn package"
+
+[tasks.server-run]
+description = "启动 server"
+dir = "backend/archive-server"
+run = "mvn spring-boot:run"

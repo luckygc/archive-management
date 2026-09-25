@@ -15,7 +15,7 @@
 | 通用 API 合同 | [`openspec/specs/api-contract/spec.md`](openspec/specs/api-contract/spec.md) |
 | 业务合同与 change | [`openspec/README.md`](openspec/README.md) |
 
-业务字段、状态机、权限边界和验收场景以对应 OpenSpec 为准；命令和运行配置分别以 [`Taskfile.yml`](Taskfile.yml)、构建配置和 [`application.yaml`](backend/archive-server/src/main/resources/application.yaml) 为准。
+业务字段、状态机、权限边界和验收场景以对应 OpenSpec 为准；命令和运行配置分别以 [`mise.toml`](mise.toml)、构建配置和 [`application.yaml`](backend/archive-server/src/main/resources/application.yaml) 为准。
 
 ## 顶层目录
 
@@ -32,11 +32,11 @@
 ## 常用入口
 
 ```bash
-task --list
-task frontend-install
-task governance-check
+mise tasks ls
+mise run frontend-install
+mise run governance-check
 ```
 
-本地准备、运行和按范围验证详见 [`docs/development.md`](docs/development.md)。`task web-dev` 会长期占用端口，仅由开发者在需要预览时本地启动。
+本地准备、运行和按范围验证详见 [`docs/development.md`](docs/development.md)。`mise run web-dev` 会长期占用端口，仅由开发者在需要预览时本地启动。
 
 当前仓库未声明开源许可证；对外开源或分发前须由项目所有者明确许可证和版权声明。

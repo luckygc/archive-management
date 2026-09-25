@@ -1,6 +1,6 @@
 # 本地开发手册
 
-本文面向本地开发、运行和验证。除明确标注外，命令均从仓库根目录执行；后端 Maven 项目根目录是 `backend/archive-server/`，前端工作区根目录是 `frontend/`，仓库根目录没有聚合 POM 或 pnpm 工作区。真实任务入口以 [`Taskfile.yml`](../Taskfile.yml)、各 `package.json` 和构建配置为准。
+本文面向本地开发、运行和验证。除明确标注外，命令均从仓库根目录执行；后端 Maven 项目根目录是 `backend/archive-server/`，前端工作区根目录是 `frontend/`，仓库根目录没有聚合 POM 或 pnpm 工作区。真实任务入口以 [`mise.toml`](../mise.toml)、各 `package.json` 和构建配置为准。
 
 ## 工具版本
 
@@ -12,30 +12,29 @@
 | Maven | 3 |
 | Node.js | 24 |
 | pnpm | 11 |
-| Task | 3 |
 
-优先通过 `task` 执行仓库任务；需要直接调用工具时使用 `mise exec -- <command>`。[`frontend/package.json`](../frontend/package.json) 声明 Node.js 最低版本为 `>=22.12.0`。
+优先通过 `mise run` 执行仓库任务；需要直接调用工具时使用 `mise exec -- <command>`。[`frontend/package.json`](../frontend/package.json) 声明 Node.js 最低版本为 `>=22.12.0`。
 
 ## 首次准备
 
 拉取远程变更后、开始开发前安装或刷新前端依赖：
 
 ```bash
-task frontend-install
+mise run frontend-install
 ```
 
 启动本地 PostgreSQL、S3 兼容对象存储并初始化开发 bucket：
 
 ```bash
-task infra-up
+mise run infra-up
 ```
 
-该任务由 [`deploy/compose.dev.yaml`](../deploy/compose.dev.yaml) 和 `Taskfile.yml` 定义。每次启动前都会停止并删除旧容器、命名卷和匿名卷，再创建全新的 PostgreSQL 与对象存储容器；等待两个服务健康后，通过 AWS SigV4 创建开发 bucket。本地默认端口、账号和临时数据策略以这两个文件为准；Compose 环境只用于开发，不提供生产持久化、高可用或灾备。
+该任务由 [`deploy/compose.dev.yaml`](../deploy/compose.dev.yaml)、[`mise.toml`](../mise.toml) 和 [`scripts/ensure-dev-bucket.mjs`](../scripts/ensure-dev-bucket.mjs) 定义。每次启动前都会停止并删除旧容器、命名卷和匿名卷，再创建全新的 PostgreSQL 与对象存储容器；等待两个服务健康后，通过 AWS SigV4 创建开发 bucket。本地默认端口、账号和临时数据策略以这些文件为准；Compose 环境只用于开发，不提供生产持久化、高可用或灾备。
 
 已有 PostgreSQL 和 S3 兼容服务时，无需启动 Compose，可通过本机覆盖配置连接现有服务。停止仓库提供的本地基础设施使用：
 
 ```bash
-task infra-down
+mise run infra-down
 ```
 
 停止任务也会删除容器、命名卷和匿名卷，不保留本地基础设施数据。
@@ -68,7 +67,7 @@ archive:
 
 ```bash
 export ARCHIVE_TOTP_ENCRYPTION_KEY="$(openssl rand -base64 32)"
-task server-run
+mise run server-run
 ```
 
 该变量只作用于当前终端，不写入仓库或 Compose。保留已有 TOTP 测试数据时必须继续使用同一密钥；本地数据库重建后可以重新生成。
@@ -78,16 +77,16 @@ task server-run
 Spring Boot 主应用：
 
 ```bash
-task server-run
+mise run server-run
 ```
 
 PC 前端开发服务：
 
 ```bash
-task web-dev
+mise run web-dev
 ```
 
-`task web-dev` 会长期占用端口，只由开发者在需要预览时本地执行；自动化代理不主动启动。
+`mise run web-dev` 会长期占用端口，只由开发者在需要预览时本地执行；自动化代理不主动启动。
 
 默认端口和运行参数分别以 `application.yaml` 和 Vite+ 配置为准，本文不复制运行参数表。
 
@@ -95,11 +94,11 @@ task web-dev
 
 | 改动范围 | 真实入口 |
 | --- | --- |
-| 当前规范、OpenSpec 或工程文档 | `task governance-check` |
-| 全部前端包 | `task frontend-check`、`task frontend-test`；影响构建时运行 `task frontend-build` |
-| 单个前端包 | `task web-*` 或 `task frontend-core-*` 对应任务 |
-| 后端 Java | `task server-format-check`、`task server-compile`、相关 `task server-test` |
-| 后端发布包 | `task server-package` |
+| 当前规范、OpenSpec 或工程文档 | `mise run governance-check` |
+| 全部前端包 | `mise run frontend-check`、`mise run frontend-test`；影响构建时运行 `mise run frontend-build` |
+| 单个前端包 | `mise run web-check`、`mise run web-test` 等对应任务，或使用 `frontend-core-check`、`frontend-core-test` 等共享包任务 |
+| 后端 Java | `mise run server-format-check`、`mise run server-compile`、相关 `mise run server-test` |
+| 后端发布包 | `mise run server-package` |
 
 后端需要直接运行 Maven 时，先 `cd backend/archive-server` 再执行 Maven 命令。前端需要直接运行 pnpm 或 Vite+ 时先 `cd frontend`，再使用项目依赖提供的 `pnpm ...` 或 `pnpm exec vp ...`；可用子命令以 `pnpm exec vp help` 为准。
 

@@ -61,4 +61,4 @@ archive-management 是面向机构内部使用的档案管理系统，覆盖档�
 - 稳定技术边界：`docs/architecture.md`
 - 项目 API 合同：`openspec/specs/api-contract/spec.md`
 - 前端视觉与交互：`DESIGN.md`
-- 开发、验证和部署：`Taskfile.yml`、构建配置与对应 `docs/`
+- 开发、验证和部署：`mise.toml`、构建配置与对应 `docs/`

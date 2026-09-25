@@ -12,7 +12,7 @@
 
 ## 3. 用户定义约束、规则与固定动作
 
-- [x] 3.1 实现运行时定义和动作的实体、Jakarta Data Repository、复杂查询 Mapper 与显式 Service 状态边界；验证：`task server-format-check && task server-compile` 均退出码为 0，且 ArchUnit 未报告模块依赖或 Repository 约定违规。
+- [x] 3.1 实现运行时定义和动作的实体、Jakarta Data Repository、复杂查询 Mapper 与显式 Service 状态边界；验证：`mise run server-format-check && mise run server-compile` 均退出码为 0，且 ArchUnit 未报告模块依赖或 Repository 约定违规。
 - [x] 3.2 实现约束/规则草稿创建修改、发布、启用、停用和删除，发布校验字段、AST、作用域、触发点及动作兼容性；验证：`cd server && mise exec -- mvn -Dtest=ArchiveRuntimeDefinitionServiceTests test` 退出码为 0，且草稿/发布不可变/启停状态测试全部通过。
 - [x] 3.3 实现代码注册的 `REJECT`、`WARN`、`SET_FIELD` 动作处理器及参数合同，禁止动作直接产生持久化或外部副作用；验证：`cd server && mise exec -- mvn -Dtest=ArchiveRuntimeActionHandlerTests test` 退出码为 0，且触发点不兼容、不可写字段、类型转换失败和未知动作均被拒绝。
 - [x] 3.4 实现按 `priority, definition_code, id` 的单次执行管线、候选字段赋值、最终约束校验、同字段冲突检测和执行上限；验证：`cd server && mise exec -- mvn -Dtest=ArchiveRuntimeExecutionServiceTests test` 退出码为 0，且后续规则可读取先前候选值、不同值冲突阻断、同值赋值幂等、规则不循环执行。
@@ -30,14 +30,14 @@
 - [x] 5.2 在案卷创建和条目入卷 Service 接入固定触发点；验证：`cd server && mise exec -- mvn -Dtest=ArchiveVolumeRuntimePolicyIntegrationTests test` 退出码为 0，且阻断时案卷、动态行、成员归属和排序均不变。
 - [x] 5.3 在电子文件上传元数据落库前接入固定触发点并覆盖对象存储失败补偿；验证：`cd server && mise exec -- mvn -Dtest=ArchiveElectronicFileRuntimePolicyTests test` 退出码为 0，且阻断时无文件元数据，已创建临时对象按现有补偿合同清理或过期。
 - [x] 5.4 让导入预检/提交复用条目执行核心，让导出在生成文件前执行固定触发点；验证：`cd server && mise exec -- mvn -Dtest=ArchiveImportRuntimePolicyTests,ArchiveExportRuntimePolicyIntegrationTests test` 退出码为 0，且导入不能绕过规则、导出阻断不产生对象/短链/成功审计。
-- [ ] 5.5 对所有业务接入执行完整后端回归；验证：`task server-test` 退出码为 0，Docker 可用时 PostgreSQL 集成测试实际执行而非跳过，Docker 不可用时输出准确跳过原因且不得标记数据库行为已验证。
+- [ ] 5.5 对所有业务接入执行完整后端回归；验证：`mise run server-test` 退出码为 0，Docker 可用时 PostgreSQL 集成测试实际执行而非跳过，Docker 不可用时输出准确跳过原因且不得标记数据库行为已验证。
 
 ## 6. 管理端运行时规则工作区
 
 - [x] 6.1 删除本体/字段语义路由、页面、类型和 API client，提供独立运行时规则入口；验证：前端检查和测试通过，且路由测试证明菜单和页面不再出现本体或字段语义入口。
-- [x] 6.2 实现约束/规则高密度列表和草稿表单，按分类/触发点加载真实字段目录并只展示兼容固定动作；验证：`task web-test` 退出码为 0，且组件测试覆盖加载、空状态、字段切换、动作参数、提交中和原位错误恢复。
-- [x] 6.3 实现发布校验定位、试运行决策展示、候选字段变化和警告/阻断反馈；验证：`task web-test` 退出码为 0，且测试证明后端节点错误定位正确、试运行不会触发保存、警告与阻断状态可区分。
-- [x] 6.4 执行前端完整检查与构建；验证：`task frontend-ready` 退出码为 0，且生产构建无新增类型错误、lint 错误或设计检测问题。
+- [x] 6.2 实现约束/规则高密度列表和草稿表单，按分类/触发点加载真实字段目录并只展示兼容固定动作；验证：`mise run web-test` 退出码为 0，且组件测试覆盖加载、空状态、字段切换、动作参数、提交中和原位错误恢复。
+- [x] 6.3 实现发布校验定位、试运行决策展示、候选字段变化和警告/阻断反馈；验证：`mise run web-test` 退出码为 0，且测试证明后端节点错误定位正确、试运行不会触发保存、警告与阻断状态可区分。
+- [x] 6.4 执行前端完整检查与构建；验证：`mise run frontend-ready` 退出码为 0，且生产构建无新增类型错误、lint 错误或设计检测问题。
 
 ## 7. 本体历史清理与最终闭环
 

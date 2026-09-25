@@ -53,6 +53,6 @@ CAP 等第三方固定协议只作为适配层例外，不反向改变项目自�
 
 1. 先更新 `api-contract` 或对应业务规格，明确资源、动作、字段、权限和验收场景。
 2. 同步修改 Controller、Request/Response 类型、前端类型和 API client。
-3. 运行 `task governance-check`，并执行与前后端改动范围匹配的检查和测试任务。
+3. 运行 `mise run governance-check`，并执行与前后端改动范围匹配的检查和测试任务。
 
 当前实现清单以源码和测试为证据，本文不维护逐 Controller 路径快照。

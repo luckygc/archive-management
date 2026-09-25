@@ -16,11 +16,11 @@
 构建发布产物：
 
 ```bash
-task server-package
-task frontend-build
+mise run server-package
+mise run frontend-build
 ```
 
-发布前按范围运行 `task server-test`、`task frontend-ready`，并运行 `task governance-check`。所有任务均以根 [`Taskfile.yml`](../Taskfile.yml) 为准。
+发布前按范围运行 `mise run server-test`、`mise run frontend-ready`，并运行 `mise run governance-check`。所有任务均以根 [`mise.toml`](../mise.toml) 为准。
 
 两个可部署应用分别拥有自己的容器构建定义。需要构建镜像时从仓库根目录执行：
 

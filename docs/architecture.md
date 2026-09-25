@@ -103,4 +103,4 @@ Repository 通过 Hibernate `StatelessSession` / `EntityAgent` 执行，不依�
 
 ## 工程约束
 
-Java 格式由 Spotless + AOSP `google-java-format` 统一，模块边界由 ArchUnit 固化，PostgreSQL 相关集成测试可使用 Testcontainers。真实开发和验证入口以 [`Taskfile.yml`](../Taskfile.yml) 与 [`development.md`](development.md) 为准。
+Java 格式由 Spotless + AOSP `google-java-format` 统一，模块边界由 ArchUnit 固化，PostgreSQL 相关集成测试可使用 Testcontainers。真实开发和验证入口以 [`mise.toml`](../mise.toml) 与 [`development.md`](development.md) 为准。

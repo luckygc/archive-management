@@ -69,7 +69,7 @@ Order.by(Sort.asc("categoryCode"));
 新增或修改实体、Repository、`@Find`、投影、`Restriction<T>`、`Order<T>` 后，至少运行后端编译，让 `hibernate-processor` 重新生成并校验：
 
 ```bash
-task server-compile
+mise run server-compile
 ```
 
 需要直接运行 Maven 时，先进入 `server/`，再按项目 JDK 约定执行：

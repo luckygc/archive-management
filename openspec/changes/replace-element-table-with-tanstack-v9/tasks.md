@@ -12,5 +12,5 @@
 
 ## 3. 验证与收尾
 
-- [x] 3.1 更新自动生成的组件声明和迁移影响的测试快照或选择器；运行 `task frontend-ready`，预期前端检查、测试和构建全部通过。
-- [ ] 3.2 校验 OpenSpec 和仓库治理规则；运行 `openspec validate replace-element-table-with-tanstack-v9 --strict && task governance-check`，预期变更规格与治理检查全部通过。
+- [x] 3.1 更新自动生成的组件声明和迁移影响的测试快照或选择器；运行 `mise run frontend-ready`，预期前端检查、测试和构建全部通过。
+- [ ] 3.2 校验 OpenSpec 和仓库治理规则；运行 `openspec validate replace-element-table-with-tanstack-v9 --strict && mise run governance-check`，预期变更规格与治理检查全部通过。

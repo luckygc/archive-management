@@ -9,7 +9,7 @@
 - 保护用户工作树；不处理、覆盖、回退或清理与当前任务无关的改动和未跟踪文件。
 - 选用组件或库前核对协议与商业化行为；不把 Enterprise/Pro 能力作为默认基础能力，不采用限制商业使用的库。
 - 自动化贡献者不得主动启动长期占用端口的开发服务；需要预览时只告知用户可执行的命令。
-- 最小必要验证必须通过 `Taskfile.yml`、项目脚本或构建配置中的真实入口执行；治理相关改动必须运行 `task governance-check`。
+- 最小必要验证必须通过 `mise.toml`、项目脚本或构建配置中的真实入口执行；治理相关改动必须运行 `mise run governance-check`。
 
 ## 真相源路由
 
@@ -21,7 +21,7 @@
 | 前端界面 | `PRODUCT.md`、`DESIGN.md` + `impeccable` |
 | 稳定架构和包边界 | `docs/architecture.md` + ArchUnit |
 | 持久化、实体、Repository、Mapper、审计 | `docs/architecture.md` + `archive-persistence-strategy` |
-| 开发、验证、部署、运维 | `Taskfile.yml`/构建配置 + 对应 `docs/` |
+| 开发、验证、部署、运维 | `mise.toml`/构建配置 + 对应 `docs/` |
 | OpenSpec 变更 | `openspec/config.yaml` + 对应 OpenSpec 工作流技能 |
 
 发生冲突时，先校准真相源再修改代码。
@@ -36,7 +36,7 @@
 6. Java 默认使用 JSpecify `@NullMarked`；可空类型使用 `org.jspecify.annotations.Nullable`。Jakarta Data Repository 方法签名按 provider 要求使用 `jakarta.annotation.Nullable` / `jakarta.annotation.Nonnull`。
 7. Java 格式和 import 以 Spotless + AOSP `google-java-format` 为唯一真相源，不另行维护手写格式口径。
 8. 前端工作区根目录是 `frontend/`；Vite+ 通过该目录的项目脚本或 `pnpm exec vp` 使用。自动化贡献者不得主动启动 dev server，预览只告知用户命令。
-9. 后端 Maven 根目录是 `backend/archive-server/`；前端应用和共享包分别位于 `frontend/admin/`、`frontend/packages/core/`。前后端具体命令以 `Taskfile.yml` 和构建配置为准，不在本文件复制命令矩阵。
+9. 后端 Maven 根目录是 `backend/archive-server/`；前端应用和共享包分别位于 `frontend/admin/`、`frontend/packages/core/`。前后端具体命令以 `mise.toml` 和构建配置为准，不在本文件复制命令矩阵。
 
 ## 技能与文档查询
 
