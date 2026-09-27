@@ -6,13 +6,7 @@ import { defineConfig } from "vite-plus";
 
 export default defineConfig({
     plugins: [
-        vue({
-            template: {
-                compilerOptions: {
-                    isCustomElement: (tag) => tag === "cap-widget",
-                },
-            },
-        }),
+        vue(),
         Components({
             dts: "src/components.d.ts",
             directives: true,

@@ -95,55 +95,55 @@ run = "pnpm --filter @archive-management/frontend-core run build"
 
 [tasks.server-java]
 description = "打印 Java/Maven 版本"
-dir = "backend/archive-server"
+dir = "server"
 run = ["java -version", "mvn -version"]
 
 [tasks.server-deps]
 description = "下载 Maven 依赖"
-dir = "backend/archive-server"
+dir = "server"
 run = "mvn -q dependency:resolve"
 
 [tasks.server-format-check]
 description = "检查 server 格式"
-dir = "backend/archive-server"
+dir = "server"
 run = "mvn spotless:check"
 
 [tasks.server-format]
 description = "自动格式化 server"
-dir = "backend/archive-server"
+dir = "server"
 run = "mvn spotless:apply"
 
 [tasks.server-deprecated-check]
 description = "检查 server 过时 API 使用"
-dir = "backend/archive-server"
+dir = "server"
 run = "mvn -Drewrite.activeRecipes=org.openrewrite.java.search.FindDeprecatedUses -Drewrite.exportDatatables=true rewrite:dryRun"
 
 [tasks.server-rewrite-dry-run]
 description = "预览 server OpenRewrite 迁移"
-dir = "backend/archive-server"
+dir = "server"
 run = "mvn rewrite:dryRun"
 
 [tasks.server-rewrite-run]
 description = "执行 server OpenRewrite 迁移"
-dir = "backend/archive-server"
+dir = "server"
 run = "mvn rewrite:run"
 
 [tasks.server-compile]
 description = "编译 server"
-dir = "backend/archive-server"
+dir = "server"
 run = "mvn compile"
 
 [tasks.server-test]
 description = "测试 server"
-dir = "backend/archive-server"
+dir = "server"
 run = "mvn test"
 
 [tasks.server-package]
 description = "打包 server"
-dir = "backend/archive-server"
+dir = "server"
 run = "mvn package"
 
 [tasks.server-run]
 description = "启动 server"
-dir = "backend/archive-server"
+dir = "server"
 run = "mvn spring-boot:run"

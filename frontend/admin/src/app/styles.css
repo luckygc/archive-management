@@ -322,12 +322,6 @@ a {
     font-size: 24px;
 }
 
-.am-login__pow {
-    display: grid;
-    gap: 8px;
-    margin-bottom: 16px;
-}
-
 .am-login__submit {
     width: 100%;
 }

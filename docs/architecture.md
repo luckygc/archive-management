@@ -6,9 +6,9 @@ Archive Management 由单 Spring Boot 主应用和 PC 前端组成。本文只�
 
 | 路径 | 稳定职责 |
 | --- | --- |
-| `backend/archive-server/` | Spring Boot 后端主应用，承载项目 HTTP API、业务模块、认证授权、迁移和基础设施接入 |
+| `server/` | Spring Boot 后端主应用，承载项目 HTTP API、业务模块、认证授权、迁移和基础设施接入 |
 | `frontend/admin/` | Vue 3 + Element Plus PC 管理工作台 |
-| `frontend/packages/core/` | 框架无关的 API client、安全验证和共享类型 |
+| `frontend/packages/core/` | 框架无关的 API client、认证请求和共享类型 |
 | `specs/` | 当前稳定的 API 与业务能力验收规格 |
 | `tasks/` | 进行中变更的规格、计划与任务 |
 | `docs/` | 开发、部署、运维、使用和稳定架构说明 |
@@ -86,12 +86,12 @@ Repository 通过 Hibernate `StatelessSession` / `EntityAgent` 执行，不依�
 
 ## 文件存储
 
-文件内容只使用 S3 兼容对象存储，业务模块统一通过 `FileStorageService` 使用存储能力。endpoint、bucket、凭证和 path-style 等参数以 [`application.yaml`](../backend/archive-server/src/main/resources/application.yaml) 及部署环境外部配置为准。
+文件内容只使用 S3 兼容对象存储，业务模块统一通过 `FileStorageService` 使用存储能力。endpoint、bucket、凭证和 path-style 等参数以 [`application.yaml`](../server/src/main/resources/application.yaml) 及部署环境外部配置为准。
 
 ## 运行时基础设施
 
 - Spring Session JDBC 管理 HTTP 会话。
-- Spring Cache 是缓存抽象；当前默认 `spring.cache.type=caffeine`，配置真相源为 [`application.yaml`](../backend/archive-server/src/main/resources/application.yaml)，本文不复制 provider 矩阵。
+- Spring Cache 是缓存抽象；当前默认 `spring.cache.type=caffeine`，配置真相源为 [`application.yaml`](../server/src/main/resources/application.yaml)，本文不复制 provider 矩阵。
 - Spring Quartz 管理调度和 JDBC JobStore。
 - Flowable process engine 承担流程能力。
 - 审批运行态任务、候选关系、历史和意见以 Flowable 为唯一真相源；项目只保存定义草稿、发布版本和业务实例绑定。`am_unified_todo` 是跨业务、可重建的查询投影，不能替代来源业务的状态与权限校验。

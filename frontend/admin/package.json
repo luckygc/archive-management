@@ -15,11 +15,9 @@
     },
     "dependencies": {
         "@archive-management/frontend-core": "workspace:*",
-        "@cap.js/wasm": "catalog:",
         "@element-plus/icons-vue": "catalog:",
         "@logicflow/core": "catalog:",
         "@tanstack/vue-table": "catalog:",
-        "cap-widget": "catalog:",
         "dayjs": "catalog:",
         "element-plus": "catalog:",
         "pinia": "catalog:",

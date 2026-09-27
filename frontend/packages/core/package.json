@@ -6,7 +6,6 @@
     "exports": {
         ".": "./src/index.ts",
         "./api": "./src/api/index.ts",
-        "./cap": "./src/cap/index.ts",
         "./types": "./src/types/index.ts"
     },
     "scripts": {
@@ -19,8 +18,7 @@
         "build": "tsc --noEmit"
     },
     "dependencies": {
-        "axios": "catalog:",
-        "cap-widget": "catalog:"
+        "axios": "catalog:"
     },
     "devDependencies": {
         "typescript": "~6.0.3",

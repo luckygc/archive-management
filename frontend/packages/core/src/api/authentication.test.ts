@@ -38,7 +38,7 @@ describe("authentication API", () => {
         expect(httpClientMock.get).toHaveBeenCalledWith("/api/v1/me");
     });
 
-    it("submits password login as a form request with the CAP token", async () => {
+    it("submits password login as a form request", async () => {
         httpClientMock.postResponse.mockResolvedValue({
             status: 200,
             data: {
@@ -53,7 +53,6 @@ describe("authentication API", () => {
         await login({
             username: "admin",
             password: "secret",
-            powToken: "pow-token-1",
         });
 
         expect(httpClientMock.postResponse).toHaveBeenCalledWith(
@@ -68,7 +67,6 @@ describe("authentication API", () => {
         const body = httpClientMock.postResponse.mock.calls[0]?.[1] as URLSearchParams;
         expect(body.get("username")).toBe("admin");
         expect(body.get("password")).toBe("secret");
-        expect(body.get("powToken")).toBe("pow-token-1");
     });
 
     it("preserves the HTTP 202 TOTP challenge branch", async () => {
@@ -77,9 +75,7 @@ describe("authentication API", () => {
             data: { challengeToken: "challenge-1", expiresAt: "2026-08-09T10:05:00Z" },
         });
 
-        await expect(
-            login({ username: "admin", password: "secret", powToken: "pow-token-1" }),
-        ).resolves.toEqual({
+        await expect(login({ username: "admin", password: "secret" })).resolves.toEqual({
             status: 202,
             challenge: { challengeToken: "challenge-1", expiresAt: "2026-08-09T10:05:00Z" },
         });

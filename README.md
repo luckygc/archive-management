@@ -15,13 +15,13 @@
 | 通用 API 合同 | [`specs/SPEC-项目API合同.md`](specs/SPEC-项目API合同.md) |
 | 稳定能力规格与进行中变更 | [`specs/README.md`](specs/README.md)、[`tasks/README.md`](tasks/README.md) |
 
-业务字段、状态机、权限边界和验收场景以对应能力规格及进行中变更为准；命令和运行配置分别以 [`mise.toml`](mise.toml)、构建配置和 [`application.yaml`](backend/archive-server/src/main/resources/application.yaml) 为准。
+业务字段、状态机、权限边界和验收场景以对应能力规格及进行中变更为准；命令和运行配置分别以 [`mise.toml`](mise.toml)、构建配置和 [`application.yaml`](server/src/main/resources/application.yaml) 为准。
 
 ## 顶层目录
 
 | 路径 | 职责 |
 | --- | --- |
-| `backend/archive-server/` | Spring Boot 后端主应用 |
+| `server/` | Spring Boot 后端主应用 |
 | `frontend/` | pnpm/Vite+ 前端工作区配置、测试入口与前端项目 |
 | `frontend/admin/` | PC 管理界面 |
 | `frontend/packages/core/` | 框架无关的前端共享基础能力 |

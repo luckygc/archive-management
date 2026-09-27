@@ -9,7 +9,7 @@ my @requested_roots = grep { $_ ne '--report' } @ARGV;
 my @roots = grep { -d $_ } (
     @requested_roots
         ? @requested_roots
-        : qw(backend/archive-server/src/main/java frontend/admin/src frontend/packages/core/src)
+        : qw(server/src/main/java frontend/admin/src frontend/packages/core/src)
 );
 my @files;
 

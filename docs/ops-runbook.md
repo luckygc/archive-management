@@ -13,7 +13,7 @@ curl http://localhost:8080/actuator/health
 PC 前端：
 
 - 浏览器能访问前端入口。
-- 登录页能创建 CAP challenge。
+- 登录页能提交账号密码。
 - 登录成功后 `GET /api/v1/me` 返回当前主体。
 
 ## 日志位置
@@ -53,7 +53,7 @@ logging:
 
 1. 检查浏览器是否收到 `am_session` Cookie。
 2. 检查前端 Origin 是否在 CORS 白名单。
-3. 检查 `POST /api/v1/cap-challenges`、`POST /api/v1/cap-tokens` 和 `POST /api/v1/login-sessions`。
+3. 检查 `POST /api/v1/login-sessions`。
 4. 检查账号是否启用、密码是否正确、登录失败限制是否触发。
 5. 管理员可查看登录会话和认证审计，并按需踢下线或重置失败限制。
 

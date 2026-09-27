@@ -1,6 +1,6 @@
 # 本地开发手册
 
-本文面向本地开发、运行和验证。除明确标注外，命令均从仓库根目录执行；后端 Maven 项目根目录是 `backend/archive-server/`，前端工作区根目录是 `frontend/`，仓库根目录没有聚合 POM 或 pnpm 工作区。真实任务入口以 [`mise.toml`](../mise.toml)、各 `package.json` 和构建配置为准。
+本文面向本地开发、运行和验证。除明确标注外，命令均从仓库根目录执行；后端 Maven 项目根目录是 `server/`，前端工作区根目录是 `frontend/`，仓库根目录没有聚合 POM 或 pnpm 工作区。真实任务入口以 [`mise.toml`](../mise.toml)、各 `package.json` 和构建配置为准。
 
 ## 工具版本
 
@@ -41,7 +41,7 @@ mise run infra-down
 
 ## 本机覆盖配置
 
-[`application.yaml`](../backend/archive-server/src/main/resources/application.yaml) 可选导入 classpath 下的 `application-local.yaml`。该文件只用于本机差异，不是交付或部署真相源，也不得提交密钥。
+[`application.yaml`](../server/src/main/resources/application.yaml) 可选导入 classpath 下的 `application-local.yaml`。该文件只用于本机差异，不是交付或部署真相源，也不得提交密钥。
 
 最小本机覆盖示例：
 
@@ -100,7 +100,7 @@ mise run web-dev
 | 后端 Java | `mise run server-format-check`、`mise run server-compile`、相关 `mise run server-test` |
 | 后端发布包 | `mise run server-package` |
 
-后端需要直接运行 Maven 时，先 `cd backend/archive-server` 再执行 Maven 命令。前端需要直接运行 pnpm 或 Vite+ 时先 `cd frontend`，再使用项目依赖提供的 `pnpm ...` 或 `pnpm exec vp ...`；可用子命令以 `pnpm exec vp help` 为准。
+后端需要直接运行 Maven 时，先 `cd server` 再执行 Maven 命令。前端需要直接运行 pnpm 或 Vite+ 时先 `cd frontend`，再使用项目依赖提供的 `pnpm ...` 或 `pnpm exec vp ...`；可用子命令以 `pnpm exec vp help` 为准。
 
 ## 工具链排障
 

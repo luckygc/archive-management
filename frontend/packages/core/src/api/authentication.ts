@@ -31,7 +31,6 @@ export async function login(payload: LoginRequest): Promise<LoginResult> {
     const body = new URLSearchParams();
     body.set("username", payload.username);
     body.set("password", payload.password);
-    body.set("powToken", payload.powToken);
 
     const response = await httpClient.postResponse<LoginSessionDto | TotpLoginChallengeDto>(
         "/api/v1/login-sessions",

@@ -6,12 +6,12 @@ const getComputedStyle = window.getComputedStyle.bind(window);
 
 Object.defineProperty(window, "getComputedStyle", {
     writable: true,
-    value: vi.fn().mockImplementation((element: Element) => getComputedStyle(element)),
+    value: (element: Element) => getComputedStyle(element),
 });
 
 Object.defineProperty(window, "matchMedia", {
     writable: true,
-    value: vi.fn().mockImplementation((query: string) => ({
+    value: (query: string) => ({
         matches: false,
         media: query,
         onchange: null,
@@ -20,7 +20,7 @@ Object.defineProperty(window, "matchMedia", {
         addEventListener: vi.fn(),
         removeEventListener: vi.fn(),
         dispatchEvent: vi.fn(),
-    })),
+    }),
 });
 
 class TestResizeObserver {

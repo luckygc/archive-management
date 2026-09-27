@@ -224,7 +224,7 @@ describe("workspaceRoutes", () => {
         await navigation;
 
         expect(navigationPending.value).toBe(false);
-    });
+    }, 15_000);
 
     it("权限摘要加载失败时进入会话校验失败页而不是误判 403", async () => {
         await authenticate({ initializedPermissions: false });

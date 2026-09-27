@@ -57,7 +57,7 @@ describe("LoginPage", () => {
         expect(mocks.login).not.toHaveBeenCalled();
     });
 
-    it("完成安全验证后提交登录并进入工作台", async () => {
+    it("提交账号密码后进入工作台", async () => {
         const pinia = createPinia();
         setActivePinia(pinia);
         mocks.login.mockResolvedValue({
@@ -74,17 +74,12 @@ describe("LoginPage", () => {
 
         await fireEvent.update(inputs[0], "admin");
         await fireEvent.update(inputs[1], "secret");
-        await fireEvent(
-            container.querySelector("cap-widget")!,
-            new CustomEvent("solve", { detail: { token: "pow-token" } }),
-        );
         await fireEvent.click(screen.getByRole("button", { name: "登录系统" }));
 
         await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith("/"));
         expect(mocks.login).toHaveBeenCalledWith({
             username: "admin",
             password: "secret",
-            powToken: "pow-token",
         });
     });
 
@@ -97,14 +92,9 @@ describe("LoginPage", () => {
         const pinia = createPinia();
         setActivePinia(pinia);
         const { container } = render(LoginPage, { global: { plugins: [ElementPlus, pinia] } });
-        installCapWidgetReset(container);
         const inputs = container.querySelectorAll("input");
         await fireEvent.update(inputs[0], "admin");
         await fireEvent.update(inputs[1], "secret");
-        await fireEvent(
-            container.querySelector("cap-widget")!,
-            new CustomEvent("solve", { detail: { token: "pow-token" } }),
-        );
 
         await fireEvent.keyUp(inputs[1], { key: "Enter" });
         await fireEvent.submit(container.querySelector("form")!);
@@ -131,15 +121,10 @@ describe("LoginPage", () => {
         const pinia = createPinia();
         setActivePinia(pinia);
         const { container } = render(LoginPage, { global: { plugins: [ElementPlus, pinia] } });
-        installCapWidgetReset(container);
         const inputs = container.querySelectorAll("input");
 
         await fireEvent.update(inputs[0], "admin");
         await fireEvent.update(inputs[1], "secret");
-        await fireEvent(
-            container.querySelector("cap-widget")!,
-            new CustomEvent("solve", { detail: { token: "pow-token" } }),
-        );
         await fireEvent.click(screen.getByRole("button", { name: "登录系统" }));
 
         expect(await screen.findByRole("heading", { name: "二次验证" })).toBeInTheDocument();
@@ -234,7 +219,7 @@ describe("LoginPage", () => {
         expect(mocks.replace).not.toHaveBeenCalled();
     });
 
-    it("挑战失效时返回第一步并要求重新完成 CAP", async () => {
+    it("挑战失效时返回账号密码步骤", async () => {
         mocks.login.mockResolvedValue({
             status: 202,
             challenge: { challengeToken: "challenge-1", expiresAt: "2099-08-09T10:05:00Z" },
@@ -252,7 +237,6 @@ describe("LoginPage", () => {
 
         expect(await screen.findByRole("heading", { name: "账号登录" })).toBeInTheDocument();
         expect(screen.getByRole("alert")).toHaveTextContent("二次验证已失效，请重新登录");
-        expect(screen.getByText("请重新完成安全验证")).toBeInTheDocument();
     });
 
     it("本地检测到挑战过期时清理第二步并返回账号登录", async () => {
@@ -277,21 +261,11 @@ describe("LoginPage", () => {
 });
 
 async function completeFirstStep(container: Element) {
-    installCapWidgetReset(container);
     const inputs = container.querySelectorAll("input");
     await fireEvent.update(inputs[0], "admin");
     await fireEvent.update(inputs[1], "secret");
-    await fireEvent(
-        container.querySelector("cap-widget")!,
-        new CustomEvent("solve", { detail: { token: "pow-token" } }),
-    );
     await fireEvent.click(screen.getByRole("button", { name: "登录系统" }));
     await screen.findByRole("heading", { name: "二次验证" });
-}
-
-function installCapWidgetReset(container: Element) {
-    const widget = container.querySelector("cap-widget");
-    if (widget && !("reset" in widget)) Object.assign(widget, { reset: vi.fn() });
 }
 
 function deferred<T>() {

@@ -6,7 +6,7 @@
 
 | 组件 | 构建来源 | 部署形态 |
 | --- | --- | --- |
-| 主应用 | `backend/archive-server/` | Spring Boot JAR |
+| 主应用 | `server/` | Spring Boot JAR |
 | PC 前端 | `frontend/admin/` | 静态资源；`frontend/packages/core/` 随前端构建，不独立部署 |
 | 数据库 | 外部 PostgreSQL | 项目唯一优先数据库目标 |
 | 文件内容 | 外部 S3 兼容对象存储 | 业务统一通过 `FileStorageService` 访问 |
@@ -25,7 +25,7 @@ mise run frontend-build
 两个可部署应用分别拥有自己的容器构建定义。需要构建镜像时从仓库根目录执行：
 
 ```bash
-docker build -f backend/archive-server/Dockerfile --target server .
+docker build -f server/Dockerfile --target server .
 docker build -f frontend/admin/Dockerfile --target web .
 ```
 
@@ -33,7 +33,7 @@ docker build -f frontend/admin/Dockerfile --target web .
 
 ## 配置来源
 
-主应用默认配置真相源是 [`application.yaml`](../backend/archive-server/src/main/resources/application.yaml)。部署环境不修改仓库默认文件，通过 Spring Boot 标准优先级使用外部 `application.yaml`、profile 配置、环境变量、JVM 参数以及 Secret/ConfigMap 覆盖。
+主应用默认配置真相源是 [`application.yaml`](../server/src/main/resources/application.yaml)。部署环境不修改仓库默认文件，通过 Spring Boot 标准优先级使用外部 `application.yaml`、profile 配置、环境变量、JVM 参数以及 Secret/ConfigMap 覆盖。
 
 必须外部提供或确认：
 

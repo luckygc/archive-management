@@ -4,63 +4,9 @@
 
 ## 目标
 
-提供 PC 端账号密码登录、登录前安全验证、用户可选的 TOTP 二次验证、基于服务端会话的认证状态保持，以及当前主体查询和退出登录能力。
+提供 PC 端账号密码登录、用户可选的 TOTP 二次验证、基于服务端会话的认证状态保持，以及当前主体查询和退出登录能力。
+
 ## 验收要求
-### 要求： 登录前安全验证
-
-系统 SHALL 在账号密码登录前要求客户端完成一次 CAP 工作量证明安全验证。
-
-#### 场景： 创建安全验证挑战
-
-- **WHEN** 客户端请求 `POST /api/v1/cap-challenges`
-- **THEN** 系统 SHALL 创建一条 `am_authentication_cap_challenge` 挑战记录
-- **AND** 响应 SHALL 包含 `challenge`、`token` 和 `expires`
-- **AND** `challenge` SHALL 包含挑战数量 `c`、挑战尺寸 `s` 和难度 `d`
-- **AND** challenge 默认有效期 SHALL 为 10 分钟
-
-#### 场景： 安全验证难度固定
-
-- **GIVEN** 系统存在任意登录名的失败状态
-- **WHEN** 客户端请求 `POST /api/v1/cap-challenges`
-- **THEN** 系统 SHALL 返回默认 CAP challenge 难度
-- **AND** 系统 SHALL NOT 基于登录名、失败次数或锁定状态提高 CAP challenge 难度
-
-#### 场景： 安全验证令牌不绑定登录名
-
-- **GIVEN** 客户端兑换得到有效 CAP token
-- **WHEN** 客户端使用该 token 提交账号密码登录
-- **THEN** 系统 SHALL 只校验 CAP token 自身是否有效且未被消费
-- **AND** 系统 SHALL NOT 校验 CAP token 与本次登录名是否一致
-
-#### 场景： 兑换安全验证令牌
-
-- **GIVEN** 客户端持有未过期的 challenge token
-- **WHEN** 客户端请求 `POST /api/v1/cap-tokens` 并提交 token 与完整 solutions
-- **THEN** 系统 SHALL 校验每个 solution 是否匹配 challenge 规则
-- **AND** 系统 SHALL 删除已提交的 challenge token
-- **AND** 校验成功时 SHALL 创建一条 `am_authentication_cap_token` 令牌记录
-- **AND** 响应 SHALL 包含 `success: true`、一次性登录令牌 `token` 和 `expires`
-- **AND** 令牌默认有效期 SHALL 为 20 分钟
-
-#### 场景： 兑换安全验证失败
-
-- **WHEN** 客户端提交空请求体、空 token、缺失 solutions、已过期 token 或错误 solutions
-- **THEN** 系统 SHALL 返回 `success: false`
-- **AND** 响应 SHALL 包含失败原因 `message`
-- **AND** 系统 SHALL 删除本次提交的 challenge token
-
-#### 场景： 校验安全验证令牌
-
-- **WHEN** 客户端请求 `POST /api/v1/cap-tokens:validate`
-- **THEN** 系统 SHALL 按提交的 token 返回 `{ "success": true }` 或 `{ "success": false }`
-- **AND** 当 `keepToken` 为 `true` 时，系统 SHALL 只检查令牌有效性，不消费令牌
-- **AND** 当 `keepToken` 不为 `true` 时，系统 SHALL 消费一次性令牌
-
-#### 场景： CAP widget 请求适配
-
-- **WHEN** CAP widget 按内部协议请求 `challenge`、`redeem` 或 `validateToken`
-- **THEN** 浏览器端 SHALL 通过 CAP 自定义 fetch 改写到 `/api/v1/cap-challenges`、`/api/v1/cap-tokens` 或 `/api/v1/cap-tokens:validate`
-- **AND** 服务端 SHALL NOT 暴露 `/api/v1/cap/challenge`、`/api/v1/cap/redeem` 或 `/api/v1/cap/validateToken`
 
 ### 要求： 账号密码登录
 
@@ -71,20 +17,11 @@
 - **WHEN** 客户端提交登录请求
 - **THEN** 请求 SHALL 使用 `POST /api/v1/login-sessions`
 - **AND** 请求体 SHALL 使用 `application/x-www-form-urlencoded`
-- **AND** 请求参数 SHALL 包含 `username`、`password` 和 `powToken`
-
-#### 场景： 登录前消费安全验证令牌
-
-- **GIVEN** 客户端提交 `POST /api/v1/login-sessions`
-- **WHEN** `powToken` 为空、格式错误、已过期或不存在
-- **THEN** 系统 SHALL 拒绝登录
-- **AND** 响应状态 SHALL 为 `401 Unauthorized`
-- **AND** 响应体 SHALL 为文本错误信息
+- **AND** 请求参数 SHALL 包含 `username` 和 `password`
 
 #### 场景： 登录成功
 
-- **GIVEN** 客户端提交有效的 `powToken`
-- **AND** 用户名和密码认证通过
+- **GIVEN** 用户名和密码认证通过
 - **AND** 该用户没有有效 TOTP 凭据
 - **WHEN** 系统处理登录请求
 - **THEN** 系统 SHALL 保存 Spring Security 上下文到服务端会话
@@ -94,8 +31,7 @@
 
 #### 场景： 已启用 TOTP 时进入二次验证
 
-- **GIVEN** 客户端提交有效的 `powToken`
-- **AND** 用户名和密码认证通过
+- **GIVEN** 用户名和密码认证通过
 - **AND** 该用户存在有效 TOTP 凭据
 - **WHEN** 系统处理登录请求
 - **THEN** 系统 SHALL 创建一条最多 5 分钟有效的 TOTP 登录挑战
@@ -104,7 +40,7 @@
 - **AND** 响应 SHALL 设置 `Cache-Control: no-store`
 - **AND** 系统 SHALL NOT 在该阶段保存 SecurityContext 或创建已认证会话
 - **AND** 系统 SHALL NOT 在该阶段执行登录成功审计
-- **AND** 挑战记录 SHALL NOT 保存密码、CAP token 或 TOTP 验证码
+- **AND** 挑战记录 SHALL NOT 保存密码或 TOTP 验证码
 
 #### 场景： 完成 TOTP 二次验证
 
@@ -151,17 +87,15 @@
 
 #### 场景： 登录失败
 
-- **GIVEN** 客户端提交有效的 `powToken`
 - **WHEN** 用户名或密码认证失败
 - **THEN** 系统 SHALL 返回 `401 Unauthorized`
 - **AND** 响应体 SHALL 为文本 `账号或凭证错误`
 - **AND** 系统 SHALL NOT 暴露账号是否存在或是否启用 TOTP
-- **AND** 已提交的 `powToken` SHALL 被消费
 - **AND** 失败 SHALL 进入既有账号维度登录失败限制
 
 ### 要求： 登录失败限制
 
-系统 SHALL 按登录名维护登录失败状态，并在连续失败达到阈值后临时禁止该登录名继续登录；CAP 仅用于提高机器暴力破解成本，不承载账号维度风控。
+系统 SHALL 按登录名维护登录失败状态，并在连续失败达到阈值后临时禁止该登录名继续登录。
 
 #### 场景： 记录登录失败状态
 
@@ -275,18 +209,13 @@
 
 系统 SHALL 通过统一清理接口和 Quartz 作业清理短生命周期状态数据。
 
-#### 场景： 清理 CAP 与登录失败限制过期状态
+#### 场景： 清理登录失败限制过期状态
 
-- **GIVEN** 系统存在过期 CAP challenge、过期 CAP token 和已过清理时间的登录失败限制状态
+- **GIVEN** 系统存在已过清理时间的登录失败限制状态
 - **WHEN** Quartz 触发短生命周期数据清理作业
 - **THEN** 系统 SHALL 调用所有短生命周期数据清理实现
-- **AND** CAP challenge、CAP token 和登录失败限制过期状态 SHALL 被删除
+- **AND** 登录失败限制过期状态 SHALL 被删除
 - **AND** 认证审计日志 SHALL NOT 被删除
-
-#### 场景： CAP 查询流程不顺手清理
-
-- **WHEN** 客户端创建、兑换或校验 CAP
-- **THEN** 系统 SHALL NOT 在该请求流程中顺手清理全部过期 CAP 数据
 
 ### 要求： 用户认证数据
 
@@ -368,21 +297,14 @@
 
 ### 要求： PC 端登录集成
 
-PC 端 SHALL 集成账号密码登录、安全验证、可选 TOTP、认证状态初始化和退出登录。
-
-#### 场景： 登录页提交
-
-- **GIVEN** 用户在 PC 端登录页输入账号和密码
-- **WHEN** 用户未完成安全验证就提交登录
-- **THEN** PC 端 SHALL 阻止提交
-- **AND** PC 端 SHALL 提示用户先完成安全验证
+PC 端 SHALL 集成账号密码登录、可选 TOTP、认证状态初始化和退出登录。
 
 #### 场景： 切换到 TOTP 二次验证
 
-- **GIVEN** 用户完成账号、密码和 CAP 第一阶段
+- **GIVEN** 用户完成账号密码第一阶段
 - **WHEN** 登录接口返回 `202 Accepted` 和 TOTP 登录挑战
 - **THEN** PC 端 SHALL 在同一登录容器中切换到独立的 6 位验证码步骤
-- **AND** PC 端 SHALL 清除内存中的密码和 CAP token
+- **AND** PC 端 SHALL 清除内存中的密码
 - **AND** PC 端 SHALL 只在内存中保留 challengeToken 与过期时间
 - **AND** PC 端 SHALL NOT 在二次验证成功前初始化认证状态或导航到工作台
 
@@ -406,21 +328,19 @@ PC 端 SHALL 集成账号密码登录、安全验证、可选 TOTP、认证状�
 
 - **WHEN** 账号密码登录请求失败
 - **THEN** PC 端 SHALL 展示后端返回的统一错误信息
-- **AND** PC 端 SHALL 重置 CAP 安全验证组件
-- **AND** PC 端 SHALL 要求用户重新完成安全验证
 
 #### 场景： 二次验证错误与恢复
 
 - **WHEN** TOTP 验证码错误但挑战仍有效
 - **THEN** PC 端 SHALL 保留当前二次验证步骤和 challengeToken
 - **AND** PC 端 SHALL 清空验证码并展示可执行错误
-- **AND** PC 端 SHALL NOT 要求重复提交密码或 CAP
+- **AND** PC 端 SHALL NOT 要求重复提交密码
 
 #### 场景： 二次验证挑战失效
 
 - **WHEN** TOTP 登录挑战过期、超过失败次数或被服务端判定失效
 - **THEN** PC 端 SHALL 丢弃 challengeToken 和验证码
-- **AND** PC 端 SHALL 返回账号密码步骤并重置 CAP
+- **AND** PC 端 SHALL 返回账号密码步骤
 
 #### 场景： 前端认证请求携带会话凭证
 
@@ -429,7 +349,7 @@ PC 端 SHALL 集成账号密码登录、安全验证、可选 TOTP、认证状�
 
 ### 要求： 可选 TOTP 凭据生命周期
 
-系统 SHALL 允许已认证用户自愿启用或停用自己的 TOTP 凭据，未启用用户 SHALL 保持原账号密码与 CAP 登录路径。
+系统 SHALL 允许已认证用户自愿启用或停用自己的 TOTP 凭据，未启用用户 SHALL 保持原账号密码登录路径。
 
 #### 场景： 准备 TOTP enrollment
 
@@ -522,18 +442,6 @@ PC 端 SHALL 集成账号密码登录、安全验证、可选 TOTP、认证状�
 - **THEN** 系统 SHALL 写入包含事件类型、操作人、目标用户和客户端上下文的认证审计记录
 - **AND** 审计记录 SHALL NOT 包含 TOTP 密钥、密文、验证码或 enrollment token
 - **AND** 应用日志 SHALL NOT 记录 challenge token、enrollment token、验证码、密文或包含这些值的 URI
-
-### 要求： Cap 最新稳定客户端兼容
-
-PC 端 SHALL 使用当前核对过的 Cap 最新稳定 Widget 与 WASM，并继续通过项目自有 REST 适配完成登录前安全验证。
-
-#### 场景： 当前没有更高稳定版本
-
-- **GIVEN** 上游最新稳定版本为 `cap-widget 0.1.56` 和 `@cap.js/wasm 0.0.7`
-- **WHEN** 系统交付本次认证变更
-- **THEN** 前端 SHALL 保持这两个版本及锁文件一致
-- **AND** 系统 SHALL 保留上游尚未吸收的 worker 生命周期竞态修复
-- **AND** 系统 SHALL NOT 因 TOTP 启用而跳过 CAP
 
 ### 要求： PC 端账号安全设置
 

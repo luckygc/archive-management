@@ -7,7 +7,7 @@
 node_modules
 **/node_modules
 frontend/admin/dist
-backend/archive-server/target
+server/target
 docs
 openspec
 logs

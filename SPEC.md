@@ -33,7 +33,7 @@ Archive Management 是面向机构内部使用的档案管理系统。PC 工作�
 
 | 路径 | 职责 |
 | --- | --- |
-| `backend/archive-server/` | Spring Boot 主应用与后端测试 |
+| `server/` | Spring Boot 主应用与后端测试 |
 | `frontend/admin/` | PC 管理工作台 |
 | `frontend/packages/core/` | 框架无关的前端共享能力 |
 | `specs/` | 当前稳定的业务和 API 验收要求 |

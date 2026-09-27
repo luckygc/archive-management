@@ -1,6 +1,6 @@
 # Logs
 /logs/
-/backend/archive-server/logs/
+/server/logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -18,8 +18,8 @@ lerna-debug.log*
 /.vite-hooks/
 /frontend/.vite-hooks/_/
 *.local
-/backend/archive-server/src/main/resources/application-local.yaml
-/backend/archive-server/src/main/resources/application-local.yml
+/server/src/main/resources/application-local.yaml
+/server/src/main/resources/application-local.yml
 
 # Editor directories and files
 .vscode/*

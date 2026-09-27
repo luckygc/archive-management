@@ -28,8 +28,5 @@ PC 主应用使用 Vue 3 + TypeScript，并继续以 Vite+ 作为统一工具链
 - 当前用户：`GET /api/v1/me`
 - 登录：`POST /api/v1/login-sessions`
 - 登出当前会话：`DELETE /api/v1/login-sessions/{session}`
-- CAP 创建挑战：`POST /api/v1/cap-challenges`
-- CAP 兑换令牌：`POST /api/v1/cap-tokens`
-- CAP 校验令牌：`POST /api/v1/cap-tokens:validate`
 
-非登录页由 Vue Router 守卫校验 session；后端返回 401 时清理会话、权限和页签状态，并跳转到 `/login?redirect=...`。登录页通过框架无关的 CAP controller 获取 `powToken`，成功后返回 redirect 指向的业务页面。
+非登录页由 Vue Router 守卫校验 session；后端返回 401 时清理会话、权限和页签状态，并跳转到 `/login?redirect=...`。登录成功后返回 redirect 指向的业务页面。

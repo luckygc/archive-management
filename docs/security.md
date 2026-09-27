@@ -4,7 +4,7 @@
 
 ## 真相源
 
-- 当前默认值和可覆盖配置：[`application.yaml`](../backend/archive-server/src/main/resources/application.yaml)
+- 当前默认值和可覆盖配置：[`application.yaml`](../server/src/main/resources/application.yaml)
 - 通用 HTTP、错误和 ID 合同：[`api-contract`](../specs/SPEC-项目API合同.md)
 - 登录、会话和认证验收：[`login-authentication`](../specs/SPEC-登录与认证.md)
 - 功能权限：[`authorization-permissions`](../specs/SPEC-功能权限.md)
@@ -24,9 +24,9 @@
 
 ## 认证与会话
 
-登录前安全验证和账号密码登录按 `login-authentication` 执行。登录成功后，Spring Security 把认证状态保存在服务端 HTTP Session，Spring Session JDBC 持久化会话；浏览器只持有配置的 session cookie。
+账号密码登录按 `login-authentication` 执行。登录成功后，Spring Security 把认证状态保存在服务端 HTTP Session，Spring Session JDBC 持久化会话；浏览器只持有配置的 session cookie。
 
-用户可以自主启用 RFC 6238 TOTP。已启用用户只有在密码与 CAP 通过后再完成 TOTP 验证才会创建认证会话；中间挑战与 enrollment 均短时有效、一次性消费，数据库只保存随机 token 的 SHA-256 摘要。验证码时间步只允许接受一次，服务器必须通过 NTP 保持可靠时间同步。
+用户可以自主启用 RFC 6238 TOTP。已启用用户只有在密码通过后再完成 TOTP 验证才会创建认证会话；中间挑战与 enrollment 均短时有效、一次性消费，数据库只保存随机 token 的 SHA-256 摘要。验证码时间步只允许接受一次，服务器必须通过 NTP 保持可靠时间同步。
 
 TOTP secret 使用 AES-256-GCM 加密。`ARCHIVE_TOTP_ENCRYPTION_KEY`（对应 `archive.authentication.totp.encryption-key`）必须由外部 Secret 提供 Base64 编码的 32 字节随机值。源码和生产配置不设置固定值，也不得把 secret、密文、验证码、challenge/enrollment token 或 `otpauth` URI 写入日志。密钥缺失、错误或密文损坏时相关登录失败关闭；持有用户管理权限的管理员仍可调用 `POST /api/v1/authentication-users/{id}:resetTotp` 清除凭据，供设备遗失恢复。
 
@@ -35,7 +35,7 @@ TOTP secret 使用 AES-256-GCM 加密。`ARCHIVE_TOTP_ENCRYPTION_KEY`（对应 `
 部署时确认：
 
 - cookie 只在预期域和路径发送，并按 HTTPS 部署策略设置安全属性。
-- 代理或网关不记录密码、CAP token、session cookie、CSRF token 或签名密钥。
+- 代理或网关不记录密码、session cookie、CSRF token 或签名密钥。
 - 代理、APM 和应用日志不记录 TOTP secret、验证码、密文、challenge/enrollment token 或 `otpauth` URI。
 - 管理员初始化只在受控窗口启用，完成后立即关闭。
 
@@ -49,14 +49,14 @@ TOTP secret 使用 AES-256-GCM 加密。`ARCHIVE_TOTP_ENCRYPTION_KEY`（对应 `
 
 当前本地 CORS 默认值在 `application.yaml`。生产环境必须把 `archive.security.cors.allowed-origins` 替换为实际可信前端 Origin；允许凭证时不得使用宽泛 Origin，并只开放业务需要的方法、请求头和响应头。
 
-Spring Security 使用 SPA CSRF 保护。前端按框架约定读取并回传 CSRF token；只有认证规格明确的登录前安全验证适配入口可以排除。CORS 预检和 CSRF 豁免应保持最小，不因开发便利扩大到全部 `/api/**`。
+Spring Security 使用 SPA CSRF 保护。前端按框架约定读取并回传 CSRF token。CORS 预检和 CSRF 豁免应保持最小，不因开发便利扩大到全部 `/api/**`。
 
 ## 请求签名
 
 `archive.security.request-signature.enabled` 默认关闭。部署环境按威胁模型决定是否开启。开启后，请求签名覆盖项目 `/api/**` 请求，但以下稳定类别不进入签名校验：
 
 - OPTIONS 预检请求。
-- 登录和 CAP 安全验证所需的引导类公开请求。
+- 登录所需的引导类公开请求。
 - 通过登录文件短链或公开文件短链执行的 GET 下载请求。
 
 其余 `/api/**` 请求携带：

@@ -1,0 +1,70 @@
+create table am_authentication_user
+(
+    id           bigserial primary key,
+    username     varchar(100)  not null,
+    password     varchar(500)  not null,
+    display_name varchar(100)  not null,
+    email        varchar(255),
+    mobile_phone varchar(50),
+    enabled      boolean       not null default true,
+    created_at   timestamp     not null default localtimestamp,
+    updated_at   timestamp     not null default localtimestamp
+);
+
+create unique index uk_am_authentication_user_username on am_authentication_user (username);
+create index idx_am_authentication_user_created_at on am_authentication_user (created_at);
+
+comment on table am_authentication_user is '系统用户表';
+comment on column am_authentication_user.id is '主键';
+comment on column am_authentication_user.username is '登录账号';
+comment on column am_authentication_user.password is '密码密文；使用 Spring Security DelegatingPasswordEncoder 格式';
+comment on column am_authentication_user.display_name is '显示名称';
+comment on column am_authentication_user.email is '邮箱';
+comment on column am_authentication_user.mobile_phone is '手机号';
+comment on column am_authentication_user.enabled is '是否启用';
+comment on column am_authentication_user.created_at is '创建时间';
+comment on column am_authentication_user.updated_at is '更新时间';
+
+create table am_authorization_role
+(
+    id          bigserial primary key,
+    role_name   varchar(100) not null,
+    description varchar(500),
+    enabled     boolean      not null default true,
+    created_at  timestamp    not null default localtimestamp,
+    updated_at  timestamp    not null default localtimestamp
+);
+
+create unique index uk_am_authorization_role_name on am_authorization_role (role_name);
+create index idx_am_authorization_role_enabled on am_authorization_role (enabled);
+
+comment on table am_authorization_role is '系统角色表';
+comment on column am_authorization_role.id is '主键';
+comment on column am_authorization_role.role_name is '角色名称；写入 Spring Security 时自动添加 ROLE_ 前缀';
+comment on column am_authorization_role.description is '角色说明';
+comment on column am_authorization_role.enabled is '是否启用';
+comment on column am_authorization_role.created_at is '创建时间';
+comment on column am_authorization_role.updated_at is '更新时间';
+
+create table am_authorization_user_role_rel
+(
+    id         bigserial primary key,
+    user_id    bigint       not null references am_authentication_user (id),
+    role_id    bigint       not null references am_authorization_role (id),
+    created_at timestamp    not null default localtimestamp
+);
+
+create unique index uk_am_authorization_user_role_rel_user_role on am_authorization_user_role_rel (user_id, role_id);
+create index idx_am_authorization_user_role_rel_user_id on am_authorization_user_role_rel (user_id);
+create index idx_am_authorization_user_role_rel_role_id on am_authorization_user_role_rel (role_id);
+
+comment on table am_authorization_user_role_rel is '系统用户角色关系表';
+comment on column am_authorization_user_role_rel.id is '主键';
+comment on column am_authorization_user_role_rel.user_id is '用户 ID';
+comment on column am_authorization_user_role_rel.role_id is '角色 ID';
+comment on column am_authorization_user_role_rel.created_at is '创建时间';
+
+insert into am_authorization_role (role_name, description)
+values
+    ('超级管理员', '系统内置超级管理员角色'),
+    ('系统监控', '允许访问系统监控端点');

@@ -46,13 +46,13 @@ SQL 标识符统一使用小写 snake_case，不使用双引号或反引号包�
 迁移目录：
 
 ```text
-backend/archive-server/src/main/resources/db/migration
+server/src/main/resources/db/migration
 ```
 
 样例数据目录：
 
 ```text
-backend/archive-server/src/main/resources/db/sample
+server/src/main/resources/db/sample
 ```
 
 默认配置：
@@ -85,7 +85,7 @@ spring:
 - Quartz 表。
 - Flowable common、process engine 和 history 表。
 - 文件存储表。
-- 用户、CAP 和登录相关表。
+- 用户和登录相关表。
 - 档案主表、案卷、条目、动态分类表元数据、规则和审计相关表。
 - 认证事件和登录失败限制。
 - 授权权限和档案数据范围。
@@ -122,7 +122,7 @@ spring:
 | 场景 | 入口 | 说明 |
 | --- | --- | --- |
 | 固定 CRUD 表 | Jakarta Data Repository | 自定义方法显式标注 `@Find`、`@Insert`、`@Update`、`@Delete`、`@Query` 或 Hibernate `@HQL` |
-| 动态表和复杂 SQL | MyBatis Mapper | XML SQL 放在 `backend/archive-server/src/main/resources/mapper` |
+| 动态表和复杂 SQL | MyBatis Mapper | XML SQL 放在 `server/src/main/resources/mapper` |
 | 文件内容 | `FileStorageService` | 数据库只保存元数据和 object key |
 
 MyBatis 写入不会触发 Hibernate 时间戳注解或无状态会话审计拦截器，需要 SQL 或调用方显式维护审计字段。

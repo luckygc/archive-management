@@ -33,11 +33,11 @@ subtest '前端硬失败线在 report 模式下不失败' => sub {
 };
 
 subtest '后端使用 500 和 700 双阈值' => sub {
-    my $soft_root = fixture_root('backend/archive-server/src/main/java');
+    my $soft_root = fixture_root('server/src/main/java');
     write_lines("$soft_root/Soft.java", 501);
     is((run_script($soft_root))[0], 0, '后端 501 行只提示');
 
-    my $hard_root = fixture_root('backend/archive-server/src/main/java');
+    my $hard_root = fixture_root('server/src/main/java');
     write_lines("$hard_root/Hard.java", 701);
     is((run_script($hard_root))[0], 1, '后端 701 行失败');
 };
@@ -58,7 +58,7 @@ subtest '跨行模板字符串内的注释标记按代码统计' => sub {
 };
 
 subtest 'Java 文本块内的注释标记按代码统计' => sub {
-    my $root = fixture_root('backend/archive-server/src/main/java');
+    my $root = fixture_root('server/src/main/java');
     my $file = "$root/TextBlock.java";
     write_lines($file, 496);
     append_file(

@@ -1,7 +1,6 @@
 export interface LoginRequest {
     username: string;
     password: string;
-    powToken: string;
 }
 
 export interface CurrentUserDto {

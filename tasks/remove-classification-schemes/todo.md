@@ -2,13 +2,13 @@
 
 ## 1. 数据库与元数据合同
 
-- [x] 1.1 重写 `V20260622_0100__create_archive_tables.sql` 和示例数据，删除分类方案表、分类 `scheme_id`、全宗分类 `default_flag` 及相关索引，并让示例全宗显式关联分类；验证：`cd backend/archive-server && mise exec -- mvn -Dtest=ArchiveMetadataServiceTests test` 退出码为 0，空库和示例数据初始化不存在分类方案或默认分类列。
-- [x] 1.2 删除分类方案实体、Repository、Service、Controller、DTO，收敛分类和全宗分类范围请求响应；验证：`mise run server-format-check && mise run server-compile` 均退出码为 0，且 `rg 'ArchiveClassificationScheme|schemeId|scheme_id|defaultFlag|default_flag' backend/archive-server/src/main` 不返回分类方案或默认分类生产代码残留。
+- [x] 1.1 重写 `V20260622_0100__create_archive_tables.sql` 和示例数据，删除分类方案表、分类 `scheme_id`、全宗分类 `default_flag` 及相关索引，并让示例全宗显式关联分类；验证：`cd server && mise exec -- mvn -Dtest=ArchiveMetadataServiceTests test` 退出码为 0，空库和示例数据初始化不存在分类方案或默认分类列。
+- [x] 1.2 删除分类方案实体、Repository、Service、Controller、DTO，收敛分类和全宗分类范围请求响应；验证：`mise run server-format-check && mise run server-compile` 均退出码为 0，且 `rg 'ArchiveClassificationScheme|schemeId|scheme_id|defaultFlag|default_flag' server/src/main` 不返回分类方案或默认分类生产代码残留。
 
 ## 2. 服务端业务边界
 
-- [x] 2.1 将分类服务改为全局树和显式全宗分类范围，空范围返回空集合，并增加窄的全宗分类可用性校验；验证：`cd backend/archive-server && mise exec -- mvn -Dtest=ArchiveMetadataServiceTests test` 退出码为 0，测试覆盖全局父子分类、空范围和未勾选分类拒绝。
-- [x] 2.2 在条目创建/更新、案卷创建和导入预检/提交接入显式分类范围校验；验证：`cd backend/archive-server && mise exec -- mvn -Dtest=ArchiveItemFondsValidationTests,ArchiveVolumePermissionTests,ArchiveItemImportExportServiceTests test` 退出码为 0，未勾选分类时无档案、案卷或导入写入。
+- [x] 2.1 将分类服务改为全局树和显式全宗分类范围，空范围返回空集合，并增加窄的全宗分类可用性校验；验证：`cd server && mise exec -- mvn -Dtest=ArchiveMetadataServiceTests test` 退出码为 0，测试覆盖全局父子分类、空范围和未勾选分类拒绝。
+- [x] 2.2 在条目创建/更新、案卷创建和导入预检/提交接入显式分类范围校验；验证：`cd server && mise exec -- mvn -Dtest=ArchiveItemFondsValidationTests,ArchiveVolumePermissionTests,ArchiveItemImportExportServiceTests test` 退出码为 0，未勾选分类时无档案、案卷或导入写入。
 
 ## 3. PC 前端
 

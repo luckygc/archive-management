@@ -6,9 +6,9 @@ catalogMode: prefer
 
 overrides:
     "@logicflow/core>uuid": 11.1.1
-    brace-expansion: 2.1.4
-    postcss: 8.5.23
-    undici: 7.29.0
+    brace-expansion: 2.1.7
+    postcss: 8.5.28
+    undici: 7.30.0
     vite: "catalog:"
     vitest: "catalog:"
 
@@ -25,33 +25,24 @@ allowBuilds:
     "@parcel/watcher": true
 
 catalog:
-    "@cap.js/wasm": ^0.0.7
     "@element-plus/icons-vue": ^2.3.2
-    "@logicflow/core": 2.2.4
-    "@tanstack/vue-table": ^9.1.0
-    "@testing-library/jest-dom": ^6.9.1
+    "@logicflow/core": 2.2.5
+    "@tanstack/vue-table": ^9.2.4
+    "@testing-library/jest-dom": ^7.0.1
     "@testing-library/vue": ^8.1.0
-    "@types/node": 24.13.3
-    "@vitejs/plugin-vue": ^6.0.7
-    axios: ^1.18.1
-    cap-widget: ^0.1.56
-    dayjs: ^1.11.19
-    element-plus: ^2.14.3
-    jsdom: ^29.1.1
-    pinia: ^3.0.4
+    "@types/node": 24.19.0
+    "@vitejs/plugin-vue": ^6.0.9
+    axios: ^1.20.0
+    dayjs: ^1.11.23
+    element-plus: ^2.14.6
+    jsdom: ^30.1.1
+    pinia: ^4.0.3
     unplugin-vue-components: ^32.1.0
     uqr: 0.1.3
-    vite: "npm:@voidzero-dev/vite-plus-core@0.2.4"
-    vite-plus: 0.2.4
-    vitest: 4.1.10
-    vue: ^3.5.39
-    vue-router: ^5.1.0
-    vue-tsc: ^3.3.7
-    zod: ^4.4.3
-
-patchedDependencies:
-    cap-widget@0.1.56: patches/cap-widget@0.1.56.patch
-
-minimumReleaseAgeExclude:
-    - "@tanstack/table-core@9.1.0"
-    - "@tanstack/vue-table@9.1.0"
+    vite: "npm:@voidzero-dev/vite-plus-core@0.3.3"
+    vite-plus: 0.3.3
+    vitest: 4.1.11
+    vue: ^3.5.43
+    vue-router: ^5.3.1
+    vue-tsc: ^3.3.11
+    zod: ^4.6.5
