@@ -4,18 +4,28 @@
 
 ## 目标
 
-定义项目自有 HTTP API 的资源建模、路径、成功响应、分页、动作扩展、错误响应和 ID 合同，确保新增接口按统一资源语义和可验证响应形态演进。
+定义项目自有 HTTP API 的设计依据，以及现有接口的路径、响应、分页、错误和 ID 兼容合同。
+
+## 设计依据与存量过渡
+
+新 API 设计直接采用 [Zalando RESTful API Guidelines](https://opensource.zalando.com/restful-api-guidelines/)；资源建模、URL、HTTP 方法、JSON、分页、兼容性和错误响应以该官方规范为准，不再叠加 Google AIP 或 Microsoft Azure REST API Guidelines。优先将业务动作建模为资源；现有冒号动作、`/api/v1` 路径、JSON 字段及异步任务响应继续按下文和对应业务规格维持兼容，待单独迁移。下文与 Zalando 冲突的存量约定不得作为新增接口的设计范例。迁移现有接口时须同步修改业务规格、后端、前端 client/types 和测试。
+
 ## 验收要求
 ### 要求： API 资源建模
 
-项目自有 HTTP API SHALL 以 Zalando RESTful API Guidelines 作为主体 REST 规范，并仅引入 Google AIP-136 custom method 作为复杂业务动作扩展。
+新设计的项目自有 HTTP API SHALL 直接遵循 Zalando RESTful API Guidelines。
 
 #### 场景： 暴露项目自有 API
 
 - **WHEN** 系统新增项目自有 HTTP API
-- **THEN** API SHALL 参考 Zalando RESTful API Guidelines 进行资源建模、HTTP 方法、JSON 响应、分页、兼容性和错误模型设计
-- **AND** 路径 SHALL 在 `/api` 后包含主版本号，例如 `/api/v1`
-- **AND** 系统 SHALL NOT 使用 `v1.0`、`v1.1` 或 `v1.4.2` 这类 minor/patch 版本路径
+- **THEN** API SHALL 按 Zalando RESTful API Guidelines 设计资源、URL、HTTP 方法、JSON、分页、兼容性和错误响应
+- **AND** URL SHALL 使用资源名和标准 HTTP 方法表达业务语义，不新增冒号动作或其他动词路径
+
+#### 场景： 维持现有接口兼容
+
+- **WHEN** 尚未迁移的接口已经使用 `/api/v1` 或冒号动作路径
+- **THEN** 服务端 SHALL 保持已发布路径和响应合同，直到对应业务规格和调用方完成迁移
+- **AND** 新接口 SHALL NOT 复制这些存量路径约定
 
 #### 场景： 暴露标准 CRUD
 
@@ -23,16 +33,12 @@
 - **THEN** API SHALL 优先使用资源路径和 HTTP 方法表达标准操作
 - **AND** 系统 SHALL NOT 直接按数据库表、页面按钮或服务方法名暴露接口
 
-#### 场景： 暴露自定义方法
+#### 场景： 表达标准方法之外的业务操作
 
 - **WHEN** 标准方法无法自然表达动作
-- **THEN** API SHALL 使用 Google AIP-136 风格冒号动作路径
-- **AND** 动词 SHALL 使用 lower camelCase
-- **AND** 有副作用、消费令牌、改变服务端状态或提交复杂请求体的自定义方法 SHALL 使用 `POST`
-- **AND** 系统 SHALL 使用 `POST /api/v1/{resources}/{resourceId}:action` 表达单资源动作
-- **AND** 系统 SHALL 使用 `POST /api/v1/{resources}:batchAction` 表达批量动作
-- **AND** 系统 MAY 使用 `POST /api/v1/{resources}:search` 表达请求体复杂或查询条件较长的高级查询
-- **AND** 系统 SHALL NOT 使用 `/lock`、`/_lock`、`/validate_token` 或 `/validateToken` 这类额外动作路径段
+- **THEN** API SHALL 先按 Zalando 规范判断操作产生的状态、请求或处理过程能否建模为资源
+- **AND** 确实无法由其他标准方法充分表达时，MAY 对目标资源使用 `POST`，并明确记录请求语义
+- **AND** 新接口 SHALL NOT 通过冒号后缀或额外动词路径段表达动作
 
 ### 要求： Controller 映射路径
 
@@ -43,7 +49,11 @@ Controller SHALL 显式声明完整 URL。
 - **WHEN** Controller 方法声明 Spring MVC 映射
 - **THEN** 方法上的映射 SHALL 写完整 URL
 - **AND** 系统 SHALL NOT 通过类级 `@RequestMapping` 叠加方法级相对路径生成项目自有 API
-- **AND** 冒号动作 SHALL NOT 通过类级路径和 `@PostMapping(":action")` 拼接
+- **AND** 维护现有冒号动作时 SHALL NOT 通过类级路径和 `@PostMapping(":action")` 拼接
+
+## 现有接口兼容合同
+
+以下具体类型、字段、路径和响应约束记录当前客户端与服务端的合同。与 Zalando 规范不同的部分仅用于维护存量接口，不作为新增接口的默认设计。
 
 ### 要求： Java HTTP 边界类型命名
 
@@ -237,7 +247,7 @@ Controller SHALL 显式声明完整 URL。
 
 ### 要求： 异步任务与 202 响应
 
-长耗时或异步执行的项目自有 API SHALL 参考 Microsoft Azure REST API Guidelines 的 long-running operation 模式，使用 `202 Accepted` 和可轮询任务资源表达。只有业务认证规格明确规定的短时效、不可授权、交互式二次验证挑战 MAY 使用不带任务资源的 `202 Accepted`；其他同步动作 SHALL NOT 使用该例外。
+现有长耗时或异步执行的项目自有 API 使用 `202 Accepted` 和可轮询任务资源表达。只有业务认证规格明确规定的短时效、不可授权、交互式二次验证挑战 MAY 使用不带任务资源的 `202 Accepted`；其他同步动作 SHALL NOT 使用该例外。新接口的异步处理遵循 Zalando 的 job resource 指引。
 
 #### 场景： 启动异步任务
 

@@ -48,6 +48,8 @@ HTTP 边界类型的命名与拆分以 [`specs/SPEC-项目API合同.md`](../spec
 
 固定项目表使用直接、窄的 Jakarta Data `@Repository`。每个 Repository 只声明当前业务真实需要的方法，并为自定义方法显式标注 `@Find`、`@Insert`、`@Update`、`@Delete`、`@Query` 或 Hibernate `@HQL` 等操作；不继承项目级 Repository 基类，不暴露通用 CRUD，也不使用 `save` 或 upsert 语义代替明确的 insert、update、delete 生命周期。
 
+Service 显式选择创建、修改或删除分支，并持有事务、权限、业务状态及错误映射边界。Repository 不依赖方法名派生操作，也不以模糊写入方法替代明确的生命周期。
+
 Repository 通过 Hibernate `StatelessSession` / `EntityAgent` 执行，不依赖一级缓存、脏检查或延迟会话生命周期，也不向业务层返回 `Stream`、游标或其他依赖会话生命周期的对象。
 
 以下场景由 MyBatis 承担：
@@ -62,13 +64,15 @@ Repository 通过 Hibernate `StatelessSession` / `EntityAgent` 执行，不依�
 
 `AuditContextProvider` 是持久化写入统一的当前时间和用户来源：时间始终存在，未认证、匿名或无法识别的用户 ID 可以为 `null`。
 
+Hibernate 与 MyBatis 均从该 provider 获取审计上下文；Service 不预填通用审计字段，实体也不使用另一套自动时间注解或 listener 填充同一字段。
+
 - Hibernate 无状态会话审计拦截器为固定实体统一维护通用 `created_at`、`updated_at`、`created_by`、`updated_by`。
 - MyBatis 审计插件向参数 Map 注入 `_audit`；Mapper XML 必须显式通过 `#{_audit.now}`、`#{_audit.userId}` 引用所需审计值，插件不隐式改写 SQL。
 - `deletedBy`、`lockedBy`、`owner`、`requestedBy` 等表达业务动作、归属或责任人的字段继续由业务用例显式维护，不与通用审计字段混为一套来源。
 
 ## HTTP API
 
-项目自有 API 的资源建模、URL、HTTP 方法、DTO、分页、过滤、排序、ID、异步任务和 ProblemDetail 错误合同只以 [API 能力规格](../specs/SPEC-项目API合同.md) 为准。具体业务字段、状态机、权限和验收场景由相应业务规格承担；[`api.md`](api.md) 仅提供使用入口和规格索引。
+新 API 的资源建模、URL 和 HTTP 方法直接参考 [Zalando RESTful API Guidelines](https://opensource.zalando.com/restful-api-guidelines/)；现有接口的 DTO、分页、过滤、排序、ID、异步任务、ProblemDetail 错误合同及迁移边界以 [API 能力规格](../specs/SPEC-项目API合同.md) 为准。具体业务字段、状态机、权限和验收场景由相应业务规格承担；[`api.md`](api.md) 仅提供使用入口和规格索引。
 
 会话认证由 Spring Security 与 Spring Session 承担，浏览器端状态不能替代服务端认证、授权和数据范围判断。
 

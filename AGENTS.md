@@ -16,11 +16,11 @@
 | 改动类型 | 必读真相源/技能 |
 | --- | --- |
 | 业务、状态机、权限、验收 | 对应 `specs/SPEC-*.md` 与 `tasks/*/specs/SPEC-*.md` 中的进行中增量 |
-| 项目自有 API | `specs/SPEC-项目API合同.md` + `archive-api-design-strategy` |
+| 项目自有 API | `specs/SPEC-项目API合同.md` + [Zalando RESTful API Guidelines](https://opensource.zalando.com/restful-api-guidelines/) |
 | 产品定位 | `SPEC.md` |
 | 前端界面 | `SPEC.md`、`docs/design-system.md` |
 | 稳定架构和包边界 | `docs/architecture.md` + ArchUnit |
-| 持久化、实体、Repository、Mapper、审计 | `docs/architecture.md` + `archive-persistence-strategy` |
+| 持久化、实体、Repository、Mapper、审计 | `docs/architecture.md` + 对应业务规格 |
 | 开发、验证、部署、运维 | `mise.toml`/构建配置 + 对应 `docs/` |
 | 规格变更 | `tasks/<变更名>/SPEC.md`、`plan.md`、`todo.md` 与对应能力增量 |
 
@@ -40,5 +40,9 @@
 
 ## 技能与文档查询
 
-- 项目专用技能位于 `.codex/skills/`，通用 Addy 技能位于 `.agents/skills/`。任务命中技能时先完整读取对应 `SKILL.md`；前端任务还必须先读 `SPEC.md` 和 `docs/design-system.md`。
+- 通用 Addy 技能位于 `.agents/skills/`。任务命中技能时先完整读取对应 `SKILL.md`；前端任务还必须先读 `SPEC.md` 和 `docs/design-system.md`。项目自有 API 设计直接查 Zalando 官方规范，现有接口的过渡约束见项目 API 合同。
+- 外部技能统一在仓库根目录用 `pnpx skills add`、`pnpx skills remove`、`pnpx skills update` 管理项目级安装，保留 `skills-lock.json` 中的来源与内容校验记录；不手动复制上游技能文件。更新后核对项目规则适配与实际安装清单。
+- Vue 编码使用 `vue-best-practices`，排障使用 `vue-debug-guides`，测试使用 `vue-testing-best-practices`。Vue Router 5 与 Pinia 4 的版本行为核对对应官方文档。本项目使用 Vite+，其 `vp` 命令及 lint、fmt、test、run、构建配置先查 `frontend/node_modules/vite-plus/docs/` 和 `pnpm exec vp help`，执行入口以 `mise.toml` 与 `frontend/package.json` 为准；测试通过项目脚本执行。
+- PostgreSQL 表结构、索引、SQL 和性能任务可参考 `supabase-postgres-best-practices` 的对应规则，但项目规格和 `docs/architecture.md` 优先；不引入 Supabase 平台、RLS、连接池、扩展或 upsert 等项目未采用的方案。
+- ECC 的 `java-coding-standards`、`springboot-patterns`、`springboot-security` 仅作为 Java / Spring 通用参考。使用前先核对上表真相源与强边界：忽略 Quarkus、WebFlux、Spring Data JPA、`JpaRepository`、`save`、`@DataJpaTest`、`@MockBean` 等不适用示例；持久化遵守 Jakarta Data / MyBatis 边界，项目 API 使用规定的 DTO 与 `ProblemDetail`，Java 可空性和格式遵守 JSpecify 与 Spotless。认证沿用 Spring Security + Spring Session 的会话方案及现有 CSRF 配置，不因技能中的 JWT、无状态会话或关闭 CSRF 示例改变架构。事务、缓存、异步和安全机制只在真实业务需要时引入，并遵守同 Bean public 方法调用限制。以上项目约束优先于 ECC 示例；上游技能文件保持原样，以便通过 `pnpx skills update` 更新。
 - Ant Design、Ant Design Pro、Pro Components 或 `@ant-design/cli` 问题优先查询项目内 Ant Design CLI、本地 `llms.txt` 和已安装文档；仅在缺失或不足时回退官方文档。
