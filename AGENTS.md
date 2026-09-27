@@ -18,11 +18,11 @@
 | 业务、状态机、权限、验收 | 对应 `openspec/specs/` 与活动 change |
 | 项目自有 API | `openspec/specs/api-contract/spec.md` + `archive-api-design-strategy` |
 | 产品定位 | `PRODUCT.md` |
-| 前端界面 | `PRODUCT.md`、`DESIGN.md` + `impeccable` |
+| 前端界面 | `PRODUCT.md`、`DESIGN.md` |
 | 稳定架构和包边界 | `docs/architecture.md` + ArchUnit |
 | 持久化、实体、Repository、Mapper、审计 | `docs/architecture.md` + `archive-persistence-strategy` |
 | 开发、验证、部署、运维 | `mise.toml`/构建配置 + 对应 `docs/` |
-| OpenSpec 变更 | `openspec/config.yaml` + 对应 OpenSpec 工作流技能 |
+| OpenSpec 变更 | `openspec/config.yaml` + 对应活动 change |
 
 发生冲突时，先校准真相源再修改代码。
 
