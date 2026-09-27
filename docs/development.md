@@ -58,7 +58,7 @@ archive:
     authentication:
         bootstrap-admin:
             enabled: true
-            password: change-me-local-only
+            password: 变更-me-local-only
 ```
 
 `db/sample` 只用于本地演示或测试。管理员初始化只在本地初始化或受控部署窗口启用；共享环境不启用 Flyway clean。部署环境通过 Spring Boot 标准外部配置提供数据库、S3 endpoint、bucket 和密钥，详见 [`deployment.md`](deployment.md)。
@@ -94,7 +94,7 @@ mise run web-dev
 
 | 改动范围 | 真实入口 |
 | --- | --- |
-| 当前规范、OpenSpec 或工程文档 | `mise run governance-check` |
+| 当前规格或工程文档 | `mise run governance-check` |
 | 全部前端包 | `mise run frontend-check`、`mise run frontend-test`；影响构建时运行 `mise run frontend-build` |
 | 单个前端包 | `mise run web-check`、`mise run web-test` 等对应任务，或使用 `frontend-core-check`、`frontend-core-test` 等共享包任务 |
 | 后端 Java | `mise run server-format-check`、`mise run server-compile`、相关 `mise run server-test` |

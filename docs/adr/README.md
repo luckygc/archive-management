@@ -1,6 +1,6 @@
 # 架构决策记录
 
-本目录保存需要长期解释“为什么这样设计”的架构决策记录（ADR）。当前稳定架构以 [`docs/architecture.md`](../architecture.md) 为准；ADR 记录决策形成时的背景、取舍和后果，不复制当前架构全文，也不替代 OpenSpec 业务合同。
+本目录保存需要长期解释“为什么这样设计”的架构决策记录（ADR）。当前稳定架构以 [`docs/architecture.md`](../architecture.md) 为准；ADR 记录决策形成时的背景、取舍和后果，不复制当前架构全文，也不替代能力规格中的业务验收要求。
 
 ## 何时创建
 
@@ -43,6 +43,6 @@
 
 ## 与其他真相源的关系
 
-- 业务、权限、状态机和验收场景写入 `openspec/specs/`，不写入 ADR。
+- 业务、权限、状态机和验收场景写入 `specs/` 或进行中的 `tasks/`，不写入 ADR。
 - 已稳定生效的包边界和组件职责同步到 `docs/architecture.md`。
-- 领域词汇使用根 [`CONTEXT.md`](../../CONTEXT.md)。
+- 领域词汇使用[领域词汇表](../domain-glossary.md)。

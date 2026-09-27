@@ -6,8 +6,8 @@
 
 | 内容 | Owner |
 | --- | --- |
-| 资源建模、URL、HTTP 方法、成功响应、DTO 命名、分页、过滤、排序、ID、异步任务和 ProblemDetail | [`api-contract`](../openspec/specs/api-contract/spec.md) |
-| 业务字段、状态机、权限边界和验收场景 | [`openspec/specs/`](../openspec/specs/) 下对应业务规格 |
+| 资源建模、URL、HTTP 方法、成功响应、DTO 命名、分页、过滤、排序、ID、异步任务和 ProblemDetail | [`api-contract`](../specs/SPEC-项目API合同.md) |
+| 业务字段、状态机、权限边界和验收场景 | [`specs/`](../specs/) 下对应业务规格 |
 | 当前默认端口、Session cookie、CORS 和请求签名配置 | [`application.yaml`](../backend/archive-server/src/main/resources/application.yaml) |
 | 认证、授权、数据范围和公开入口的安全指引 | [`security.md`](security.md) |
 
@@ -19,29 +19,29 @@
 
 ### 身份、权限和组织
 
-- [登录与认证](../openspec/specs/login-authentication/spec.md)
-- [功能权限](../openspec/specs/authorization-permissions/spec.md)
-- [组织部门](../openspec/specs/organization-departments/spec.md)
-- [档案数据范围](../openspec/specs/archive-data-scope/spec.md)
+- [登录与认证](../specs/SPEC-登录与认证.md)
+- [功能权限](../specs/SPEC-功能权限.md)
+- [组织部门](../specs/SPEC-组织部门.md)
+- [档案数据范围](../specs/SPEC-档案数据范围.md)
 
 ### 档案元数据与记录
 
-- [分类与全宗可用范围](../openspec/specs/archive-classification-scheme/spec.md)
-- [档案元数据](../openspec/specs/archive-metadata/spec.md)
-- [档案记录搜索](../openspec/specs/archive-record-search/spec.md)
-- [档案记录路由](../openspec/specs/archive-record-routing/spec.md)
-- [档案导入导出](../openspec/specs/archive-import-export/spec.md)
+- [分类与全宗可用范围](../specs/SPEC-档案分类与全宗范围.md)
+- [档案元数据](../specs/SPEC-档案元数据.md)
+- [档案记录搜索](../specs/SPEC-档案记录搜索.md)
+- [档案记录路由](../specs/SPEC-档案记录路由.md)
+- [档案导入导出](../specs/SPEC-档案导入导出.md)
 
 ### 运行时规则
 
-- [运行时规则引擎](../openspec/specs/archive-local-rule-engine/spec.md)
+- [运行时规则引擎](../specs/SPEC-运行时规则引擎.md)
 
 ### 文件与流程
 
-- [文件存储](../openspec/specs/file-storage/spec.md)
-- [归档接收](../openspec/specs/intake/spec.md)
+- [文件存储](../specs/SPEC-文件存储.md)
+- [归档接收](../specs/SPEC-归档接收.md)
 
-OpenSpec 总览与活动 change 状态见 [`openspec/README.md`](../openspec/README.md)。规格尚未覆盖的接口不能仅凭本文成为稳定合同，应先补齐或澄清对应 OpenSpec。
+稳定规格与进行中变更见[能力规格索引](../specs/README.md)和[任务索引](../tasks/README.md)。规格尚未覆盖的接口不能仅凭本文成为稳定合同，应先补齐或澄清对应验收要求。
 
 ## 第三方协议边界
 

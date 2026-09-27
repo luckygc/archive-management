@@ -1,6 +1,6 @@
 # 档案系统 MVP 实施缺口
 
-本文把 [档案系统能力地图](./archive-system-capability-map.md) 中的 MVP 目标落成阶段性缺口清单。它不是接口合同；字段、状态、权限和验收场景以 `openspec/specs/` 及当前 OpenSpec change 为准。
+本文把 [档案系统能力地图](./archive-system-capability-map.md) 中的 MVP 目标整理为阶段性缺口清单。它不是接口合同；字段、状态、权限和验收场景以稳定能力规格及进行中变更为准。
 
 ## 判断口径
 
@@ -39,13 +39,13 @@
 ## 后续边界
 
 - 不在本轮顺手增加完整档号规则引擎、全宗沿革、长期保存格式迁移、证据包或利用审批。
-- 导入导出、接收和审批分别通过独立 OpenSpec change 明确业务状态、异步任务、错误恢复和验收数据，再进入实现。
+- 导入导出、接收和审批分别通过独立规格变更明确业务状态、异步任务、错误恢复和验收数据，再进入实现。
 - 已有接口或基础设施可以复用，但不能用占位入口、同步样例链路或独立服务健康检查替代端到端产品验收。
 
-## OpenSpec 对应
+## 对应规格
 
-- 本轮闭环：`openspec/changes/close-archive-pc-mvp/`
-- 元数据：`openspec/specs/archive-metadata/spec.md`
-- 搜索：`openspec/specs/archive-record-search/spec.md`
-- 文件存储：`openspec/specs/file-storage/spec.md`
-- 通用 API：`openspec/specs/api-contract/spec.md`
+- 本轮闭环：本页记录已完成的 PC 日常管理范围；当前没有对应的进行中变更目录。
+- 元数据：`specs/SPEC-档案元数据.md`
+- 搜索：`specs/SPEC-档案记录搜索.md`
+- 文件存储：`specs/SPEC-文件存储.md`
+- 通用 API：`specs/SPEC-项目API合同.md`

@@ -15,14 +15,14 @@
 
 | 改动类型 | 必读真相源/技能 |
 | --- | --- |
-| 业务、状态机、权限、验收 | 对应 `openspec/specs/` 与活动 change |
-| 项目自有 API | `openspec/specs/api-contract/spec.md` + `archive-api-design-strategy` |
-| 产品定位 | `PRODUCT.md` |
-| 前端界面 | `PRODUCT.md`、`DESIGN.md` |
+| 业务、状态机、权限、验收 | 对应 `specs/SPEC-*.md` 与 `tasks/*/specs/SPEC-*.md` 中的进行中增量 |
+| 项目自有 API | `specs/SPEC-项目API合同.md` + `archive-api-design-strategy` |
+| 产品定位 | `SPEC.md` |
+| 前端界面 | `SPEC.md`、`docs/design-system.md` |
 | 稳定架构和包边界 | `docs/architecture.md` + ArchUnit |
 | 持久化、实体、Repository、Mapper、审计 | `docs/architecture.md` + `archive-persistence-strategy` |
 | 开发、验证、部署、运维 | `mise.toml`/构建配置 + 对应 `docs/` |
-| OpenSpec 变更 | `openspec/config.yaml` + 对应活动 change |
+| 规格变更 | `tasks/<变更名>/SPEC.md`、`plan.md`、`todo.md` 与对应能力增量 |
 
 发生冲突时，先校准真相源再修改代码。
 
@@ -40,19 +40,5 @@
 
 ## 技能与文档查询
 
-- 任务命中项目技能时，先完整读取对应 `SKILL.md`；前端任务还必须先读 `PRODUCT.md` 和 `DESIGN.md`。
+- 项目专用技能位于 `.codex/skills/`，通用 Addy 技能位于 `.agents/skills/`。任务命中技能时先完整读取对应 `SKILL.md`；前端任务还必须先读 `SPEC.md` 和 `docs/design-system.md`。
 - Ant Design、Ant Design Pro、Pro Components 或 `@ant-design/cli` 问题优先查询项目内 Ant Design CLI、本地 `llms.txt` 和已安装文档；仅在缺失或不足时回退官方文档。
-
-## Agent skills
-
-### Issue tracker
-
-本仓库使用 GitHub Issues 跟踪需求、规格和实施任务。详见 `docs/agents/issue-tracker.md`。
-
-### Triage labels
-
-使用 `needs-triage`、`needs-info`、`ready-for-agent`、`ready-for-human` 和 `wontfix` 五个默认角色标签。详见 `docs/agents/triage-labels.md`。
-
-### Domain docs
-
-采用 single-context 布局：领域上下文位于根 `CONTEXT.md`，架构决策位于 `docs/adr/`。详见 `docs/agents/domain.md`。

@@ -7,7 +7,7 @@ description: Use when changing archive-management persistence choices or boundar
 
 ## 决策流程
 
-1. 先读最近的 `AGENTS.md`、`docs/architecture.md`、对应业务 OpenSpec 与活动 change，再检查目标子域已有实体、Repository、Mapper 和 XML 模式。发生冲突时先校准这些真相源。
+1. 先读最近的 `AGENTS.md`、`docs/architecture.md`、对应业务能力规格与进行中变更，再检查目标子域已有实体、Repository、Mapper 和 XML 模式。发生冲突时先校准这些真相源。
 2. 按数据与查询责任选择入口：固定稳定表、普通实体生命周期和固定字段查询使用 Jakarta Data；动态表或列、复杂搜索、报表、DDL、PostgreSQL 批处理及需要显式执行计划的 SQL 使用 MyBatis。混合入口按真实责任拆分，不为统一框架移动清晰 SQL。
 3. 固定 Repository 直接标注 `jakarta.data.repository.Repository`，不继承通用接口；只声明当前 Service 调用的方法，并使用具体实体签名。每个方法显式标注 `@Find`、`@Insert`、`@Update`、`@Delete`、`@Query` 或 `@HQL`，不使用方法名派生或可同时表示新增和修改的模糊写入语义。
 4. 让 Service 显式判断 create、update、delete 分支并承载事务、权限、状态与错误映射。不要向业务边界外泄 Hibernate `Session`、`Query`、`Stream`、游标或其他依赖会话生命周期的对象。

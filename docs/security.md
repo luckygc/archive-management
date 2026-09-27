@@ -5,11 +5,11 @@
 ## 真相源
 
 - 当前默认值和可覆盖配置：[`application.yaml`](../backend/archive-server/src/main/resources/application.yaml)
-- 通用 HTTP、错误和 ID 合同：[`api-contract`](../openspec/specs/api-contract/spec.md)
-- 登录、会话和认证验收：[`login-authentication`](../openspec/specs/login-authentication/spec.md)
-- 功能权限：[`authorization-permissions`](../openspec/specs/authorization-permissions/spec.md)
-- 档案数据范围：[`archive-data-scope`](../openspec/specs/archive-data-scope/spec.md)
-- 文件与短链：[`file-storage`](../openspec/specs/file-storage/spec.md)
+- 通用 HTTP、错误和 ID 合同：[`api-contract`](../specs/SPEC-项目API合同.md)
+- 登录、会话和认证验收：[`login-authentication`](../specs/SPEC-登录与认证.md)
+- 功能权限：[`authorization-permissions`](../specs/SPEC-功能权限.md)
+- 档案数据范围：[`archive-data-scope`](../specs/SPEC-档案数据范围.md)
+- 文件与短链：[`file-storage`](../specs/SPEC-文件存储.md)
 - API 使用入口：[`api.md`](api.md)
 
 具体接口清单、字段、状态机和验收场景由上述规格承担，本文不维护页面或 Controller 快照。
@@ -43,7 +43,7 @@ TOTP secret 使用 AES-256-GCM 加密。`ARCHIVE_TOTP_ENCRYPTION_KEY`（对应 `
 
 服务端对读取、创建、修改、删除、锁定、导入导出、文件访问和管理操作校验精确权限；涉及档案数据时同时应用用户数据范围。角色、用户和组织部门绑定的范围合同以 `archive-data-scope` 为准。
 
-前端可以隐藏或禁用无权操作，但所有写入和敏感读取仍由后端重新校验。当前 Spring Security 过滤链遇到未认证的项目 API 请求时，通过 `HttpStatusEntryPoint` 返回 `401 Unauthorized` 状态，不承诺 ProblemDetail 响应体。项目自有 API 错误的目标合同以 [`api-contract`](../openspec/specs/api-contract/spec.md) 为准；若要让该入口返回统一响应体，必须另行提出实现变更并补充测试。其他权限与数据范围错误避免暴露异常类名、堆栈、SQL、内部拓扑或非必要实现细节，具体状态码和业务语义以对应 OpenSpec 为准。
+前端可以隐藏或禁用无权操作，但所有写入和敏感读取仍由后端重新校验。当前 Spring Security 过滤链遇到未认证的项目 API 请求时，通过 `HttpStatusEntryPoint` 返回 `401 Unauthorized` 状态，不承诺 ProblemDetail 响应体。项目自有 API 错误的目标合同以 [`api-contract`](../specs/SPEC-项目API合同.md) 为准；若要让该入口返回统一响应体，必须另行提出实现变更并补充测试。其他权限与数据范围错误避免暴露异常类名、堆栈、SQL、内部拓扑或非必要实现细节，具体状态码和业务语义以对应能力规格为准。
 
 ## CORS 与 CSRF
 

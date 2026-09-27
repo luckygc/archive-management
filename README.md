@@ -6,16 +6,16 @@
 
 | 主题 | 入口 |
 | --- | --- |
-| 产品定位与原则 | [`PRODUCT.md`](PRODUCT.md) |
-| 领域词汇与概念关系 | [`CONTEXT.md`](CONTEXT.md) |
-| Element Plus 设计系统 | [`DESIGN.md`](DESIGN.md) |
+| 项目目标、产品定位与工程约定 | [`SPEC.md`](SPEC.md) |
+| 领域词汇与概念关系 | [`docs/domain-glossary.md`](docs/domain-glossary.md) |
+| Element Plus 设计系统 | [`docs/design-system.md`](docs/design-system.md) |
 | 仓库协作规则 | [`AGENTS.md`](AGENTS.md) |
 | 稳定技术边界 | [`docs/architecture.md`](docs/architecture.md) |
 | 开发、部署、API、安全与运维 | [`docs/README.md`](docs/README.md) |
-| 通用 API 合同 | [`openspec/specs/api-contract/spec.md`](openspec/specs/api-contract/spec.md) |
-| 业务合同与 change | [`openspec/README.md`](openspec/README.md) |
+| 通用 API 合同 | [`specs/SPEC-项目API合同.md`](specs/SPEC-项目API合同.md) |
+| 稳定能力规格与进行中变更 | [`specs/README.md`](specs/README.md)、[`tasks/README.md`](tasks/README.md) |
 
-业务字段、状态机、权限边界和验收场景以对应 OpenSpec 为准；命令和运行配置分别以 [`mise.toml`](mise.toml)、构建配置和 [`application.yaml`](backend/archive-server/src/main/resources/application.yaml) 为准。
+业务字段、状态机、权限边界和验收场景以对应能力规格及进行中变更为准；命令和运行配置分别以 [`mise.toml`](mise.toml)、构建配置和 [`application.yaml`](backend/archive-server/src/main/resources/application.yaml) 为准。
 
 ## 顶层目录
 
@@ -26,7 +26,8 @@
 | `frontend/admin/` | PC 管理界面 |
 | `frontend/packages/core/` | 框架无关的前端共享基础能力 |
 | `deploy/` | 本地 Compose、反向代理和部署配置 |
-| `openspec/` | API 与业务合同 |
+| `specs/` | 当前稳定的业务与 API 验收规格 |
+| `tasks/` | 进行中变更的规格、计划与任务 |
 | `docs/` | 开发、架构、部署、运维和使用说明 |
 
 ## 常用入口

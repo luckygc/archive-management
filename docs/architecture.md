@@ -1,6 +1,6 @@
 # 架构总览
 
-Archive Management 由单 Spring Boot 主应用和 PC 前端组成。本文只记录稳定技术边界；业务合同、运行参数和页面实现分别由 OpenSpec、配置文件和源码承担。
+Archive Management 由单 Spring Boot 主应用和 PC 前端组成。本文只记录稳定技术边界；业务验收、运行参数和页面实现分别由能力规格、配置文件和源码承担。
 
 ## 顶层组件
 
@@ -9,7 +9,8 @@ Archive Management 由单 Spring Boot 主应用和 PC 前端组成。本文只�
 | `backend/archive-server/` | Spring Boot 后端主应用，承载项目 HTTP API、业务模块、认证授权、迁移和基础设施接入 |
 | `frontend/admin/` | Vue 3 + Element Plus PC 管理工作台 |
 | `frontend/packages/core/` | 框架无关的 API client、安全验证和共享类型 |
-| `openspec/` | 通用 API 与业务能力合同 |
+| `specs/` | 当前稳定的 API 与业务能力验收规格 |
+| `tasks/` | 进行中变更的规格、计划与任务 |
 | `docs/` | 开发、部署、运维、使用和稳定架构说明 |
 
 ## 后端包与模块边界
@@ -41,7 +42,7 @@ Service、Manager 和领域协作只有一个实现时直接使用具体 Spring 
 - 内部对象只在真实跨边界或复用收益出现时引入，并使用语义明确的 `Command`、`Summary`、`Option`、`TreeNode` 等名称；不在实现层之间机械复制对象，不使用泛化 `DO/BO/VO/DTO/Model/Info` 作为默认分层命名。
 - 纯参数或请求校验不包事务；只有原子写入、状态变化、令牌消费、锁定等场景才开启事务。
 
-HTTP 边界类型的命名与拆分以 [`openspec/specs/api-contract/spec.md`](../openspec/specs/api-contract/spec.md) 为准，本节不重复 API DTO 规则。
+HTTP 边界类型的命名与拆分以 [`specs/SPEC-项目API合同.md`](../specs/SPEC-项目API合同.md) 为准，本节不重复 API DTO 规则。
 
 ## 持久化边界
 
@@ -67,7 +68,7 @@ Repository 通过 Hibernate `StatelessSession` / `EntityAgent` 执行，不依�
 
 ## HTTP API
 
-项目自有 API 的资源建模、URL、HTTP 方法、DTO、分页、过滤、排序、ID、异步任务和 ProblemDetail 错误合同只以 [`openspec/specs/api-contract/spec.md`](../openspec/specs/api-contract/spec.md) 为准。具体业务字段、状态机、权限和验收场景由相应业务 OpenSpec 承担；[`api.md`](api.md) 仅提供使用入口和规格索引。
+项目自有 API 的资源建模、URL、HTTP 方法、DTO、分页、过滤、排序、ID、异步任务和 ProblemDetail 错误合同只以 [API 能力规格](../specs/SPEC-项目API合同.md) 为准。具体业务字段、状态机、权限和验收场景由相应业务规格承担；[`api.md`](api.md) 仅提供使用入口和规格索引。
 
 会话认证由 Spring Security 与 Spring Session 承担，浏览器端状态不能替代服务端认证、授权和数据范围判断。
 
@@ -79,7 +80,7 @@ Repository 通过 Hibernate `StatelessSession` / `EntityAgent` 执行，不依�
 
 ## 前端边界
 
-`frontend/admin/` 是 PC 高密度档案工作台，产品方向与 Element Plus 设计系统分别以 [`PRODUCT.md`](../PRODUCT.md) 和 [`DESIGN.md`](../DESIGN.md) 为准。页面使用服务端合同作为数据和权限边界；前端校验、按钮状态和路由可见性只改善体验。
+`frontend/admin/` 是 PC 高密度档案工作台，产品方向与 Element Plus 设计系统分别以[项目总规格](../SPEC.md)和[设计系统](design-system.md)为准。页面使用服务端合同作为数据和权限边界；前端校验、按钮状态和路由可见性只改善体验。
 
 `frontend/packages/core/` 只提供框架无关的共享能力，不承载业务页面或 UI 壳层。具体路由、页面组织和请求流程属于源码实现，不写入稳定架构文档。
 
