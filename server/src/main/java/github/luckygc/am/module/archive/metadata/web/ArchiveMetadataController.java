@@ -1,5 +1,10 @@
 package github.luckygc.am.module.archive.metadata.web;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
+import java.util.Set;
+
+import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -14,6 +19,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import github.luckygc.am.common.api.CollectionResponse;
+import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldScope;
@@ -47,8 +53,25 @@ import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.Up
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionCode;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
 
+import tools.jackson.databind.JsonNode;
+
 @RestController
 public class ArchiveMetadataController {
+
+    private static final Set<String> FONDS_PATCH_FIELDS =
+            Set.of("fondsName", "startDate", "endDate", "historyNote", "sortOrder");
+    private static final Set<String> FONDS_READ_ONLY_FIELDS =
+            Set.of(
+                    "id",
+                    "fondsCode",
+                    "fondsNo",
+                    "status",
+                    "numberAssignedBy",
+                    "numberAssignedAt",
+                    "closedAt",
+                    "closureReason",
+                    "createdAt",
+                    "updatedAt");
 
     private final ArchiveMetadataService archiveMetadataService;
     private final ArchiveMetadataReferenceService archiveMetadataReferenceService;
@@ -82,12 +105,70 @@ public class ArchiveMetadataController {
         return archiveFondsService.createFonds(request, requireMetadataManage(authentication));
     }
 
-    @PatchMapping("/archive-fonds/{id}")
+    @PatchMapping(value = "/archive-fonds/{id}", consumes = "application/merge-patch+json")
     public ArchiveFondsDto updateFonds(
-            @PathVariable Long id,
-            @RequestBody UpdateArchiveFondsRequest request,
-            Authentication authentication) {
-        return archiveFondsService.updateFonds(id, request, requireMetadataManage(authentication));
+            @PathVariable Long id, @RequestBody JsonNode request, Authentication authentication) {
+        Long userId = requireMetadataManage(authentication);
+        return archiveFondsService.updateFonds(id, toFondsPatch(request), userId);
+    }
+
+    private UpdateArchiveFondsRequest toFondsPatch(JsonNode request) {
+        if (request == null || !request.isObject()) {
+            throw new BadRequestException("全宗补丁必须是对象");
+        }
+        for (String fieldName : request.propertyNames()) {
+            if (!FONDS_PATCH_FIELDS.contains(fieldName)
+                    && (FONDS_READ_ONLY_FIELDS.contains(fieldName)
+                            || !request.get(fieldName).isNull())) {
+                throw new BadRequestException("不支持修改字段 " + fieldName, fieldName, "字段不可修改");
+            }
+        }
+        return new UpdateArchiveFondsRequest(
+                fondsText(request, "fondsName", false),
+                request.has("startDate"),
+                fondsDate(request, "startDate"),
+                request.has("endDate"),
+                fondsDate(request, "endDate"),
+                request.has("historyNote"),
+                fondsText(request, "historyNote", true),
+                fondsInteger(request, "sortOrder"));
+    }
+
+    private @Nullable String fondsText(JsonNode request, String field, boolean removable) {
+        JsonNode value = request.get(field);
+        if (value == null || (value.isNull() && removable)) {
+            return null;
+        }
+        if (value.isNull() || !value.isTextual()) {
+            throw new BadRequestException(field + " 不合法", field, field + " 不合法");
+        }
+        return value.asText();
+    }
+
+    private @Nullable LocalDate fondsDate(JsonNode request, String field) {
+        JsonNode value = request.get(field);
+        if (value == null || value.isNull()) {
+            return null;
+        }
+        if (!value.isTextual()) {
+            throw new BadRequestException(field + " 不合法", field, field + " 不合法");
+        }
+        try {
+            return LocalDate.parse(value.asText());
+        } catch (DateTimeParseException exception) {
+            throw new BadRequestException(field + " 不合法", field, field + " 不合法");
+        }
+    }
+
+    private @Nullable Integer fondsInteger(JsonNode request, String field) {
+        JsonNode value = request.get(field);
+        if (value == null) {
+            return null;
+        }
+        if (value.isNull() || !value.isIntegralNumber() || !value.canConvertToInt()) {
+            throw new BadRequestException(field + " 不合法", field, field + " 不合法");
+        }
+        return value.asInt();
     }
 
     @PostMapping("/archive-fonds/{id}:assignNumber")

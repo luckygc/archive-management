@@ -6,6 +6,8 @@ import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldControl;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldScope;
@@ -29,8 +31,11 @@ public abstract class ArchiveMetadataTypes {
 
     public record UpdateArchiveFondsRequest(
             @Nullable String fondsName,
+            boolean startDateChanged,
             @Nullable LocalDate startDate,
+            boolean endDateChanged,
             @Nullable LocalDate endDate,
+            boolean historyNoteChanged,
             @Nullable String historyNote,
             @Nullable Integer sortOrder) {}
 
@@ -46,6 +51,7 @@ public abstract class ArchiveMetadataTypes {
     public record ReopenArchiveFondsRequest(
             @Nullable String reason, @Nullable LocalDateTime effectiveAt) {}
 
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     public record ArchiveFondsDto(
             Long id,
             String fondsCode,

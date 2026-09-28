@@ -35,6 +35,7 @@ import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.As
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.CloseArchiveFondsRequest;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.CreateArchiveFondsRequest;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ReopenArchiveFondsRequest;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.UpdateArchiveFondsRequest;
 
 @DisplayName("全宗生命周期服务")
 class ArchiveFondsServiceTests {
@@ -70,6 +71,64 @@ class ArchiveFondsServiceTests {
         assertThat(result.fondsNo()).isNull();
         assertThat(result.status()).isEqualTo(ArchiveFondsStatus.ACTIVE);
         verify(eventRepository, never()).insert(any());
+    }
+
+    @Test
+    @DisplayName("局部更新保留缺失字段，只清空显式删除的可选字段")
+    void updateFondsPreservesMissingFieldsAndRemovesRequestedFields() {
+        ArchiveFonds fonds = fonds(ArchiveFondsStatus.ACTIVE);
+        fonds.setStartDate(LocalDate.of(2000, 1, 1));
+        fonds.setEndDate(LocalDate.of(2020, 1, 1));
+        fonds.setHistoryNote("原有沿革");
+        when(fondsRepository.findById(1L)).thenReturn(Optional.of(fonds));
+
+        var updated =
+                service.updateFonds(
+                        1L,
+                        new UpdateArchiveFondsRequest(
+                                null, false, null, true, null, true, null, null),
+                        9L);
+
+        assertThat(updated.fondsName()).isEqualTo("华东公司");
+        assertThat(updated.startDate()).isEqualTo(LocalDate.of(2000, 1, 1));
+        assertThat(updated.endDate()).isNull();
+        assertThat(updated.historyNote()).isNull();
+        verify(fondsRepository).update(fonds);
+    }
+
+    @Test
+    @DisplayName("空补丁不写数据库，最终日期不合法时整体拒绝")
+    void updateFondsAvoidsNoopAndValidatesMergedDates() {
+        ArchiveFonds fonds = fonds(ArchiveFondsStatus.ACTIVE);
+        fonds.setStartDate(LocalDate.of(2000, 1, 1));
+        fonds.setEndDate(LocalDate.of(2020, 1, 1));
+        when(fondsRepository.findById(1L)).thenReturn(Optional.of(fonds));
+
+        var unchanged =
+                service.updateFonds(
+                        1L,
+                        new UpdateArchiveFondsRequest(
+                                null, false, null, false, null, false, null, null),
+                        9L);
+
+        assertThat(unchanged.endDate()).isEqualTo(LocalDate.of(2020, 1, 1));
+        assertThatThrownBy(
+                        () ->
+                                service.updateFonds(
+                                        1L,
+                                        new UpdateArchiveFondsRequest(
+                                                null,
+                                                true,
+                                                LocalDate.of(2021, 1, 1),
+                                                false,
+                                                null,
+                                                false,
+                                                null,
+                                                null),
+                                        9L))
+                .isInstanceOf(BadRequestException.class);
+        verify(fondsRepository, never()).update(any());
+        assertThat(fonds.getStartDate()).isEqualTo(LocalDate.of(2000, 1, 1));
     }
 
     @Test

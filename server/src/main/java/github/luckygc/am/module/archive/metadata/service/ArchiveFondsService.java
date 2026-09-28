@@ -4,6 +4,7 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jspecify.annotations.Nullable;
@@ -74,15 +75,31 @@ public class ArchiveFondsService {
     @Transactional
     public ArchiveFondsDto updateFonds(Long id, UpdateArchiveFondsRequest request, Long userId) {
         ArchiveFonds fonds = loadFonds(id);
-        String fondsName = requireText(request.fondsName(), "全宗名称不能为空", "fondsName", 255);
-        validateDates(request.startDate(), request.endDate());
-
+        String fondsName =
+                request.fondsName() == null
+                        ? fonds.getFondsName()
+                        : requireText(request.fondsName(), "全宗名称不能为空", "fondsName", 255);
+        LocalDate startDate =
+                request.startDateChanged() ? request.startDate() : fonds.getStartDate();
+        LocalDate endDate = request.endDateChanged() ? request.endDate() : fonds.getEndDate();
+        String historyNote =
+                request.historyNoteChanged()
+                        ? StringUtils.trimToNull(request.historyNote())
+                        : fonds.getHistoryNote();
+        int sortOrder = request.sortOrder() == null ? fonds.getSortOrder() : request.sortOrder();
+        validateDates(startDate, endDate);
+        if (Objects.equals(fondsName, fonds.getFondsName())
+                && Objects.equals(startDate, fonds.getStartDate())
+                && Objects.equals(endDate, fonds.getEndDate())
+                && Objects.equals(historyNote, fonds.getHistoryNote())
+                && sortOrder == fonds.getSortOrder()) {
+            return toDto(fonds);
+        }
         fonds.setFondsName(fondsName);
-        fonds.setStartDate(request.startDate());
-        fonds.setEndDate(request.endDate());
-        fonds.setHistoryNote(StringUtils.trimToNull(request.historyNote()));
-        fonds.setSortOrder(
-                request.sortOrder() == null ? fonds.getSortOrder() : request.sortOrder());
+        fonds.setStartDate(startDate);
+        fonds.setEndDate(endDate);
+        fonds.setHistoryNote(historyNote);
+        fonds.setSortOrder(sortOrder);
         return toDto(fondsRepository.update(fonds));
     }
 

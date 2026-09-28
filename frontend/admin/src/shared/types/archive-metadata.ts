@@ -11,16 +11,16 @@ export type ArchiveFondsEventType = "NUMBER_ASSIGNED" | "CLOSED" | "REOPENED";
 export interface ArchiveFondsDto {
     id: number;
     fondsCode: string;
-    fondsNo: string | null;
+    fondsNo?: string;
     fondsName: string;
     status: ArchiveFondsStatus;
-    numberAssignedBy: string | null;
-    numberAssignedAt: string | null;
-    startDate: string | null;
-    endDate: string | null;
-    historyNote: string | null;
-    closedAt: string | null;
-    closureReason: string | null;
+    numberAssignedBy?: string;
+    numberAssignedAt?: string;
+    startDate?: string;
+    endDate?: string;
+    historyNote?: string;
+    closedAt?: string;
+    closureReason?: string;
     sortOrder: number;
     createdAt: string;
     updatedAt: string;
@@ -36,11 +36,11 @@ export interface CreateArchiveFondsRequest {
 }
 
 export interface UpdateArchiveFondsRequest {
-    fondsName: string;
-    startDate?: string;
-    endDate?: string;
-    historyNote?: string;
-    sortOrder: number;
+    fondsName?: string;
+    startDate?: string | null;
+    endDate?: string | null;
+    historyNote?: string | null;
+    sortOrder?: number;
 }
 
 export interface AssignArchiveFondsNumberRequest {

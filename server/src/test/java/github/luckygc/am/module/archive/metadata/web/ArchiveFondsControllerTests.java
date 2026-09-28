@@ -1,18 +1,28 @@
 package github.luckygc.am.module.archive.metadata.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.security.authentication.TestingAuthenticationToken;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import github.luckygc.am.common.security.AuthenticatedUser;
+import github.luckygc.am.infrastructure.web.GlobalExceptionHandler;
 import github.luckygc.am.module.archive.metadata.ArchiveFondsEventType;
 import github.luckygc.am.module.archive.metadata.ArchiveFondsStatus;
 import github.luckygc.am.module.archive.metadata.service.ArchiveCategoryService;
@@ -24,6 +34,7 @@ import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.Ar
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.AssignArchiveFondsNumberRequest;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.CloseArchiveFondsRequest;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ReopenArchiveFondsRequest;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.UpdateArchiveFondsRequest;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionCode;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
 
@@ -41,6 +52,69 @@ class ArchiveFondsControllerTests {
                     mock(ArchiveCategoryService.class),
                     fondsService,
                     permissionService);
+
+    @BeforeEach
+    void setUp() {
+        when(fondsService.updateFonds(eq(1L), any(), eq(9L))).thenReturn(fonds());
+    }
+
+    @Test
+    @DisplayName("全宗局部更新仅接受 Merge Patch，保留缺失字段并清空显式 null 字段")
+    void fondsPatchUsesMergePatchSemantics() throws Exception {
+        MockMvcBuilders.standaloneSetup(controller)
+                .build()
+                .perform(
+                        patch("/archive-fonds/1")
+                                .principal(auth(9L))
+                                .contentType("application/merge-patch+json")
+                                .content("{\"historyNote\":null,\"startDate\":\"2020-01-01\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.historyNote").doesNotExist())
+                .andExpect(jsonPath("$.endDate").doesNotExist());
+
+        ArgumentCaptor<UpdateArchiveFondsRequest> captor =
+                ArgumentCaptor.forClass(UpdateArchiveFondsRequest.class);
+        verify(fondsService).updateFonds(eq(1L), captor.capture(), eq(9L));
+        assertThat(captor.getValue().startDateChanged()).isTrue();
+        assertThat(captor.getValue().startDate()).isEqualTo(java.time.LocalDate.of(2020, 1, 1));
+        assertThat(captor.getValue().endDateChanged()).isFalse();
+        assertThat(captor.getValue().historyNoteChanged()).isTrue();
+        assertThat(captor.getValue().historyNote()).isNull();
+    }
+
+    @Test
+    @DisplayName("全宗局部更新拒绝普通 JSON 文档")
+    void fondsPatchRejectsPlainJson() throws Exception {
+        MockMvcBuilders.standaloneSetup(controller)
+                .build()
+                .perform(
+                        patch("/archive-fonds/1")
+                                .principal(auth(9L))
+                                .contentType("application/json")
+                                .content("{\"fondsName\":\"华东公司\"}"))
+                .andExpect(status().isUnsupportedMediaType());
+
+        verifyNoInteractions(permissionService);
+    }
+
+    @Test
+    @DisplayName("全宗局部更新拒绝删除必需字段和修改生命周期字段")
+    void fondsPatchRejectsInvalidFields() throws Exception {
+        var mvc =
+                MockMvcBuilders.standaloneSetup(controller)
+                        .setControllerAdvice(new GlobalExceptionHandler())
+                        .build();
+        for (String body :
+                List.of("{\"fondsName\":null}", "{\"status\":null}", "{\"sortOrder\":null}")) {
+            mvc.perform(
+                            patch("/archive-fonds/1")
+                                    .principal(auth(9L))
+                                    .contentType("application/merge-patch+json")
+                                    .content(body))
+                    .andExpect(status().isBadRequest());
+        }
+        verifyNoInteractions(fondsService);
+    }
 
     @Test
     @DisplayName("编号、封闭和重新开放动作均转发认证用户")

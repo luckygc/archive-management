@@ -292,8 +292,10 @@
 
 #### 场景： 更新全宗基本信息
 
-- **WHEN** 客户端向 `PATCH /archive-fonds/{id}` 提交全宗名称、起止日期、沿革说明或排序
-- **THEN** 系统 SHALL 更新对应基本信息
+- **WHEN** 客户端以 `application/merge-patch+json` 向 `PATCH /archive-fonds/{id}` 提交全宗名称、起止日期、沿革说明或排序
+- **THEN** 系统 SHALL 更新对应基本信息，未提交的字段 SHALL 保持不变
+- **AND** 可选的起止日期或沿革说明提交 `null` 时 SHALL 从资源表示中移除并清空相应值
+- **AND** 全宗名称与排序不允许以 `null` 删除，更新后起止日期 SHALL 保持合法
 - **AND** 更新请求 SHALL NOT 修改系统全宗编码、业务全宗号或生命周期状态
 
 #### 场景： 查询全宗

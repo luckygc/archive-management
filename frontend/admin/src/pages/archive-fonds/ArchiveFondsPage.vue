@@ -110,7 +110,12 @@ async function saveFonds() {
             sortOrder: editorForm.sortOrder,
         };
         const updated = editingId.value
-            ? await updateArchiveFonds(editingId.value, common)
+            ? await updateArchiveFonds(editingId.value, {
+                  ...common,
+                  startDate: editorForm.startDate || null,
+                  endDate: editorForm.endDate || null,
+                  historyNote: editorForm.historyNote.trim() || null,
+              })
             : await createArchiveFonds({ fondsCode: editorForm.fondsCode.trim(), ...common });
         replaceFonds(updated);
         editorOpen.value = false;

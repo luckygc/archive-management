@@ -52,6 +52,26 @@ afterEach(() => {
 });
 
 describe("ArchiveFondsPage", () => {
+    it("编辑全宗时以 null 删除已清空的可选字段", async () => {
+        archiveApiMocks.updateArchiveFonds.mockResolvedValue(
+            createFonds({ id: 1, fondsCode: "SYS-HD", fondsNo: "HD", status: "ACTIVE" }),
+        );
+        render(ArchiveFondsPage, { global: { plugins: [ElementPlus] } });
+
+        await fireEvent.click((await screen.findAllByRole("button", { name: "编辑" }))[0]!);
+        await fireEvent.click(screen.getByRole("button", { name: "保存" }));
+
+        await waitFor(() =>
+            expect(archiveApiMocks.updateArchiveFonds).toHaveBeenCalledWith(1, {
+                fondsName: "华东公司",
+                startDate: null,
+                endDate: null,
+                historyNote: null,
+                sortOrder: 10,
+            }),
+        );
+    });
+
     it("通过专用动作封闭全宗并刷新行状态", async () => {
         render(ArchiveFondsPage, { global: { plugins: [ElementPlus] } });
 

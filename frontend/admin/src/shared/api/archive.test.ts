@@ -35,7 +35,9 @@ describe("archive API", () => {
 
         await updateArchiveFonds(1, payload);
 
-        expect(httpClientMock.patch).toHaveBeenCalledWith("/archive-fonds/1", payload);
+        expect(httpClientMock.patch).toHaveBeenCalledWith("/archive-fonds/1", payload, {
+            headers: { "Content-Type": "application/merge-patch+json" },
+        });
     });
 
     it("通过自定义动作封闭全宗", async () => {

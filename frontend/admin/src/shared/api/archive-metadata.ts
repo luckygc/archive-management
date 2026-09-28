@@ -39,7 +39,9 @@ export function createArchiveFonds(payload: CreateArchiveFondsRequest) {
 }
 
 export function updateArchiveFonds(id: number, payload: UpdateArchiveFondsRequest) {
-    return httpClient.patch<ArchiveFondsDto>(`/archive-fonds/${id}`, payload);
+    return httpClient.patch<ArchiveFondsDto>(`/archive-fonds/${id}`, payload, {
+        headers: { "Content-Type": "application/merge-patch+json" },
+    });
 }
 
 export function assignArchiveFondsNumber(id: number, payload: AssignArchiveFondsNumberRequest) {
