@@ -89,7 +89,9 @@ export function listArchiveSecurityLevels(enabled?: boolean) {
 }
 
 export function updateArchiveSecurityLevel(id: number, payload: ArchiveSecurityLevelRequest) {
-    return httpClient.patch<ArchiveSecurityLevelDto>(`/archive-security-levels/${id}`, payload);
+    return httpClient.patch<ArchiveSecurityLevelDto>(`/archive-security-levels/${id}`, payload, {
+        headers: { "Content-Type": "application/merge-patch+json" },
+    });
 }
 
 export function listArchiveRetentionPeriods(enabled?: boolean) {
@@ -99,7 +101,13 @@ export function listArchiveRetentionPeriods(enabled?: boolean) {
 }
 
 export function updateArchiveRetentionPeriod(id: number, payload: ArchiveRetentionPeriodRequest) {
-    return httpClient.patch<ArchiveRetentionPeriodDto>(`/archive-retention-periods/${id}`, payload);
+    return httpClient.patch<ArchiveRetentionPeriodDto>(
+        `/archive-retention-periods/${id}`,
+        payload,
+        {
+            headers: { "Content-Type": "application/merge-patch+json" },
+        },
+    );
 }
 
 export function listArchiveCategories(enabled?: boolean) {

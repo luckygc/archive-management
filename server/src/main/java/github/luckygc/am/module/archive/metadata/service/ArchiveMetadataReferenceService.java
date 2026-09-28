@@ -89,10 +89,16 @@ public class ArchiveMetadataReferenceService {
     public ArchiveSecurityLevelDto updateSecurityLevel(
             Long id, UpdateArchiveSecurityLevelRequest request) {
         requireId(id);
-        String name = StringUtils.trimToNull(request.levelName());
-        if (name == null) throw new BadRequestException("密级名称不能为空", "levelName", "密级名称不能为空");
         ArchiveSecurityLevel level =
                 securityLevelRepository.findById(id).orElseThrow(() -> notFound("密级不存在"));
+        if (request.levelName() == null) {
+            return mapSecurityLevel(level);
+        }
+        String name = StringUtils.trimToNull(request.levelName());
+        if (name == null) throw new BadRequestException("密级名称不能为空", "levelName", "密级名称不能为空");
+        if (name.equals(level.getLevelName())) {
+            return mapSecurityLevel(level);
+        }
         level.setLevelName(name);
         return mapSecurityLevel(securityLevelRepository.update(level));
     }
@@ -121,10 +127,16 @@ public class ArchiveMetadataReferenceService {
     public ArchiveRetentionPeriodDto updateRetentionPeriod(
             Long id, UpdateArchiveRetentionPeriodRequest request) {
         requireId(id);
-        String name = StringUtils.trimToNull(request.periodName());
-        if (name == null) throw new BadRequestException("保管期限名称不能为空", "periodName", "保管期限名称不能为空");
         ArchiveRetentionPeriod period =
                 retentionPeriodRepository.findById(id).orElseThrow(() -> notFound("保管期限不存在"));
+        if (request.periodName() == null) {
+            return mapRetentionPeriod(period);
+        }
+        String name = StringUtils.trimToNull(request.periodName());
+        if (name == null) throw new BadRequestException("保管期限名称不能为空", "periodName", "保管期限名称不能为空");
+        if (name.equals(period.getPeriodName())) {
+            return mapRetentionPeriod(period);
+        }
         period.setPeriodName(name);
         return mapRetentionPeriod(retentionPeriodRepository.update(period));
     }

@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from "vite-plus/test";
 
-import { closeArchiveFonds, updateArchiveFonds } from "./archive-metadata";
+import {
+    closeArchiveFonds,
+    updateArchiveFonds,
+    updateArchiveRetentionPeriod,
+    updateArchiveSecurityLevel,
+} from "./archive-metadata";
 import {
     createArchiveItemRelation,
     deleteArchiveRecord,
@@ -47,6 +52,22 @@ describe("archive API", () => {
         await closeArchiveFonds(1, payload);
 
         expect(httpClientMock.post).toHaveBeenCalledWith("/archive-fonds/1:close", payload);
+    });
+
+    it("密级和保管期限名称更新使用 Merge Patch", async () => {
+        await updateArchiveSecurityLevel(3, { levelName: "秘密" });
+        await updateArchiveRetentionPeriod(4, { periodName: "永久" });
+
+        expect(httpClientMock.patch).toHaveBeenCalledWith(
+            "/archive-security-levels/3",
+            { levelName: "秘密" },
+            { headers: { "Content-Type": "application/merge-patch+json" } },
+        );
+        expect(httpClientMock.patch).toHaveBeenCalledWith(
+            "/archive-retention-periods/4",
+            { periodName: "永久" },
+            { headers: { "Content-Type": "application/merge-patch+json" } },
+        );
     });
 
     it("sends archive record cursor controls in URL and keeps orderBy in body", async () => {

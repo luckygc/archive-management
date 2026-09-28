@@ -91,7 +91,7 @@ export interface ArchiveSecurityLevelDto {
 }
 
 export interface ArchiveSecurityLevelRequest {
-    levelName: string;
+    levelName?: string;
 }
 
 export interface ArchiveRetentionPeriodDto {
@@ -104,7 +104,7 @@ export interface ArchiveRetentionPeriodDto {
 }
 
 export interface ArchiveRetentionPeriodRequest {
-    periodName: string;
+    periodName?: string;
 }
 
 export interface ArchiveCategoryDto {

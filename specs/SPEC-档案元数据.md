@@ -279,6 +279,17 @@
 - **THEN** 系统 SHALL 拒绝保存
 - **AND** 响应 SHALL 说明违反唯一规则
 
+### 要求： 密级与保管期限参照值
+
+系统 SHALL 允许档案元数据管理员维护已有密级和保管期限的名称，保留其标识和启用状态。
+
+#### 场景： 局部更新参照值名称
+
+- **WHEN** 客户端以 `application/merge-patch+json` 向 `PATCH /archive-security-levels/{id}` 或 `PATCH /archive-retention-periods/{id}` 提交名称
+- **THEN** 系统 SHALL 只更新对应名称；未提交名称时 SHALL 保持原值
+- **AND** 名称为 `null`、空白或类型不符时 SHALL 拒绝整个请求
+- **AND** 请求 SHALL NOT 修改标识、启用状态、排序和创建或更新时间
+
 ### 要求： 全宗管理
 
 系统 SHALL 提供稳定、可追溯的全宗管理能力；系统全宗编码作为档案记录、规则和权限的稳定归属维度，业务全宗号与系统编码分开，全宗不作为档案分类字段模板的一部分。

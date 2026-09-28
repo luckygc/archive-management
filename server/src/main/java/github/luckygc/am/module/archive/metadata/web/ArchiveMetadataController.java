@@ -72,6 +72,8 @@ public class ArchiveMetadataController {
                     "closureReason",
                     "createdAt",
                     "updatedAt");
+    private static final Set<String> REFERENCE_READ_ONLY_FIELDS =
+            Set.of("id", "enabled", "sortOrder", "createdAt", "updatedAt");
 
     private final ArchiveMetadataService archiveMetadataService;
     private final ArchiveMetadataReferenceService archiveMetadataReferenceService;
@@ -228,13 +230,15 @@ public class ArchiveMetadataController {
         return CollectionResponse.of(archiveMetadataReferenceService.listSecurityLevels(enabled));
     }
 
-    @PatchMapping("/archive-security-levels/{id}")
+    @PatchMapping(
+            value = "/archive-security-levels/{id}",
+            consumes = "application/merge-patch+json")
     public ArchiveSecurityLevelDto updateSecurityLevel(
-            @PathVariable Long id,
-            @RequestBody UpdateArchiveSecurityLevelRequest request,
-            Authentication authentication) {
+            @PathVariable Long id, @RequestBody JsonNode request, Authentication authentication) {
         requireMetadataManage(authentication);
-        return archiveMetadataReferenceService.updateSecurityLevel(id, request);
+        return archiveMetadataReferenceService.updateSecurityLevel(
+                id,
+                new UpdateArchiveSecurityLevelRequest(referenceNamePatch(request, "levelName")));
     }
 
     @GetMapping("/archive-retention-periods")
@@ -242,13 +246,36 @@ public class ArchiveMetadataController {
         return CollectionResponse.of(archiveMetadataReferenceService.listRetentionPeriods(enabled));
     }
 
-    @PatchMapping("/archive-retention-periods/{id}")
+    @PatchMapping(
+            value = "/archive-retention-periods/{id}",
+            consumes = "application/merge-patch+json")
     public ArchiveRetentionPeriodDto updateRetentionPeriod(
-            @PathVariable Long id,
-            @RequestBody UpdateArchiveRetentionPeriodRequest request,
-            Authentication authentication) {
+            @PathVariable Long id, @RequestBody JsonNode request, Authentication authentication) {
         requireMetadataManage(authentication);
-        return archiveMetadataReferenceService.updateRetentionPeriod(id, request);
+        return archiveMetadataReferenceService.updateRetentionPeriod(
+                id,
+                new UpdateArchiveRetentionPeriodRequest(referenceNamePatch(request, "periodName")));
+    }
+
+    private @Nullable String referenceNamePatch(JsonNode request, String nameField) {
+        if (request == null || !request.isObject()) {
+            throw new BadRequestException("补丁必须是对象");
+        }
+        for (String fieldName : request.propertyNames()) {
+            if (!fieldName.equals(nameField)
+                    && (REFERENCE_READ_ONLY_FIELDS.contains(fieldName)
+                            || !request.get(fieldName).isNull())) {
+                throw new BadRequestException("不支持修改字段 " + fieldName, fieldName, "字段不可修改");
+            }
+        }
+        JsonNode value = request.get(nameField);
+        if (value == null) {
+            return null;
+        }
+        if (value.isNull() || !value.isTextual()) {
+            throw new BadRequestException(nameField + " 不合法", nameField, nameField + " 不合法");
+        }
+        return value.asText();
     }
 
     @GetMapping("/archive-categories")
