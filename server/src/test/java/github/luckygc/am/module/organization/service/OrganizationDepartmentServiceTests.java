@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDateTime;
@@ -137,6 +139,22 @@ class OrganizationDepartmentServiceTests {
 
         assertThat(response.parentId()).isEqualTo(1L);
         assertThat(response.enabled()).isFalse();
+    }
+
+    @Test
+    @DisplayName("无效果补丁不执行数据库写入")
+    void updateDepartmentSkipsWriteWhenNothingChanges() {
+        OrganizationDepartment department = department(2L, "CHILD", 1L);
+        when(departmentRepository.findById(2L)).thenReturn(Optional.of(department));
+
+        var response =
+                departmentService.updateDepartment(
+                        2L,
+                        UpdateOrganizationDepartmentRequest.withoutParentChange(
+                                null, null, null, null));
+
+        assertThat(response.parentId()).isEqualTo(1L);
+        verify(departmentRepository, never()).update(any());
     }
 
     @Test

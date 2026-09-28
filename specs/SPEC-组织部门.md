@@ -18,14 +18,14 @@
 - **THEN** 系统 SHALL 返回所有部门，包含启用和停用部门
 - **AND** 请求 MAY 使用 `enabled` 参数筛选启用或停用部门
 - **AND** 响应 SHALL 使用 `CollectionResponse`
-- **AND** 每个部门 SHALL 包含 `id`、`departmentCode`、`departmentName`、`parentId`、`enabled` 和 `sortOrder`
+- **AND** 每个部门 SHALL 包含 `id`、`departmentCode`、`departmentName`、`enabled` 和 `sortOrder`；非根部门包含 `parentId`
 - **AND** 部门 SHALL 按 `sortOrder ASC`、`id ASC` 稳定排序
 
 #### 场景： 查询部门详情
 
 - **WHEN** 客户端请求 `GET /organization-departments/{organizationDepartment}`
 - **THEN** 系统 SHALL 返回指定部门详情
-- **AND** 响应 SHALL 包含 `id`、`departmentCode`、`departmentName`、`parentId`、`enabled` 和 `sortOrder`
+- **AND** 响应 SHALL 包含 `id`、`departmentCode`、`departmentName`、`enabled` 和 `sortOrder`；非根部门包含 `parentId`
 
 #### 场景： 创建部门
 
@@ -39,7 +39,9 @@
 #### 场景： 更新部门字段
 
 - **WHEN** 管理员请求 `PATCH /organization-departments/{organizationDepartment}`
-- **THEN** 系统 SHALL 支持更新 `departmentCode`、`departmentName`、`parentId`、`enabled` 和 `sortOrder`
+- **THEN** 请求 SHALL 使用 `application/merge-patch+json`，系统 SHALL 支持更新 `departmentCode`、`departmentName`、`parentId`、`enabled` 和 `sortOrder`
+- **AND** 未提交的字段 SHALL 保持不变；`parentId: null` SHALL 移除父级，使部门成为根部门，响应不再包含 `parentId`
+- **AND** 系统 SHALL 拒绝删除必需字段、修改只读字段及提交未知非空字段，整个更新不落库；未知字段的 `null` 不改变资源
 - **AND** 更新部门编码时 SHALL 校验部门编码唯一
 - **AND** 更新父部门时 SHALL 拒绝将父级设置为自己
 - **AND** 系统 SHALL 拒绝将父级设置为自己的后代

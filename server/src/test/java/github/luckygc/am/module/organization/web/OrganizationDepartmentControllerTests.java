@@ -7,19 +7,25 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.lang.reflect.Method;
 import java.time.LocalDateTime;
 import java.util.List;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.TestingAuthenticationToken;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.api.CollectionResponse;
+import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.common.security.AuthenticatedUser;
 import github.luckygc.am.common.security.UnauthenticatedException;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionCode;
@@ -153,16 +159,19 @@ class OrganizationDepartmentControllerTests {
     @Test
     @DisplayName("更新部门显式 parentId 为 null 时清空父级")
     void updateDepartmentShouldClearParentWhenParentIdIsNull() throws Exception {
-        JsonNode request =
-                JSON_MAPPER.readTree(
-                        """
-                        {"parentId":null}
-                        """);
         when(departmentService.updateDepartment(
                         org.mockito.ArgumentMatchers.eq(1L), org.mockito.ArgumentMatchers.any()))
                 .thenReturn(department(1L));
 
-        controller.updateDepartment(1L, request, auth(9L));
+        MockMvcBuilders.standaloneSetup(controller)
+                .build()
+                .perform(
+                        patch("/organization-departments/1")
+                                .principal(auth(9L))
+                                .contentType("application/merge-patch+json")
+                                .content("{\"parentId\":null}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.parentId").doesNotExist());
 
         ArgumentCaptor<OrganizationDepartmentService.UpdateOrganizationDepartmentRequest> captor =
                 ArgumentCaptor.forClass(
@@ -174,15 +183,71 @@ class OrganizationDepartmentControllerTests {
     }
 
     @Test
-    @DisplayName("PATCH 请求体使用 Jackson 3 JsonNode")
-    void updateDepartmentShouldUseJackson3JsonNode() {
-        Method method =
-                List.of(OrganizationDepartmentController.class.getDeclaredMethods()).stream()
-                        .filter(candidate -> candidate.getName().equals("updateDepartment"))
-                        .findFirst()
-                        .orElseThrow();
+    @DisplayName("PATCH 拒绝普通 JSON 媒体类型")
+    void updateDepartmentRejectsJsonPatchDocument() throws Exception {
+        MockMvcBuilders.standaloneSetup(controller)
+                .build()
+                .perform(
+                        patch("/organization-departments/1")
+                                .principal(auth(9L))
+                                .contentType("application/json")
+                                .content("{\"departmentName\":\"档案部\"}"))
+                .andExpect(status().isUnsupportedMediaType());
+        verifyNoInteractions(departmentService);
+    }
 
-        assertThat(method.getParameterTypes()[1]).isEqualTo(tools.jackson.databind.JsonNode.class);
+    @ParameterizedTest
+    @ValueSource(
+            strings = {
+                "{\"departmentCode\":null}",
+                "{\"departmentName\":null}",
+                "{\"enabled\":null}",
+                "{\"sortOrder\":null}"
+            })
+    @DisplayName("PATCH 不允许删除必需字段")
+    void updateDepartmentRejectsRemovingRequiredField(String patchBody) throws Exception {
+        JsonNode request = JSON_MAPPER.readTree(patchBody);
+
+        assertThatThrownBy(() -> controller.updateDepartment(1L, request, auth(9L)))
+                .isInstanceOf(BadRequestException.class);
+        verifyNoInteractions(departmentService);
+    }
+
+    @Test
+    @DisplayName("PATCH 拒绝资源中不存在的字段")
+    void updateDepartmentRejectsUnknownField() throws Exception {
+        JsonNode request = JSON_MAPPER.readTree("{\"id\":2}");
+
+        assertThatThrownBy(() -> controller.updateDepartment(1L, request, auth(9L)))
+                .isInstanceOf(BadRequestException.class);
+        verifyNoInteractions(departmentService);
+    }
+
+    @Test
+    @DisplayName("不存在字段的 null 补丁不产生新字段")
+    void updateDepartmentIgnoresNullForUnknownField() throws Exception {
+        JsonNode request = JSON_MAPPER.readTree("{\"extraField\":null}");
+        when(departmentService.updateDepartment(
+                        org.mockito.ArgumentMatchers.eq(1L), org.mockito.ArgumentMatchers.any()))
+                .thenReturn(department(1L));
+
+        controller.updateDepartment(1L, request, auth(9L));
+
+        ArgumentCaptor<OrganizationDepartmentService.UpdateOrganizationDepartmentRequest> captor =
+                ArgumentCaptor.forClass(
+                        OrganizationDepartmentService.UpdateOrganizationDepartmentRequest.class);
+        verify(departmentService)
+                .updateDepartment(org.mockito.ArgumentMatchers.eq(1L), captor.capture());
+        assertThat(captor.getValue().departmentName()).isNull();
+        assertThat(captor.getValue().parentUpdate().changing()).isFalse();
+    }
+
+    @Test
+    @DisplayName("根部门表示中不包含已删除的 parentId")
+    void rootDepartmentOmitsParentId() {
+        String json = JSON_MAPPER.writeValueAsString(department(1L));
+
+        assertThat(json).doesNotContain("parentId");
     }
 
     private TestingAuthenticationToken auth(Long userId) {

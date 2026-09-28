@@ -1,5 +1,7 @@
 package github.luckygc.am.module.organization.web;
 
+import java.util.Set;
+
 import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -27,6 +29,10 @@ import tools.jackson.databind.JsonNode;
 
 @RestController
 public class OrganizationDepartmentController {
+
+    private static final Set<String> PATCH_FIELDS =
+            Set.of("departmentCode", "departmentName", "parentId", "enabled", "sortOrder");
+    private static final Set<String> READ_ONLY_FIELDS = Set.of("id", "createdAt", "updatedAt");
 
     private final OrganizationDepartmentService departmentService;
     private final AuthorizationPermissionService permissionService;
@@ -62,7 +68,9 @@ public class OrganizationDepartmentController {
         return departmentService.createDepartment(request);
     }
 
-    @PatchMapping("/organization-departments/{organizationDepartment}")
+    @PatchMapping(
+            value = "/organization-departments/{organizationDepartment}",
+            consumes = "application/merge-patch+json")
     public OrganizationDepartmentResponse updateDepartment(
             @PathVariable Long organizationDepartment,
             @RequestBody JsonNode request,
@@ -97,6 +105,12 @@ public class OrganizationDepartmentController {
         if (request == null || !request.isObject()) {
             throw new BadRequestException("请求体不能为空");
         }
+        for (String fieldName : request.propertyNames()) {
+            if (!PATCH_FIELDS.contains(fieldName)
+                    && (READ_ONLY_FIELDS.contains(fieldName) || !request.get(fieldName).isNull())) {
+                throw new BadRequestException("不支持修改字段 " + fieldName, fieldName, "字段不可修改");
+            }
+        }
         String departmentCode = nullableText(request, "departmentCode");
         String departmentName = nullableText(request, "departmentName");
         Boolean enabled = nullableBoolean(request, "enabled");
@@ -115,10 +129,10 @@ public class OrganizationDepartmentController {
 
     private @Nullable String nullableText(JsonNode request, String fieldName) {
         JsonNode value = request.get(fieldName);
-        if (value == null || value.isNull()) {
+        if (value == null) {
             return null;
         }
-        if (!value.isTextual()) {
+        if (value.isNull() || !value.isTextual()) {
             throw new BadRequestException(fieldName + "不合法", fieldName, fieldName + "不合法");
         }
         return value.asText();
@@ -137,10 +151,10 @@ public class OrganizationDepartmentController {
 
     private @Nullable Boolean nullableBoolean(JsonNode request, String fieldName) {
         JsonNode value = request.get(fieldName);
-        if (value == null || value.isNull()) {
+        if (value == null) {
             return null;
         }
-        if (!value.isBoolean()) {
+        if (value.isNull() || !value.isBoolean()) {
             throw new BadRequestException(fieldName + "不合法", fieldName, fieldName + "不合法");
         }
         return value.asBoolean();
@@ -148,10 +162,10 @@ public class OrganizationDepartmentController {
 
     private @Nullable Integer nullableInteger(JsonNode request, String fieldName) {
         JsonNode value = request.get(fieldName);
-        if (value == null || value.isNull()) {
+        if (value == null) {
             return null;
         }
-        if (!value.isIntegralNumber() || !value.canConvertToInt()) {
+        if (value.isNull() || !value.isIntegralNumber() || !value.canConvertToInt()) {
             throw new BadRequestException(fieldName + "不合法", fieldName, fieldName + "不合法");
         }
         return value.asInt();

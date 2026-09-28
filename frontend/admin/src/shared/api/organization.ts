@@ -25,5 +25,7 @@ export function updateOrganizationDepartment(
     id: number,
     payload: UpdateOrganizationDepartmentRequest,
 ) {
-    return httpClient.patch<OrganizationDepartmentDto>(`/organization-departments/${id}`, payload);
+    return httpClient.patch<OrganizationDepartmentDto>(`/organization-departments/${id}`, payload, {
+        headers: { "Content-Type": "application/merge-patch+json" },
+    });
 }

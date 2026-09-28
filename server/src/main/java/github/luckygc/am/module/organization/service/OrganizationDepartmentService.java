@@ -10,6 +10,8 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.organization.OrganizationDepartment;
 import github.luckygc.am.module.organization.repository.OrganizationDepartmentDataRepository;
@@ -58,6 +60,13 @@ public class OrganizationDepartmentService {
     public OrganizationDepartmentResponse updateDepartment(
             Long id, UpdateOrganizationDepartmentRequest request) {
         OrganizationDepartment department = loadDepartment(id);
+        if (request.departmentCode() == null
+                && request.departmentName() == null
+                && !request.parentUpdate().changing()
+                && request.enabled() == null
+                && request.sortOrder() == null) {
+            return toResponse(department);
+        }
         if (request.departmentCode() != null) {
             String code = requireText(request.departmentCode(), "departmentCode", "部门编码不能为空");
             OrganizationDepartment existing = departmentRepository.findByDepartmentCode(code);
@@ -247,6 +256,7 @@ public class OrganizationDepartmentService {
         }
     }
 
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     public record OrganizationDepartmentResponse(
             Long id,
             String departmentCode,
