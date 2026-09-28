@@ -58,8 +58,10 @@
 
 #### 场景： 更新角色
 
-- **WHEN** 拥有角色管理权限的管理员更新普通角色
+- **WHEN** 拥有角色管理权限的管理员以 `application/merge-patch+json` 更新普通角色
 - **THEN** 系统 SHALL 支持修改角色名称、说明和启用状态
+- **AND** 未提交字段 SHALL 保持不变，说明提交 `null` 时 SHALL 从资源表示中移除并清空该值
+- **AND** 角色名称和启用状态 SHALL NOT 以 `null` 删除，标识和创建时间 SHALL NOT 通过普通更新修改
 - **AND** 系统 SHALL 校验角色名称唯一
 
 #### 场景： 保护超级管理员角色

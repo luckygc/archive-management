@@ -114,7 +114,9 @@ export function createAuthorizationRole(payload: CreateAuthorizationRoleRequest)
 }
 
 export function updateAuthorizationRole(id: number, payload: UpdateAuthorizationRoleRequest) {
-    return httpClient.patch<AuthorizationRoleDto>(`/authorization-roles/${id}`, payload);
+    return httpClient.patch<AuthorizationRoleDto>(`/authorization-roles/${id}`, payload, {
+        headers: { "Content-Type": "application/merge-patch+json" },
+    });
 }
 
 export function deleteAuthorizationRole(id: number) {

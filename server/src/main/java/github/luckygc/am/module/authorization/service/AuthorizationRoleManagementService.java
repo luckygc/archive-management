@@ -1,5 +1,7 @@
 package github.luckygc.am.module.authorization.service;
 
+import java.util.Objects;
+
 import jakarta.data.page.CursoredPage;
 import jakarta.data.page.PageRequest;
 import jakarta.data.restrict.Restrict;
@@ -11,6 +13,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
 
 import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.common.exception.BadRequestException;
@@ -91,34 +95,38 @@ public class AuthorizationRoleManagementService {
                 roleRepository
                         .findById(id)
                         .orElseThrow(() -> new BadRequestException("角色不存在", "id", "角色不存在"));
-        if (isSuperAdminRole(role)
-                && ((request.roleName() != null
-                                && !AuthorizationPermissionService.SUPER_ADMIN_ROLE_NAME.equals(
-                                        request.roleName().trim()))
-                        || (request.enabled() != null && !request.enabled()))) {
-            throw new BadRequestException("禁止修改超级管理员角色", "id", "禁止修改超级管理员角色的名称或启用状态");
-        }
+        String roleName = role.getRoleName();
         if (request.roleName() != null) {
-            if (StringUtils.isBlank(request.roleName())) {
+            roleName = StringUtils.trimToNull(request.roleName());
+            if (roleName == null) {
                 throw new BadRequestException("角色名称不能为空", "roleName", "角色名称不能为空");
             }
-            AuthorizationRole existing =
-                    roleRepository.findOptionalByRoleName(request.roleName().trim());
+        }
+        boolean enabled = request.enabled() == null ? role.isEnabled() : request.enabled();
+        if (isSuperAdminRole(role)
+                && (!AuthorizationPermissionService.SUPER_ADMIN_ROLE_NAME.equals(roleName)
+                        || !enabled)) {
+            throw new BadRequestException("禁止修改超级管理员角色", "id", "禁止修改超级管理员角色的名称或启用状态");
+        }
+        if (!roleName.equals(role.getRoleName())) {
+            AuthorizationRole existing = roleRepository.findOptionalByRoleName(roleName);
             if (existing != null && !existing.getId().equals(id)) {
                 throw new BadRequestException(
                         "角色名称已存在", "roleName", "角色名称 " + request.roleName() + " 已存在");
             }
-            role.setRoleName(request.roleName().trim());
         }
-        if (request.description() != null) {
-            role.setDescription(
-                    StringUtils.isNotBlank(request.description())
-                            ? request.description().trim()
-                            : null);
+        String description =
+                request.descriptionChanged()
+                        ? StringUtils.trimToNull(request.description())
+                        : role.getDescription();
+        if (roleName.equals(role.getRoleName())
+                && Objects.equals(description, role.getDescription())
+                && enabled == role.isEnabled()) {
+            return AuthorizationRoleDto.fromEntity(role);
         }
-        if (request.enabled() != null) {
-            role.setEnabled(request.enabled());
-        }
+        role.setRoleName(roleName);
+        role.setDescription(description);
+        role.setEnabled(enabled);
         role = roleRepository.update(role);
         return AuthorizationRoleDto.fromEntity(role);
     }
@@ -168,8 +176,19 @@ public class AuthorizationRoleManagementService {
     public record CreateAuthorizationRoleRequest(String roleName, @Nullable String description) {}
 
     public record UpdateAuthorizationRoleRequest(
-            @Nullable String roleName, @Nullable String description, @Nullable Boolean enabled) {}
+            @Nullable String roleName,
+            boolean descriptionChanged,
+            @Nullable String description,
+            @Nullable Boolean enabled) {
+        public UpdateAuthorizationRoleRequest(
+                @Nullable String roleName,
+                @Nullable String description,
+                @Nullable Boolean enabled) {
+            this(roleName, description != null, description, enabled);
+        }
+    }
 
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     public record AuthorizationRoleDto(
             Long id,
             String roleName,

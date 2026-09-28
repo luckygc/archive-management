@@ -174,6 +174,7 @@ class AuthorizationRoleManagementServiceTests {
                         10L, new UpdateAuthorizationRoleRequest("档案管理员", null, null), OPERATOR_ID);
 
         assertThat(result.roleName()).isEqualTo("档案管理员");
+        verify(roleRepository, never()).update(any());
     }
 
     @Test
@@ -205,6 +206,32 @@ class AuthorizationRoleManagementServiceTests {
                         10L, new UpdateAuthorizationRoleRequest(null, "", null), OPERATOR_ID);
 
         assertThat(result.description()).isNull();
+    }
+
+    @Test
+    @DisplayName("说明字段显式删除时清空，空补丁不写库")
+    void updateRoleShouldRemoveDescriptionAndAvoidNoop() {
+        AuthorizationRole role = roleEntity(10L, "档案管理员");
+        role.setDescription("旧说明");
+        when(roleRepository.findById(10L)).thenReturn(Optional.of(role));
+        when(roleRepository.update(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        AuthorizationRoleDto unchanged =
+                roleService.updateRole(
+                        10L,
+                        new UpdateAuthorizationRoleRequest(null, false, null, null),
+                        OPERATOR_ID);
+        assertThat(unchanged.description()).isEqualTo("旧说明");
+        verify(roleRepository, never()).update(any());
+
+        AuthorizationRoleDto cleared =
+                roleService.updateRole(
+                        10L,
+                        new UpdateAuthorizationRoleRequest(null, true, null, null),
+                        OPERATOR_ID);
+        assertThat(cleared.description()).isNull();
+        assertThat(cleared.roleName()).isEqualTo("档案管理员");
+        verify(roleRepository).update(role);
     }
 
     @Test

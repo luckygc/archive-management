@@ -97,7 +97,7 @@ async function submitRole() {
         } else if (editingRoleId.value != null) {
             await updateAuthorizationRole(editingRoleId.value, {
                 roleName: form.value.roleName,
-                description: form.value.description || undefined,
+                description: form.value.description.trim() || null,
                 enabled: form.value.enabled,
             });
             ElMessage.success("角色更新成功");

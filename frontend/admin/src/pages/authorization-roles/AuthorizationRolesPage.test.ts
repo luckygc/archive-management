@@ -32,6 +32,32 @@ afterEach(() => {
 });
 
 describe("AuthorizationRolesPage", () => {
+    it("编辑角色时以 null 清空说明", async () => {
+        archiveApiMocks.listAuthorizationRoles.mockResolvedValue({
+            items: [
+                {
+                    id: 2,
+                    roleName: "档案管理员",
+                    description: "旧说明",
+                    enabled: true,
+                    createdAt: "2026-07-03T00:00:00",
+                },
+            ],
+        });
+        render(AuthorizationRolesPage, { global: { plugins: [ElementPlus] } });
+
+        await fireEvent.click(await screen.findByRole("button", { name: "编辑" }));
+        await fireEvent.update(screen.getByRole("textbox", { name: "说明" }), "");
+        await fireEvent.click(screen.getByRole("button", { name: "确定" }));
+
+        await waitFor(() =>
+            expect(archiveApiMocks.updateAuthorizationRole).toHaveBeenCalledWith(
+                2,
+                expect.objectContaining({ description: null }),
+            ),
+        );
+    });
+
     it("权限详情加载失败时不保存空权限", async () => {
         archiveApiMocks.getRolePermissions.mockRejectedValue(new Error("网络错误"));
         render(AuthorizationRolesPage, { global: { plugins: [ElementPlus] } });

@@ -74,7 +74,7 @@ export interface CreateAuthorizationRoleRequest {
 
 export interface UpdateAuthorizationRoleRequest {
     roleName?: string;
-    description?: string;
+    description?: string | null;
     enabled?: boolean;
 }
 
