@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.mock;
@@ -589,6 +590,71 @@ class ArchiveMetadataServiceTests {
         assertThat(result.archiveLevel()).isEqualTo(ArchiveLevel.ITEM);
         assertThat(result.fields()).extracting("fieldId").containsExactly(11L);
         verify(archiveMapper).markFieldsExactSearchable(1L, List.of(11L));
+    }
+
+    @Test
+    @DisplayName("唯一规则局部禁用保留字段组合并在校验后更新")
+    void patchUniqueConstraintPreservesFieldIds() {
+        ArchiveField field = field(11L, ArchiveLevel.ITEM, ArchiveFieldScope.METADATA);
+        when(categoryRepository.findById(1L))
+                .thenReturn(Optional.of(category(1L, ArchiveManagementMode.ITEM_ONLY)));
+        when(fieldRepository.list(1L)).thenReturn(List.of(field));
+        Map<String, Object> current = uniqueConstraintRow(21L, 1L, ArchiveLevel.ITEM);
+        Map<String, Object> disabled = new HashMap<>(current);
+        disabled.put("enabled", false);
+        when(archiveMapper.getUniqueConstraint(21L)).thenReturn(current, disabled);
+        when(archiveMapper.listUniqueConstraintFields(21L))
+                .thenReturn(List.of(uniqueConstraintFieldRow(field)));
+        when(archiveMapper.updateUniqueConstraint(
+                        eq(21L),
+                        eq(1L),
+                        eq(ArchiveLevel.ITEM.value()),
+                        eq("doc_no_unique"),
+                        eq("文号唯一"),
+                        anyString(),
+                        eq(false)))
+                .thenReturn(1);
+
+        var result =
+                service.patchUniqueConstraint(
+                        1L, 21L, JsonMapper.builder().build().readTree("{\"enabled\":false}"), 9L);
+
+        assertThat(result.enabled()).isFalse();
+        assertThat(result.fieldIds()).containsExactly(11L);
+        verify(archiveMapper).deleteUniqueConstraintFields(21L);
+        verify(archiveMapper).insertUniqueConstraintField(21L, 11L, 1);
+    }
+
+    @Test
+    @DisplayName("唯一规则无效补丁和无效字段列表不触发索引变更")
+    void patchUniqueConstraintRejectsBeforeIndexChange() {
+        ArchiveField field = field(11L, ArchiveLevel.ITEM, ArchiveFieldScope.METADATA);
+        when(categoryRepository.findById(1L))
+                .thenReturn(Optional.of(category(1L, ArchiveManagementMode.ITEM_ONLY)));
+        when(fieldRepository.list(1L)).thenReturn(List.of(field));
+        when(archiveMapper.getUniqueConstraint(21L))
+                .thenReturn(uniqueConstraintRow(21L, 1L, ArchiveLevel.ITEM));
+        when(archiveMapper.listUniqueConstraintFields(21L))
+                .thenReturn(List.of(uniqueConstraintFieldRow(field)));
+        JsonMapper mapper = JsonMapper.builder().build();
+
+        assertThat(service.patchUniqueConstraint(1L, 21L, mapper.readTree("{}"), 9L).fieldIds())
+                .containsExactly(11L);
+        assertThatThrownBy(
+                        () ->
+                                service.patchUniqueConstraint(
+                                        1L, 21L, mapper.readTree("{\"fieldIds\":[]}"), 9L))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("唯一约束字段不能为空");
+        assertThatThrownBy(
+                        () ->
+                                service.patchUniqueConstraint(
+                                        1L, 21L, mapper.readTree("{\"id\":null}"), 9L))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("id");
+        verify(archiveMapper, never()).executeSql(anyString());
+        verify(archiveMapper, never())
+                .updateUniqueConstraint(any(), any(), any(), any(), any(), any(), anyBoolean());
     }
 
     @Test

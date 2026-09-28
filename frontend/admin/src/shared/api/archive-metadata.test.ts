@@ -4,6 +4,7 @@ import {
     savePublicArchiveCategoryLayout,
     updateArchiveCategory,
     updateArchiveField,
+    updateArchiveUniqueConstraint,
 } from "./archive-metadata";
 
 const httpClientMock = vi.hoisted(() => ({ patch: vi.fn(), put: vi.fn() }));
@@ -54,4 +55,16 @@ it("字段更新使用 Merge Patch 媒体类型", async () => {
     expect(httpClientMock.patch).toHaveBeenCalledWith("/archive-categories/12/fields/7", patch, {
         headers: { "Content-Type": "application/merge-patch+json" },
     });
+});
+
+it("唯一规则更新按字段 ID 列表发送 Merge Patch", async () => {
+    const patch = { fieldIds: [11, 12] };
+
+    await updateArchiveUniqueConstraint(12, 7, patch);
+
+    expect(httpClientMock.patch).toHaveBeenCalledWith(
+        "/archive-categories/12/unique-constraints/7",
+        patch,
+        { headers: { "Content-Type": "application/merge-patch+json" } },
+    );
 });

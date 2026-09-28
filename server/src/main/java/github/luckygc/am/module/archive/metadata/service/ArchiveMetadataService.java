@@ -61,6 +61,10 @@ public class ArchiveMetadataService extends ArchiveMetadataTypes {
                     "sortOrder");
     private static final Set<String> FIELD_READ_ONLY_PROPERTIES =
             Set.of("id", "categoryId", "columnName", "fieldSource", "createdAt", "updatedAt");
+    private static final Set<String> UNIQUE_CONSTRAINT_PATCH_PROPERTIES =
+            Set.of("archiveLevel", "constraintCode", "constraintName", "enabled", "fieldIds");
+    private static final Set<String> UNIQUE_CONSTRAINT_READ_ONLY_PROPERTIES =
+            Set.of("id", "categoryId", "indexName", "fields", "createdAt", "updatedAt");
     private static final List<BuiltinDataScopeField> BUILTIN_DATA_SCOPE_FIELDS =
             List.of(
                     new BuiltinDataScopeField(
@@ -457,18 +461,43 @@ public class ArchiveMetadataService extends ArchiveMetadataTypes {
     }
 
     @Transactional
-    public ArchiveUniqueConstraintDto updateUniqueConstraint(
-            Long categoryId,
-            Long constraintId,
-            ArchiveUniqueConstraintRequest request,
-            Long userId) {
+    public ArchiveUniqueConstraintDto patchUniqueConstraint(
+            Long categoryId, Long constraintId, JsonNode patch, Long userId) {
         requireId(categoryId);
         requireId(constraintId);
-        ArchiveCategoryDto category = categoryService.getCategory(categoryId);
         ArchiveUniqueConstraintDto current = loadUniqueConstraint(constraintId);
         if (!current.categoryId().equals(categoryId)) {
             throw notFound("唯一约束不存在");
         }
+        if (patch == null || !patch.isObject()) {
+            throw new BadRequestException("唯一规则补丁必须是对象");
+        }
+        for (String property : patch.propertyNames()) {
+            if (UNIQUE_CONSTRAINT_READ_ONLY_PROPERTIES.contains(property)
+                    || (!UNIQUE_CONSTRAINT_PATCH_PROPERTIES.contains(property)
+                            && !patch.get(property).isNull())) {
+                throw new BadRequestException("不支持修改字段 " + property, property, "字段不可修改");
+            }
+            if (UNIQUE_CONSTRAINT_PATCH_PROPERTIES.contains(property)
+                    && patch.get(property).isNull()) {
+                throw new BadRequestException(property + " 不能删除", property, "字段不可删除");
+            }
+        }
+        ObjectNode representation = (ObjectNode) jsonMapper.valueToTree(current);
+        for (String property : UNIQUE_CONSTRAINT_READ_ONLY_PROPERTIES) {
+            representation.remove(property);
+        }
+        JsonNode merged = JsonMergePatch.apply(representation, patch);
+        if (merged.equals(representation)) {
+            return current;
+        }
+        ArchiveUniqueConstraintRequest request;
+        try {
+            request = jsonMapper.readValue(merged.toString(), ArchiveUniqueConstraintRequest.class);
+        } catch (JacksonException exception) {
+            throw new BadRequestException("唯一规则补丁格式不合法");
+        }
+        ArchiveCategoryDto category = categoryService.getCategory(categoryId);
         return uniqueConstraintService.update(
                 category, current, listFieldsInternal(categoryId), request, userId);
     }

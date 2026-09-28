@@ -79,9 +79,9 @@ public class ArchiveUniqueConstraintService {
             List<ArchiveFieldDto> fields,
             ArchiveUniqueConstraintRequest request,
             Long userId) {
-        dynamicTableService.dropIndexIfExists(current.indexName());
         ArchiveUniqueConstraintValues values = validate(category, fields, request);
         String indexName = uniqueConstraintIndexName(category, values);
+        dynamicTableService.dropIndexIfExists(current.indexName());
         int updated =
                 archiveMapper.updateUniqueConstraint(
                         current.id(),
@@ -229,6 +229,7 @@ public class ArchiveUniqueConstraintService {
                 string(row, "constraintName"),
                 string(row, "indexName"),
                 bool(row, "enabled"),
+                fields.stream().map(ArchiveUniqueConstraintFieldDto::fieldId).toList(),
                 fields,
                 dateTime(row, "createdAt"),
                 dateTime(row, "updatedAt"));

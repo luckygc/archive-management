@@ -242,6 +242,7 @@ public abstract class ArchiveMetadataTypes {
             String constraintName,
             @Nullable String indexName,
             boolean enabled,
+            List<Long> fieldIds,
             List<ArchiveUniqueConstraintFieldDto> fields,
             LocalDateTime createdAt,
             LocalDateTime updatedAt) {}

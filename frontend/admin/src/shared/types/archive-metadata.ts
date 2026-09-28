@@ -236,6 +236,7 @@ export interface ArchiveUniqueConstraintDto {
     constraintName: string;
     indexName: string;
     enabled: boolean;
+    fieldIds: number[];
     fields: ArchiveUniqueConstraintFieldDto[];
     createdAt: string;
     updatedAt: string;

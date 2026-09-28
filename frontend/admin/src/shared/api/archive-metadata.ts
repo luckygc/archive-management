@@ -211,11 +211,12 @@ export function createArchiveUniqueConstraint(
 export function updateArchiveUniqueConstraint(
     categoryId: number,
     constraintId: number,
-    payload: ArchiveUniqueConstraintRequest,
+    payload: Partial<ArchiveUniqueConstraintRequest>,
 ) {
     return httpClient.patch<ArchiveUniqueConstraintDto>(
         `/archive-categories/${categoryId}/unique-constraints/${constraintId}`,
         payload,
+        { headers: { "Content-Type": "application/merge-patch+json" } },
     );
 }
 

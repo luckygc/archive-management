@@ -479,13 +479,15 @@ public class ArchiveMetadataController {
                 categoryId, request, requireMetadataManage(authentication));
     }
 
-    @PatchMapping("/archive-categories/{categoryId}/unique-constraints/{constraintId}")
+    @PatchMapping(
+            value = "/archive-categories/{categoryId}/unique-constraints/{constraintId}",
+            consumes = "application/merge-patch+json")
     public ArchiveUniqueConstraintDto updateUniqueConstraint(
             @PathVariable Long categoryId,
             @PathVariable Long constraintId,
-            @RequestBody ArchiveUniqueConstraintRequest request,
+            @RequestBody JsonNode request,
             Authentication authentication) {
-        return archiveMetadataService.updateUniqueConstraint(
+        return archiveMetadataService.patchUniqueConstraint(
                 categoryId, constraintId, request, requireMetadataManage(authentication));
     }
 
