@@ -18,7 +18,6 @@ import org.springframework.web.context.request.ServletWebRequest;
 import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.common.api.CursorPageTokenCodec;
 import github.luckygc.am.common.api.CursorPageTokenContext;
-import github.luckygc.am.common.api.OffsetPageRequest;
 import github.luckygc.am.common.exception.BadRequestException;
 
 @DisplayName("分页请求参数解析")
@@ -118,29 +117,32 @@ class PageRequestArgumentResolverTests {
     }
 
     @Test
-    @DisplayName("旧 requestTotal 查询参数明确拒绝")
-    void cursorResolverShouldRejectRequestTotalQueryParameter() throws Exception {
-        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/archive-item-audits");
-        request.addParameter("requestTotal", "true");
+    @DisplayName("已移除的分页查询参数明确拒绝")
+    void cursorResolverShouldRejectRemovedPageParameters() throws Exception {
+        for (String name : List.of("requestTotal", "pageNo", "pageSize", "offset")) {
+            MockHttpServletRequest request =
+                    new MockHttpServletRequest("GET", "/archive-item-audits");
+            request.addParameter(name, "1");
 
-        assertThatThrownBy(
-                        () ->
-                                new CursorPageArgumentResolver()
-                                        .resolveArgument(
-                                                cursorParameter(),
-                                                null,
-                                                new ServletWebRequest(request),
-                                                null))
-                .isInstanceOf(BadRequestException.class)
-                .hasMessage("分页参数不合法")
-                .satisfies(
-                        exception ->
-                                assertThat(((BadRequestException) exception).fieldViolations())
-                                        .singleElement()
-                                        .satisfies(
-                                                violation ->
-                                                        assertThat(violation.field())
-                                                                .isEqualTo("requestTotal")));
+            assertThatThrownBy(
+                            () ->
+                                    new CursorPageArgumentResolver()
+                                            .resolveArgument(
+                                                    cursorParameter(),
+                                                    null,
+                                                    new ServletWebRequest(request),
+                                                    null))
+                    .isInstanceOf(BadRequestException.class)
+                    .hasMessage("分页参数不合法")
+                    .satisfies(
+                            exception ->
+                                    assertThat(((BadRequestException) exception).fieldViolations())
+                                            .singleElement()
+                                            .satisfies(
+                                                    violation ->
+                                                            assertThat(violation.field())
+                                                                    .isEqualTo(name)));
+        }
     }
 
     @Test
@@ -206,138 +208,8 @@ class PageRequestArgumentResolverTests {
                                                 }));
     }
 
-    @Test
-    @DisplayName("解析 offset 分页 URL 参数")
-    void offsetResolverShouldParsePageSizeAndPageNo() throws Exception {
-        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/items");
-        request.addParameter("pageSize", "200");
-        request.addParameter("pageNo", "3");
-        OffsetPageRequestArgumentResolver resolver = new OffsetPageRequestArgumentResolver();
-
-        OffsetPageRequest page =
-                (OffsetPageRequest)
-                        resolver.resolveArgument(
-                                offsetParameter(), null, new ServletWebRequest(request), null);
-
-        assertThat(page.pageSize()).isEqualTo(200);
-        assertThat(page.pageNo()).isEqualTo(3);
-        assertThat(page.offset()).isEqualTo(400);
-    }
-
-    @Test
-    @DisplayName("offset 分页只解析 URL 查询参数")
-    void offsetResolverShouldParseOnlyUrlQueryPageParameters() throws Exception {
-        MockHttpServletRequest request =
-                jsonRequest("POST", "/items:search", "{\"pageSize\":10,\"pageNo\":2}");
-        request.addParameter("pageSize", "200");
-        request.addParameter("pageNo", "3");
-        OffsetPageRequestArgumentResolver resolver = new OffsetPageRequestArgumentResolver();
-
-        OffsetPageRequest page =
-                (OffsetPageRequest)
-                        resolver.resolveArgument(
-                                offsetParameter(),
-                                null,
-                                new ServletWebRequest(
-                                        new CachedBodyHttpServletRequestWrapper(request)),
-                                null);
-
-        assertThat(page.pageSize()).isEqualTo(200);
-        assertThat(page.pageNo()).isEqualTo(3);
-        assertThat(page.offset()).isEqualTo(400);
-    }
-
-    @Test
-    @DisplayName("offset 分页不读取 JSON 请求体中的分页参数")
-    void offsetResolverShouldIgnoreJsonBodyPageParameters() throws Exception {
-        MockHttpServletRequest request =
-                jsonRequest("POST", "/items:search", "{\"pageSize\":200,\"pageNo\":3}");
-        OffsetPageRequestArgumentResolver resolver = new OffsetPageRequestArgumentResolver();
-
-        OffsetPageRequest page =
-                (OffsetPageRequest)
-                        resolver.resolveArgument(
-                                offsetParameter(),
-                                null,
-                                new ServletWebRequest(
-                                        new CachedBodyHttpServletRequestWrapper(request)),
-                                null);
-
-        assertThat(page.pageSize()).isEqualTo(100);
-        assertThat(page.pageNo()).isEqualTo(1);
-        assertThat(page.offset()).isZero();
-    }
-
-    @Test
-    @DisplayName("multipart 请求不能携带 offset 分页参数")
-    void offsetResolverShouldRejectMultipartPageParameters() throws Exception {
-        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/items");
-        request.setContentType("multipart/form-data; boundary=----test");
-        request.addParameter("pageSize", "200");
-        request.addParameter("pageNo", "3");
-        OffsetPageRequestArgumentResolver resolver = new OffsetPageRequestArgumentResolver();
-
-        assertThatThrownBy(
-                        () ->
-                                resolver.resolveArgument(
-                                        offsetParameter(),
-                                        null,
-                                        new ServletWebRequest(request),
-                                        null))
-                .isInstanceOf(BadRequestException.class)
-                .hasMessage("分页参数不合法")
-                .satisfies(
-                        exception ->
-                                assertThat(((BadRequestException) exception).fieldViolations())
-                                        .singleElement()
-                                        .satisfies(
-                                                violation -> {
-                                                    assertThat(violation.field())
-                                                            .isEqualTo("pagination");
-                                                    assertThat(violation.message())
-                                                            .isEqualTo(
-                                                                    "multipart 请求不能携带分页参数，请使用 URL 参数");
-                                                }));
-    }
-
-    @Test
-    @DisplayName("非 JSON 请求体不能携带 offset 分页参数")
-    void offsetResolverShouldRejectFormPageParameters() throws Exception {
-        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/items");
-        request.setContentType("application/x-www-form-urlencoded");
-        request.addParameter("pageSize", "200");
-        request.addParameter("pageNo", "3");
-        OffsetPageRequestArgumentResolver resolver = new OffsetPageRequestArgumentResolver();
-
-        assertThatThrownBy(
-                        () ->
-                                resolver.resolveArgument(
-                                        offsetParameter(),
-                                        null,
-                                        new ServletWebRequest(request),
-                                        null))
-                .isInstanceOf(BadRequestException.class)
-                .hasMessage("分页参数不合法")
-                .satisfies(
-                        exception ->
-                                assertThat(((BadRequestException) exception).fieldViolations())
-                                        .singleElement()
-                                        .satisfies(
-                                                violation -> {
-                                                    assertThat(violation.field())
-                                                            .isEqualTo("pagination");
-                                                    assertThat(violation.message())
-                                                            .isEqualTo("分页请求体只支持 JSON");
-                                                }));
-    }
-
     private static MethodParameter cursorParameter() throws NoSuchMethodException {
         Method method = TestController.class.getDeclaredMethod("cursor", PageRequest.class);
-        return new MethodParameter(method, 0);
-    }
-
-    private static MethodParameter offsetParameter() throws NoSuchMethodException {
-        Method method = TestController.class.getDeclaredMethod("offset", OffsetPageRequest.class);
         return new MethodParameter(method, 0);
     }
 
@@ -354,8 +226,5 @@ class PageRequestArgumentResolverTests {
         CursorPageResponse<String> cursor(PageRequest page) {
             return CursorPageResponse.withCursorValues(List.of(), 0, null, null, null, null, null);
         }
-
-        @SuppressWarnings("unused")
-        void offset(OffsetPageRequest page) {}
     }
 }

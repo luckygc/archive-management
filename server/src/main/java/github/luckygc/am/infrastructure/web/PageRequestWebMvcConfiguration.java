@@ -12,21 +12,17 @@ public class PageRequestWebMvcConfiguration implements WebMvcConfigurer {
 
     private final CursorPageArgumentResolver cursorResolver;
     private final CursorPageTokenValidationInterceptor cursorValidationInterceptor;
-    private final OffsetPageRequestArgumentResolver offsetResolver;
 
     public PageRequestWebMvcConfiguration(
             CursorPageArgumentResolver cursorResolver,
-            CursorPageTokenValidationInterceptor cursorValidationInterceptor,
-            OffsetPageRequestArgumentResolver offsetResolver) {
+            CursorPageTokenValidationInterceptor cursorValidationInterceptor) {
         this.cursorResolver = cursorResolver;
         this.cursorValidationInterceptor = cursorValidationInterceptor;
-        this.offsetResolver = offsetResolver;
     }
 
     @Override
     public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
         resolvers.add(cursorResolver);
-        resolvers.add(offsetResolver);
     }
 
     @Override

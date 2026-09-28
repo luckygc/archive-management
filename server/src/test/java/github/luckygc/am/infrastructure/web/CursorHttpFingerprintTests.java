@@ -56,9 +56,6 @@ class CursorHttpFingerprintTests {
     void queryParamOrderAndPageControlsShouldNotAffectFingerprint() {
         MockHttpServletRequest first = jsonRequest("{\"categoryId\":1,\"keyword\":\"合同\"}");
         first.addParameter("limit", "100");
-        first.addParameter("pageSize", "100");
-        first.addParameter("pageNo", "1");
-        first.addParameter("offset", "0");
         first.addParameter("cursor", "old");
         first.addParameter("operationType", "update");
         first.addParameter("categoryId", "1");
@@ -67,9 +64,6 @@ class CursorHttpFingerprintTests {
         second.addParameter("categoryId", "1");
         second.addParameter("operationType", "update");
         second.addParameter("cursor", "next");
-        second.addParameter("offset", "100");
-        second.addParameter("pageNo", "2");
-        second.addParameter("pageSize", "200");
         second.addParameter("limit", "200");
 
         assertThat(fingerprint.fingerprint(first)).isEqualTo(fingerprint.fingerprint(second));

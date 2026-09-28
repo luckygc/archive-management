@@ -251,14 +251,12 @@ Content-Type: application/json
 - **THEN** 响应 SHALL 使用项目自有集合或分页响应对象
 - **AND** 小规模、不需要分页的集合 SHALL 使用 `CollectionResponse<T>`
 - **AND** 默认分页集合 SHALL 使用键集分页 `CursorPageResponse<T>`
-- **AND** 只有对应业务规格明确声明允许 offset 分页时，offset 分页集合 MAY 使用 `OffsetPageResponse<T>`
-- **AND** 三种响应对象 SHALL 以并列 record 表达，不通过继承、多态类型信息或框架分页父类表达 JSON 合同
+- **AND** 两种响应对象 SHALL 以并列 record 表达，不通过继承、多态类型信息或框架分页父类表达 JSON 合同
 - **AND** 系统 SHALL NOT 为每个资源分别设计 `archives`、`tasks`、`users` 这类资源复数字段响应对象
 - **AND** 系统 SHALL NOT 直接暴露框架或持久化层的分页类型
 - **AND** 系统 SHALL NOT 将 Jakarta Data、Hibernate、MyBatis 或其他持久化入口返回的分页对象直接序列化为 HTTP 响应
 - **AND** 集合响应的列表字段 SHALL 固定使用 `items`
 - **AND** 系统 SHALL 提供不带 `total` 的默认分页响应版本
-- **AND** 系统 SHALL 提供带 `total` 的 offset 分页响应版本
 
 ### 要求： API 分页
 
@@ -281,33 +279,10 @@ Content-Type: application/json
 - **WHEN** 客户端提交项目自有分页请求
 - **THEN** 分页控制参数 SHALL 通过 URL query 参数提交
 - **AND** cursor 分页接口 SHALL 使用 URL query 参数提交 `limit`、`cursor`；可通过 `Prefer: return=total-count` 请求首页总数
-- **AND** offset 分页接口 SHALL 使用 URL query 参数提交 `pageSize` 和 `pageNo`
 - **AND** 使用 JSON 请求体表达复杂查询条件的 cursor 搜索接口 SHALL 将 `orderBy` 放在同一个 JSON 请求体中
-- **AND** offset 分页接口的 `orderBy` SHALL 通过 URL query 参数提交
 - **AND** 服务端 SHALL NOT 从 JSON 请求体解析分页控制参数
-- **AND** 服务端 SHALL 将 URL query 中的 `limit`、`cursor`、`pageSize`、`pageNo` 和 `offset` 视为分页控制字段，不纳入 cursor 查询摘要；总数偏好也不纳入查询摘要
+- **AND** 服务端 SHALL 将 URL query 中的 `limit`、`cursor` 视为分页控制字段，不纳入 cursor 查询摘要；总数偏好也不纳入查询摘要
 - **AND** 服务端 SHALL 拒绝通过非 JSON 请求体提交分页请求
-
-#### 场景： 请求 offset 分页集合
-
-- **WHEN** 对应业务规格明确声明该集合规模可控、排序稳定且客户端需要页码跳转或默认总数
-- **THEN** 请求 SHALL 支持 `pageSize` 和 `pageNo`
-- **AND** 服务端 SHALL 校验 `pageSize` 上限
-- **AND** 服务端 SHALL 为分页查询定义稳定排序
-- **AND** 排序字段 SHALL 使用 API 字段名，并在进入 SQL 前通过白名单映射为数据库列
-- **AND** 服务端 SHALL 追加唯一且稳定的兜底排序字段，例如 `id`
-- **AND** 未经业务规格明确声明的接口 SHALL NOT 使用 offset 分页
-
-#### 场景： 返回 offset 分页集合
-
-- **WHEN** 业务规格明确声明 API 返回 offset 分页结果
-- **THEN** 响应 SHALL 使用统一 page object
-- **AND** 响应 SHALL 包含 `items`
-- **AND** 响应 SHALL 包含 `pageSize`
-- **AND** 响应 SHALL 包含 `pageNo`
-- **AND** 响应 SHALL 包含 `total`
-- **AND** 服务端 SHALL 将 `total` 作为单独 count 查询执行
-- **AND** 服务端 SHALL NOT 将 count 查询隐藏在持久化框架分页对象序列化过程中
 
 #### 场景： 请求键集分页集合
 
@@ -393,7 +368,6 @@ Content-Type: application/json
 
 - **WHEN** 客户端需要总数
 - **THEN** 系统 SHALL 通过 `POST /{resources}:count` 或 `Prefer: return=total-count` 单独表达
-- **AND** 只有业务规格明确允许的 offset 分页响应 SHALL 返回 `total`
 - **AND** 键集分页默认响应 SHALL NOT 返回 `total`
 - **AND** 键集分页在带有总数偏好且未提交 `cursor` 的首页请求 MAY 返回 `total`
 - **AND** 键集分页后续带 `cursor` 请求 SHALL NOT 执行 count 或返回 `total`

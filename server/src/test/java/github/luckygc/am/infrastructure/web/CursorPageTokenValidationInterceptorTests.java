@@ -16,7 +16,6 @@ import org.springframework.web.method.HandlerMethod;
 
 import github.luckygc.am.common.api.CursorPageTokenCodec;
 import github.luckygc.am.common.api.CursorPageTokenContext;
-import github.luckygc.am.common.api.OffsetPageRequest;
 import github.luckygc.am.common.exception.BadRequestException;
 
 @DisplayName("cursor token 请求处理校验")
@@ -51,15 +50,15 @@ class CursorPageTokenValidationInterceptorTests {
     }
 
     @Test
-    @DisplayName("offset 分页 Controller 方法提交 cursor 时拒绝")
-    void interceptorShouldRejectCursorForOffsetPageHandlers() throws Exception {
+    @DisplayName("非游标分页 Controller 方法提交 cursor 时拒绝")
+    void interceptorShouldRejectCursorForOtherHandlers() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/items");
         request.addParameter("cursor", "opaque");
 
         assertThatThrownBy(
                         () ->
                                 interceptor.preHandle(
-                                        request, new MockHttpServletResponse(), offsetHandler()))
+                                        request, new MockHttpServletResponse(), otherHandler()))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessage("分页 cursor 无效");
     }
@@ -110,15 +109,13 @@ class CursorPageTokenValidationInterceptorTests {
                 new TestController(), TestController.class.getMethod("cursor", PageRequest.class));
     }
 
-    private static HandlerMethod offsetHandler() throws NoSuchMethodException {
-        return new HandlerMethod(
-                new TestController(),
-                TestController.class.getMethod("offset", OffsetPageRequest.class));
+    private static HandlerMethod otherHandler() throws NoSuchMethodException {
+        return new HandlerMethod(new TestController(), TestController.class.getMethod("other"));
     }
 
     static class TestController {
         public void cursor(PageRequest page) {}
 
-        public void offset(OffsetPageRequest page) {}
+        public void other() {}
     }
 }

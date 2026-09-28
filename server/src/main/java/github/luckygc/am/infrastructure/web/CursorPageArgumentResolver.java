@@ -2,6 +2,7 @@ package github.luckygc.am.infrastructure.web;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 
 import jakarta.data.page.PageRequest;
 import jakarta.servlet.http.HttpServletRequest;
@@ -37,9 +38,11 @@ public class CursorPageArgumentResolver implements HandlerMethodArgumentResolver
             throw new BadRequestException("请求上下文无效", "request", "缺少 HTTP 请求上下文");
         }
         PaginationContentTypeGuard.rejectUnsupportedBodyContentType(request);
-        if (request.getParameterMap().containsKey("requestTotal")) {
-            throw new BadRequestException(
-                    "分页参数不合法", "requestTotal", "请使用 Prefer: return=total-count 请求总数");
+        for (String unsupported : List.of("requestTotal", "pageNo", "pageSize", "offset")) {
+            if (request.getParameterMap().containsKey(unsupported)) {
+                throw new BadRequestException(
+                        "分页参数不合法", unsupported, "不支持此分页参数；首页总数请使用 Prefer: return=total-count");
+            }
         }
         PageRequestParameters parameters = PageRequestParameters.from(request);
         int limit = CursorPageLimits.parse(parameters.value("limit"));
