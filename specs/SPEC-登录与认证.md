@@ -334,6 +334,7 @@ PC 端 SHALL 集成账号密码登录、可选 TOTP、认证状态初始化和�
 
 - **WHEN** TOTP 验证码错误但挑战仍有效
 - **THEN** PC 端 SHALL 保留当前二次验证步骤和 challengeToken
+- **AND** 服务端错误 SHALL 使用 `totp-code-invalid` 问题类型
 - **AND** PC 端 SHALL 清空验证码并展示可执行错误
 - **AND** PC 端 SHALL NOT 要求重复提交密码
 
@@ -341,6 +342,7 @@ PC 端 SHALL 集成账号密码登录、可选 TOTP、认证状态初始化和�
 
 - **WHEN** TOTP 登录挑战过期、超过失败次数或被服务端判定失效
 - **THEN** PC 端 SHALL 丢弃 challengeToken 和验证码
+- **AND** 服务端错误 SHALL 使用 `totp-challenge-invalid` 问题类型，PC 端 SHALL 根据 `type` 识别
 - **AND** PC 端 SHALL 返回账号密码步骤
 
 #### 场景： 前端认证请求携带会话凭证
@@ -377,6 +379,7 @@ PC 端 SHALL 集成账号密码登录、可选 TOTP、认证状态初始化和�
 
 - **WHEN** enrollment token 过期、损坏、不属于当前用户，或者当前密码、TOTP 验证码无效
 - **THEN** 系统 SHALL 拒绝创建 TOTP 凭据
+- **AND** enrollment token 无效时服务端错误 SHALL 使用 `totp-enrollment-invalid` 问题类型，PC 端 SHALL 根据 `type` 识别并重新开始设置
 - **AND** 系统 SHALL NOT 将该用户标记为已启用 TOTP
 
 #### 场景： enrollment token 无法重放

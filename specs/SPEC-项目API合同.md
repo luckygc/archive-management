@@ -206,6 +206,8 @@ Content-Type: application/json
 - **AND** 新接口 SHALL NOT 把存量 `code`、`reason`、`fieldViolations`、`traceId` 和 `path` 扩展当成全局必填字段
 - **AND** 如果需要字段级校验错误，MAY 定义符合 RFC 9457 的特定问题类型，并参考其 `errors[{detail,pointer}]` 示例；该示例本身不是 RFC 强制字段
 
+当前已定义的问题类型见[API 问题类型](../docs/api-problems.md)。客户端以完整 `type` URI 比较问题类型，不从 `title` 或 `detail` 猜测。
+
 ## 存量接口兼容合同
 
 以下具体类型、字段、路径和响应约束仅约束尚未迁移的存量接口及其维护工作。迁移同一接口时，应同步修改业务规格、后端、前端 client/types 和测试；本节中的 `SHALL` 不覆盖上文对新接口的外部规范选择。
@@ -422,8 +424,8 @@ Content-Type: application/json
 
 - **WHEN** API 返回业务错误、校验错误或系统错误
 - **THEN** 响应 `Content-Type` SHALL 为 `application/problem+json`，响应体 SHALL 保留 `type`、`title`、`status`、`detail` 和 `instance` 等标准字段
-- **AND** 响应体 SHALL 通过扩展字段承载 `code`、`reason`、`fieldViolations`、`traceId` 和 `path`
-- **AND** 字段级校验错误 SHALL 放在顶层 `fieldViolations: [{field, message}]`
+- **AND** 尚未迁移的扩展字段 MAY 承载 `code`、`reason`、`traceId` 和 `path`；客户端不得将这些字段当作新接口的必填合同
+- **AND** 字段级校验错误 SHALL 使用对应问题类型的顶层 `errors: [{detail, pointer}]`，`pointer` 使用 JSON Pointer 路径
 - **AND** 前端 SHALL NOT 解析纯文本、HTML、异常类名或异常栈作为项目自有 API 错误合同
 
 ### 要求： ID 合同

@@ -14,6 +14,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 
+import github.luckygc.am.common.api.ApiProblemTypes;
 import github.luckygc.am.module.authentication.service.AuthenticationAuditService;
 
 import tools.jackson.databind.json.JsonMapper;
@@ -56,17 +57,15 @@ public class TotpChallengeAuthenticationFailureHandler implements Authentication
     private Map<String, Object> problemBody(
             HttpServletRequest request, HttpServletResponse response, String code) {
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("type", "about:blank");
+        body.put("type", ApiProblemTypes.fromCode(code).toString());
         body.put("title", "Unauthorized");
         body.put("status", HttpStatus.UNAUTHORIZED.value());
         body.put("detail", ERROR_MESSAGE);
-        body.put("code", code);
-        body.put("reason", code);
         String traceId = response.getHeader(TRACE_ID_HEADER);
         if (StringUtils.isNotBlank(traceId)) {
             body.put("traceId", traceId);
         }
-        body.put("path", request.getRequestURI());
+        body.put("instance", request.getRequestURI());
         return body;
     }
 }

@@ -6,19 +6,21 @@ const CSRF_HEADER_NAME = "X-XSRF-TOKEN";
 export const UNAUTHENTICATED_EVENT = "archive-management:unauthenticated";
 
 interface ProblemDetailBody {
+    type?: string;
     title?: string;
     status?: number;
     detail?: string;
     code?: string;
-    fieldViolations?: Array<{
-        field?: string;
-        message?: string;
+    errors?: Array<{
+        detail?: string;
+        pointer?: string;
     }>;
     traceId?: string;
 }
 
 export class HttpClientError extends Error {
     readonly status: number;
+    readonly type?: string;
     readonly code?: string;
     readonly fieldViolations: Array<{ field?: string; message?: string }>;
     readonly traceId?: string;
@@ -29,10 +31,12 @@ export class HttpClientError extends Error {
         code?: string,
         fieldViolations: Array<{ field?: string; message?: string }> = [],
         traceId?: string,
+        type?: string,
     ) {
         super(message);
         this.name = "HttpClientError";
         this.status = status;
+        this.type = type;
         this.code = code;
         this.fieldViolations = fieldViolations;
         this.traceId = traceId;
@@ -209,7 +213,12 @@ function toHttpClientError(error: unknown) {
         const body = problemDetailBody(response.data);
         if (body) {
             const fieldViolations =
-                body.fieldViolations?.filter((violation) => violation.message) ?? [];
+                body.errors
+                    ?.filter((error) => error.detail && error.pointer !== undefined)
+                    .map((error) => ({
+                        field: fieldFromPointer(error.pointer ?? ""),
+                        message: error.detail,
+                    })) ?? [];
             const message =
                 fieldViolations.length > 0
                     ? fieldViolations.map((violation) => violation.message).join("；")
@@ -220,6 +229,7 @@ function toHttpClientError(error: unknown) {
                 body.code,
                 fieldViolations,
                 body.traceId,
+                body.type,
             );
         }
 
@@ -238,6 +248,25 @@ function toHttpClientError(error: unknown) {
     return error instanceof HttpClientError
         ? error
         : new HttpClientError(error instanceof Error ? error.message : "请求失败", 0);
+}
+
+function fieldFromPointer(pointer: string) {
+    if (!pointer.startsWith("/")) {
+        return undefined;
+    }
+    return pointer
+        .slice(1)
+        .split("/")
+        .map((segment) => segment.replace(/~1/g, "/").replace(/~0/g, "~"))
+        .reduce(
+            (field, segment) =>
+                /^\d+$/.test(segment)
+                    ? `${field}[${segment}]`
+                    : field
+                      ? `${field}.${segment}`
+                      : segment,
+            "",
+        );
 }
 
 function problemDetailBody(value: unknown): ProblemDetailBody | undefined {

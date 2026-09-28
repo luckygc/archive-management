@@ -2,7 +2,11 @@
 import { onBeforeUnmount, onMounted, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 
-import { errorMessage, HttpClientError } from "@archive-management/frontend-core/api";
+import {
+    errorMessage,
+    HttpClientError,
+    PROBLEM_TYPES,
+} from "@archive-management/frontend-core/api";
 import type { TotpLoginChallengeDto } from "@archive-management/frontend-core/types";
 
 import { usePageTabsStore } from "@/stores/pageTabsStore";
@@ -69,7 +73,10 @@ async function submitTotp() {
         await completeLogin();
     } catch (error) {
         totpCode.value = "";
-        if (error instanceof HttpClientError && error.code === "TOTP_CHALLENGE_INVALID") {
+        if (
+            error instanceof HttpClientError &&
+            error.type === PROBLEM_TYPES.TOTP_CHALLENGE_INVALID
+        ) {
             returnToCredentials("二次验证已失效，请重新登录");
         } else {
             loginError.value = errorMessage(error, "验证码校验失败，请重试");

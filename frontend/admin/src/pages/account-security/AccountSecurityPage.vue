@@ -8,6 +8,7 @@ import {
     disableTotpCredential,
     errorMessage,
     HttpClientError,
+    PROBLEM_TYPES,
 } from "@archive-management/frontend-core/api";
 import type { TotpEnrollmentDto } from "@archive-management/frontend-core/types";
 
@@ -80,10 +81,16 @@ async function confirmEnrollment() {
         clearEnrollment();
         await refreshTotpState(credentialStatus.totpEnabled, "身份验证器已启用");
     } catch (error) {
-        if (error instanceof HttpClientError && error.code === "TOTP_ENROLLMENT_INVALID") {
+        if (
+            error instanceof HttpClientError &&
+            error.type === PROBLEM_TYPES.TOTP_ENROLLMENT_INVALID
+        ) {
             clearEnrollment();
             actionError.value = "设置已过期，请重新开始";
-        } else if (error instanceof HttpClientError && error.code === "TOTP_ALREADY_ENABLED") {
+        } else if (
+            error instanceof HttpClientError &&
+            error.type === PROBLEM_TYPES.TOTP_ALREADY_ENABLED
+        ) {
             clearEnrollment();
             await refreshTotpState(true, "身份验证器已经启用");
             actionError.value = "身份验证器已经启用";

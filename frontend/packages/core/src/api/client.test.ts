@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vite-plus/test";
 
 import { httpClient } from "./client";
+import { PROBLEM_TYPES } from "./problem-types";
 
 describe("httpClient", () => {
     it("generates browser download links without reading response bodies", () => {
@@ -21,8 +22,12 @@ describe("httpClient", () => {
                     title: "请求参数错误",
                     status: 400,
                     detail: "字段校验失败",
+                    type: "https://github.com/luckygc/archive-management/blob/main/docs/api-problems.md#invalid-argument",
                     code: "INVALID_ARGUMENT",
-                    fieldViolations: [{ field: "archiveNo", message: "档号已存在" }],
+                    errors: [
+                        { pointer: "/archiveNo", detail: "档号已存在" },
+                        { pointer: "/item/archiveYear", detail: "年度不合法" },
+                    ],
                     traceId: "trace-task-4",
                 }),
                 { status: 400, headers: { "content-type": "application/problem+json" } },
@@ -33,7 +38,11 @@ describe("httpClient", () => {
             httpClient.patch("http://localhost/archive-items/9", {}),
         ).rejects.toMatchObject({
             code: "INVALID_ARGUMENT",
-            fieldViolations: [{ field: "archiveNo", message: "档号已存在" }],
+            type: "https://github.com/luckygc/archive-management/blob/main/docs/api-problems.md#invalid-argument",
+            fieldViolations: [
+                { field: "archiveNo", message: "档号已存在" },
+                { field: "item.archiveYear", message: "年度不合法" },
+            ],
             traceId: "trace-task-4",
         });
         fetchSpy.mockRestore();
@@ -65,7 +74,7 @@ describe("httpClient", () => {
                     title: "认证失败",
                     status: 401,
                     detail: "账号或凭证错误",
-                    code: "TOTP_CODE_INVALID",
+                    type: PROBLEM_TYPES.TOTP_CODE_INVALID,
                 }),
                 { status: 401, headers: { "content-type": "application/problem+json" } },
             ),
@@ -76,7 +85,7 @@ describe("httpClient", () => {
                 challengeToken: "challenge-1",
                 code: "123456",
             }),
-        ).rejects.toMatchObject({ code: "TOTP_CODE_INVALID" });
+        ).rejects.toMatchObject({ type: PROBLEM_TYPES.TOTP_CODE_INVALID });
         expect(unauthenticated).not.toHaveBeenCalled();
 
         window.removeEventListener("archive-management:unauthenticated", unauthenticated);

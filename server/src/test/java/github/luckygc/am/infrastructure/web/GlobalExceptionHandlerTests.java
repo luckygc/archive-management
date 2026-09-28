@@ -2,6 +2,8 @@ package github.luckygc.am.infrastructure.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.net.URI;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;
@@ -36,6 +38,10 @@ class GlobalExceptionHandlerTests {
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
             assertThat(response.getBody()).isNotNull();
             assertThat(response.getBody().getStatus()).isEqualTo(404);
+            assertThat(response.getBody().getType())
+                    .isEqualTo(
+                            URI.create(
+                                    "https://github.com/luckygc/archive-management/blob/main/docs/api-problems.md#not-found"));
             assertThat(response.getBody().getTitle()).isEqualTo("资源不存在");
             assertThat(response.getBody().getDetail()).isEqualTo("档案记录不存在");
             assertThat(response.getBody().getProperties())
@@ -67,30 +73,34 @@ class GlobalExceptionHandlerTests {
     }
 
     @Test
-    @DisplayName("BadRequestException 输出字段级错误明细")
-    void badRequestExceptionIncludesFieldViolations() {
+    @DisplayName("BadRequestException 输出字段级 Problem Details 错误")
+    void badRequestExceptionIncludesFieldErrors() {
         MockHttpServletRequest request = new MockHttpServletRequest("POST", "/archive-items");
 
         var response =
                 handler.handleBadRequestException(
-                        new BadRequestException("年度必须在合法范围内", "archiveYear", "年度必须在合法范围内"),
+                        new BadRequestException("年度必须在合法范围内", "item.archiveYear", "年度必须在合法范围内"),
                         request);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().getStatus()).isEqualTo(400);
         assertThat(response.getBody().getTitle()).isEqualTo("请求参数无效");
+        assertThat(response.getBody().getType())
+                .isEqualTo(
+                        URI.create(
+                                "https://github.com/luckygc/archive-management/blob/main/docs/api-problems.md#invalid-argument"));
         assertThat(response.getBody().getProperties())
                 .containsEntry("code", "INVALID_ARGUMENT")
                 .containsEntry("reason", "FIELD_VIOLATION");
-        assertThat(response.getBody().getProperties().get("fieldViolations"))
+        assertThat(response.getBody().getProperties().get("errors"))
                 .asList()
                 .singleElement()
                 .satisfies(
                         violation ->
                                 assertThat(violation)
-                                        .hasFieldOrPropertyWithValue("field", "archiveYear")
-                                        .hasFieldOrPropertyWithValue("message", "年度必须在合法范围内"));
+                                        .hasFieldOrPropertyWithValue("pointer", "/item/archiveYear")
+                                        .hasFieldOrPropertyWithValue("detail", "年度必须在合法范围内"));
     }
 
     @Test
@@ -112,8 +122,8 @@ class GlobalExceptionHandlerTests {
     }
 
     @Test
-    @DisplayName("Spring MVC 请求体校验异常输出字段级错误明细")
-    void methodArgumentNotValidExceptionIncludesFieldViolations() throws Exception {
+    @DisplayName("Spring MVC 请求体校验异常输出字段级 Problem Details 错误")
+    void methodArgumentNotValidExceptionIncludesFieldErrors() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest("POST", "/archive-categories");
         BeanPropertyBindingResult bindingResult =
                 new BeanPropertyBindingResult(new TestRequest(""), "request");
@@ -143,16 +153,16 @@ class GlobalExceptionHandlerTests {
                                     .containsEntry("code", "INVALID_ARGUMENT")
                                     .containsEntry("reason", "FIELD_VIOLATION")
                                     .containsEntry("path", "/archive-categories");
-                            assertThat(problem.getProperties().get("fieldViolations"))
+                            assertThat(problem.getProperties().get("errors"))
                                     .asList()
                                     .singleElement()
                                     .satisfies(
                                             violation ->
                                                     assertThat(violation)
                                                             .hasFieldOrPropertyWithValue(
-                                                                    "field", "displayName")
+                                                                    "pointer", "/displayName")
                                                             .hasFieldOrPropertyWithValue(
-                                                                    "message", "名称不能为空"));
+                                                                    "detail", "名称不能为空"));
                         });
     }
 

@@ -4,7 +4,7 @@ import ElementPlus from "element-plus";
 import { nextTick } from "vue";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
-import { HttpClientError } from "@archive-management/frontend-core/api";
+import { HttpClientError, PROBLEM_TYPES } from "@archive-management/frontend-core/api";
 
 import { useSessionStore } from "@/stores/sessionStore";
 
@@ -202,7 +202,14 @@ describe("LoginPage", () => {
             challenge: { challengeToken: "challenge-1", expiresAt: "2099-08-09T10:05:00Z" },
         });
         mocks.verifyTotp.mockRejectedValue(
-            new HttpClientError("账号或凭证错误", 401, "TOTP_CODE_INVALID"),
+            new HttpClientError(
+                "账号或凭证错误",
+                401,
+                undefined,
+                [],
+                undefined,
+                PROBLEM_TYPES.TOTP_CODE_INVALID,
+            ),
         );
         const pinia = createPinia();
         setActivePinia(pinia);
@@ -225,7 +232,14 @@ describe("LoginPage", () => {
             challenge: { challengeToken: "challenge-1", expiresAt: "2099-08-09T10:05:00Z" },
         });
         mocks.verifyTotp.mockRejectedValue(
-            new HttpClientError("二次验证已失效", 401, "TOTP_CHALLENGE_INVALID"),
+            new HttpClientError(
+                "二次验证已失效",
+                401,
+                undefined,
+                [],
+                undefined,
+                PROBLEM_TYPES.TOTP_CHALLENGE_INVALID,
+            ),
         );
         const pinia = createPinia();
         setActivePinia(pinia);

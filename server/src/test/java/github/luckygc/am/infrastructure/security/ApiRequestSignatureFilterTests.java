@@ -64,8 +64,11 @@ class ApiRequestSignatureFilterTests {
         filter.doFilter(request, response, (servletRequest, servletResponse) -> {});
 
         assertThat(response.getStatus()).isEqualTo(400);
+        assertThat(response.getContentType()).startsWith("application/problem+json");
+        assertThat(response.getContentAsString()).contains("api-problems.md#invalid-argument");
+        assertThat(response.getContentAsString()).contains("\"path\":\"/archive-items\"");
         assertThat(response.getContentAsString()).contains("INVALID_ARGUMENT");
-        assertThat(response.getContentAsString()).contains("fieldViolations");
+        assertThat(response.getContentAsString()).contains("\"errors\"");
     }
 
     @Test

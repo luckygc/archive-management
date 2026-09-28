@@ -156,7 +156,10 @@ class TotpLoginFlowIntegrationTests extends PostgreSqlContainerTest {
 
         verifyTotp(challengeToken, nextCode, new MockHttpSession())
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value("TOTP_CHALLENGE_INVALID"));
+                .andExpect(
+                        jsonPath("$.type")
+                                .value(
+                                        "https://github.com/luckygc/archive-management/blob/main/docs/api-problems.md#totp-challenge-invalid"));
     }
 
     private org.springframework.test.web.servlet.ResultActions login() throws Exception {

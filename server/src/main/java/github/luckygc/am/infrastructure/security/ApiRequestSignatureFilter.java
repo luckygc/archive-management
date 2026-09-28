@@ -30,6 +30,7 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import github.luckygc.am.common.api.ApiProblemError;
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.infrastructure.security.config.ApiRequestSignatureProperties;
 import github.luckygc.am.infrastructure.web.GlobalExceptionHandler;
@@ -99,7 +100,7 @@ public class ApiRequestSignatureFilter extends OncePerRequestFilter {
             verify(cachedRequest);
             filterChain.doFilter(cachedRequest, response);
         } catch (BadRequestException exception) {
-            writeBadRequest(response, exception);
+            writeBadRequest(request, response, exception);
         }
     }
 
@@ -167,17 +168,22 @@ public class ApiRequestSignatureFilter extends OncePerRequestFilter {
         return new BadRequestException("请求签名不合法", field, description);
     }
 
-    private void writeBadRequest(HttpServletResponse response, BadRequestException exception)
+    private void writeBadRequest(
+            HttpServletRequest request, HttpServletResponse response, BadRequestException exception)
             throws IOException {
         response.setStatus(HttpStatus.BAD_REQUEST.value());
-        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
         ProblemDetail problem =
-                ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, exception.getMessage());
-        problem.setTitle("请求参数无效");
-        problem.setProperty("code", "INVALID_ARGUMENT");
-        problem.setProperty("reason", "FIELD_VIOLATION");
-        problem.setProperty("fieldViolations", exception.fieldViolations());
+                GlobalExceptionHandler.problem(
+                        HttpStatus.BAD_REQUEST,
+                        "请求参数无效",
+                        exception.getMessage(),
+                        "INVALID_ARGUMENT",
+                        "FIELD_VIOLATION",
+                        request);
+        problem.setProperty(
+                "errors", exception.fieldViolations().stream().map(ApiProblemError::from).toList());
         jsonMapper.writeValue(response.getWriter(), GlobalExceptionHandler.problemBody(problem));
     }
 

@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/vu
 import ElementPlus, { ElMessage } from "element-plus";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
-import { HttpClientError } from "@archive-management/frontend-core/api";
+import { HttpClientError, PROBLEM_TYPES } from "@archive-management/frontend-core/api";
 
 import { useSessionStore } from "@/stores/sessionStore";
 
@@ -123,7 +123,14 @@ describe("AccountSecurityPage", () => {
 
     it("enrollment 失效时清除一次性密钥并提示重新开始", async () => {
         apiMocks.createTotpCredential.mockRejectedValue(
-            new HttpClientError("设置凭据无效", 400, "TOTP_ENROLLMENT_INVALID"),
+            new HttpClientError(
+                "设置凭据无效",
+                400,
+                undefined,
+                [],
+                undefined,
+                PROBLEM_TYPES.TOTP_ENROLLMENT_INVALID,
+            ),
         );
         renderPage(false);
         await fireEvent.click(screen.getByRole("button", { name: "启用身份验证器" }));

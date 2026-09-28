@@ -29,6 +29,8 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 import github.luckygc.am.common.api.ApiFieldViolation;
+import github.luckygc.am.common.api.ApiProblemError;
+import github.luckygc.am.common.api.ApiProblemTypes;
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.common.security.UnauthenticatedException;
 
@@ -178,6 +180,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             String reason,
             HttpServletRequest request) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, detail);
+        problem.setType(ApiProblemTypes.fromCode(code));
         problem.setTitle(title);
         problem.setProperty("code", code);
         problem.setProperty("reason", reason);
@@ -197,6 +200,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             String reason,
             WebRequest request) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, detail);
+        problem.setType(ApiProblemTypes.fromCode(code));
         problem.setTitle(title);
         problem.setProperty("code", code);
         problem.setProperty("reason", reason);
@@ -222,7 +226,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     private void withFieldViolations(
             ProblemDetail problem, List<ApiFieldViolation> fieldViolations) {
         if (!fieldViolations.isEmpty()) {
-            problem.setProperty("fieldViolations", fieldViolations);
+            problem.setProperty(
+                    "errors", fieldViolations.stream().map(ApiProblemError::from).toList());
         }
     }
 
@@ -237,6 +242,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         Map<String, Object> properties = problem.getProperties();
         if (properties == null || !properties.containsKey("code")) {
             problem.setProperty("code", canonicalCode(statusCode));
+        }
+        if (problem.getType() == null || "about:blank".equals(problem.getType().toString())) {
+            problem.setType(ApiProblemTypes.fromCode(canonicalCode(statusCode)));
         }
         if (properties == null || !properties.containsKey("reason")) {
             problem.setProperty("reason", canonicalCode(statusCode) + "_ERROR");
