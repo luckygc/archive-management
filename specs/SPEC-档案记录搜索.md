@@ -177,6 +177,7 @@
 - **WHEN** 具有档案元数据管理权限的用户调用 `POST /archive-categories/{categoryId}:rebuildSearchProjection`
 - **THEN** 系统 SHALL 返回 `202 Accepted` 和 `JobAcceptedResponse`
 - **AND** 响应 SHALL 提供指向 `/archive-search-projection-rebuild-jobs/{jobId}` 的 `operationLocation`
+- **AND** 响应头 SHALL 提供字符串 `Operation-Id`、指向 `/operations/{id}` 的绝对 `Operation-Location` 以及 `Retry-After`；旧响应体和 `Location` 在调用方迁移前保留
 - **AND** 系统 SHALL 冻结任务创建时待处理档案条目的 ID 上界
 - **AND** 系统 SHALL NOT 在启动请求内同步遍历该分类全部档案条目
 
@@ -195,6 +196,15 @@
 - **AND** 成功任务的 `status` SHALL 为 `succeeded` 且 `progress` SHALL 为 `100`
 - **AND** 成功任务的 `result` SHALL 包含分类 ID 和实际重建数量
 - **AND** 失败任务 SHALL 返回稳定的 `errorCode` 和可展示的 `errorMessage`
+
+#### 场景： 重新登录后找回搜索投影重建任务
+
+- **WHEN** 发起人关闭浏览器、刷新页面或会话过期后重新登录，且仍具有档案元数据管理权限
+- **THEN** 系统 SHALL 允许其通过 `GET /operations` 分页列出自己发起的搜索投影重建任务，并通过 `GET /operations/{id}` 查询状态
+- **AND** 列表 SHALL 按任务 ID 倒序返回 `items`、`self` 及可用时的 `prev`、`next` 链接，使用不透明 `cursor`；`limit` 默认 20、最大 100，不计算总数
+- **AND** 状态资源 SHALL 使用 Azure 的 `id`、`status`、`kind`、失败时的 `error`、成功时的 `result`；未结束时 SHALL 返回 `Retry-After`
+- **AND** 系统 SHALL 在每次列表或状态查询时重新校验登录身份和档案元数据管理权限；状态资源只向发起人展示，其他用户得到 `404`
+- **AND** 浏览器关闭或退出登录 SHALL NOT 取消已受理任务；当前任务记录与结果摘要不自动清理，状态资源至少保留 24 小时，失败后再次发起将创建新任务
 
 ### 要求： 条目关联检索边界
 

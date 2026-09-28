@@ -16,6 +16,8 @@
 
 调用失败时，客户端按 `api-contract` 定义的 ProblemDetail 处理；新接口用 `type` 识别问题类型，存量接口可保留 `traceId` 用于排障。不要依赖异常类名、HTML 错误页或自由文本推断错误类型。集合、分页和异步任务同样只按 `api-contract` 消费，不根据实现框架类型猜测合同。
 
+搜索投影重建任务已支持断线后找回：受理响应头的 `Operation-Location` 是绝对监视地址，客户端可按 `Retry-After` 轮询；重新登录后可通过 `GET /operations` 查找自己发起且仍有权限查看的任务，再通过 `GET /operations/{id}` 读取状态。当前操作类型、分页限额、结果保留和存量响应体的兼容边界见[档案记录搜索规格](../specs/SPEC-档案记录搜索.md)。本地 Vite 开发服务器会将 `/operations` 转发到 Spring Boot。
+
 ## 业务规格索引
 
 ### 身份、权限和组织

@@ -12,6 +12,7 @@ public final class ApiRequestPaths {
                     "file-links",
                     "intake",
                     "me",
+                    "operations",
                     "public-file-links",
                     "unified-todos",
                     "workspace-summary");

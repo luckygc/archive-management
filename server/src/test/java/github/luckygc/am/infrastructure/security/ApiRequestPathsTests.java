@@ -21,6 +21,8 @@ class ApiRequestPathsTests {
                 "/intake",
                 "/login-sessions",
                 "/me",
+                "/operations",
+                "/operations/archive-search-projection-rebuild-17",
                 "/organization-departments",
                 "/public-file-links/code:download",
                 "/totp-credentials",

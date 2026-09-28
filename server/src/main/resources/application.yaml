@@ -232,6 +232,10 @@ archive:
                 - X-AM-Signature
             exposed-headers:
                 - X-Trace-Id
+                - Operation-Id
+                - Operation-Location
+                - Retry-After
+                - Location
             allow-credentials: true
             max-age: 3600
     search:

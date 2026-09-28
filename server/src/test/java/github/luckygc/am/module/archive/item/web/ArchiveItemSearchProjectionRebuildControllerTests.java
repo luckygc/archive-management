@@ -8,6 +8,8 @@ import static org.mockito.Mockito.when;
 import java.time.LocalDateTime;
 import java.util.Map;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -38,11 +40,21 @@ class ArchiveItemSearchProjectionRebuildControllerTests {
                 new JobAcceptedResponse(
                         17L, "queued", "/archive-search-projection-rebuild-jobs/17");
         when(rebuildService.start(3L, 9L)).thenReturn(accepted);
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getRequestURL())
+                .thenReturn(
+                        new StringBuffer(
+                                "http://localhost:8080/archive-categories/3:rebuildSearchProjection"));
 
-        var response = controller.startRebuild(3L, authentication);
+        var response = controller.startRebuild(3L, authentication, request);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
         assertThat(response.getHeaders().getFirst("Operation-Location"))
+                .isEqualTo("http://localhost:8080/operations/archive-search-projection-rebuild-17");
+        assertThat(response.getHeaders().getFirst("Operation-Id"))
+                .isEqualTo("archive-search-projection-rebuild-17");
+        assertThat(response.getHeaders().getFirst("Retry-After")).isEqualTo("5");
+        assertThat(response.getHeaders().getFirst("Location"))
                 .isEqualTo(accepted.operationLocation());
         assertThat(response.getBody()).isEqualTo(accepted);
         verify(permissionService)

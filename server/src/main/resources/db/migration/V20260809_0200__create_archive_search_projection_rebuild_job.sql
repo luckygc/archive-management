@@ -24,6 +24,9 @@ create index idx_am_archive_item_search_rebuild_job_pending
     on am_archive_item_search_rebuild_job (status, id)
     where status in ('QUEUED', 'RUNNING');
 
+create index idx_am_archive_item_search_rebuild_job_requested_by
+    on am_archive_item_search_rebuild_job (requested_by, id desc);
+
 comment on table am_archive_item_search_rebuild_job is '档案条目搜索投影重建任务';
 comment on column am_archive_item_search_rebuild_job.id is '任务 ID';
 comment on column am_archive_item_search_rebuild_job.category_id is '档案分类 ID';

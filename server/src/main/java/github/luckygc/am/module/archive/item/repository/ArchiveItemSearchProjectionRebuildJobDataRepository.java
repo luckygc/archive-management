@@ -5,6 +5,8 @@ import java.util.Optional;
 
 import jakarta.annotation.Nonnull;
 import jakarta.data.Limit;
+import jakarta.data.page.CursoredPage;
+import jakarta.data.page.PageRequest;
 import jakarta.data.repository.By;
 import jakarta.data.repository.Find;
 import jakarta.data.repository.Insert;
@@ -12,6 +14,7 @@ import jakarta.data.repository.OrderBy;
 import jakarta.data.repository.Repository;
 import jakarta.data.repository.Update;
 
+import org.hibernate.annotations.processing.HQL;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,6 +33,12 @@ public interface ArchiveItemSearchProjectionRebuildJobDataRepository {
     @OrderBy("id")
     List<ArchiveItemSearchProjectionRebuildJob> findByStatus(
             @Nonnull ArchiveItemSearchProjectionRebuildJobStatus status, Limit limit);
+
+    @Transactional(readOnly = true)
+    @OrderBy(value = "id", descending = true)
+    @HQL("from ArchiveItemSearchProjectionRebuildJob job where job.requestedBy = ?1")
+    CursoredPage<ArchiveItemSearchProjectionRebuildJob> findByRequestedBy(
+            @Nonnull Long requestedBy, PageRequest pageRequest);
 
     @Insert
     ArchiveItemSearchProjectionRebuildJob insert(
