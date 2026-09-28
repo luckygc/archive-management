@@ -44,11 +44,11 @@ export function updateApprovalWorkflowDefinition(
     payload: ApprovalWorkflowDefinitionRequest,
 ) {
     const { definitionName, businessType, graph } = payload;
-    return httpClient.patch<ApprovalWorkflowDefinitionDto>(`/approval-workflow-definitions/${id}`, {
-        definitionName,
-        businessType,
-        graph,
-    });
+    return httpClient.patch<ApprovalWorkflowDefinitionDto>(
+        `/approval-workflow-definitions/${id}`,
+        { definitionName, businessType, graph },
+        { headers: { "Content-Type": "application/merge-patch+json" } },
+    );
 }
 
 export function getApprovalWorkflowDefinition(id: number) {

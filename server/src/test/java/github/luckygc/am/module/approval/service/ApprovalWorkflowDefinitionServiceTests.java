@@ -1,8 +1,10 @@
 package github.luckygc.am.module.approval.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -16,6 +18,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.approval.ApprovalAction;
 import github.luckygc.am.module.approval.ApprovalCandidateStrategy;
 import github.luckygc.am.module.approval.ApprovalNodeType;
@@ -93,6 +96,45 @@ class ApprovalWorkflowDefinitionServiceTests {
         verify(userManagementService).requireEnabledUsers(List.of(20L));
         verify(processEngine).deploy(any(), any(), any());
         verify(definitionRepository).update(definition);
+    }
+
+    @Test
+    @DisplayName("流程图补丁仅替换连线数组并保留节点，空补丁不增加草稿版本")
+    void patchGraphMergesNestedObject() {
+        ApprovalWorkflowDefinition definition = definition();
+        when(definitionRepository.findById(1L)).thenReturn(java.util.Optional.of(definition));
+        when(definitionRepository.update(definition)).thenReturn(definition);
+
+        var changed =
+                service.updateDefinition(1L, jsonMapper.readTree("{\"graph\":{\"edges\":[]}}"), 9L);
+        var unchanged = service.updateDefinition(1L, jsonMapper.readTree("{}"), 9L);
+
+        assertThat(changed.graph().nodes()).hasSize(3);
+        assertThat(changed.graph().edges()).isEmpty();
+        assertThat(changed.draftRevision()).isEqualTo(2);
+        assertThat(unchanged.draftRevision()).isEqualTo(2);
+        verify(definitionRepository).update(definition);
+    }
+
+    @Test
+    @DisplayName("流程定义补丁拒绝删除必需字段和修改独立动作字段")
+    void patchRejectsRequiredAndActionFields() {
+        ApprovalWorkflowDefinition definition = definition();
+        when(definitionRepository.findById(1L)).thenReturn(java.util.Optional.of(definition));
+
+        for (String patch :
+                List.of(
+                        "{\"definitionName\":null}",
+                        "{\"graph\":null}",
+                        "{\"graph\":{\"nodes\":null}}",
+                        "{\"graph\":{\"nodes\":[{\"bogus\":1}]}}",
+                        "[]",
+                        "{\"enabled\":false}")) {
+            assertThatThrownBy(() -> service.updateDefinition(1L, jsonMapper.readTree(patch), 9L))
+                    .isInstanceOf(BadRequestException.class);
+        }
+
+        verify(definitionRepository, never()).update(definition);
     }
 
     private ApprovalWorkflowDefinition definition() {

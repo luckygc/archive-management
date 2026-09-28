@@ -3,6 +3,7 @@ package github.luckygc.am.module.approval.service;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 import jakarta.data.page.PageRequest;
@@ -14,7 +15,10 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 import github.luckygc.am.common.api.CursorPageResponse;
+import github.luckygc.am.common.api.JsonMergePatch;
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.approval.ApprovalNodeType;
 import github.luckygc.am.module.approval.ApprovalWorkflowDefinition;
@@ -28,7 +32,9 @@ import github.luckygc.am.module.authentication.service.AuthenticationUserManagem
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionCode;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
 
+import tools.jackson.core.JacksonException;
 import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 @Service
@@ -36,6 +42,31 @@ public class ApprovalWorkflowDefinitionService {
 
     private static final Pattern CODE_PATTERN = Pattern.compile("[a-z][a-z0-9_-]{0,99}");
     private static final TypeReference<ApprovalWorkflowGraph> GRAPH_TYPE = new TypeReference<>() {};
+    private static final Set<String> PATCH_FIELDS =
+            Set.of("definitionName", "businessType", "graph");
+    private static final Set<String> READ_ONLY_FIELDS =
+            Set.of(
+                    "id",
+                    "definitionCode",
+                    "enabled",
+                    "draftRevision",
+                    "publishedVersionId",
+                    "createdAt",
+                    "updatedAt");
+    private static final Set<String> GRAPH_FIELDS = Set.of("nodes", "edges");
+    private static final Set<String> NODE_FIELDS =
+            Set.of(
+                    "nodeCode",
+                    "nodeName",
+                    "nodeType",
+                    "x",
+                    "y",
+                    "candidateStrategy",
+                    "candidateUserIds",
+                    "allowedActions");
+    private static final Set<String> EDGE_FIELDS =
+            Set.of("edgeCode", "sourceNodeCode", "targetNodeCode", "defaultFlow", "condition");
+    private static final Set<String> CONDITION_FIELDS = Set.of("field", "operator", "values");
 
     private final ApprovalWorkflowDefinitionDataRepository definitionRepository;
     private final ApprovalWorkflowDefinitionVersionDataRepository versionRepository;
@@ -133,21 +164,91 @@ public class ApprovalWorkflowDefinitionService {
 
     @Transactional
     public ApprovalWorkflowDefinitionResponse updateDefinition(
-            Long id, UpdateApprovalWorkflowDefinitionRequest request, Long userId) {
+            Long id, JsonNode patch, Long userId) {
         requireManage(userId);
         ApprovalWorkflowDefinition definition = loadDefinition(id);
-        if (request.definitionName() != null) {
-            definition.setDefinitionName(requiredText(request.definitionName(), "definitionName"));
+        requireObject(patch, PATCH_FIELDS, "", true);
+        for (String field : patch.propertyNames()) {
+            if (READ_ONLY_FIELDS.contains(field)) {
+                throw new BadRequestException("不支持修改字段 " + field, field, "字段不可修改");
+            }
         }
-        if (request.businessType() != null) {
-            definition.setBusinessType(requiredCode(request.businessType(), "businessType"));
+        String name =
+                patch.has("definitionName")
+                        ? requiredText(textField(patch, "definitionName"), "definitionName")
+                        : definition.getDefinitionName();
+        String businessType =
+                patch.has("businessType")
+                        ? requiredCode(textField(patch, "businessType"), "businessType")
+                        : definition.getBusinessType();
+        ApprovalWorkflowGraph currentGraph = readGraph(definition.getGraphJson());
+        ApprovalWorkflowGraph graph = currentGraph;
+        if (patch.has("graph")) {
+            JsonNode graphPatch = patch.get("graph");
+            if (graphPatch.isNull()) {
+                throw new BadRequestException("graph 不能删除", "graph", "流程图不能为空");
+            }
+            JsonNode mergedGraph =
+                    JsonMergePatch.apply(
+                            jsonMapper.readTree(definition.getGraphJson()), graphPatch);
+            validateGraphShape(mergedGraph);
+            try {
+                graph =
+                        graphValidator.validateDraft(
+                                jsonMapper.readValue(mergedGraph.toString(), GRAPH_TYPE));
+            } catch (JacksonException exception) {
+                throw new BadRequestException("graph 不合法", "graph", "流程图格式不合法");
+            }
         }
-        if (request.graph() != null) {
-            definition.setGraphJson(
-                    jsonMapper.writeValueAsString(graphValidator.validateDraft(request.graph())));
+        if (name.equals(definition.getDefinitionName())
+                && businessType.equals(definition.getBusinessType())
+                && graph.equals(currentGraph)) {
+            return toResponse(definition);
         }
+        definition.setDefinitionName(name);
+        definition.setBusinessType(businessType);
+        definition.setGraphJson(jsonMapper.writeValueAsString(graph));
         definition.setDraftRevision(definition.getDraftRevision() + 1);
         return toResponse(definitionRepository.update(definition));
+    }
+
+    private String textField(JsonNode patch, String field) {
+        JsonNode value = patch.get(field);
+        if (value.isNull() || !value.isTextual()) {
+            throw new BadRequestException(field + " 不合法", field, field + " 不合法");
+        }
+        return value.asText();
+    }
+
+    private void validateGraphShape(JsonNode graph) {
+        requireObject(graph, GRAPH_FIELDS, "graph", false);
+        for (String field : GRAPH_FIELDS) {
+            if (!graph.has(field) || !graph.get(field).isArray()) {
+                throw new BadRequestException("graph." + field + " 不合法", "graph." + field, "必须为数组");
+            }
+        }
+        for (JsonNode node : graph.get("nodes")) {
+            requireObject(node, NODE_FIELDS, "graph.nodes", false);
+        }
+        for (JsonNode edge : graph.get("edges")) {
+            requireObject(edge, EDGE_FIELDS, "graph.edges", false);
+            JsonNode condition = edge.get("condition");
+            if (condition != null && !condition.isNull()) {
+                requireObject(condition, CONDITION_FIELDS, "graph.edges.condition", false);
+            }
+        }
+    }
+
+    private void requireObject(
+            JsonNode node, Set<String> fields, String path, boolean ignoreUnknownNull) {
+        if (node == null || !node.isObject()) {
+            throw new BadRequestException(path + " 补丁必须是对象");
+        }
+        for (String field : node.propertyNames()) {
+            if (!fields.contains(field) && (!ignoreUnknownNull || !node.get(field).isNull())) {
+                throw new BadRequestException("不支持修改字段 " + field, field, "字段不可修改");
+            }
+        }
     }
 
     @Transactional
@@ -282,11 +383,7 @@ public class ApprovalWorkflowDefinitionService {
             String businessType,
             ApprovalWorkflowGraph graph) {}
 
-    public record UpdateApprovalWorkflowDefinitionRequest(
-            @Nullable String definitionName,
-            @Nullable String businessType,
-            @Nullable ApprovalWorkflowGraph graph) {}
-
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     public record ApprovalWorkflowDefinitionResponse(
             Long id,
             String definitionCode,

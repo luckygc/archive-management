@@ -5,10 +5,11 @@ import {
     listApprovalWorkflowDefinitionVersions,
     publishApprovalWorkflowDefinition,
     rejectApprovalWorkflowTask,
+    updateApprovalWorkflowDefinition,
     withdrawApprovalWorkflowInstance,
 } from "./approval-workflow";
 
-const httpClientMock = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn() }));
+const httpClientMock = vi.hoisted(() => ({ get: vi.fn(), patch: vi.fn(), post: vi.fn() }));
 
 vi.mock("@archive-management/frontend-core/api", () => ({ httpClient: httpClientMock }));
 
@@ -17,6 +18,21 @@ beforeEach(() => {
 });
 
 describe("approval workflow API", () => {
+    it("流程定义更新使用 Merge Patch 媒体类型", async () => {
+        const graph = { nodes: [], edges: [] };
+        await updateApprovalWorkflowDefinition(7, {
+            definitionName: "合同审批",
+            businessType: "contract",
+            graph,
+        });
+
+        expect(httpClientMock.patch).toHaveBeenCalledWith(
+            "/approval-workflow-definitions/7",
+            { definitionName: "合同审批", businessType: "contract", graph },
+            { headers: { "Content-Type": "application/merge-patch+json" } },
+        );
+    });
+
     it("定义版本列表将游标参数放入 URL query", async () => {
         await listApprovalWorkflowDefinitionVersions(7, { limit: 200, cursor: "next-token" });
 

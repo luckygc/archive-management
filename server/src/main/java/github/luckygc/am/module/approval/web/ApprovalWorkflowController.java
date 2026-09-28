@@ -23,13 +23,14 @@ import github.luckygc.am.module.approval.service.ApprovalWorkflowDefinitionServi
 import github.luckygc.am.module.approval.service.ApprovalWorkflowDefinitionService.ApprovalWorkflowDefinitionResponse;
 import github.luckygc.am.module.approval.service.ApprovalWorkflowDefinitionService.ApprovalWorkflowDefinitionVersionResponse;
 import github.luckygc.am.module.approval.service.ApprovalWorkflowDefinitionService.CreateApprovalWorkflowDefinitionRequest;
-import github.luckygc.am.module.approval.service.ApprovalWorkflowDefinitionService.UpdateApprovalWorkflowDefinitionRequest;
 import github.luckygc.am.module.approval.service.ApprovalWorkflowInstanceService;
 import github.luckygc.am.module.approval.service.ApprovalWorkflowInstanceService.ApprovalWorkflowInstanceActionRequest;
 import github.luckygc.am.module.approval.service.ApprovalWorkflowInstanceService.ApprovalWorkflowInstanceDetailResponse;
 import github.luckygc.am.module.approval.service.ApprovalWorkflowInstanceService.ApprovalWorkflowInstanceResponse;
 import github.luckygc.am.module.approval.service.ApprovalWorkflowInstanceService.CompleteApprovalWorkflowTaskRequest;
 import github.luckygc.am.module.approval.service.ApprovalWorkflowInstanceService.StartApprovalWorkflowInstanceRequest;
+
+import tools.jackson.databind.JsonNode;
 
 @RestController
 public class ApprovalWorkflowController {
@@ -78,10 +79,12 @@ public class ApprovalWorkflowController {
         return definitionService.createDefinition(request, userId(authentication));
     }
 
-    @PatchMapping("/approval-workflow-definitions/{id}")
+    @PatchMapping(
+            value = "/approval-workflow-definitions/{id}",
+            consumes = "application/merge-patch+json")
     public ApprovalWorkflowDefinitionResponse updateDefinition(
             @PathVariable Long id,
-            @RequestBody UpdateApprovalWorkflowDefinitionRequest request,
+            @RequestBody JsonNode request,
             @Nullable Authentication authentication) {
         return definitionService.updateDefinition(id, request, userId(authentication));
     }

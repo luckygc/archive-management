@@ -4,6 +4,8 @@ import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 import github.luckygc.am.module.approval.ApprovalAction;
 import github.luckygc.am.module.approval.ApprovalCandidateStrategy;
 import github.luckygc.am.module.approval.ApprovalConditionOperator;
@@ -22,6 +24,7 @@ public final class ApprovalWorkflowTypes {
         }
     }
 
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     public record ApprovalFlowNode(
             String nodeCode,
             String nodeName,
@@ -38,6 +41,7 @@ public final class ApprovalWorkflowTypes {
         }
     }
 
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     public record ApprovalFlowEdge(
             String edgeCode,
             String sourceNodeCode,
