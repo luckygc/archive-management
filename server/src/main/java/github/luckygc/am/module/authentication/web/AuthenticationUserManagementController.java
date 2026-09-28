@@ -1,5 +1,7 @@
 package github.luckygc.am.module.authentication.web;
 
+import java.util.Set;
+
 import jakarta.data.page.PageRequest;
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -35,6 +37,18 @@ import tools.jackson.databind.JsonNode;
 
 @RestController
 public class AuthenticationUserManagementController {
+
+    private static final Set<String> PATCH_FIELDS =
+            Set.of("displayName", "email", "mobilePhone", "departmentId", "enabled");
+    private static final Set<String> READ_ONLY_FIELDS =
+            Set.of(
+                    "id",
+                    "username",
+                    "password",
+                    "departmentCode",
+                    "departmentName",
+                    "createdAt",
+                    "roles");
 
     private final AuthenticationUserManagementService userService;
     private final TotpCredentialService totpCredentialService;
@@ -87,7 +101,7 @@ public class AuthenticationUserManagementController {
                         authentication == null ? null : authentication.getPrincipal()));
     }
 
-    @PatchMapping("/authentication-users/{id}")
+    @PatchMapping(value = "/authentication-users/{id}", consumes = "application/merge-patch+json")
     public AuthenticationUserDto updateUser(
             @PathVariable Long id,
             @RequestBody JsonNode request,
@@ -155,9 +169,15 @@ public class AuthenticationUserManagementController {
         if (request == null || !request.isObject()) {
             throw new BadRequestException("请求体不能为空");
         }
-        String displayName = nullableText(request, "displayName");
-        String email = nullableText(request, "email");
-        String mobilePhone = nullableText(request, "mobilePhone");
+        for (String fieldName : request.propertyNames()) {
+            if (!PATCH_FIELDS.contains(fieldName)
+                    && (READ_ONLY_FIELDS.contains(fieldName) || !request.get(fieldName).isNull())) {
+                throw new BadRequestException("不支持修改字段 " + fieldName, fieldName, "字段不可修改");
+            }
+        }
+        String displayName = nullableText(request, "displayName", false);
+        String email = nullableText(request, "email", true);
+        String mobilePhone = nullableText(request, "mobilePhone", true);
         Boolean enabled = nullableBoolean(request, "enabled");
         if (request.has("departmentId")) {
             return new UpdateAuthenticationUserRequest(
@@ -171,13 +191,16 @@ public class AuthenticationUserManagementController {
                 displayName, email, mobilePhone, enabled);
     }
 
-    private @Nullable String nullableText(JsonNode request, String fieldName) {
+    private @Nullable String nullableText(JsonNode request, String fieldName, boolean removable) {
         JsonNode value = request.get(fieldName);
         if (value == null) {
             return null;
         }
         if (value.isNull()) {
-            return "";
+            if (removable) {
+                return "";
+            }
+            throw new BadRequestException(fieldName + "不合法", fieldName, fieldName + "不合法");
         }
         if (!value.isTextual()) {
             throw new BadRequestException(fieldName + "不合法", fieldName, fieldName + "不合法");
@@ -198,10 +221,10 @@ public class AuthenticationUserManagementController {
 
     private @Nullable Boolean nullableBoolean(JsonNode request, String fieldName) {
         JsonNode value = request.get(fieldName);
-        if (value == null || value.isNull()) {
+        if (value == null) {
             return null;
         }
-        if (!value.isBoolean()) {
+        if (value.isNull() || !value.isBoolean()) {
             throw new BadRequestException(fieldName + "不合法", fieldName, fieldName + "不合法");
         }
         return value.asBoolean();

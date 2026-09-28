@@ -48,6 +48,7 @@ class AuthenticationUserManagementServiceTests {
     private AuthorizationPermissionService permissionService;
     private OrganizationDepartmentService departmentService;
     private PasswordEncoder passwordEncoder;
+    private TotpCredentialService totpCredentialService;
     private AuthenticationUserManagementService userService;
 
     private static final Long OPERATOR_ID = 1L;
@@ -60,6 +61,7 @@ class AuthenticationUserManagementServiceTests {
         permissionService = mock(AuthorizationPermissionService.class);
         departmentService = mock(OrganizationDepartmentService.class);
         passwordEncoder = mock(PasswordEncoder.class);
+        totpCredentialService = mock(TotpCredentialService.class);
         userService =
                 new AuthenticationUserManagementService(
                         userRepository,
@@ -68,7 +70,7 @@ class AuthenticationUserManagementServiceTests {
                         permissionService,
                         departmentService,
                         passwordEncoder,
-                        mock(TotpCredentialService.class));
+                        totpCredentialService);
     }
 
     // ── createUser ──
@@ -318,6 +320,25 @@ class AuthenticationUserManagementServiceTests {
                         OPERATOR_ID);
 
         assertThat(result.enabled()).isFalse();
+        verify(totpCredentialService).clearTransientState(10L);
+    }
+
+    @Test
+    @DisplayName("空补丁不写用户，也不触发认证状态清理")
+    void updateUserShouldAvoidNoopSideEffects() {
+        AuthenticationUser user = userEntity(10L, "zhangsan");
+        when(userRepository.findById(10L)).thenReturn(Optional.of(user));
+
+        AuthenticationUserDto result =
+                userService.updateUser(
+                        10L,
+                        UpdateAuthenticationUserRequest.withoutDepartmentChange(
+                                null, null, null, null),
+                        OPERATOR_ID);
+
+        assertThat(result.username()).isEqualTo("zhangsan");
+        verify(userRepository, never()).update(any());
+        verify(totpCredentialService, never()).clearTransientState(any());
     }
 
     @Test

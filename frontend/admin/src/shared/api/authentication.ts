@@ -44,7 +44,9 @@ export function getAuthenticationUser(id: number) {
 }
 
 export function updateAuthenticationUser(id: number, payload: UpdateAuthenticationUserRequest) {
-    return httpClient.patch<AuthenticationUserDto>(`/authentication-users/${id}`, payload);
+    return httpClient.patch<AuthenticationUserDto>(`/authentication-users/${id}`, payload, {
+        headers: { "Content-Type": "application/merge-patch+json" },
+    });
 }
 
 export function resetAuthenticationUserPassword(id: number, payload: ResetPasswordRequest) {

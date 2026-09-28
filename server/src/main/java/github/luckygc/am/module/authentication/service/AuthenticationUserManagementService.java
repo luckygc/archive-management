@@ -1,6 +1,7 @@
 package github.luckygc.am.module.authentication.service;
 
 import java.util.List;
+import java.util.Objects;
 
 import jakarta.data.page.CursoredPage;
 import jakarta.data.page.PageRequest;
@@ -12,6 +13,8 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
 
 import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.common.exception.BadRequestException;
@@ -153,28 +156,40 @@ public class AuthenticationUserManagementService {
                 userRepository
                         .findById(id)
                         .orElseThrow(() -> new BadRequestException("用户不存在", "id", "用户不存在"));
+        String displayName = user.getDisplayName();
         if (request.displayName() != null) {
-            String displayName = StringUtils.trimToNull(request.displayName());
+            displayName = StringUtils.trimToNull(request.displayName());
             if (displayName == null) {
                 throw new BadRequestException("显示名称不能为空", "displayName", "显示名称不能为空");
             }
-            user.setDisplayName(displayName);
         }
-        if (request.email() != null) {
-            user.setEmail(StringUtils.trimToNull(request.email()));
-        }
-        if (request.mobilePhone() != null) {
-            user.setMobilePhone(StringUtils.trimToNull(request.mobilePhone()));
-        }
-        if (request.enabled() != null) {
-            user.setEnabled(request.enabled());
-            if (!request.enabled()) {
-                totpCredentialService.clearTransientState(user.getId());
-            }
-        }
+        String email =
+                request.email() == null ? user.getEmail() : StringUtils.trimToNull(request.email());
+        String mobilePhone =
+                request.mobilePhone() == null
+                        ? user.getMobilePhone()
+                        : StringUtils.trimToNull(request.mobilePhone());
+        boolean enabled = request.enabled() == null ? user.isEnabled() : request.enabled();
         DepartmentUpdate departmentUpdate = request.departmentUpdate();
+        Long departmentId = user.getDepartmentId();
         if (departmentUpdate.changing()) {
-            user.setDepartmentId(validateDepartmentForWrite(departmentUpdate.departmentId()));
+            departmentId = validateDepartmentForWrite(departmentUpdate.departmentId());
+        }
+        if (Objects.equals(displayName, user.getDisplayName())
+                && Objects.equals(email, user.getEmail())
+                && Objects.equals(mobilePhone, user.getMobilePhone())
+                && enabled == user.isEnabled()
+                && Objects.equals(departmentId, user.getDepartmentId())) {
+            return toUserDto(user);
+        }
+        boolean disabling = user.isEnabled() && !enabled;
+        user.setDisplayName(displayName);
+        user.setEmail(email);
+        user.setMobilePhone(mobilePhone);
+        user.setEnabled(enabled);
+        user.setDepartmentId(departmentId);
+        if (disabling) {
+            totpCredentialService.clearTransientState(user.getId());
         }
         user = userRepository.update(user);
         return toUserDto(user);
@@ -384,6 +399,7 @@ public class AuthenticationUserManagementService {
 
     public record SaveUserRolesRequest(List<Long> roleIds) {}
 
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     public record AuthenticationUserDto(
             Long id,
             String username,
@@ -413,6 +429,7 @@ public class AuthenticationUserManagementService {
 
     public record AuthenticationUserOptionResponse(Long id, String username, String displayName) {}
 
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     public record AuthenticationUserDetailDto(
             Long id,
             String username,

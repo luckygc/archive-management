@@ -102,7 +102,7 @@ describe("AuthenticationUsersPage", () => {
         await waitFor(() =>
             expect(archiveApiMocks.updateAuthenticationUser).toHaveBeenCalledWith(
                 7,
-                expect.objectContaining({ email: "" }),
+                expect.objectContaining({ email: null }),
             ),
         );
     });

@@ -146,8 +146,8 @@ export function useAuthenticationUsers() {
             } else if (editingUserId.value != null) {
                 await updateAuthenticationUser(editingUserId.value, {
                     displayName: values.displayName,
-                    email: values.email,
-                    mobilePhone: values.mobilePhone,
+                    email: values.email.trim() || null,
+                    mobilePhone: values.mobilePhone.trim() || null,
                     departmentId: values.departmentId ?? null,
                     enabled: values.enabled,
                 });

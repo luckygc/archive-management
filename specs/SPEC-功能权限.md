@@ -83,6 +83,8 @@
 
 - **WHEN** 拥有用户管理权限的管理员更新用户资料、启停用户或重置密码
 - **THEN** 系统 SHALL 校验目标用户存在
+- **AND** `PATCH /authentication-users/{id}` SHALL 使用 `application/merge-patch+json`；未提交字段保持不变，`email`、`mobilePhone` 和 `departmentId` 提交 `null` 时从资源表示中移除并清空对应值
+- **AND** 显示名称和启用状态 SHALL NOT 以 `null` 删除，普通更新 SHALL NOT 修改用户名、密码、角色或只读字段
 - **AND** 重置密码 SHALL 使用 `POST /authentication-users/{id}:resetPassword`
 - **AND** 新密码 SHALL 只以哈希结果写入本地用户表
 - **AND** 重置密码或停用用户 SHALL 使该用户未完成的 TOTP enrollment 与登录挑战失效
