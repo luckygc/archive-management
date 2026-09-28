@@ -559,5 +559,15 @@ public class ArchiveItemSearchService {
         public ArchiveItemListDto encodeCursorTokens(CursorPageTokenContext context) {
             return new ArchiveItemListDto(category, fields, page.encodeCursorTokens(context));
         }
+
+        @Override
+        public ArchiveItemListDto withLinks(
+                @Nullable String self,
+                @Nullable String prev,
+                @Nullable String next,
+                @Nullable String first) {
+            return new ArchiveItemListDto(
+                    category, fields, page.withLinks(self, prev, next, first));
+        }
     }
 }

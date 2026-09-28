@@ -27,6 +27,25 @@ function queryString(params: object) {
     return text ? `?${text}` : "";
 }
 
+function pageUrl(path: string, params: { cursor?: string | null } & object) {
+    const { cursor, ...query } = params;
+    if (!cursor) {
+        return `${path}${queryString(query)}`;
+    }
+    const link = new URL(cursor, "http://localhost");
+    if (
+        !cursor.startsWith("/") ||
+        cursor.startsWith("//") ||
+        link.origin !== "http://localhost" ||
+        link.pathname !== path ||
+        !link.searchParams.has("cursor") ||
+        !link.searchParams.has("limit")
+    ) {
+        throw new Error("分页链接无效");
+    }
+    return `${link.pathname}${link.search}`;
+}
+
 export async function login(payload: LoginRequest): Promise<LoginResult> {
     const body = new URLSearchParams();
     body.set("username", payload.username);
@@ -75,7 +94,7 @@ export function logout(sessionId: string) {
 }
 
 export function listLoginSessions(params: ListLoginSessionsParams = {}) {
-    return httpClient.get<CursorPageDto<LoginSessionDto>>(`/login-sessions${queryString(params)}`);
+    return httpClient.get<CursorPageDto<LoginSessionDto>>(pageUrl("/login-sessions", params));
 }
 
 export function deleteLoginSession(sessionId: string) {
@@ -88,6 +107,6 @@ export function resetLoginFailureLimit(username: string) {
 
 export function listAuthenticationEvents(params: ListAuthenticationEventsParams = {}) {
     return httpClient.get<CursorPageDto<AuthenticationEventDto>>(
-        `/authentication-events${queryString(params)}`,
+        pageUrl("/authentication-events", params),
     );
 }

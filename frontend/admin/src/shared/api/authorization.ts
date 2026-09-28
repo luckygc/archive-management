@@ -14,7 +14,7 @@ import type {
     UserArchiveDataScopesDto,
 } from "../types/authorization";
 import type { CollectionResponse, CursorPageResponse } from "../types/pagination";
-import { queryString } from "./query-string";
+import { pageUrl, queryString } from "./query-string";
 
 export function listAuthorizationPermissions() {
     return httpClient.get<CollectionResponse<AuthorizationPermissionDto>>(
@@ -96,16 +96,8 @@ export function saveDepartmentArchiveDataScopes(departmentId: number, scopeIds: 
 }
 
 export function listAuthorizationRoles(enabled?: boolean, limit = 100, cursor?: string) {
-    const params = new URLSearchParams();
-    if (enabled !== undefined) {
-        params.set("enabled", String(enabled));
-    }
-    params.set("limit", String(limit));
-    if (cursor) {
-        params.set("cursor", cursor);
-    }
     return httpClient.get<CursorPageResponse<AuthorizationRoleDto>>(
-        `/authorization-roles?${params.toString()}`,
+        pageUrl("/authorization-roles", { enabled, limit, cursor }),
     );
 }
 

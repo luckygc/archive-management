@@ -7,11 +7,11 @@ import type {
     CreateArchiveVolumeRequest,
     ListArchiveVolumesQuery,
 } from "../types/archive-volumes";
-import { queryString } from "./query-string";
+import { pageUrl } from "./query-string";
 
 export function listArchiveVolumes(query: ListArchiveVolumesQuery) {
     return httpClient.get<CursorPageResponse<ArchiveVolumeResponse>>(
-        `/archive-volumes${queryString({ ...query })}`,
+        pageUrl("/archive-volumes", { ...query }),
     );
 }
 

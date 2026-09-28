@@ -75,7 +75,10 @@ describe("archive line table API", () => {
         httpClientMock.post.mockResolvedValue({ id: 9 });
         const payload = { lineOrder: 0, values: { amount: "12.50" } };
 
-        await listArchiveItemLineRows(3, 4, { limit: 100, cursor: "next-token" });
+        await listArchiveItemLineRows(3, 4, {
+            limit: 100,
+            cursor: "/archive-items/3/line-tables/4/rows?limit=100&cursor=next-token",
+        });
         await createArchiveItemLineRow(3, 4, payload);
 
         expect(httpClientMock.get).toHaveBeenCalledWith(

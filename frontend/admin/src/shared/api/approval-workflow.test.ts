@@ -33,12 +33,11 @@ describe("approval workflow API", () => {
         );
     });
 
-    it("定义版本列表将游标参数放入 URL query", async () => {
-        await listApprovalWorkflowDefinitionVersions(7, { limit: 200, cursor: "next-token" });
+    it("定义版本列表沿用服务端分页链接", async () => {
+        const next = "/approval-workflow-definitions/7/versions?limit=200&cursor=next-token";
+        await listApprovalWorkflowDefinitionVersions(7, { limit: 200, cursor: next });
 
-        expect(httpClientMock.get).toHaveBeenCalledWith(
-            "/approval-workflow-definitions/7/versions?limit=200&cursor=next-token",
-        );
+        expect(httpClientMock.get).toHaveBeenCalledWith(next);
     });
 
     it("审批动作使用 AIP 冒号动作路径", async () => {

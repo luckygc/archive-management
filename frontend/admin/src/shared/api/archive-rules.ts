@@ -11,7 +11,7 @@ import type {
     SearchArchiveRuntimeTracesQuery,
 } from "../types/archive-rules";
 import type { CollectionResponse, CursorPageResponse } from "../types/pagination";
-import { queryString } from "./query-string";
+import { pageUrl, queryString } from "./query-string";
 
 export function listArchiveRuntimeDefinitions(status?: ArchiveRuntimeStatus) {
     return httpClient.get<CollectionResponse<ArchiveRuntimeDefinitionDto>>(
@@ -74,7 +74,7 @@ export function simulateArchiveRuntimeDefinitions(payload: ArchiveRuntimeExecuti
 export function searchArchiveRuntimeTraces(query: SearchArchiveRuntimeTracesQuery) {
     const { limit, cursor, ...body } = query;
     return httpClient.post<CursorPageResponse<ArchiveRuntimeTraceDto>>(
-        `/archive-runtime-traces:search${queryString({ limit, cursor })}`,
+        pageUrl("/archive-runtime-traces:search", { limit, cursor }),
         body,
     );
 }

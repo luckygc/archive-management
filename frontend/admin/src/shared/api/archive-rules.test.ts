@@ -16,11 +16,11 @@ beforeEach(() => {
 });
 
 describe("archive rules API", () => {
-    it("规则追踪将游标分页参数放入 URL query", async () => {
+    it("规则追踪沿用服务端分页链接并保留搜索请求体", async () => {
         await searchArchiveRuntimeTraces({
             triggerPoint: "ITEM_BEFORE_CREATE",
             limit: 200,
-            cursor: "next-token",
+            cursor: "/archive-runtime-traces:search?limit=200&cursor=next-token",
         });
 
         expect(httpClientMock.post).toHaveBeenCalledWith(

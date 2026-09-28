@@ -11,7 +11,7 @@ import type {
     StartApprovalWorkflowInstanceRequest,
 } from "../types/approval-workflow";
 import type { CollectionResponse, CursorPageResponse } from "../types/pagination";
-import { queryString } from "./query-string";
+import { pageUrl } from "./query-string";
 
 export function listApprovalWorkflowDefinitions(
     params: {
@@ -21,7 +21,7 @@ export function listApprovalWorkflowDefinitions(
     } = {},
 ) {
     return httpClient.get<CursorPageResponse<ApprovalWorkflowDefinitionDto>>(
-        `/approval-workflow-definitions${queryString({ limit: 100, ...params })}`,
+        pageUrl("/approval-workflow-definitions", { limit: 100, ...params }),
     );
 }
 
@@ -59,7 +59,7 @@ export function listApprovalWorkflowDefinitionVersions(
     params: { limit?: number; cursor?: string } = {},
 ) {
     return httpClient.get<CursorPageResponse<ApprovalWorkflowDefinitionVersionDto>>(
-        `/approval-workflow-definitions/${id}/versions${queryString({ limit: 100, ...params })}`,
+        pageUrl(`/approval-workflow-definitions/${id}/versions`, { limit: 100, ...params }),
     );
 }
 
@@ -87,7 +87,7 @@ export function listMyApprovalWorkflowInstances(
     } = {},
 ) {
     return httpClient.get<CursorPageResponse<ApprovalWorkflowInstanceDto>>(
-        `/approval-workflow-instances${queryString({ limit: 100, ...params })}`,
+        pageUrl("/approval-workflow-instances", { limit: 100, ...params }),
     );
 }
 

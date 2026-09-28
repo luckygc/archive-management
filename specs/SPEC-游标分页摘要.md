@@ -18,10 +18,11 @@
 - **THEN** 客户端 SHALL 提交不含 cursor 的查询，不得默认请求 count
 - **AND** 若响应明确包含 `total`，分页控件 SHALL 显示总条数和 `ceil(total / limit)` 总页数
 
-#### 场景： 使用游标翻页
+#### 场景： 使用分页链接翻页
 
-- **WHEN** 用户使用上一页或下一页 token 翻页
-- **THEN** 客户端 SHALL 继续提交原有筛选、排序和 `limit`，仅替换 cursor
+- **WHEN** 用户使用上一页或下一页链接翻页
+- **THEN** 客户端 SHALL 沿用原 HTTP 方法及必要的搜索请求体，直接使用响应中的分页链接；链接 SHALL 包含本次筛选、排序、`limit` 和不透明 `cursor`
+- **AND** 客户端 SHALL NOT 自行解析或拼接 `cursor`
 - **AND** 客户端 SHALL NOT 因翻页而请求 count
 - **AND** 若首页已取得 `total`，分页控件 SHALL 保留本次查询的总条数和总页数
 

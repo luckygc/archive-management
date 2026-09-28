@@ -49,6 +49,17 @@ public interface CursorPageResponse<T> {
                 firstValues);
     }
 
+    static <T> CursorPageResponse<T> withLinks(
+            List<T> items,
+            @Nullable String self,
+            @Nullable String prev,
+            @Nullable String next,
+            @Nullable String first,
+            @Nullable Long total) {
+        return new DefaultCursorPageResponse<>(
+                items, self, prev, next, first, total, 0, null, null, null, null);
+    }
+
     @JsonProperty("items")
     List<T> items();
 
@@ -70,6 +81,14 @@ public interface CursorPageResponse<T> {
     }
 
     CursorPageResponse<T> encodeCursorTokens(CursorPageTokenContext context);
+
+    default CursorPageResponse<T> withLinks(
+            @Nullable String self,
+            @Nullable String prev,
+            @Nullable String next,
+            @Nullable String first) {
+        return CursorPageResponse.withLinks(items(), self, prev, next, first, total());
+    }
 
     final class DefaultCursorPageResponse<T> implements CursorPageResponse<T> {
 

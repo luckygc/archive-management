@@ -11,8 +11,10 @@ import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.http.server.ServletServerHttpRequest;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import github.luckygc.am.common.api.CursorPageResponse;
+import github.luckygc.am.common.api.CursorPageTokenCodec;
 import github.luckygc.am.common.api.CursorPageTokenContext;
 
 @ControllerAdvice
@@ -36,7 +38,29 @@ public class CursorPageResponseAdvice implements ResponseBodyAdvice<Object> {
         if (!(body instanceof CursorPageResponse<?> pageResponse)) {
             return body;
         }
-        return pageResponse.encodeCursorTokens(context(request));
+        CursorPageResponse<?> encoded = pageResponse.encodeCursorTokens(context(request));
+        if (!(request instanceof ServletServerHttpRequest servletRequest)) {
+            return encoded;
+        }
+        HttpServletRequest httpRequest = servletRequest.getServletRequest();
+        return encoded.withLinks(
+                link(httpRequest, encoded.self()),
+                link(httpRequest, encoded.prev()),
+                link(httpRequest, encoded.next()),
+                link(httpRequest, encoded.first()));
+    }
+
+    private @Nullable String link(HttpServletRequest request, @Nullable String token) {
+        if (token == null) {
+            return null;
+        }
+        UriComponentsBuilder builder = UriComponentsBuilder.fromPath(request.getRequestURI());
+        if (request.getQueryString() != null) {
+            builder.query(request.getQueryString());
+        }
+        builder.replaceQueryParam("cursor", token);
+        builder.replaceQueryParam("limit", CursorPageTokenCodec.decode(token).limit());
+        return builder.build(true).toUriString();
     }
 
     private CursorPageTokenContext context(ServerHttpRequest request) {

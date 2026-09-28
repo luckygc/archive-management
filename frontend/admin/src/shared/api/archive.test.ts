@@ -72,14 +72,14 @@ describe("archive API", () => {
         );
     });
 
-    it("sends archive record cursor controls in URL and keeps orderBy in body", async () => {
+    it("档案搜索沿用分页链接并保留搜索请求体", async () => {
         httpClientMock.post.mockResolvedValue({ fields: [], items: [] });
 
         await searchArchiveRecords({
             categoryId: 1,
             keyword: "合同",
             limit: 100,
-            cursor: "next-token",
+            cursor: "/archive-items:search?limit=100&cursor=next-token",
             orderBy: [{ field: "createdAt", direction: "DESC" }],
         });
 
@@ -176,7 +176,7 @@ describe("archive API", () => {
         await listArchiveItemRelations(1, {
             depth: 2,
             limit: 100,
-            cursor: "next-relation",
+            cursor: "/archive-items/1/relations?depth=2&limit=100&cursor=next-relation",
         });
 
         expect(httpClientMock.get).toHaveBeenCalledWith(

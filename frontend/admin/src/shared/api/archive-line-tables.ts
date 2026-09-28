@@ -12,7 +12,7 @@ import type {
     PatchArchiveItemLineRowRequest,
 } from "../types/archive-line-tables";
 import type { CollectionResponse, CursorPageResponse } from "../types/pagination";
-import { queryString } from "./query-string";
+import { pageUrl } from "./query-string";
 
 export function listArchiveLineTables(categoryId: number) {
     return httpClient.get<CollectionResponse<ArchiveLineTableResponse>>(
@@ -61,7 +61,7 @@ export function listArchiveItemLineRows(
     query: ListArchiveItemLineRowsQuery = {},
 ) {
     return httpClient.get<CursorPageResponse<ArchiveItemLineRowResponse>>(
-        `/archive-items/${archiveItemId}/line-tables/${lineTableId}/rows${queryString({ limit: query.limit, cursor: query.cursor })}`,
+        pageUrl(`/archive-items/${archiveItemId}/line-tables/${lineTableId}/rows`, { ...query }),
     );
 }
 

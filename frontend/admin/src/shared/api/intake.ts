@@ -10,7 +10,7 @@ import type {
 } from "@/shared/types/intake";
 import type { CursorPageResponse } from "@/shared/types/pagination";
 
-import { queryString } from "./query-string";
+import { pageUrl } from "./query-string";
 
 export function getIntakeOverview() {
     return httpClient.get<IntakeOverviewDto>("/intake");
@@ -18,7 +18,7 @@ export function getIntakeOverview() {
 
 export function listArchiveIntakePackages(query: ListArchiveIntakePackagesQuery) {
     return httpClient.get<CursorPageResponse<ArchiveIntakePackageListItemResponse>>(
-        `/archive-intake-packages${queryString({ ...query })}`,
+        pageUrl("/archive-intake-packages", { ...query }),
     );
 }
 

@@ -18,6 +18,7 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.common.api.CursorPageTokenCodec;
 import github.luckygc.am.common.api.CursorPageTokenContext;
+import github.luckygc.am.module.archive.item.service.ArchiveItemSearchService.ArchiveItemListDto;
 
 import tools.jackson.databind.json.JsonMapper;
 
@@ -29,9 +30,10 @@ class CursorPageResponseAdviceTests {
     private final CursorPageResponseAdvice advice = new CursorPageResponseAdvice();
 
     @Test
-    @DisplayName("将分页 slice 包装为带签名 cursor token 的统一响应")
-    void shouldWrapSliceWithCursorTokens() throws Exception {
+    @DisplayName("分页链接保留筛选参数并包含可校验的游标和 limit")
+    void shouldReturnNavigablePageLinks() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/items");
+        request.setQueryString("status=ACTIVE&keyword=%E5%90%88%E5%90%8C&limit=20");
         CursorPageTokenContext context = new CursorPageTokenContext("digest");
         CursorPageTokenValidationInterceptor.setContext(request, context);
         CursorPageResponse<String> page =
@@ -52,9 +54,14 @@ class CursorPageResponseAdviceTests {
         CursorPageResponse<String> response = (CursorPageResponse<String>) body;
         assertThat(response.items()).containsExactly("A", "B");
         assertThat(response.prev()).isNull();
-        assertThat(CursorPageTokenCodec.decode(response.self()).context()).isEqualTo(context);
-        assertThat(CursorPageTokenCodec.decode(response.self()).limit()).isEqualTo(20);
-        assertThat(CursorPageTokenCodec.decode(response.next()).values()).isEqualTo(List.of(2L));
+        assertThat(response.next())
+                .startsWith("/items?")
+                .contains("status=ACTIVE", "keyword=%E5%90%88%E5%90%8C", "limit=20", "cursor=");
+        assertThat(CursorPageTokenCodec.decode(cursorFrom(response.self())).context())
+                .isEqualTo(context);
+        assertThat(CursorPageTokenCodec.decode(cursorFrom(response.self())).limit()).isEqualTo(20);
+        assertThat(CursorPageTokenCodec.decode(cursorFrom(response.next())).values())
+                .isEqualTo(List.of(2L));
     }
 
     @Test
@@ -77,30 +84,43 @@ class CursorPageResponseAdviceTests {
     }
 
     @Test
-    @DisplayName("支持自定义 CursorPageResponse 实现")
-    void shouldEncodeCustomCursorPageResponseImplementation() throws Exception {
+    @DisplayName("档案搜索分页链接转换后保留分类与字段元数据")
+    void shouldPreserveArchiveSearchMetadata() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/items");
         CursorPageTokenContext context = new CursorPageTokenContext("custom-digest");
         CursorPageTokenValidationInterceptor.setContext(request, context);
-        CustomCursorPageResponse page =
-                new CustomCursorPageResponse(
+        ArchiveItemListDto page =
+                new ArchiveItemListDto(
+                        null,
+                        List.of(),
                         CursorPageResponse.withCursorValues(
-                                List.of("A"), 20, List.of(1L), null, List.of(2L), null, null));
+                                List.of(), 20, List.of(1L), null, List.of(2L), null, null));
 
         Object body =
                 advice.beforeBodyWrite(
                         page,
-                        customReturnType(),
+                        archiveSearchReturnType(),
                         MediaType.APPLICATION_JSON,
                         JacksonJsonHttpMessageConverter.class,
                         new ServletServerHttpRequest(request),
                         null);
 
-        assertThat(body).isInstanceOf(CustomCursorPageResponse.class);
-        CustomCursorPageResponse response = (CustomCursorPageResponse) body;
-        assertThat(response.items()).containsExactly("A");
-        assertThat(CursorPageTokenCodec.decode(response.self()).context()).isEqualTo(context);
-        assertThat(CursorPageTokenCodec.decode(response.next()).values()).isEqualTo(List.of(2L));
+        assertThat(body).isInstanceOf(ArchiveItemListDto.class);
+        ArchiveItemListDto response = (ArchiveItemListDto) body;
+        assertThat(response.fields()).isEmpty();
+        assertThat(response.category()).isNull();
+        assertThat(CursorPageTokenCodec.decode(cursorFrom(response.self())).context())
+                .isEqualTo(context);
+        assertThat(CursorPageTokenCodec.decode(cursorFrom(response.next())).values())
+                .isEqualTo(List.of(2L));
+    }
+
+    private static String cursorFrom(String link) {
+        String query = link.substring(link.indexOf('?') + 1);
+        return org.springframework.web.util.UriComponentsBuilder.fromUriString("/items?" + query)
+                .build()
+                .getQueryParams()
+                .getFirst("cursor");
     }
 
     private static MethodParameter returnType() throws NoSuchMethodException {
@@ -108,49 +128,10 @@ class CursorPageResponseAdviceTests {
         return new MethodParameter(method, -1);
     }
 
-    private static MethodParameter customReturnType() throws NoSuchMethodException {
+    private static MethodParameter archiveSearchReturnType() throws NoSuchMethodException {
         Method method =
-                TestController.class.getDeclaredMethod("customList", HttpServletRequest.class);
+                TestController.class.getDeclaredMethod("archiveSearch", HttpServletRequest.class);
         return new MethodParameter(method, -1);
-    }
-
-    private record CustomCursorPageResponse(CursorPageResponse<String> delegate)
-            implements CursorPageResponse<String> {
-
-        @Override
-        public List<String> items() {
-            return delegate.items();
-        }
-
-        @Override
-        public String self() {
-            return delegate.self();
-        }
-
-        @Override
-        public String prev() {
-            return delegate.prev();
-        }
-
-        @Override
-        public String next() {
-            return delegate.next();
-        }
-
-        @Override
-        public String first() {
-            return delegate.first();
-        }
-
-        @Override
-        public Long total() {
-            return delegate.total();
-        }
-
-        @Override
-        public CustomCursorPageResponse encodeCursorTokens(CursorPageTokenContext context) {
-            return new CustomCursorPageResponse(delegate.encodeCursorTokens(context));
-        }
     }
 
     static class TestController {
@@ -158,8 +139,10 @@ class CursorPageResponseAdviceTests {
             return CursorPageResponse.withCursorValues(List.of(), 20, null, null, null, null, null);
         }
 
-        CustomCursorPageResponse customList(HttpServletRequest request) {
-            return new CustomCursorPageResponse(
+        ArchiveItemListDto archiveSearch(HttpServletRequest request) {
+            return new ArchiveItemListDto(
+                    null,
+                    List.of(),
                     CursorPageResponse.withCursorValues(
                             List.of(), 20, null, null, null, null, null));
         }

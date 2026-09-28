@@ -19,26 +19,20 @@ import type {
     SearchArchiveRecordsRequest,
 } from "../types/archive-records";
 import type { CollectionResponse, CursorPageResponse } from "../types/pagination";
-import { queryString } from "./query-string";
+import { pageUrl, queryString } from "./query-string";
 
 export function listArchiveRecords(params: { categoryId?: number; fondsCode?: string }) {
     return httpClient.get<ArchiveRecordListDto>(`/archive-items${queryString(params)}`);
 }
 
 export function searchArchiveRecords(query: SearchArchiveRecordsQuery) {
-    const request = archiveRecordSearchRequest(query);
-    return httpClient.post<ArchiveRecordListDto>(
-        `/archive-items:search${request.query}`,
-        request.body,
-    );
+    const request = archiveRecordSearchRequest("/archive-items:search", query);
+    return httpClient.post<ArchiveRecordListDto>(request.url, request.body);
 }
 
 export function discoverArchiveRecords(query: SearchArchiveRecordsQuery) {
-    const request = archiveRecordSearchRequest(query);
-    return httpClient.post<ArchiveRecordListDto>(
-        `/archive-items:discover${request.query}`,
-        request.body,
-    );
+    const request = archiveRecordSearchRequest("/archive-items:discover", query);
+    return httpClient.post<ArchiveRecordListDto>(request.url, request.body);
 }
 
 export function createArchiveRecord(payload: CreateArchiveRecordRequest) {
@@ -101,9 +95,10 @@ export function importArchiveRecords(categoryId: number, file: File) {
 export async function exportArchiveRecords(
     query: SearchArchiveRecordsQuery,
 ): Promise<DownloadLink> {
+    const { limit: _limit, cursor: _cursor, ...body } = query;
     const response = await httpClient.post<ArchiveItemDownloadLinkResponse>(
         "/archive-items:createExportDownloadLink",
-        archiveRecordSearchRequest(query).body,
+        compactObject(body),
     );
     return httpClient.download(response.url);
 }
@@ -156,7 +151,7 @@ export async function downloadArchiveItemElectronicFile(
 
 export function listArchiveItemAudits(query: ListArchiveItemAuditsRequest) {
     return httpClient.get<CursorPageResponse<ArchiveItemAuditDto>>(
-        `/archive-item-audits${queryString({
+        pageUrl("/archive-item-audits", {
             archiveItemId: query.archiveItemId,
             fondsCode: query.fondsCode,
             categoryCode: query.categoryCode,
@@ -165,7 +160,7 @@ export function listArchiveItemAudits(query: ListArchiveItemAuditsRequest) {
             operatedBefore: query.operatedBefore,
             limit: query.limit,
             cursor: query.cursor,
-        })}`,
+        }),
     );
 }
 
@@ -174,11 +169,11 @@ export function listArchiveItemRelations(
     query: ListArchiveItemRelationsQuery = {},
 ) {
     return httpClient.get<CursorPageResponse<ArchiveItemRelationResponse>>(
-        `/archive-items/${archiveItemId}/relations${queryString({
+        pageUrl(`/archive-items/${archiveItemId}/relations`, {
             depth: query.depth,
             limit: query.limit,
             cursor: query.cursor,
-        })}`,
+        }),
     );
 }
 
@@ -193,16 +188,16 @@ export function deleteArchiveItemRelation(archiveItemId: number, relationId: num
     return httpClient.delete<void>(`/archive-items/${archiveItemId}/relations/${relationId}`);
 }
 
-function archiveRecordSearchRequest(query: SearchArchiveRecordsQuery): {
-    query: string;
+function archiveRecordSearchRequest(
+    path: string,
+    query: SearchArchiveRecordsQuery,
+): {
+    url: string;
     body: SearchArchiveRecordsRequest;
 } {
     const { limit, cursor, ...body } = query;
     return {
-        query: queryString({
-            limit,
-            cursor,
-        }),
+        url: pageUrl(path, { limit, cursor }),
         body: compactObject(body),
     };
 }

@@ -17,10 +17,14 @@ vi.mock("@archive-management/frontend-core/api", () => ({
 }));
 
 describe("archive volume API", () => {
-    it("案卷列表使用 URL query 游标参数", async () => {
+    it("案卷列表沿用服务端分页链接", async () => {
         httpClientMock.get.mockResolvedValue({ items: [] });
 
-        await listArchiveVolumes({ fondsCode: "F001", limit: 100, cursor: "next-volume" });
+        await listArchiveVolumes({
+            fondsCode: "F001",
+            limit: 100,
+            cursor: "/archive-volumes?fondsCode=F001&limit=100&cursor=next-volume",
+        });
 
         expect(httpClientMock.get).toHaveBeenCalledWith(
             "/archive-volumes?fondsCode=F001&limit=100&cursor=next-volume",

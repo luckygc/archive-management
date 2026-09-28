@@ -5,6 +5,7 @@ import {
     createTotpEnrollment,
     disableTotpCredential,
     getCurrentUser,
+    listLoginSessions,
     login,
     resetLoginFailureLimit,
     verifyTotpLoginChallenge,
@@ -36,6 +37,16 @@ describe("authentication API", () => {
         await getCurrentUser();
 
         expect(httpClientMock.get).toHaveBeenCalledWith("/me");
+    });
+
+    it("登录会话列表沿用服务端分页链接", async () => {
+        const next = "/login-sessions?limit=50&cursor=opaque";
+        await listLoginSessions({ limit: 100, cursor: next });
+
+        expect(httpClientMock.get).toHaveBeenCalledWith(next);
+        expect(() =>
+            listLoginSessions({ cursor: "https://example.org/login-sessions?limit=50&cursor=x" }),
+        ).toThrow("分页链接无效");
     });
 
     it("submits password login as a form request", async () => {

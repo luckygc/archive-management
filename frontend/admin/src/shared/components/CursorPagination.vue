@@ -24,7 +24,7 @@ const pageCount = computed(() =>
 
 const emit = defineEmits<{
     limitChange: [limit: number];
-    page: [cursor: string];
+    page: [link: string];
 }>();
 </script>
 

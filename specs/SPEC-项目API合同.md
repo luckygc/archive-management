@@ -319,7 +319,7 @@ Content-Type: application/json
 - **AND** 排序字段 SHALL 使用 API 字段名，并在进入 SQL 前通过白名单映射为数据库列
 - **AND** 服务端 SHALL 追加唯一且稳定的兜底排序字段，例如 `id`
 - **AND** 客户端 SHALL NOT 解析、修改或构造 `cursor`
-- **AND** 客户端 SHALL 在翻页请求中继续提交首次查询时相同的筛选、搜索、排序和分页大小参数，只替换 `cursor`
+- **AND** 客户端 SHALL 沿用原 HTTP 方法和必要的搜索请求体，直接使用响应中的分页链接；链接包含筛选、排序、分页大小与不透明 `cursor`
 - **AND** 客户端需要变更筛选、搜索、排序或分页大小时，SHALL 重新发起一次不带旧 `cursor` 的查询
 
 #### 场景： 用户自定义排序
@@ -341,7 +341,7 @@ Content-Type: application/json
 - **WHEN** 用户在当前结果列表中修改分页大小
 - **THEN** 客户端 SHALL 使用当前已提交查询状态重新发起一次不带旧 `cursor` 的查询
 - **AND** 新查询 SHALL 从第一页开始
-- **AND** 客户端 SHALL 丢弃旧的 `self`、`prev` 和 `next` token
+- **AND** 客户端 SHALL 丢弃旧的 `self`、`prev` 和 `next` 链接
 - **AND** 客户端 SHALL NOT 使用旧 cursor 请求新分页大小的上一页或下一页
 
 #### 场景： 用户编辑搜索条件但尚未提交
@@ -352,19 +352,19 @@ Content-Type: application/json
 - **AND** 上一页、下一页、刷新当前页等翻页请求 SHALL 继续使用当前列表的已提交查询状态和对应 `cursor`
 - **AND** 客户端 SHALL NOT 将未提交的搜索表单草稿混入带 `cursor` 的翻页请求
 - **AND** 用户提交搜索后，客户端 SHALL 用草稿生成新的已提交查询状态，并清空旧 `cursor`
-- **AND** 新搜索响应返回前，客户端 MAY 保留旧列表显示，但 SHALL 将旧翻页 token 视为不可继续用于新搜索
+- **AND** 新搜索响应返回前，客户端 MAY 保留旧列表显示，但 SHALL 将旧翻页链接视为不可继续用于新搜索
 
 #### 场景： 返回键集分页集合
 
 - **WHEN** API 返回键集分页结果
 - **THEN** 响应 SHALL 使用统一 page object
 - **AND** 响应 SHALL 包含 `items`
-- **AND** `self`、`prev`、`next` 和 `first` 等分页导航字段 SHALL 使用不透明 token，不使用 URL 链接
+- **AND** `self`、`prev`、`next` 和 `first` 等分页导航字段 SHALL 使用包含分页参数的 URL 链接，链接中的 `cursor` 对客户端不透明
 - **AND** 响应 MAY 包含 `self`
-- **AND** 存在上一页时响应 SHALL 包含 `prev` token
-- **AND** 存在下一页时响应 SHALL 包含 `next` token
+- **AND** 存在上一页时响应 SHALL 包含 `prev` 链接
+- **AND** 存在下一页时响应 SHALL 包含 `next` 链接
 - **AND** 没有上一页或下一页时，`prev` 或 `next` MAY 省略或返回 `null`
-- **AND** 响应 MAY 包含 `first` token
+- **AND** 响应 MAY 包含 `first` 链接
 - **AND** 大数据量集合 SHOULD NOT 提供 `last`
 - **AND** 响应默认 SHALL NOT 返回 `total`
 - **AND** 当接口明确支持 `requestTotal=true` 且请求未提交 `cursor` 时，响应 MAY 返回与本次筛选条件一致的 `total`

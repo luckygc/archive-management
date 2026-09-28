@@ -7,16 +7,18 @@ import CursorPagination from "./CursorPagination.vue";
 afterEach(cleanup);
 
 describe("CursorPagination", () => {
-    it("使用不透明游标执行前后翻页", async () => {
+    it("将服务端分页链接交给调用方执行前后翻页", async () => {
+        const prev = "/archive-items?limit=100&cursor=prev-token";
+        const next = "/archive-items?limit=100&cursor=next-token";
         const { emitted } = render(CursorPagination, {
-            props: { limit: 100, prev: "prev-token", next: "next-token" },
+            props: { limit: 100, prev, next },
             global: { plugins: [ElementPlus] },
         });
 
         await fireEvent.click(screen.getByRole("button", { name: "上一页" }));
         await fireEvent.click(screen.getByRole("button", { name: "下一页" }));
 
-        expect(emitted().page).toEqual([["prev-token"], ["next-token"]]);
+        expect(emitted().page).toEqual([[prev], [next]]);
     });
 
     it("禁用不存在的翻页方向和加载中的控件", async () => {
@@ -27,7 +29,12 @@ describe("CursorPagination", () => {
         expect(screen.getByRole("button", { name: "上一页" })).toBeDisabled();
         expect(screen.getByRole("button", { name: "下一页" })).toBeDisabled();
 
-        await view.rerender({ limit: 100, prev: "prev-token", next: "next-token", loading: true });
+        await view.rerender({
+            limit: 100,
+            prev: "/archive-items?limit=100&cursor=prev-token",
+            next: "/archive-items?limit=100&cursor=next-token",
+            loading: true,
+        });
         expect(screen.getByRole("button", { name: "上一页" })).toBeDisabled();
         expect(screen.getByRole("button", { name: "下一页" })).toBeDisabled();
         expect(view.container.querySelector(".el-select__wrapper")).toHaveClass("is-disabled");

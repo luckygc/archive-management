@@ -14,7 +14,10 @@ vi.mock("@archive-management/frontend-core/api", () => ({
 describe("authentication API", () => {
     it("授权用户选项目录使用独立游标资源", async () => {
         httpClientMock.get.mockResolvedValue({ items: [] });
-        await listAuthenticationUserOptions(100, "next-user");
+        await listAuthenticationUserOptions(
+            100,
+            "/authentication-user-options?limit=100&cursor=next-user",
+        );
 
         expect(httpClientMock.get).toHaveBeenCalledWith(
             "/authentication-user-options?limit=100&cursor=next-user",

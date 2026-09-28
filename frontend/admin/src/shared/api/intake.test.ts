@@ -25,7 +25,10 @@ describe("归档接收 API", () => {
     it("使用 limit 和不透明 cursor 查询接收历史", async () => {
         vi.mocked(httpClient.get).mockResolvedValue({ items: [] });
 
-        await listArchiveIntakePackages({ limit: 100, cursor: "next-token" });
+        await listArchiveIntakePackages({
+            limit: 100,
+            cursor: "/archive-intake-packages?limit=100&cursor=next-token",
+        });
 
         expect(httpClient.get).toHaveBeenCalledWith(
             "/archive-intake-packages?limit=100&cursor=next-token",

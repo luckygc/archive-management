@@ -10,28 +10,17 @@ import type {
     UpdateAuthenticationUserRequest,
 } from "../types/authentication";
 import type { CollectionResponse, CursorPageResponse } from "../types/pagination";
+import { pageUrl } from "./query-string";
 
 export function listAuthenticationUsers(keyword?: string, limit = 100, cursor?: string) {
-    const params = new URLSearchParams();
-    if (keyword) {
-        params.set("keyword", keyword);
-    }
-    params.set("limit", String(limit));
-    if (cursor) {
-        params.set("cursor", cursor);
-    }
     return httpClient.get<CursorPageResponse<AuthenticationUserDto>>(
-        `/authentication-users?${params.toString()}`,
+        pageUrl("/authentication-users", { keyword, limit, cursor }),
     );
 }
 
 export function listAuthenticationUserOptions(limit = 100, cursor?: string) {
-    const params = new URLSearchParams({ limit: String(limit) });
-    if (cursor) {
-        params.set("cursor", cursor);
-    }
     return httpClient.get<CursorPageResponse<AuthenticationUserOptionDto>>(
-        `/authentication-user-options?${params.toString()}`,
+        pageUrl("/authentication-user-options", { limit, cursor }),
     );
 }
 
