@@ -21,7 +21,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.authentication.AuthenticationUser;
 import github.luckygc.am.module.authentication.repository.AuthenticationUserDataRepository;
@@ -534,17 +533,15 @@ class AuthenticationUserManagementServiceTests {
         when(page.hasTotals()).thenReturn(false);
         when(userRepository.filterBy(any(), any())).thenReturn(page);
 
-        CursorPageResponse<?> result =
-                userService.listUserOptions(PageRequest.ofSize(100), OPERATOR_ID);
+        var result = userService.listUserOptions(PageRequest.ofSize(100), OPERATOR_ID);
 
         assertThat(result.items())
                 .singleElement()
                 .satisfies(
                         item -> {
-                            assertThat(item.getClass().getRecordComponents())
-                                    .extracting(component -> component.getName())
-                                    .containsExactly("id", "username", "displayName");
-                            assertThat(item.toString()).contains("10", "zhangsan", "张三");
+                            assertThat(item.id()).isEqualTo(10L);
+                            assertThat(item.username()).isEqualTo("zhangsan");
+                            assertThat(item.displayName()).isEqualTo("张三");
                         });
         verify(permissionService)
                 .requirePermission(

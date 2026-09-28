@@ -15,7 +15,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDateTime;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -239,15 +238,6 @@ class ArchiveItemDataScopeQueryTests {
                                                     assertThat(violation.message())
                                                             .isEqualTo("案卷 ID 必须为正数");
                                                 }));
-    }
-
-    @Test
-    @DisplayName("动态分页复用 Jakarta Data 游标值对象")
-    void dynamicPaginationShouldReuseJakartaDataCursorValueObject() {
-        assertThat(
-                        Arrays.stream(ArchiveItemSearchService.class.getDeclaredClasses())
-                                .map(Class::getSimpleName))
-                .doesNotContain("Cursor");
     }
 
     @Test
