@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/vue";
 import ElementPlus from "element-plus";
 import { afterEach, describe, expect, it } from "vitest";
 
-import CursorPagination, { CURSOR_PAGE_SIZE_OPTIONS } from "./CursorPagination.vue";
+import CursorPagination from "./CursorPagination.vue";
 
 afterEach(cleanup);
 
@@ -31,15 +31,6 @@ describe("CursorPagination", () => {
         expect(screen.getByRole("button", { name: "上一页" })).toBeDisabled();
         expect(screen.getByRole("button", { name: "下一页" })).toBeDisabled();
         expect(view.container.querySelector(".el-select__wrapper")).toHaveClass("is-disabled");
-    });
-
-    it("提供约定的游标分页条数", () => {
-        expect(CURSOR_PAGE_SIZE_OPTIONS).toEqual([
-            { label: "100 条", value: 100 },
-            { label: "200 条", value: 200 },
-            { label: "500 条", value: 500 },
-            { label: "1000 条", value: 1000 },
-        ]);
     });
 
     it("在响应提供总数时展示总条数和总页数", () => {

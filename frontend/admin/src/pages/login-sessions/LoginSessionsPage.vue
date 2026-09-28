@@ -22,7 +22,6 @@ async function loadSessions() {
         const response = await listLoginSessions({
             limit: limit.value,
             cursor: cursor.value,
-            requestTotal: !cursor.value,
         });
         sessions.value = response.items;
         prev.value = response.prev;

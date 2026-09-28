@@ -5,9 +5,9 @@ import type { UnifiedTodoDto } from "../types/unified-todo";
 import { queryString } from "./query-string";
 
 export function listMyUnifiedTodos(
-    params: { completed?: boolean; limit?: number; cursor?: string; requestTotal?: boolean } = {},
+    params: { completed?: boolean; limit?: number; cursor?: string } = {},
 ) {
     return httpClient.get<CursorPageResponse<UnifiedTodoDto>>(
-        `/unified-todos${queryString({ limit: 100, ...params, requestTotal: params.cursor ? undefined : (params.requestTotal ?? true) })}`,
+        `/unified-todos${queryString({ limit: 100, ...params })}`,
     );
 }

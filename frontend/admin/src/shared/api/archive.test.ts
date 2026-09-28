@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vite-plus/test";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import {
     closeArchiveFonds,
@@ -29,6 +29,8 @@ const httpClientMock = vi.hoisted(() => ({
 vi.mock("@archive-management/frontend-core/api", () => ({
     httpClient: httpClientMock,
 }));
+
+beforeEach(() => vi.clearAllMocks());
 
 describe("archive API", () => {
     it("updates archive fonds through the resource PATCH endpoint", async () => {
@@ -78,7 +80,6 @@ describe("archive API", () => {
             keyword: "合同",
             limit: 100,
             cursor: "next-token",
-            requestTotal: true,
             orderBy: [{ field: "createdAt", direction: "DESC" }],
         });
 
@@ -90,6 +91,14 @@ describe("archive API", () => {
                 orderBy: [{ field: "createdAt", direction: "DESC" }],
             },
         );
+    });
+
+    it("档案首页搜索默认不请求总数", async () => {
+        await searchArchiveRecords({ categoryId: 1, limit: 100 });
+
+        expect(httpClientMock.post).toHaveBeenCalledWith("/archive-items:search?limit=100", {
+            categoryId: 1,
+        });
     });
 
     it("为导入模板创建短链后返回浏览器可直接打开的地址", async () => {
@@ -124,7 +133,6 @@ describe("archive API", () => {
             keyword: "合同",
             limit: 100,
             cursor: "ignored",
-            requestTotal: true,
         });
 
         expect(httpClientMock.post).toHaveBeenCalledWith(

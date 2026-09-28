@@ -134,7 +134,6 @@ export interface SearchArchiveRuntimeTracesRequest {
 export interface SearchArchiveRuntimeTracesQuery extends SearchArchiveRuntimeTracesRequest {
     limit?: number;
     cursor?: string;
-    requestTotal?: boolean;
 }
 
 export interface ArchiveRuntimeTraceDto {

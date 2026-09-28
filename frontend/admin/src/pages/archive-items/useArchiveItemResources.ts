@@ -104,7 +104,6 @@ export function useArchiveItemResources(openLink: (href: string) => void) {
                 const response = await listArchiveItemAudits({
                     archiveItemId: state.archiveItemId,
                     limit: 20,
-                    requestTotal: true,
                 });
                 if (isCurrentRequest(state, version)) {
                     audits.value = response.items;

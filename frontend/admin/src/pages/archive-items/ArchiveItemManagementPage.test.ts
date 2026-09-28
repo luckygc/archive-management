@@ -41,7 +41,6 @@ describe("ArchiveItemManagementPage", () => {
             expect(mocks.listArchiveItemAudits).toHaveBeenCalledWith({
                 archiveItemId: 1,
                 limit: 20,
-                requestTotal: true,
             }),
         );
         expect(await screen.findByText("CREATE")).toBeInTheDocument();

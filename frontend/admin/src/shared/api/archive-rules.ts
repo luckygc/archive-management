@@ -72,9 +72,9 @@ export function simulateArchiveRuntimeDefinitions(payload: ArchiveRuntimeExecuti
 }
 
 export function searchArchiveRuntimeTraces(query: SearchArchiveRuntimeTracesQuery) {
-    const { limit, cursor, requestTotal, ...body } = query;
+    const { limit, cursor, ...body } = query;
     return httpClient.post<CursorPageResponse<ArchiveRuntimeTraceDto>>(
-        `/archive-runtime-traces:search${queryString({ limit, cursor, requestTotal: cursor ? undefined : (requestTotal ?? true) })}`,
+        `/archive-runtime-traces:search${queryString({ limit, cursor })}`,
         body,
     );
 }

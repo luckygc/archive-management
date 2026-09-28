@@ -33,7 +33,6 @@ export interface SearchArchiveRecordsRequest {
 export interface SearchArchiveRecordsQuery extends SearchArchiveRecordsRequest {
     limit?: number;
     cursor?: string;
-    requestTotal?: boolean;
 }
 
 export interface ArchiveRecordOrderBy {
@@ -79,7 +78,6 @@ export interface ListArchiveItemRelationsQuery {
     depth?: number;
     limit?: number;
     cursor?: string;
-    requestTotal?: boolean;
 }
 
 export interface ArchiveItemRelationResponse {
@@ -242,5 +240,4 @@ export interface ListArchiveItemAuditsRequest {
     operatedBefore?: string;
     limit?: number;
     cursor?: string;
-    requestTotal?: boolean;
 }

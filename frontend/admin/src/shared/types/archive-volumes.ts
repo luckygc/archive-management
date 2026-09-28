@@ -20,7 +20,6 @@ export interface ListArchiveVolumesQuery {
     categoryCode?: string;
     limit?: number;
     cursor?: string;
-    requestTotal?: boolean;
 }
 
 export interface CreateArchiveVolumeRequest {

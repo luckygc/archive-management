@@ -18,11 +18,10 @@ export function listApprovalWorkflowDefinitions(
         enabled?: boolean;
         limit?: number;
         cursor?: string;
-        requestTotal?: boolean;
     } = {},
 ) {
     return httpClient.get<CursorPageResponse<ApprovalWorkflowDefinitionDto>>(
-        `/approval-workflow-definitions${queryString({ limit: 100, ...params, requestTotal: params.cursor ? undefined : (params.requestTotal ?? true) })}`,
+        `/approval-workflow-definitions${queryString({ limit: 100, ...params })}`,
     );
 }
 
@@ -85,11 +84,10 @@ export function listMyApprovalWorkflowInstances(
         status?: ApprovalInstanceStatus;
         limit?: number;
         cursor?: string;
-        requestTotal?: boolean;
     } = {},
 ) {
     return httpClient.get<CursorPageResponse<ApprovalWorkflowInstanceDto>>(
-        `/approval-workflow-instances${queryString({ limit: 100, ...params, requestTotal: params.cursor ? undefined : (params.requestTotal ?? true) })}`,
+        `/approval-workflow-instances${queryString({ limit: 100, ...params })}`,
     );
 }
 

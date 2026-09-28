@@ -65,7 +65,6 @@ export interface ArchiveItemLineFieldDefinitionResponse {
 export interface ListArchiveItemLineRowsQuery {
     limit?: number;
     cursor?: string;
-    requestTotal?: boolean;
 }
 
 export interface CreateArchiveItemLineRowRequest {

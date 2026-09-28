@@ -105,7 +105,6 @@ export interface AuthenticationEventDto {
 export interface ListLoginSessionsParams {
     limit?: number;
     cursor?: string | null;
-    requestTotal?: boolean;
 }
 
 export interface ListAuthenticationEventsParams {
@@ -116,5 +115,4 @@ export interface ListAuthenticationEventsParams {
     occurredBefore?: string;
     limit?: number;
     cursor?: string | null;
-    requestTotal?: boolean;
 }

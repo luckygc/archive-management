@@ -21,7 +21,6 @@ describe("archive rules API", () => {
             triggerPoint: "ITEM_BEFORE_CREATE",
             limit: 200,
             cursor: "next-token",
-            requestTotal: true,
         });
 
         expect(httpClientMock.post).toHaveBeenCalledWith(

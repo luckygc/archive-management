@@ -39,7 +39,6 @@ async function loadEvents() {
             ...filters.value,
             limit: limit.value,
             cursor: cursor.value,
-            requestTotal: !cursor.value,
         });
         events.value = response.items;
         prev.value = response.prev;

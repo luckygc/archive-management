@@ -61,7 +61,7 @@ export function listArchiveItemLineRows(
     query: ListArchiveItemLineRowsQuery = {},
 ) {
     return httpClient.get<CursorPageResponse<ArchiveItemLineRowResponse>>(
-        `/archive-items/${archiveItemId}/line-tables/${lineTableId}/rows${queryString({ limit: query.limit, cursor: query.cursor, requestTotal: query.cursor ? undefined : (query.requestTotal ?? true) })}`,
+        `/archive-items/${archiveItemId}/line-tables/${lineTableId}/rows${queryString({ limit: query.limit, cursor: query.cursor })}`,
     );
 }
 

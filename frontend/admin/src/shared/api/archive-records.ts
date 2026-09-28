@@ -165,7 +165,6 @@ export function listArchiveItemAudits(query: ListArchiveItemAuditsRequest) {
             operatedBefore: query.operatedBefore,
             limit: query.limit,
             cursor: query.cursor,
-            requestTotal: query.cursor ? undefined : (query.requestTotal ?? true),
         })}`,
     );
 }
@@ -179,7 +178,6 @@ export function listArchiveItemRelations(
             depth: query.depth,
             limit: query.limit,
             cursor: query.cursor,
-            requestTotal: query.requestTotal,
         })}`,
     );
 }
@@ -199,12 +197,11 @@ function archiveRecordSearchRequest(query: SearchArchiveRecordsQuery): {
     query: string;
     body: SearchArchiveRecordsRequest;
 } {
-    const { limit, cursor, requestTotal, ...body } = query;
+    const { limit, cursor, ...body } = query;
     return {
         query: queryString({
             limit,
             cursor,
-            requestTotal: cursor ? undefined : (requestTotal ?? true),
         }),
         body: compactObject(body),
     };
