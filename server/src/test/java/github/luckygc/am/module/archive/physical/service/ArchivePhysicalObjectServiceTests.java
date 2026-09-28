@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
@@ -11,6 +12,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Optional;
+import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -135,5 +137,32 @@ class ArchivePhysicalObjectServiceTests {
                                         9L))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("待接收实物不能修改或删除");
+    }
+
+    @Test
+    @DisplayName("局部更新只修改出现的字段，删除备注后不重复写入")
+    void patchPreservesMissingFieldsAndRemovesRemark() {
+        ArchivePhysicalObject object = new ArchivePhysicalObject();
+        object.setId(51L);
+        object.setArchiveItemId(31L);
+        object.setBarcode("B001");
+        object.setCarrierType("PAPER");
+        object.setQuantity(BigDecimal.ONE);
+        object.setRemark("旧备注");
+        when(objectRepository.findById(51L)).thenReturn(Optional.of(object));
+        when(objectRepository.update(object)).thenReturn(object);
+        UpdateArchivePhysicalObjectRequest patch =
+                new UpdateArchivePhysicalObjectRequest(
+                        Set.of("remark"), null, null, null, null, null, null);
+
+        var first = service.update(51L, patch, 9L);
+        var second = service.update(51L, patch, 9L);
+
+        assertThat(first.barcode()).isEqualTo("B001");
+        assertThat(first.carrierType()).isEqualTo("PAPER");
+        assertThat(first.quantity()).isEqualByComparingTo(BigDecimal.ONE);
+        assertThat(first.remark()).isNull();
+        assertThat(second.remark()).isNull();
+        verify(objectRepository).update(object);
     }
 }

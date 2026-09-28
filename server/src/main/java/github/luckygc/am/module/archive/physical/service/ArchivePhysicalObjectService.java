@@ -16,6 +16,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.archive.item.service.ArchiveItemReadService;
@@ -123,14 +125,38 @@ public class ArchivePhysicalObjectService {
         if (request == null) {
             throw new BadRequestException("请求体不能为空");
         }
+        String barcode =
+                request.fields().contains("barcode")
+                        ? StringUtils.trimToNull(request.barcode())
+                        : entity.getBarcode();
+        String carrierType =
+                request.fields().contains("carrierType")
+                        ? StringUtils.trimToNull(request.carrierType())
+                        : entity.getCarrierType();
+        BigDecimal quantity =
+                request.fields().contains("quantity") ? request.quantity() : entity.getQuantity();
+        String quantityUnit =
+                request.fields().contains("quantityUnit")
+                        ? StringUtils.trimToNull(request.quantityUnit())
+                        : entity.getQuantityUnit();
+        String conditionNote =
+                request.fields().contains("conditionNote")
+                        ? StringUtils.trimToNull(request.conditionNote())
+                        : entity.getConditionNote();
+        String remark =
+                request.fields().contains("remark")
+                        ? StringUtils.trimToNull(request.remark())
+                        : entity.getRemark();
+        if (Objects.equals(barcode, entity.getBarcode())
+                && Objects.equals(carrierType, entity.getCarrierType())
+                && Objects.equals(quantity, entity.getQuantity())
+                && Objects.equals(quantityUnit, entity.getQuantityUnit())
+                && Objects.equals(conditionNote, entity.getConditionNote())
+                && Objects.equals(remark, entity.getRemark())) {
+            return toResponse(entity);
+        }
         applyCommonFields(
-                entity,
-                request.barcode(),
-                request.carrierType(),
-                request.quantity(),
-                request.quantityUnit(),
-                request.conditionNote(),
-                request.remark());
+                entity, barcode, carrierType, quantity, quantityUnit, conditionNote, remark);
         return toResponse(objectRepository.update(entity));
     }
 
@@ -314,13 +340,43 @@ public class ArchivePhysicalObjectService {
             @Nullable String remark) {}
 
     public record UpdateArchivePhysicalObjectRequest(
+            Set<String> fields,
             @Nullable String barcode,
             @Nullable String carrierType,
             @Nullable BigDecimal quantity,
             @Nullable String quantityUnit,
             @Nullable String conditionNote,
-            @Nullable String remark) {}
+            @Nullable String remark) {
 
+        public UpdateArchivePhysicalObjectRequest {
+            fields = Set.copyOf(fields);
+        }
+
+        public UpdateArchivePhysicalObjectRequest(
+                @Nullable String barcode,
+                @Nullable String carrierType,
+                @Nullable BigDecimal quantity,
+                @Nullable String quantityUnit,
+                @Nullable String conditionNote,
+                @Nullable String remark) {
+            this(
+                    Set.of(
+                            "barcode",
+                            "carrierType",
+                            "quantity",
+                            "quantityUnit",
+                            "conditionNote",
+                            "remark"),
+                    barcode,
+                    carrierType,
+                    quantity,
+                    quantityUnit,
+                    conditionNote,
+                    remark);
+        }
+    }
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     public record ArchivePhysicalObjectResponse(
             Long id,
             @Nullable Long archiveItemId,
