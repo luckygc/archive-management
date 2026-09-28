@@ -13,6 +13,13 @@
 - **AND** 业务库角色 SHALL 为 `INTAKE` 或 `HOLDING`
 - **AND** 系统 SHALL 允许同一角色存在多个业务库实例
 
+#### 场景： 局部更新业务库配置
+
+- **WHEN** 有档案元数据管理权限的用户以 `application/merge-patch+json` 向 `PATCH /archive-repositories/{id}` 提交编码、名称、角色、启用状态或排序
+- **THEN** 系统 SHALL 只修改请求中出现的字段，未出现的字段 SHALL 保持不变
+- **AND** 这些必需字段提交 `null` 时 SHALL 拒绝整个请求，系统内置业务库 SHALL 继续禁止改变编码、角色或停用
+- **AND** 系统标识、创建和更新时间 SHALL NOT 通过普通更新修改
+
 #### 场景： 禁用业务库
 
 - **WHEN** 有档案元数据管理权限的用户禁用业务库

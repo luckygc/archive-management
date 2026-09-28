@@ -1,6 +1,7 @@
 package github.luckygc.am.module.archive.library.service;
 
 import java.util.List;
+import java.util.Objects;
 
 import jakarta.data.Limit;
 
@@ -86,21 +87,32 @@ public class ArchiveRepositoryService {
         if (entity.isSystemFlag()) {
             assertSystemRepositoryUpdate(entity, request);
         }
-        if (request.repositoryCode() != null) {
-            entity.setRepositoryCode(required(request.repositoryCode(), "业务库编码不能为空"));
+        String code =
+                request.repositoryCode() == null
+                        ? entity.getRepositoryCode()
+                        : required(request.repositoryCode(), "业务库编码不能为空");
+        String name =
+                request.repositoryName() == null
+                        ? entity.getRepositoryName()
+                        : required(request.repositoryName(), "业务库名称不能为空");
+        ArchiveRepositoryRole role =
+                request.repositoryRole() == null
+                        ? entity.getRepositoryRole()
+                        : request.repositoryRole();
+        boolean enabled = request.enabled() == null ? entity.isEnabled() : request.enabled();
+        int sortOrder = request.sortOrder() == null ? entity.getSortOrder() : request.sortOrder();
+        if (Objects.equals(code, entity.getRepositoryCode())
+                && Objects.equals(name, entity.getRepositoryName())
+                && role == entity.getRepositoryRole()
+                && enabled == entity.isEnabled()
+                && sortOrder == entity.getSortOrder()) {
+            return toResponse(entity);
         }
-        if (request.repositoryName() != null) {
-            entity.setRepositoryName(required(request.repositoryName(), "业务库名称不能为空"));
-        }
-        if (request.repositoryRole() != null) {
-            entity.setRepositoryRole(request.repositoryRole());
-        }
-        if (request.enabled() != null) {
-            entity.setEnabled(request.enabled());
-        }
-        if (request.sortOrder() != null) {
-            entity.setSortOrder(request.sortOrder());
-        }
+        entity.setRepositoryCode(code);
+        entity.setRepositoryName(name);
+        entity.setRepositoryRole(role);
+        entity.setEnabled(enabled);
+        entity.setSortOrder(sortOrder);
         try {
             return toResponse(repository.update(entity));
         } catch (DataIntegrityViolationException exception) {

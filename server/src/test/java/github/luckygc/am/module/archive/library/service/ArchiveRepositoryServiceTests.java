@@ -26,6 +26,7 @@ import github.luckygc.am.module.archive.library.ArchiveRepositoryRole;
 import github.luckygc.am.module.archive.library.repository.ArchiveRepositoryChangeHistoryDataRepository;
 import github.luckygc.am.module.archive.library.repository.ArchiveRepositoryDataRepository;
 import github.luckygc.am.module.archive.library.service.ArchiveRepositoryService.CreateArchiveRepositoryRequest;
+import github.luckygc.am.module.archive.library.service.ArchiveRepositoryService.UpdateArchiveRepositoryRequest;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
 
 @DisplayName("档案虚拟业务库服务")
@@ -74,6 +75,47 @@ class ArchiveRepositoryServiceTests {
 
         assertThat(response.id()).isEqualTo(20L);
         assertThat(response.repositoryRole()).isEqualTo(ArchiveRepositoryRole.INTAKE);
+    }
+
+    @Test
+    @DisplayName("空补丁不写库，局部更新保留未提交的业务库字段")
+    void updatePreservesMissingFields() {
+        ArchiveRepository entity = repository(20L, false, true);
+        when(repository.findById(20L)).thenReturn(Optional.of(entity));
+        when(repository.update(entity)).thenReturn(entity);
+
+        var unchanged =
+                service.update(
+                        20L, new UpdateArchiveRepositoryRequest(null, null, null, null, null), 9L);
+        assertThat(unchanged.repositoryName()).isEqualTo("业务库20");
+        verify(repository, never()).update(any());
+
+        var changed =
+                service.update(
+                        20L,
+                        new UpdateArchiveRepositoryRequest(null, "新名称", null, false, null),
+                        9L);
+        assertThat(changed.repositoryCode()).isEqualTo("R20");
+        assertThat(changed.repositoryRole()).isEqualTo(ArchiveRepositoryRole.HOLDING);
+        assertThat(changed.repositoryName()).isEqualTo("新名称");
+        assertThat(changed.enabled()).isFalse();
+        verify(repository).update(entity);
+    }
+
+    @Test
+    @DisplayName("系统内置业务库仍不能被普通补丁停用")
+    void systemRepositoryCannotBeDisabled() {
+        when(repository.findById(2L)).thenReturn(Optional.of(repository(2L, true, true)));
+
+        assertThatThrownBy(
+                        () ->
+                                service.update(
+                                        2L,
+                                        new UpdateArchiveRepositoryRequest(
+                                                null, null, null, false, null),
+                                        9L))
+                .isInstanceOf(BadRequestException.class);
+        verify(repository, never()).update(any());
     }
 
     @Test
