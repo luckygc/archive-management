@@ -152,9 +152,10 @@ class ArchiveMetadataServiceTests {
         ArchiveMetadataTypes.ArchiveCategoryDto response =
                 categoryService.updateCategory(
                         12L,
-                        new ArchiveMetadataTypes.ArchiveCategoryRequest(
+                        new ArchiveMetadataTypes.UpdateArchiveCategoryRequest(
                                 " contract ",
                                 "合同档案",
+                                true,
                                 null,
                                 ArchiveManagementMode.ITEM_ONLY,
                                 true,
@@ -163,6 +164,28 @@ class ArchiveMetadataServiceTests {
 
         assertThat(response.id()).isEqualTo(12L);
         assertThat(response.categoryCode()).isEqualTo("contract");
+    }
+
+    @Test
+    @DisplayName("分类局部更新可移除父级并保留其他字段，相同补丁不重复写入")
+    void updateCategoryShouldRemoveParentAndPreserveMissingFields() {
+        ArchiveCategory current = category(12L, ArchiveManagementMode.VOLUME_ITEM);
+        current.setParentId(11L);
+        when(categoryRepository.findById(12L)).thenReturn(Optional.of(current));
+        when(categoryRepository.update(any(ArchiveCategory.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        var patch =
+                new ArchiveMetadataTypes.UpdateArchiveCategoryRequest(
+                        null, null, true, null, null, null, null);
+
+        var first = categoryService.updateCategory(12L, patch, 9L);
+        var second = categoryService.updateCategory(12L, patch, 9L);
+
+        assertThat(first.parentId()).isNull();
+        assertThat(first.categoryName()).isEqualTo("合同档案");
+        assertThat(first.managementMode()).isEqualTo(ArchiveManagementMode.VOLUME_ITEM);
+        assertThat(second.parentId()).isNull();
+        verify(categoryRepository).update(current);
     }
 
     @Test
@@ -175,9 +198,10 @@ class ArchiveMetadataServiceTests {
                         () ->
                                 categoryService.updateCategory(
                                         12L,
-                                        new ArchiveMetadataTypes.ArchiveCategoryRequest(
+                                        new ArchiveMetadataTypes.UpdateArchiveCategoryRequest(
                                                 "project",
                                                 "项目档案",
+                                                true,
                                                 null,
                                                 ArchiveManagementMode.ITEM_ONLY,
                                                 true,
@@ -202,9 +226,10 @@ class ArchiveMetadataServiceTests {
                         () ->
                                 categoryService.updateCategory(
                                         99L,
-                                        new ArchiveMetadataTypes.ArchiveCategoryRequest(
+                                        new ArchiveMetadataTypes.UpdateArchiveCategoryRequest(
                                                 "occupied",
                                                 "不存在分类",
+                                                true,
                                                 null,
                                                 ArchiveManagementMode.ITEM_ONLY,
                                                 true,

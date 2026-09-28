@@ -119,6 +119,16 @@ public abstract class ArchiveMetadataTypes {
             @Nullable Boolean enabled,
             @Nullable Integer sortOrder) {}
 
+    public record UpdateArchiveCategoryRequest(
+            @Nullable String categoryCode,
+            @Nullable String categoryName,
+            boolean parentIdPresent,
+            @Nullable Long parentId,
+            @Nullable ArchiveManagementMode managementMode,
+            @Nullable Boolean enabled,
+            @Nullable Integer sortOrder) {}
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     public record ArchiveCategoryDto(
             Long id,
             @Nullable Long parentId,

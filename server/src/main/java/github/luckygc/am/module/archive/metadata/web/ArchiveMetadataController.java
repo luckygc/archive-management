@@ -25,6 +25,7 @@ import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldScope;
 import github.luckygc.am.module.archive.metadata.ArchiveFondsStatus;
 import github.luckygc.am.module.archive.metadata.ArchiveLayoutSurface;
+import github.luckygc.am.module.archive.metadata.ArchiveManagementMode;
 import github.luckygc.am.module.archive.metadata.service.ArchiveCategoryService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveFondsService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataReferenceService;
@@ -47,6 +48,7 @@ import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.As
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.CloseArchiveFondsRequest;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.CreateArchiveFondsRequest;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ReopenArchiveFondsRequest;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.UpdateArchiveCategoryRequest;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.UpdateArchiveFondsRequest;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.UpdateArchiveRetentionPeriodRequest;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.UpdateArchiveSecurityLevelRequest;
@@ -74,6 +76,25 @@ public class ArchiveMetadataController {
                     "updatedAt");
     private static final Set<String> REFERENCE_READ_ONLY_FIELDS =
             Set.of("id", "enabled", "sortOrder", "createdAt", "updatedAt");
+    private static final Set<String> CATEGORY_PATCH_FIELDS =
+            Set.of(
+                    "categoryCode",
+                    "categoryName",
+                    "parentId",
+                    "managementMode",
+                    "enabled",
+                    "sortOrder");
+    private static final Set<String> CATEGORY_READ_ONLY_FIELDS =
+            Set.of(
+                    "id",
+                    "volumeTableName",
+                    "itemTableName",
+                    "volumePhysicalTableName",
+                    "itemPhysicalTableName",
+                    "tableStatus",
+                    "builtAt",
+                    "createdAt",
+                    "updatedAt");
 
     private final ArchiveMetadataService archiveMetadataService;
     private final ArchiveMetadataReferenceService archiveMetadataReferenceService;
@@ -291,13 +312,71 @@ public class ArchiveMetadataController {
                 request, requireMetadataManage(authentication));
     }
 
-    @PatchMapping("/archive-categories/{id}")
+    @PatchMapping(value = "/archive-categories/{id}", consumes = "application/merge-patch+json")
     public ArchiveCategoryDto updateCategory(
-            @PathVariable Long id,
-            @RequestBody ArchiveCategoryRequest request,
-            Authentication authentication) {
-        return archiveCategoryService.updateCategory(
-                id, request, requireMetadataManage(authentication));
+            @PathVariable Long id, @RequestBody JsonNode request, Authentication authentication) {
+        Long operatorUserId = requireMetadataManage(authentication);
+        return archiveCategoryService.updateCategory(id, toCategoryPatch(request), operatorUserId);
+    }
+
+    private UpdateArchiveCategoryRequest toCategoryPatch(JsonNode request) {
+        if (request == null || !request.isObject()) {
+            throw new BadRequestException("档案分类补丁必须是对象");
+        }
+        for (String field : request.propertyNames()) {
+            if (!CATEGORY_PATCH_FIELDS.contains(field)
+                    && (CATEGORY_READ_ONLY_FIELDS.contains(field)
+                            || !request.get(field).isNull())) {
+                throw new BadRequestException("不支持修改字段 " + field, field, "字段不可修改");
+            }
+        }
+        return new UpdateArchiveCategoryRequest(
+                fondsText(request, "categoryCode", false),
+                fondsText(request, "categoryName", false),
+                request.has("parentId"),
+                categoryParentId(request),
+                categoryManagementMode(request),
+                categoryEnabled(request),
+                fondsInteger(request, "sortOrder"));
+    }
+
+    private @Nullable Long categoryParentId(JsonNode request) {
+        JsonNode value = request.get("parentId");
+        if (value == null || value.isNull()) {
+            return null;
+        }
+        if (!value.isIntegralNumber() || !value.canConvertToLong()) {
+            throw new BadRequestException("parentId 不合法", "parentId", "parentId 不合法");
+        }
+        return value.longValue();
+    }
+
+    private @Nullable ArchiveManagementMode categoryManagementMode(JsonNode request) {
+        JsonNode value = request.get("managementMode");
+        if (value == null) {
+            return null;
+        }
+        if (value.isNull() || !value.isTextual()) {
+            throw new BadRequestException(
+                    "managementMode 不合法", "managementMode", "managementMode 不合法");
+        }
+        try {
+            return ArchiveManagementMode.valueOf(value.asText());
+        } catch (IllegalArgumentException exception) {
+            throw new BadRequestException(
+                    "managementMode 不合法", "managementMode", "managementMode 不合法");
+        }
+    }
+
+    private @Nullable Boolean categoryEnabled(JsonNode request) {
+        JsonNode value = request.get("enabled");
+        if (value == null) {
+            return null;
+        }
+        if (value.isNull() || !value.isBoolean()) {
+            throw new BadRequestException("enabled 不合法", "enabled", "enabled 不合法");
+        }
+        return value.asBoolean();
     }
 
     @DeleteMapping("/archive-categories/{id}")

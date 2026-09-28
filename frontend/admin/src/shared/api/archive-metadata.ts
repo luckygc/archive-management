@@ -127,7 +127,11 @@ export function createArchiveCategory(payload: ArchiveCategoryRequest) {
 }
 
 export function updateArchiveCategory(id: number, payload: ArchiveCategoryRequest) {
-    return httpClient.patch<ArchiveCategoryDto>(`/archive-categories/${id}`, payload);
+    return httpClient.patch<ArchiveCategoryDto>(
+        `/archive-categories/${id}`,
+        { ...payload, parentId: payload.parentId ?? null },
+        { headers: { "Content-Type": "application/merge-patch+json" } },
+    );
 }
 
 export function deleteArchiveCategory(id: number) {

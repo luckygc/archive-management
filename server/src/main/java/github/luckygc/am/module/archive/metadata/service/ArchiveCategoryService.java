@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import jakarta.data.exceptions.DataException;
@@ -33,6 +34,7 @@ import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.Ar
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveCategoryRequest;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFondsCategoryScopeDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFondsCategoryScopeRequest;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.UpdateArchiveCategoryRequest;
 
 @Service
 public class ArchiveCategoryService {
@@ -97,21 +99,42 @@ public class ArchiveCategoryService {
     }
 
     @Transactional
-    public ArchiveCategoryDto updateCategory(Long id, ArchiveCategoryRequest request, Long userId) {
+    public ArchiveCategoryDto updateCategory(
+            Long id, UpdateArchiveCategoryRequest request, Long userId) {
         requireId(id);
         ArchiveCategory category =
                 categoryRepository.findById(id).orElseThrow(() -> notFound("档案分类不存在"));
-        String categoryCode = requireCategoryCode(request.categoryCode());
+        String categoryCode =
+                request.categoryCode() == null
+                        ? category.getCategoryCode()
+                        : requireCategoryCode(request.categoryCode());
         if (!category.getCategoryCode().equals(categoryCode)) {
             throw badRequest("分类编码创建后不可修改");
         }
-        String categoryName = requireCategoryName(request.categoryName());
-        validateParentCategory(id, request.parentId());
-        category.setParentId(request.parentId());
+        String categoryName =
+                request.categoryName() == null
+                        ? category.getCategoryName()
+                        : requireCategoryName(request.categoryName());
+        Long parentId = request.parentIdPresent() ? request.parentId() : category.getParentId();
+        ArchiveManagementMode managementMode =
+                request.managementMode() == null
+                        ? category.getManagementMode()
+                        : request.managementMode();
+        boolean enabled = request.enabled() == null ? category.isEnabled() : request.enabled();
+        int sortOrder = request.sortOrder() == null ? category.getSortOrder() : request.sortOrder();
+        if (Objects.equals(parentId, category.getParentId())
+                && categoryName.equals(category.getCategoryName())
+                && managementMode == category.getManagementMode()
+                && enabled == category.isEnabled()
+                && sortOrder == category.getSortOrder()) {
+            return mapCategory(category);
+        }
+        validateParentCategory(id, parentId);
+        category.setParentId(parentId);
         category.setCategoryName(categoryName);
-        category.setManagementMode(normalizeManagementMode(request.managementMode()));
-        category.setEnabled(request.enabled() == null || request.enabled());
-        category.setSortOrder(request.sortOrder() == null ? 0 : request.sortOrder());
+        category.setManagementMode(managementMode);
+        category.setEnabled(enabled);
+        category.setSortOrder(sortOrder);
         return mapCategory(categoryRepository.update(category));
     }
 

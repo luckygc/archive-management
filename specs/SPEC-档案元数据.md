@@ -395,6 +395,13 @@
 - **THEN** 系统 SHALL 拒绝保存
 - **AND** 响应 SHALL 使用 `400 Bad Request` 和 `INVALID_ARGUMENT` ProblemDetail
 
+#### 场景： 局部更新分类
+
+- **WHEN** 客户端按项目 API 合同提交档案分类的 JSON Merge Patch
+- **THEN** 未出现的字段 SHALL 保持不变，父级分类 `parentId: null` SHALL 移除父级关系并从响应中省略
+- **AND** 必需字段的显式 `null` SHALL 被拒绝，分类编码变更 SHALL 继续被拒绝
+- **AND** 无变化的补丁 SHALL 不产生数据库更新
+
 #### 场景： 拒绝复用分类编码
 
 - **WHEN** 客户端创建分类并提交任一历史分类已使用的编码
