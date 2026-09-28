@@ -61,19 +61,14 @@ public class ArchiveFieldLayoutService {
             ArchiveLayoutSurface surface,
             List<ArchiveFieldDto> enabledFields,
             @Nullable ArchiveFieldLayoutRequest request) {
-        List<@Nullable ArchiveFieldLayoutItemRequest> items =
-                request == null || request.items() == null ? List.of() : request.items();
+        if (request == null || request.items() == null) {
+            throw badRequest("布局字段列表不能为空");
+        }
+        List<@Nullable ArchiveFieldLayoutItemRequest> items = request.items();
         Map<Long, ArchiveFieldDto> fieldsById =
                 enabledFields.stream()
                         .collect(Collectors.toMap(ArchiveFieldDto::id, field -> field));
         Set<Long> seenFieldIds = new HashSet<>();
-        fieldLayoutRepository.list(categoryId, surface).stream()
-                .filter(layout -> fieldsById.containsKey(layout.getFieldId()))
-                .forEach(
-                        layout -> {
-                            fieldLayoutRepository.update(layout);
-                            fieldLayoutRepository.delete(layout);
-                        });
         for (@Nullable ArchiveFieldLayoutItemRequest item : items) {
             if (item == null || item.fieldId() == null || !fieldsById.containsKey(item.fieldId())) {
                 throw badRequest("布局字段只能选择当前分类字段");
@@ -81,6 +76,15 @@ public class ArchiveFieldLayoutService {
             if (!seenFieldIds.add(item.fieldId())) {
                 throw badRequest("布局字段不能重复");
             }
+        }
+        fieldLayoutRepository.list(categoryId, surface).stream()
+                .filter(layout -> fieldsById.containsKey(layout.getFieldId()))
+                .forEach(
+                        layout -> {
+                            fieldLayoutRepository.update(layout);
+                            fieldLayoutRepository.delete(layout);
+                        });
+        for (ArchiveFieldLayoutItemRequest item : items) {
             ArchiveFieldLayout layout = new ArchiveFieldLayout();
             layout.setCategoryId(categoryId);
             layout.setSurface(surface);

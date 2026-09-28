@@ -1,8 +1,8 @@
 import { expect, it, vi } from "vite-plus/test";
 
-import { updateArchiveCategory } from "./archive-metadata";
+import { savePublicArchiveCategoryLayout, updateArchiveCategory } from "./archive-metadata";
 
-const httpClientMock = vi.hoisted(() => ({ patch: vi.fn() }));
+const httpClientMock = vi.hoisted(() => ({ patch: vi.fn(), put: vi.fn() }));
 
 vi.mock("@archive-management/frontend-core/api", () => ({ httpClient: httpClientMock }));
 
@@ -26,5 +26,18 @@ it("分类更新以 Merge Patch 删除空父级", async () => {
             sortOrder: 0,
         },
         { headers: { "Content-Type": "application/merge-patch+json" } },
+    );
+});
+
+it("布局保存整体替换字段列表", async () => {
+    const payload = {
+        items: [{ fieldId: 3, visible: true, colSpan: 1, rowOrder: 0, colOrder: 0 }],
+    };
+
+    await savePublicArchiveCategoryLayout(12, "TABLE", payload, "ITEM");
+
+    expect(httpClientMock.put).toHaveBeenCalledWith(
+        "/archive-categories/12/layouts/TABLE?archiveLevel=ITEM",
+        payload,
     );
 });

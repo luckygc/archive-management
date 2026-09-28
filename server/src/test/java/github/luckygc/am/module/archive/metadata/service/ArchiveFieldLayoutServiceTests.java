@@ -3,6 +3,7 @@ package github.luckygc.am.module.archive.metadata.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -60,6 +61,24 @@ class ArchiveFieldLayoutServiceTests {
                                                                 2L, true, 130, 1, 1, 0)))))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("布局字段不能重复");
+
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    @DisplayName("整体替换必须提交字段列表且校验失败不写入")
+    void savePublicLayoutShouldRequireItems() {
+        assertThatThrownBy(
+                        () ->
+                                service.savePublicLayout(
+                                        1L,
+                                        ArchiveLayoutSurface.TABLE,
+                                        List.of(field(2L)),
+                                        new ArchiveFieldLayoutRequest(null)))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("字段列表不能为空");
+
+        verifyNoInteractions(repository);
     }
 
     private static ArchiveFieldDto field(Long id) {

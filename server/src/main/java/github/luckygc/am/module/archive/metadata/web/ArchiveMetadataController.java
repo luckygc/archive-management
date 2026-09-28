@@ -434,7 +434,7 @@ public class ArchiveMetadataController {
         return archiveMetadataService.getFieldLayout(categoryId, archiveLevel, fieldScope, surface);
     }
 
-    @PatchMapping("/archive-categories/{categoryId}/layouts/{surface}")
+    @PutMapping("/archive-categories/{categoryId}/layouts/{surface}")
     public ArchiveFieldLayoutDto savePublicFieldLayout(
             @PathVariable Long categoryId,
             @PathVariable ArchiveLayoutSurface surface,

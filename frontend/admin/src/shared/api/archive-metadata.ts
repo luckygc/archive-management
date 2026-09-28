@@ -179,7 +179,7 @@ export function savePublicArchiveCategoryLayout(
     payload: ArchiveFieldLayoutRequest,
     archiveLevel?: ArchiveLevel,
 ) {
-    return httpClient.patch<ArchiveFieldLayoutDto>(
+    return httpClient.put<ArchiveFieldLayoutDto>(
         `/archive-categories/${categoryId}/layouts/${surface}${queryString({ archiveLevel })}`,
         payload,
     );

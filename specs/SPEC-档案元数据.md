@@ -499,6 +499,12 @@
 
 系统 SHALL 为档案分类提供独立公共布局配置，表格、详情和编辑布局 SHALL 分别维护字段顺序、显示状态和布局属性。
 
+#### 场景： 整体替换公共布局
+
+- **WHEN** 客户端通过 `PUT /archive-categories/{categoryId}/layouts/{surface}` 提交完整 `items` 列表
+- **THEN** 系统 SHALL 用该列表替换所选分类和场景的公共布局；空列表 SHALL 清除已保存布局
+- **AND** 缺失 `items` 或布局字段无效时 SHALL 拒绝整个请求，原布局 SHALL 保持不变
+
 #### 场景： 保存表格布局配置
 
 - **WHEN** 客户端在表格布局中拖拽字段顺序并配置字段是否显示或列宽
