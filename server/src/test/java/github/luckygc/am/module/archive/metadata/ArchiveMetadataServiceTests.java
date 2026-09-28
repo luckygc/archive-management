@@ -23,6 +23,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.server.ResponseStatusException;
 
+import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveCategoryDataRepository;
@@ -44,6 +45,8 @@ import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.Ar
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveUniqueConstraintRequest;
 import github.luckygc.am.module.archive.metadata.service.ArchiveUniqueConstraintService;
 import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeFieldReferenceService;
+
+import tools.jackson.databind.json.JsonMapper;
 
 @DisplayName("档案元数据服务")
 class ArchiveMetadataServiceTests {
@@ -96,7 +99,8 @@ class ArchiveMetadataServiceTests {
                         fieldLayoutService,
                         uniqueConstraintService,
                         categoryService,
-                        mock(ArchiveRuntimeFieldReferenceService.class));
+                        mock(ArchiveRuntimeFieldReferenceService.class),
+                        JsonMapper.builder().build());
     }
 
     @Test
@@ -639,6 +643,100 @@ class ArchiveMetadataServiceTests {
 
     private void verifyNoInteractionsOnUniqueConstraintWrites() {
         verifyNoInteractions(archiveMapper);
+    }
+
+    @Test
+    @DisplayName("字段定义补丁保留未提交的配置并允许删除可选列宽")
+    void patchFieldPreservesOtherValues() {
+        ArchiveField field = field(11L, ArchiveLevel.ITEM, ArchiveFieldScope.METADATA);
+        field.setListWidth(120);
+        when(fieldRepository.findById(11L)).thenReturn(Optional.of(field));
+        when(categoryRepository.findById(1L))
+                .thenReturn(Optional.of(category(1L, ArchiveManagementMode.ITEM_ONLY)));
+        when(fieldRepository.update(field)).thenReturn(field);
+
+        var result =
+                service.patchField(
+                        1L,
+                        11L,
+                        JsonMapper.builder()
+                                .build()
+                                .readTree("{\"fieldName\":\"新文号\",\"listWidth\":null}"),
+                        9L);
+
+        assertThat(result.fieldName()).isEqualTo("新文号");
+        assertThat(result.textLength()).isEqualTo(100);
+        assertThat(result.listWidth()).isNull();
+        assertThat(JsonMapper.builder().build().valueToTree(result).has("listWidth")).isFalse();
+        verify(fieldRepository).update(field);
+    }
+
+    @Test
+    @DisplayName("字段定义补丁拒绝删除必需配置和改写只读字段")
+    void patchFieldRejectsInvalidChanges() {
+        ArchiveField field = field(11L, ArchiveLevel.ITEM, ArchiveFieldScope.METADATA);
+        when(fieldRepository.findById(11L)).thenReturn(Optional.of(field));
+        JsonMapper mapper = JsonMapper.builder().build();
+
+        assertThatThrownBy(
+                        () ->
+                                service.patchField(
+                                        1L, 11L, mapper.readTree("{\"fieldName\":null}"), 9L))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("字段名称不能为空");
+        assertThatThrownBy(
+                        () ->
+                                service.patchField(
+                                        1L, 11L, mapper.readTree("{\"enabled\":null}"), 9L))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("enabled 不能删除");
+        assertThatThrownBy(() -> service.patchField(1L, 11L, mapper.readTree("{\"id\":12}"), 9L))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("id");
+        assertThatThrownBy(() -> service.patchField(1L, 11L, mapper.readTree("{\"id\":null}"), 9L))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("id");
+        assertThatThrownBy(() -> service.patchField(1L, 11L, mapper.readTree("[]"), 9L))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("必须是对象");
+        verify(fieldRepository, never()).update(any());
+    }
+
+    @Test
+    @DisplayName("字段定义补丁不得改变已建字段类型")
+    void patchFieldRejectsTypeChange() {
+        ArchiveField field = field(11L, ArchiveLevel.ITEM, ArchiveFieldScope.METADATA);
+        when(fieldRepository.findById(11L)).thenReturn(Optional.of(field));
+        when(categoryRepository.findById(1L))
+                .thenReturn(Optional.of(category(1L, ArchiveManagementMode.ITEM_ONLY)));
+
+        assertThatThrownBy(
+                        () ->
+                                service.patchField(
+                                        1L,
+                                        11L,
+                                        JsonMapper.builder()
+                                                .build()
+                                                .readTree(
+                                                        "{\"fieldType\":\"INTEGER\",\"editControl\":\"NUMBER\"}"),
+                                        9L))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("已建字段不允许修改字段类型");
+        verify(fieldRepository, never()).update(any());
+    }
+
+    @Test
+    @DisplayName("删除不存在的字段不写入档案字段定义")
+    void patchFieldUnknownNullIsNoOp() {
+        ArchiveField field = field(11L, ArchiveLevel.ITEM, ArchiveFieldScope.METADATA);
+        when(fieldRepository.findById(11L)).thenReturn(Optional.of(field));
+
+        var result =
+                service.patchField(
+                        1L, 11L, JsonMapper.builder().build().readTree("{\"unknown\":null}"), 9L);
+
+        assertThat(result.fieldName()).isEqualTo("文号");
+        verify(fieldRepository, never()).update(any());
     }
 
     private ArchiveCategory category(Long id, ArchiveManagementMode managementMode) {

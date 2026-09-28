@@ -170,6 +170,7 @@ public abstract class ArchiveMetadataTypes {
             @Nullable Boolean enabled,
             @Nullable Integer sortOrder) {}
 
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     public record ArchiveFieldDto(
             Long id,
             Long categoryId,

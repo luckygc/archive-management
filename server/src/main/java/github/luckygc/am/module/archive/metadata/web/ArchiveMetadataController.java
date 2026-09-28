@@ -405,13 +405,15 @@ public class ArchiveMetadataController {
                 categoryId, request, requireMetadataManage(authentication));
     }
 
-    @PatchMapping("/archive-categories/{categoryId}/fields/{fieldId}")
+    @PatchMapping(
+            value = "/archive-categories/{categoryId}/fields/{fieldId}",
+            consumes = "application/merge-patch+json")
     public ArchiveFieldDto updateField(
             @PathVariable Long categoryId,
             @PathVariable Long fieldId,
-            @RequestBody ArchiveFieldRequest request,
+            @RequestBody JsonNode request,
             Authentication authentication) {
-        return archiveMetadataService.updateField(
+        return archiveMetadataService.patchField(
                 categoryId, fieldId, request, requireMetadataManage(authentication));
     }
 

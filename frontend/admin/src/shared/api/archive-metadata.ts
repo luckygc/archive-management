@@ -151,11 +151,12 @@ export function createArchiveField(categoryId: number, payload: ArchiveFieldRequ
 export function updateArchiveField(
     categoryId: number,
     fieldId: number,
-    payload: ArchiveFieldRequest,
+    payload: Partial<ArchiveFieldRequest>,
 ) {
     return httpClient.patch<ArchiveFieldDto>(
         `/archive-categories/${categoryId}/fields/${fieldId}`,
         payload,
+        { headers: { "Content-Type": "application/merge-patch+json" } },
     );
 }
 

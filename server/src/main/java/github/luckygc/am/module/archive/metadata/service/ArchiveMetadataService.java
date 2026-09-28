@@ -3,6 +3,7 @@ package github.luckygc.am.module.archive.metadata.service;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 import org.jspecify.annotations.Nullable;
@@ -12,6 +13,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import github.luckygc.am.common.api.JsonMergePatch;
+import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.mapper.ArchiveMapper;
 import github.luckygc.am.module.archive.metadata.ArchiveField;
@@ -23,10 +26,41 @@ import github.luckygc.am.module.archive.metadata.ArchiveLayoutSurface;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveFieldDataRepository;
 import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeFieldReferenceService;
 
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ObjectNode;
+
 @Service
 public class ArchiveMetadataService extends ArchiveMetadataTypes {
 
     private static final Pattern FIELD_CODE_PATTERN = Pattern.compile("[a-z][a-z0-9_]*");
+    private static final Set<String> FIELD_PATCH_PROPERTIES =
+            Set.of(
+                    "archiveLevel",
+                    "fieldScope",
+                    "fieldCode",
+                    "fieldName",
+                    "fieldType",
+                    "textLength",
+                    "decimalPrecision",
+                    "decimalScale",
+                    "editControl",
+                    "listVisible",
+                    "listWidth",
+                    "listSortOrder",
+                    "detailVisible",
+                    "detailColSpan",
+                    "detailSortOrder",
+                    "editVisible",
+                    "editColSpan",
+                    "editSortOrder",
+                    "exactSearchable",
+                    "dataScopeFilterable",
+                    "enabled",
+                    "sortOrder");
+    private static final Set<String> FIELD_READ_ONLY_PROPERTIES =
+            Set.of("id", "categoryId", "columnName", "fieldSource", "createdAt", "updatedAt");
     private static final List<BuiltinDataScopeField> BUILTIN_DATA_SCOPE_FIELDS =
             List.of(
                     new BuiltinDataScopeField(
@@ -56,6 +90,7 @@ public class ArchiveMetadataService extends ArchiveMetadataTypes {
     private final ArchiveUniqueConstraintService uniqueConstraintService;
     private final ArchiveCategoryService categoryService;
     private final ArchiveRuntimeFieldReferenceService runtimeFieldReferenceService;
+    private final JsonMapper jsonMapper;
 
     public ArchiveMetadataService(
             ArchiveMapper archiveMapper,
@@ -65,7 +100,8 @@ public class ArchiveMetadataService extends ArchiveMetadataTypes {
             ArchiveFieldLayoutService fieldLayoutService,
             ArchiveUniqueConstraintService uniqueConstraintService,
             ArchiveCategoryService categoryService,
-            ArchiveRuntimeFieldReferenceService runtimeFieldReferenceService) {
+            ArchiveRuntimeFieldReferenceService runtimeFieldReferenceService,
+            JsonMapper jsonMapper) {
         this.archiveMapper = archiveMapper;
         this.fieldRepository = fieldRepository;
         this.fieldDefinitionService = fieldDefinitionService;
@@ -74,6 +110,7 @@ public class ArchiveMetadataService extends ArchiveMetadataTypes {
         this.uniqueConstraintService = uniqueConstraintService;
         this.categoryService = categoryService;
         this.runtimeFieldReferenceService = runtimeFieldReferenceService;
+        this.jsonMapper = jsonMapper;
     }
 
     public List<ArchiveFieldDto> listFields(Long categoryId) {
@@ -244,12 +281,54 @@ public class ArchiveMetadataService extends ArchiveMetadataTypes {
     }
 
     @Transactional
-    public ArchiveFieldDto updateField(
-            Long categoryId, Long fieldId, ArchiveFieldRequest request, Long userId) {
+    public ArchiveFieldDto patchField(Long categoryId, Long fieldId, JsonNode patch, Long userId) {
         requireId(categoryId);
         requireId(fieldId);
+        ArchiveFieldDto current = loadField(fieldId);
+        if (!current.categoryId().equals(categoryId)) {
+            throw notFound("字段定义不存在");
+        }
+        if (patch == null || !patch.isObject()) {
+            throw new BadRequestException("字段定义补丁必须是对象");
+        }
+        for (String property : patch.propertyNames()) {
+            if (FIELD_READ_ONLY_PROPERTIES.contains(property)
+                    || (!FIELD_PATCH_PROPERTIES.contains(property)
+                            && !patch.get(property).isNull())) {
+                throw new BadRequestException("不支持修改字段 " + property, property, "字段不可修改");
+            }
+        }
+        ObjectNode representation = (ObjectNode) jsonMapper.valueToTree(current);
+        for (String property : FIELD_READ_ONLY_PROPERTIES) {
+            representation.remove(property);
+        }
+        JsonNode merged = JsonMergePatch.apply(representation, patch);
+        ArchiveFieldRequest request;
+        try {
+            request = jsonMapper.readValue(merged.toString(), ArchiveFieldRequest.class);
+        } catch (JacksonException exception) {
+            throw new BadRequestException("字段定义补丁格式不合法");
+        }
         ArchiveFieldDefinitionService.ArchiveFieldValues values =
                 fieldDefinitionService.validate(request);
+        JsonNode validated = jsonMapper.valueToTree(values);
+        for (String property : patch.propertyNames()) {
+            if (patch.get(property).isNull()
+                    && FIELD_PATCH_PROPERTIES.contains(property)
+                    && validated.hasNonNull(property)) {
+                throw new BadRequestException(property + " 不能删除", property, "字段不可删除");
+            }
+        }
+        if (merged.equals(representation)) {
+            return current;
+        }
+        return updateFieldInternal(categoryId, fieldId, values);
+    }
+
+    private ArchiveFieldDto updateFieldInternal(
+            Long categoryId,
+            Long fieldId,
+            ArchiveFieldDefinitionService.ArchiveFieldValues values) {
         ArchiveCategoryDto category = categoryService.getCategory(categoryId);
         fieldDefinitionService.ensureArchiveLevelAllowed(category, values.archiveLevel());
         ArchiveFieldDto current = loadField(fieldId);
