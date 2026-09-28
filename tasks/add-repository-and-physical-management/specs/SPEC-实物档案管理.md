@@ -139,6 +139,13 @@
 - **THEN** 系统 SHALL 创建子位置
 - **AND** 列表 SHALL 通过 `parentId` 和稳定排序表达层级
 
+#### 场景： 局部更新真实库房和存放位置
+
+- **WHEN** 有档案元数据管理权限的用户按项目 API 合同提交库房或存放位置的 JSON Merge Patch
+- **THEN** 未出现的字段 SHALL 保持不变，必需字段的显式 `null` SHALL 被拒绝
+- **AND** 存放位置的 `parentId: null` SHALL 移除父位置，使其成为根位置，响应 SHALL 省略 `parentId`
+- **AND** 无变化的补丁 SHALL 不产生数据库更新
+
 #### 场景： 提交无效层级
 
 - **WHEN** 父位置属于其他真实库房、位置引用自身或修改后形成环

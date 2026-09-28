@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.Optional;
@@ -19,6 +21,8 @@ import github.luckygc.am.module.archive.physical.repository.ArchivePhysicalObjec
 import github.luckygc.am.module.archive.physical.repository.ArchiveStorageLocationDataRepository;
 import github.luckygc.am.module.archive.physical.repository.ArchiveWarehouseDataRepository;
 import github.luckygc.am.module.archive.physical.service.ArchiveStorageLocationService.CreateArchiveStorageLocationRequest;
+import github.luckygc.am.module.archive.physical.service.ArchiveStorageLocationService.UpdateArchiveStorageLocationRequest;
+import github.luckygc.am.module.archive.physical.service.ArchiveStorageLocationService.UpdateArchiveWarehouseRequest;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
 
 @DisplayName("真实库房与存放位置服务")
@@ -82,6 +86,46 @@ class ArchiveStorageLocationServiceTests {
                                         9L))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("同一真实库房");
+    }
+
+    @Test
+    @DisplayName("库房无变化补丁不写入数据库")
+    void unchangedWarehouseShouldNotWrite() {
+        ArchiveWarehouse entity = warehouse(11L);
+        when(warehouseRepository.findById(11L)).thenReturn(Optional.of(entity));
+
+        var response =
+                service.updateWarehouse(
+                        11L, new UpdateArchiveWarehouseRequest(null, null, null, null), 9L);
+
+        assertThat(response.warehouseName()).isEqualTo("库房11");
+        verify(warehouseRepository, never()).update(any(ArchiveWarehouse.class));
+    }
+
+    @Test
+    @DisplayName("移除父位置后保存根位置，再次提交相同补丁不重复写入")
+    void removeParentAndAvoidDuplicateWrite() {
+        ArchiveStorageLocation entity = new ArchiveStorageLocation();
+        entity.setId(21L);
+        entity.setWarehouseId(11L);
+        entity.setParentId(20L);
+        entity.setLocationCode("R1");
+        entity.setLocationName("一号架");
+        entity.setLocationType("RACK");
+        entity.setEnabled(true);
+        when(locationRepository.findById(21L)).thenReturn(Optional.of(entity));
+        when(warehouseRepository.findById(11L)).thenReturn(Optional.of(warehouse(11L)));
+        when(locationRepository.update(entity)).thenReturn(entity);
+        UpdateArchiveStorageLocationRequest patch =
+                new UpdateArchiveStorageLocationRequest(
+                        null, null, true, null, null, null, null, null);
+
+        var first = service.updateLocation(21L, patch, 9L);
+        var second = service.updateLocation(21L, patch, 9L);
+
+        assertThat(first.parentId()).isNull();
+        assertThat(second.parentId()).isNull();
+        verify(locationRepository).update(entity);
     }
 
     private ArchiveWarehouse warehouse(Long id) {

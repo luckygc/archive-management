@@ -2,6 +2,7 @@ package github.luckygc.am.module.archive.physical.service;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 import org.apache.commons.lang3.StringUtils;
@@ -11,6 +12,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
 
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.common.security.AuthenticatedUsers;
@@ -74,18 +77,26 @@ public class ArchiveStorageLocationService {
         if (request == null) {
             throw new BadRequestException("请求体不能为空");
         }
-        if (request.warehouseCode() != null) {
-            entity.setWarehouseCode(required(request.warehouseCode(), "库房编码不能为空"));
+        String code =
+                request.warehouseCode() == null
+                        ? entity.getWarehouseCode()
+                        : required(request.warehouseCode(), "库房编码不能为空");
+        String name =
+                request.warehouseName() == null
+                        ? entity.getWarehouseName()
+                        : required(request.warehouseName(), "库房名称不能为空");
+        boolean enabled = request.enabled() == null ? entity.isEnabled() : request.enabled();
+        int sortOrder = request.sortOrder() == null ? entity.getSortOrder() : request.sortOrder();
+        if (Objects.equals(code, entity.getWarehouseCode())
+                && Objects.equals(name, entity.getWarehouseName())
+                && enabled == entity.isEnabled()
+                && sortOrder == entity.getSortOrder()) {
+            return toWarehouseResponse(entity);
         }
-        if (request.warehouseName() != null) {
-            entity.setWarehouseName(required(request.warehouseName(), "库房名称不能为空"));
-        }
-        if (request.enabled() != null) {
-            entity.setEnabled(request.enabled());
-        }
-        if (request.sortOrder() != null) {
-            entity.setSortOrder(request.sortOrder());
-        }
+        entity.setWarehouseCode(code);
+        entity.setWarehouseName(name);
+        entity.setEnabled(enabled);
+        entity.setSortOrder(sortOrder);
         try {
             return toWarehouseResponse(warehouseRepository.update(entity));
         } catch (DataIntegrityViolationException exception) {
@@ -141,8 +152,31 @@ public class ArchiveStorageLocationService {
         }
         Long warehouseId =
                 request.warehouseId() == null ? entity.getWarehouseId() : request.warehouseId();
-        enabledWarehouse(warehouseId);
         Long parentId = request.parentIdPresent() ? request.parentId() : entity.getParentId();
+        String code =
+                request.locationCode() == null
+                        ? entity.getLocationCode()
+                        : required(request.locationCode(), "位置编码不能为空");
+        String name =
+                request.locationName() == null
+                        ? entity.getLocationName()
+                        : required(request.locationName(), "位置名称不能为空");
+        String type =
+                request.locationType() == null
+                        ? entity.getLocationType()
+                        : required(request.locationType(), "位置类型不能为空");
+        boolean enabled = request.enabled() == null ? entity.isEnabled() : request.enabled();
+        int sortOrder = request.sortOrder() == null ? entity.getSortOrder() : request.sortOrder();
+        if (warehouseId.equals(entity.getWarehouseId())
+                && Objects.equals(parentId, entity.getParentId())
+                && Objects.equals(code, entity.getLocationCode())
+                && Objects.equals(name, entity.getLocationName())
+                && Objects.equals(type, entity.getLocationType())
+                && enabled == entity.isEnabled()
+                && sortOrder == entity.getSortOrder()) {
+            return toLocationResponse(entity);
+        }
+        enabledWarehouse(warehouseId);
         if (!warehouseId.equals(entity.getWarehouseId())
                 && (!locationRepository.findByParentId(id).isEmpty()
                         || !physicalObjectRepository.findByCurrentLocationId(id).isEmpty())) {
@@ -151,21 +185,11 @@ public class ArchiveStorageLocationService {
         validateParent(warehouseId, parentId, id);
         entity.setWarehouseId(warehouseId);
         entity.setParentId(parentId);
-        if (request.locationCode() != null) {
-            entity.setLocationCode(required(request.locationCode(), "位置编码不能为空"));
-        }
-        if (request.locationName() != null) {
-            entity.setLocationName(required(request.locationName(), "位置名称不能为空"));
-        }
-        if (request.locationType() != null) {
-            entity.setLocationType(required(request.locationType(), "位置类型不能为空"));
-        }
-        if (request.enabled() != null) {
-            entity.setEnabled(request.enabled());
-        }
-        if (request.sortOrder() != null) {
-            entity.setSortOrder(request.sortOrder());
-        }
+        entity.setLocationCode(code);
+        entity.setLocationName(name);
+        entity.setLocationType(type);
+        entity.setEnabled(enabled);
+        entity.setSortOrder(sortOrder);
         try {
             return toLocationResponse(locationRepository.update(entity));
         } catch (DataIntegrityViolationException exception) {
@@ -334,6 +358,7 @@ public class ArchiveStorageLocationService {
             @Nullable Boolean enabled,
             @Nullable Integer sortOrder) {}
 
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     public record ArchiveStorageLocationResponse(
             Long id,
             Long warehouseId,
