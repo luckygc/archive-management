@@ -34,6 +34,8 @@ import tools.jackson.databind.JsonNode;
 public class ArchiveItemLineRowController {
 
     private static final Set<String> PATCH_FIELDS = Set.of("lineOrder", "values");
+    private static final Set<String> READ_ONLY_FIELDS =
+            Set.of("id", "archiveItemId", "lineTableId", "createdAt", "updatedAt");
 
     private final ArchiveItemLineRowService archiveItemLineRowService;
 
@@ -69,7 +71,9 @@ public class ArchiveItemLineRowController {
                 archiveItem, lineTable, request, userId(authentication));
     }
 
-    @PatchMapping("/archive-items/{archiveItem}/line-tables/{lineTable}/rows/{row}")
+    @PatchMapping(
+            value = "/archive-items/{archiveItem}/line-tables/{lineTable}/rows/{row}",
+            consumes = "application/merge-patch+json")
     public ArchiveItemLineRowResponse patchRow(
             @PathVariable Long archiveItem,
             @PathVariable Long lineTable,
@@ -95,7 +99,8 @@ public class ArchiveItemLineRowController {
             throw new BadRequestException("请求体必须为 JSON 对象");
         }
         for (Map.Entry<String, JsonNode> entry : body.properties()) {
-            if (!PATCH_FIELDS.contains(entry.getKey())) {
+            if (!PATCH_FIELDS.contains(entry.getKey())
+                    && (READ_ONLY_FIELDS.contains(entry.getKey()) || !entry.getValue().isNull())) {
                 throw new BadRequestException("未知请求字段：" + entry.getKey(), entry.getKey(), "未知请求字段");
             }
         }

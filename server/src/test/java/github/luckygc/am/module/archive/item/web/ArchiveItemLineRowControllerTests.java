@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.List;
 
@@ -13,6 +15,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.security.authentication.TestingAuthenticationToken;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.common.security.AuthenticatedUser;
@@ -71,7 +74,7 @@ class ArchiveItemLineRowControllerTests {
     @Test
     @DisplayName("PATCH 区分 values 和 lineOrder 缺失")
     void patchShouldPreserveMissingFields() throws Exception {
-        controller.patchRow(3L, 4L, 9L, json("{}"), auth());
+        controller.patchRow(3L, 4L, 9L, json("{\"unknown\":null}"), auth());
 
         ArgumentCaptor<PatchArchiveItemLineRowRequest> captor =
                 ArgumentCaptor.forClass(PatchArchiveItemLineRowRequest.class);
@@ -130,6 +133,21 @@ class ArchiveItemLineRowControllerTests {
                                 assertThat(exception.fieldViolations())
                                         .extracting("field")
                                         .containsExactly("values"));
+        assertThatThrownBy(() -> controller.patchRow(3L, 4L, 9L, json("{\"id\":null}"), auth()))
+                .isInstanceOf(BadRequestException.class);
+    }
+
+    @Test
+    @DisplayName("PATCH 只接受 JSON Merge Patch 媒体类型")
+    void patchRejectsOrdinaryJson() throws Exception {
+        MockMvcBuilders.standaloneSetup(controller)
+                .build()
+                .perform(
+                        patch("/archive-items/3/line-tables/4/rows/9")
+                                .principal(auth())
+                                .contentType("application/json")
+                                .content("{}"))
+                .andExpect(status().isUnsupportedMediaType());
     }
 
     @Test

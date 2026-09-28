@@ -320,14 +320,18 @@ public class ArchiveItemLineRowService {
                                 java.util.stream.Collectors.toMap(
                                         ArchiveItemLineFieldDto::fieldCode, field -> field));
         for (String fieldCode : values.keySet()) {
-            if (!fieldsByCode.containsKey(fieldCode)) {
+            if (!fieldsByCode.containsKey(fieldCode) && values.get(fieldCode) != null) {
                 throw badRequest("字段不存在：" + fieldCode, "values." + fieldCode, "字段不存在");
             }
         }
         List<ArchiveItemLineFieldDto> requestedFields =
                 fields.stream().filter(field -> values.containsKey(field.fieldCode())).toList();
+        Map<String, @Nullable Object> knownValues = new LinkedHashMap<>();
+        for (ArchiveItemLineFieldDto field : requestedFields) {
+            knownValues.put(field.fieldCode(), values.get(field.fieldCode()));
+        }
         Map<String, @Nullable Object> converted =
-                fieldValueConverter.convertLineFields(requestedFields, values, "values");
+                fieldValueConverter.convertLineFields(requestedFields, knownValues, "values");
         return requestedFields.stream()
                 .map(
                         field ->
@@ -357,9 +361,11 @@ public class ArchiveItemLineRowService {
             LineTableDefinition table, Map<String, Object> row) {
         Map<String, @Nullable Object> values = new LinkedHashMap<>();
         for (ArchiveItemLineFieldDto field : table.fields()) {
-            values.put(
-                    field.fieldCode(),
-                    normalizeReadValue(field.fieldType(), value(row, field.columnName())));
+            @Nullable Object fieldValue =
+                    normalizeReadValue(field.fieldType(), value(row, field.columnName()));
+            if (fieldValue != null) {
+                values.put(field.fieldCode(), fieldValue);
+            }
         }
         return new ArchiveItemLineRowResponse(
                 number(row, "id").longValue(),

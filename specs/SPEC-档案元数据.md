@@ -173,6 +173,13 @@
 - **AND** 系统 SHALL 写入该明细行的 `deleted_at` 和 `deleted_by`
 - **AND** 未删除明细行 SHALL 按 `line_order` 和 `id` 稳定排序
 
+#### 场景： 局部更新条目明细行
+
+- **WHEN** 客户端按项目 API 合同提交明细行的 JSON Merge Patch
+- **THEN** 未出现的 `lineOrder` 和动态字段 SHALL 保持不变，动态字段的显式 `null` SHALL 清空其值
+- **AND** 响应的 `values` SHALL 省略已清空的动态字段；不存在的动态字段提交 `null` SHALL 不产生写入
+- **AND** 必需的 `lineOrder` SHALL 拒绝显式 `null`
+
 ### 要求： 字段检索标记
 
 系统 SHALL 在字段定义中只暴露精确筛选标记，全文检索不暴露字段级开关。

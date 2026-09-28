@@ -104,6 +104,7 @@ describe("archive line table API", () => {
         expect(httpClientMock.patch).toHaveBeenCalledWith(
             "/archive-items/3/line-tables/4/rows/9",
             payload,
+            { headers: { "Content-Type": "application/merge-patch+json" } },
         );
         expect(httpClientMock.delete).toHaveBeenCalledWith("/archive-items/3/line-tables/4/rows/9");
     });

@@ -307,6 +307,30 @@ class ArchiveItemLineRowServiceTests {
     }
 
     @Test
+    @DisplayName("不存在的动态键提交 null 不写入，响应省略空值字段")
+    void patchRowShouldIgnoreMissingNullAndOmitRemovedValue() {
+        stubBuiltTable(false);
+        Map<String, Object> current = row(9L, 0, "甲");
+        current.put("f_amount", null);
+        when(archiveMapper.getItemLineRow(any())).thenReturn(current);
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("unknown", null);
+
+        ArchiveItemLineRowResponse response =
+                service.patchRow(
+                        3L,
+                        4L,
+                        9L,
+                        new PatchArchiveItemLineRowRequest(false, null, true, values),
+                        8L);
+
+        verify(archiveMapper, never()).updateItemLineRow(any());
+        assertThat(response.values()).containsEntry("party_name", "甲");
+        assertThat(response.values()).doesNotContainKey("amount");
+        assertThat(response.values()).doesNotContainKey("unknown");
+    }
+
+    @Test
     @DisplayName("未知字段返回 values.fieldCode 字段错误")
     void createRowShouldRejectUnknownFieldWithStablePath() {
         stubBuiltTable(false);

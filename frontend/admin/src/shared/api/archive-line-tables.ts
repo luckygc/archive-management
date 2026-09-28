@@ -85,6 +85,7 @@ export function patchArchiveItemLineRow(
     return httpClient.patch<ArchiveItemLineRowResponse>(
         `/archive-items/${archiveItemId}/line-tables/${lineTableId}/rows/${rowId}`,
         payload,
+        { headers: { "Content-Type": "application/merge-patch+json" } },
     );
 }
 
