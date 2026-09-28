@@ -22,8 +22,8 @@ class ArchiveStorageLocationControllerTests {
                         "listLocations", Long.class);
 
         assertThat(warehouses.getAnnotation(GetMapping.class).value())
-                .containsExactly("/api/v1/archive-warehouses");
+                .containsExactly("/archive-warehouses");
         assertThat(locations.getAnnotation(GetMapping.class).value())
-                .containsExactly("/api/v1/archive-storage-locations");
+                .containsExactly("/archive-storage-locations");
     }
 }

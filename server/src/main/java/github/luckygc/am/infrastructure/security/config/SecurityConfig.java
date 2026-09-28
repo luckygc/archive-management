@@ -32,6 +32,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import github.luckygc.am.infrastructure.security.ApiRequestPaths;
 import github.luckygc.am.infrastructure.security.ApiRequestSignatureFilter;
 
 @Configuration
@@ -111,11 +112,11 @@ public class SecurityConfig {
                 .permitAll()
                 .requestMatchers("/", "/index.html", "/favicon.svg", "/assets/**")
                 .permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/v1/login-sessions")
+                .requestMatchers(HttpMethod.POST, "/login-sessions")
                 .permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/v1/login-session-challenges:verifyTotp")
+                .requestMatchers(HttpMethod.POST, "/login-session-challenges:verifyTotp")
                 .permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/v1/public-file-links/*:download")
+                .requestMatchers(HttpMethod.GET, "/public-file-links/*:download")
                 .permitAll()
                 .requestMatchers("/actuator/**")
                 .hasRole(authorizationProperties.getActuatorRoleName())
@@ -173,7 +174,7 @@ public class SecurityConfig {
 
         @Override
         public boolean matches(HttpServletRequest request) {
-            return request.getRequestURI().startsWith("/api/");
+            return ApiRequestPaths.isApiRequest(request.getRequestURI());
         }
     }
 }

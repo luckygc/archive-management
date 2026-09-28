@@ -34,7 +34,7 @@ public class FileLinkDownloadController {
         this.targetResolvers = List.copyOf(targetResolvers);
     }
 
-    @GetMapping("/api/v1/file-links/{code}:download")
+    @GetMapping("/file-links/{code}:download")
     public ResponseEntity<InputStreamResource> downloadInternal(
             @PathVariable String code, Authentication authentication) {
         Long userId = currentUserId(authentication);
@@ -42,7 +42,7 @@ public class FileLinkDownloadController {
         return toResponse(open(target, userId));
     }
 
-    @GetMapping("/api/v1/public-file-links/{code}:download")
+    @GetMapping("/public-file-links/{code}:download")
     public ResponseEntity<InputStreamResource> downloadPublic(@PathVariable String code) {
         FileLinkTarget target = fileLinkService.resolvePublic(code);
         return toResponse(open(target, null));

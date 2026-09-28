@@ -42,13 +42,13 @@
 
 #### 场景： 变更条目业务库
 
-- **WHEN** 有档案更新权限的用户向 `POST /api/v1/archive-items/{id}:changeRepository` 提交已启用目标业务库
+- **WHEN** 有档案更新权限的用户向 `POST /archive-items/{id}:changeRepository` 提交已启用目标业务库
 - **THEN** 系统 SHALL 更新条目当前业务库且保持条目 ID 不变
 - **AND** 系统 SHALL 记录来源库、目标库、业务类型、业务 ID、原因、操作人和操作时间
 
 #### 场景： 变更案卷业务库
 
-- **WHEN** 有档案更新权限的用户向 `POST /api/v1/archive-volumes/{id}:changeRepository` 提交已启用目标业务库
+- **WHEN** 有档案更新权限的用户向 `POST /archive-volumes/{id}:changeRepository` 提交已启用目标业务库
 - **THEN** 系统 SHALL 更新案卷当前业务库且保持案卷 ID 不变
 - **AND** 系统 SHALL 记录库变更历史
 

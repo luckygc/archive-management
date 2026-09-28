@@ -53,14 +53,14 @@ public class LoginSessionController {
         this.totpCredentialService = totpCredentialService;
     }
 
-    @GetMapping("/api/v1/me")
+    @GetMapping("/me")
     public CurrentUserDto me(Authentication authentication, HttpServletRequest request) {
         Long userId = AuthenticatedUsers.requireUserId(authentication.getPrincipal());
         return CurrentUserDto.from(
                 authentication, currentSessionId(request), totpCredentialService.isEnabled(userId));
     }
 
-    @GetMapping("/api/v1/login-sessions")
+    @GetMapping("/login-sessions")
     public CursorPageResponse<AuthenticationAuditService.LoginSessionResponse> listLoginSessions(
             PageRequest page, HttpServletRequest request, Authentication authentication) {
         requirePermission(
@@ -68,7 +68,7 @@ public class LoginSessionController {
         return authenticationAuditService.listLoginSessions(page, request);
     }
 
-    @DeleteMapping("/api/v1/login-sessions/{session}")
+    @DeleteMapping("/login-sessions/{session}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteLoginSession(
             @PathVariable String session,
@@ -85,7 +85,7 @@ public class LoginSessionController {
         authenticationAuditService.revokeSession(session, request, authentication);
     }
 
-    @PostMapping("/api/v1/login-failure-limits/{username}:reset")
+    @PostMapping("/login-failure-limits/{username}:reset")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void resetLoginFailureLimit(
             @PathVariable String username, Authentication authentication) {
@@ -94,7 +94,7 @@ public class LoginSessionController {
         failureLimitService.clear(username);
     }
 
-    @GetMapping("/api/v1/authentication-events")
+    @GetMapping("/authentication-events")
     public CursorPageResponse<AuthenticationAuditService.LoginLogResponse> listLoginLogs(
             @RequestParam(required = false) @Nullable String eventType,
             @RequestParam(required = false) @Nullable String username,

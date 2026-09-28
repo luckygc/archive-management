@@ -204,7 +204,7 @@ archive:
             # 允许访问 Actuator 端点的角色名称。
             actuator-role-name: 系统监控
         request-signature:
-            # 是否启用 /api/** 请求 HMAC 签名校验；开启后除 OPTIONS 预检外都必须携带签名头。
+            # 是否启用项目自有 API 请求 HMAC 签名校验；开启后除 OPTIONS 预检外都必须携带签名头。
             enabled: false
             # HMAC-SHA256 密钥，开启签名校验时必须通过外部配置提供，长度至少 32 个字符。
             secret:

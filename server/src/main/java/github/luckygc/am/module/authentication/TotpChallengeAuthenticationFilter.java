@@ -20,7 +20,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 public class TotpChallengeAuthenticationFilter extends AbstractAuthenticationProcessingFilter {
 
-    private static final String VERIFY_PATH = "/api/v1/login-session-challenges:verifyTotp";
+    private static final String VERIFY_PATH = "/login-session-challenges:verifyTotp";
     private static final RequestMatcher REQUEST_MATCHER =
             request ->
                     "POST".equalsIgnoreCase(request.getMethod())

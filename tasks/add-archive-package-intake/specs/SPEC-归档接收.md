@@ -8,7 +8,7 @@
 
 #### 场景： 查询归档接收入口概览
 
-- **WHEN** 前端请求 `GET /api/v1/intake`
+- **WHEN** 前端请求 `GET /intake`
 - **THEN** 系统 SHALL 返回归档接收入口概览
 - **AND** 响应 SHALL 明确表示本地档案信息包接收可用
 - **AND** 响应 SHALL 明确表示当前未配置 NAS、SFTP、HTTP 或其他外部连接
@@ -141,39 +141,39 @@
 
 #### 场景： 创建接收包资源
 
-- **WHEN** 已认证且具有 `archive:item:create` 权限的用户向 `POST /api/v1/archive-intake-packages` 提交 multipart `file`
+- **WHEN** 已认证且具有 `archive:item:create` 权限的用户向 `POST /archive-intake-packages` 提交 multipart `file`
 - **THEN** 系统 SHALL 返回 `201 Created`
 - **AND** 响应 SHALL 直接返回自动检测后的 `PENDING_REVIEW` 或 `FAILED` 包详情
 
 #### 场景： 查询当前用户接收历史
 
-- **WHEN** 已认证且具有 `archive:item:read` 权限的用户请求 `GET /api/v1/archive-intake-packages`
+- **WHEN** 已认证且具有 `archive:item:read` 权限的用户请求 `GET /archive-intake-packages`
 - **THEN** 系统 SHALL 使用 `limit` 和不透明 `cursor` 返回 `CursorPageResponse`
 - **AND** 结果 SHALL 按 `createdAt DESC, id DESC` 稳定排序
 - **AND** 结果 SHALL 只包含当前用户提交的接收记录
 
 #### 场景： 查询接收包详情
 
-- **WHEN** 已认证且具有 `archive:item:read` 权限的用户请求 `GET /api/v1/archive-intake-packages/{id}`
+- **WHEN** 已认证且具有 `archive:item:read` 权限的用户请求 `GET /archive-intake-packages/{id}`
 - **THEN** 系统 SHALL 返回属于当前用户的包详情和生成条目
 - **AND** 系统 SHALL 对不存在或不属于当前用户的记录返回资源不存在
 
 #### 场景： 下载原始接收包
 
-- **WHEN** 已认证且具有 `archive:item:read` 权限的提交人请求 `POST /api/v1/archive-intake-packages/{id}:createDownloadLink`
+- **WHEN** 已认证且具有 `archive:item:read` 权限的提交人请求 `POST /archive-intake-packages/{id}:createDownloadLink`
 - **THEN** 系统 SHALL 返回仅当前用户可用的短期下载地址和过期时间
 - **AND** 不存在或不属于当前用户的记录 SHALL 返回资源不存在
 
 #### 场景： 确认接收
 
-- **WHEN** 当前提交人具有 `archive:item:create` 权限并向 `POST /api/v1/archive-intake-packages/{id}:accept` 提交完整人工复核确认
+- **WHEN** 当前提交人具有 `archive:item:create` 权限并向 `POST /archive-intake-packages/{id}:accept` 提交完整人工复核确认
 - **THEN** 系统 SHALL 重新读取并解析长期保存的原包
 - **AND** 成功时 SHALL 返回 `ACCEPTED` 包详情和生成的正式档案条目
 - **AND** 非 `PENDING_REVIEW` 状态 SHALL 拒绝该动作
 
 #### 场景： 退回信息包
 
-- **WHEN** 当前提交人具有 `archive:item:create` 权限并向 `POST /api/v1/archive-intake-packages/{id}:reject` 提交非空退回原因
+- **WHEN** 当前提交人具有 `archive:item:create` 权限并向 `POST /archive-intake-packages/{id}:reject` 提交非空退回原因
 - **THEN** 系统 SHALL 返回 `REJECTED` 包详情
 - **AND** 非 `PENDING_REVIEW` 状态 SHALL 拒绝该动作
 

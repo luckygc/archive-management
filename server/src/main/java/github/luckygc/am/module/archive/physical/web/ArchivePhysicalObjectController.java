@@ -30,19 +30,19 @@ public class ArchivePhysicalObjectController {
         this.service = service;
     }
 
-    @GetMapping("/api/v1/archive-items/{archiveItemId}/physical-object")
+    @GetMapping("/archive-items/{archiveItemId}/physical-object")
     public ArchivePhysicalObjectResponse getByArchiveItem(
             @PathVariable Long archiveItemId, Authentication authentication) {
         return service.getByArchiveItem(archiveItemId, userId(authentication));
     }
 
-    @GetMapping("/api/v1/archive-volumes/{archiveVolumeId}/physical-object")
+    @GetMapping("/archive-volumes/{archiveVolumeId}/physical-object")
     public ArchivePhysicalObjectResponse getByArchiveVolume(
             @PathVariable Long archiveVolumeId, Authentication authentication) {
         return service.getByArchiveVolume(archiveVolumeId, userId(authentication));
     }
 
-    @PostMapping("/api/v1/archive-physical-objects")
+    @PostMapping("/archive-physical-objects")
     @ResponseStatus(HttpStatus.CREATED)
     public ArchivePhysicalObjectResponse create(
             @RequestBody CreateArchivePhysicalObjectRequest request,
@@ -50,12 +50,12 @@ public class ArchivePhysicalObjectController {
         return service.create(request, userId(authentication));
     }
 
-    @GetMapping("/api/v1/archive-physical-objects/{id}")
+    @GetMapping("/archive-physical-objects/{id}")
     public ArchivePhysicalObjectResponse get(@PathVariable Long id, Authentication authentication) {
         return service.get(id, userId(authentication));
     }
 
-    @PatchMapping("/api/v1/archive-physical-objects/{id}")
+    @PatchMapping("/archive-physical-objects/{id}")
     public ArchivePhysicalObjectResponse update(
             @PathVariable Long id,
             @RequestBody UpdateArchivePhysicalObjectRequest request,
@@ -63,19 +63,19 @@ public class ArchivePhysicalObjectController {
         return service.update(id, request, userId(authentication));
     }
 
-    @DeleteMapping("/api/v1/archive-physical-objects/{id}")
+    @DeleteMapping("/archive-physical-objects/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id, Authentication authentication) {
         service.delete(id, userId(authentication));
     }
 
-    @PostMapping("/api/v1/archive-physical-objects:batchAssignLocation")
+    @PostMapping("/archive-physical-objects:batchAssignLocation")
     public BatchAssignArchiveLocationResponse batchAssignLocation(
             @RequestBody BatchAssignArchiveLocationRequest request, Authentication authentication) {
         return service.batchAssignLocation(request, userId(authentication));
     }
 
-    @GetMapping("/api/v1/archive-physical-objects/{id}/location-history")
+    @GetMapping("/archive-physical-objects/{id}/location-history")
     public CollectionResponse<ArchivePhysicalLocationHistoryResponse> listLocationHistory(
             @PathVariable Long id, Authentication authentication) {
         return CollectionResponse.of(service.listLocationHistory(id, userId(authentication)));

@@ -27,8 +27,7 @@ class LoginFailureLimitFilterTests {
     @Test
     @DisplayName("账号未受限时直接放行账号密码登录")
     void allowsPasswordLoginWithoutCapToken() throws Exception {
-        MockHttpServletRequest request =
-                new MockHttpServletRequest("POST", "/api/v1/login-sessions");
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/login-sessions");
         request.setParameter("username", "admin");
         MockHttpServletResponse response = new MockHttpServletResponse();
         AtomicBoolean proceeded = new AtomicBoolean();
@@ -44,8 +43,7 @@ class LoginFailureLimitFilterTests {
     @Test
     @DisplayName("账号受限时拒绝登录")
     void blocksLimitedUsername() throws Exception {
-        MockHttpServletRequest request =
-                new MockHttpServletRequest("POST", "/api/v1/login-sessions");
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/login-sessions");
         request.setParameter("username", "admin");
         MockHttpServletResponse response = new MockHttpServletResponse();
         AtomicBoolean proceeded = new AtomicBoolean();

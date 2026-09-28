@@ -15,7 +15,7 @@
 #### 场景： 登录请求格式
 
 - **WHEN** 客户端提交登录请求
-- **THEN** 请求 SHALL 使用 `POST /api/v1/login-sessions`
+- **THEN** 请求 SHALL 使用 `POST /login-sessions`
 - **AND** 请求体 SHALL 使用 `application/x-www-form-urlencoded`
 - **AND** 请求参数 SHALL 包含 `username` 和 `password`
 
@@ -45,7 +45,7 @@
 #### 场景： 完成 TOTP 二次验证
 
 - **GIVEN** 客户端持有有效且未消费的 TOTP 登录挑战
-- **WHEN** 客户端请求固定端点 `POST /api/v1/login-session-challenges:verifyTotp` 并在 JSON 请求体提交有效的 `challengeToken` 与 6 位 TOTP 验证码
+- **WHEN** 客户端请求固定端点 `POST /login-session-challenges:verifyTotp` 并在 JSON 请求体提交有效的 `challengeToken` 与 6 位 TOTP 验证码
 - **THEN** 系统 SHALL 原子消费挑战和验证码时间步
 - **AND** 系统 SHALL 对 fresh SecurityContext 显式执行 SessionAuthenticationStrategy 后保存上下文并创建 Spring Security 服务端会话
 - **AND** 系统 SHALL 轮换客户端已有的匿名会话 ID
@@ -81,7 +81,7 @@
 #### 场景： 已认证主体不得再次发起登录
 
 - **GIVEN** 客户端已经持有已认证会话
-- **WHEN** 客户端再次提交 `POST /api/v1/login-sessions`
+- **WHEN** 客户端再次提交 `POST /login-sessions`
 - **THEN** 系统 SHALL 拒绝该请求
 - **AND** 系统 SHALL NOT 将既有主体与另一账号的认证尝试混合
 
@@ -99,7 +99,7 @@
 
 #### 场景： 记录登录失败状态
 
-- **WHEN** 用户通过 `POST /api/v1/login-sessions` 登录失败
+- **WHEN** 用户通过 `POST /login-sessions` 登录失败
 - **THEN** 系统 SHALL 按提交的登录名记录失败状态
 - **AND** 登录成功后系统 SHALL 清除该登录名的失败风险状态
 
@@ -112,7 +112,7 @@
 #### 场景： 连续失败后临时禁止登录
 
 - **GIVEN** 某登录名在失败窗口内连续失败达到阈值
-- **WHEN** 客户端继续使用该登录名请求 `POST /api/v1/login-sessions`
+- **WHEN** 客户端继续使用该登录名请求 `POST /login-sessions`
 - **THEN** 系统 SHALL 拒绝登录
 - **AND** 响应状态 SHALL 为 `429 Too Many Requests`
 - **AND** 响应体 SHALL 包含可再次登录时间
@@ -127,13 +127,13 @@
 #### 场景： 管理员重置登录失败状态
 
 - **GIVEN** 管理员拥有登录会话管理权限
-- **WHEN** 管理员请求 `POST /api/v1/login-failure-limits/{username}:reset`
+- **WHEN** 管理员请求 `POST /login-failure-limits/{username}:reset`
 - **THEN** 系统 SHALL 清除 `{username}` 对应的登录失败状态
 - **AND** 响应状态 SHALL 为 `204 No Content`
 
 #### 场景： 无权限禁止重置登录失败状态
 
-- **WHEN** 未拥有登录会话管理权限的用户请求 `POST /api/v1/login-failure-limits/{username}:reset`
+- **WHEN** 未拥有登录会话管理权限的用户请求 `POST /login-failure-limits/{username}:reset`
 - **THEN** 系统 SHALL 拒绝请求
 - **AND** 响应状态 SHALL 为 `403 Forbidden`
 
@@ -144,7 +144,7 @@
 #### 场景： 查询登录会话
 
 - **GIVEN** 管理员已登录
-- **WHEN** 客户端请求 `GET /api/v1/login-sessions`
+- **WHEN** 客户端请求 `GET /login-sessions`
 - **THEN** 系统 SHALL 返回当前仍有效的 Spring Session 登录会话列表
 - **AND** 响应 SHALL 使用 cursor 分页响应对象
 - **AND** 当请求参数 `requestTotal=true` 且未提交 `cursor` 时，响应 SHALL 返回与本次筛选条件一致的 `total`
@@ -156,7 +156,7 @@
 
 - **GIVEN** 管理员已登录
 - **AND** 目标登录会话存在且不是当前管理员自己的会话
-- **WHEN** 客户端请求 `DELETE /api/v1/login-sessions/{session}`
+- **WHEN** 客户端请求 `DELETE /login-sessions/{session}`
 - **THEN** 系统 SHALL 在认证审计日志中记录 `kickout` 事件
 - **AND** 审计日志 SHALL 记录操作人、目标用户名、目标 session ID 和目标会话客户端快照
 - **AND** 系统 SHALL 删除目标 Spring Session
@@ -165,7 +165,7 @@
 #### 场景： 禁止踢出当前会话
 
 - **GIVEN** 管理员已登录
-- **WHEN** 客户端请求 `DELETE /api/v1/login-sessions/{session}` 且 `{session}` 是当前请求会话
+- **WHEN** 客户端请求 `DELETE /login-sessions/{session}` 且 `{session}` 是当前请求会话
 - **THEN** 系统 SHALL 拒绝请求
 - **AND** 响应 SHALL 使用 ProblemDetail 错误
 
@@ -175,14 +175,14 @@
 
 #### 场景： 记录登录成功
 
-- **WHEN** 用户通过 `POST /api/v1/login-sessions` 成功登录
+- **WHEN** 用户通过 `POST /login-sessions` 成功登录
 - **THEN** 系统 SHALL 写入一条 `login_success` 认证审计日志
 - **AND** 日志 SHALL 包含用户 ID、用户名、显示名称、session ID、请求 IP、Host、Forwarded、X-Forwarded-For、X-Real-IP、原始 User-Agent 和客户端摘要
 - **AND** 系统 SHALL 将登录时客户端上下文保存到当前 Spring Session 属性
 
 #### 场景： 记录登录失败
 
-- **WHEN** 用户通过 `POST /api/v1/login-sessions` 登录失败
+- **WHEN** 用户通过 `POST /login-sessions` 登录失败
 - **THEN** 系统 SHALL 写入一条 `login_failure` 认证审计日志
 - **AND** 日志 SHALL 包含提交的用户名、失败原因、请求 IP、Host、Forwarded、X-Forwarded-For、X-Real-IP、原始 User-Agent 和客户端摘要
 - **AND** 系统 SHALL NOT 创建登录会话
@@ -190,7 +190,7 @@
 #### 场景： 记录主动退出
 
 - **GIVEN** 用户已登录
-- **WHEN** 客户端请求 `DELETE /api/v1/login-sessions/{session}` 且 `{session}` 是当前请求会话
+- **WHEN** 客户端请求 `DELETE /login-sessions/{session}` 且 `{session}` 是当前请求会话
 - **THEN** 系统 SHALL 写入一条 `logout` 认证审计日志
 - **AND** 日志 SHALL 包含当前用户、当前 session ID 和客户端上下文
 - **AND** 系统 SHALL 使当前 HTTP session 失效
@@ -198,7 +198,7 @@
 #### 场景： 查询认证审计日志
 
 - **GIVEN** 管理员已登录
-- **WHEN** 客户端请求 `GET /api/v1/authentication-events`
+- **WHEN** 客户端请求 `GET /authentication-events`
 - **THEN** 系统 SHALL 返回认证审计日志列表
 - **AND** 响应 SHALL 使用 cursor 分页响应对象
 - **AND** 当请求参数 `requestTotal=true` 且未提交 `cursor` 时，响应 SHALL 返回与本次筛选条件一致的 `total`
@@ -272,7 +272,7 @@
 #### 场景： 查询当前用户
 
 - **GIVEN** 客户端已登录
-- **WHEN** 客户端请求 `GET /api/v1/me`
+- **WHEN** 客户端请求 `GET /me`
 - **THEN** 系统 SHALL 返回当前主体 JSON
 - **AND** 当前主体 JSON SHALL 包含 `sessionId`、`username`、`displayName`、`roles` 和 `totpEnabled`
 - **AND** 当前主体 JSON SHALL NOT 包含 TOTP 密钥、密文或已接受时间步
@@ -280,7 +280,7 @@
 #### 场景： 未登录访问 API
 
 - **GIVEN** 客户端未登录
-- **WHEN** 客户端访问受保护的 `/api/**` 接口
+- **WHEN** 客户端访问受保护的项目自有 API 接口
 - **THEN** 系统 SHALL 返回 `401 Unauthorized`
 
 ### 要求： 退出登录
@@ -290,7 +290,7 @@
 #### 场景： 退出当前会话
 
 - **GIVEN** 客户端已登录
-- **WHEN** 客户端请求 `DELETE /api/v1/login-sessions/{session}` 且 `{session}` 为当前会话 ID
+- **WHEN** 客户端请求 `DELETE /login-sessions/{session}` 且 `{session}` 为当前会话 ID
 - **THEN** 系统 SHALL 清理当前 SecurityContext
 - **AND** 系统 SHALL 使当前 HTTP session 失效
 - **AND** 响应状态 SHALL 为 `204 No Content`
@@ -312,7 +312,7 @@ PC 端 SHALL 集成账号密码登录、可选 TOTP、认证状态初始化和�
 
 - **GIVEN** PC 端持有未过期的 TOTP 登录挑战
 - **WHEN** 用户提交 6 位验证码
-- **THEN** PC 端 SHALL 请求固定端点 `POST /api/v1/login-session-challenges:verifyTotp` 并在 JSON 请求体提交 challengeToken 与验证码
+- **THEN** PC 端 SHALL 请求固定端点 `POST /login-session-challenges:verifyTotp` 并在 JSON 请求体提交 challengeToken 与验证码
 - **AND** 输入 SHALL 使用数字键盘提示与 `one-time-code` 自动填充语义
 - **AND** PC 端 SHALL 由用户明确提交而不是输入满 6 位后自动提交
 
@@ -354,7 +354,7 @@ PC 端 SHALL 集成账号密码登录、可选 TOTP、认证状态初始化和�
 #### 场景： 准备 TOTP enrollment
 
 - **GIVEN** 当前用户尚未启用 TOTP
-- **WHEN** 客户端请求 `POST /api/v1/totp-enrollments`
+- **WHEN** 客户端请求 `POST /totp-enrollments`
 - **THEN** 系统 SHALL 返回一次性展示的 Base32 手工密钥、标准 `otpauth` URI、短时效 enrollment token 和过期时间
 - **AND** 数据库 SHALL 只保存 enrollment token 摘要与加密后的待确认密钥
 - **AND** 同一用户重新准备 enrollment SHALL 使其先前 pending enrollment 失效
@@ -364,7 +364,7 @@ PC 端 SHALL 集成账号密码登录、可选 TOTP、认证状态初始化和�
 #### 场景： 确认启用 TOTP
 
 - **GIVEN** 当前用户持有未过期且属于自己的 enrollment token
-- **WHEN** 客户端请求 `POST /api/v1/totp-credentials` 并提交当前密码和有效 TOTP 验证码
+- **WHEN** 客户端请求 `POST /totp-credentials` 并提交当前密码和有效 TOTP 验证码
 - **THEN** 系统 SHALL 创建该用户唯一的 TOTP 凭据
 - **AND** 系统 SHALL 原子消费 pending enrollment，重复或并发确认 SHALL 最多成功一次
 - **AND** 系统 SHALL 将首次验证码的时间步保存为 `lastAcceptedStep`
@@ -387,7 +387,7 @@ PC 端 SHALL 集成账号密码登录、可选 TOTP、认证状态初始化和�
 #### 场景： 停用自己的 TOTP
 
 - **GIVEN** 当前用户已经启用 TOTP
-- **WHEN** 客户端请求 `POST /api/v1/totp-credentials:disable` 并提交当前密码和有效 TOTP 验证码
+- **WHEN** 客户端请求 `POST /totp-credentials:disable` 并提交当前密码和有效 TOTP 验证码
 - **THEN** 系统 SHALL 删除当前用户的 TOTP 凭据
 - **AND** 后续登录 SHALL 不再要求该用户提交 TOTP
 

@@ -36,7 +36,7 @@ class ArchiveItemSearchProjectionRebuildControllerTests {
         Authentication authentication = authentication(9L);
         JobAcceptedResponse accepted =
                 new JobAcceptedResponse(
-                        17L, "queued", "/api/v1/archive-search-projection-rebuild-jobs/17");
+                        17L, "queued", "/archive-search-projection-rebuild-jobs/17");
         when(rebuildService.start(3L, 9L)).thenReturn(accepted);
 
         var response = controller.startRebuild(3L, authentication);

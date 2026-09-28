@@ -192,15 +192,15 @@ function requestHeaders(init: RequestInit): RawAxiosRequestHeaders {
 function shouldNotifyUnauthenticated(path: string, error: HttpClientError) {
     return (
         error.status === 401 &&
-        path !== "/api/v1/me" &&
-        path !== "/api/v1/login-sessions" &&
+        path !== "/me" &&
+        path !== "/login-sessions" &&
         !isTotpLoginChallengePath(path)
     );
 }
 
 function isTotpLoginChallengePath(path: string) {
     const pathname = new URL(path, "http://localhost").pathname;
-    return pathname === "/api/v1/login-session-challenges:verifyTotp";
+    return pathname === "/login-session-challenges:verifyTotp";
 }
 
 function toHttpClientError(error: unknown) {

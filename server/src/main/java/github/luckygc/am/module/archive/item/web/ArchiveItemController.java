@@ -59,7 +59,7 @@ public class ArchiveItemController {
         this.archiveItemLockService = archiveItemLockService;
     }
 
-    @GetMapping("/api/v1/archive-items")
+    @GetMapping("/archive-items")
     public ArchiveItemListDto listItems(
             Long categoryId, String fondsCode, Authentication authentication) {
         return archiveItemSearchService.listItems(
@@ -69,7 +69,7 @@ public class ArchiveItemController {
                         authentication == null ? null : authentication.getPrincipal()));
     }
 
-    @PostMapping("/api/v1/archive-items:search")
+    @PostMapping("/archive-items:search")
     public ArchiveItemListDto searchItems(
             @RawRequestStrings @RequestBody SearchArchiveItemsRequest request,
             PageRequest page,
@@ -81,7 +81,7 @@ public class ArchiveItemController {
                 page);
     }
 
-    @PostMapping("/api/v1/archive-items:discover")
+    @PostMapping("/archive-items:discover")
     public ArchiveItemListDto discoverItems(
             @RawRequestStrings @RequestBody SearchArchiveItemsRequest request,
             PageRequest page,
@@ -93,7 +93,7 @@ public class ArchiveItemController {
                 page);
     }
 
-    @PostMapping("/api/v1/archive-items:searchDeleted")
+    @PostMapping("/archive-items:searchDeleted")
     public ArchiveItemListDto searchDeletedItems(
             @RawRequestStrings @RequestBody SearchArchiveItemsRequest request,
             PageRequest page,
@@ -105,13 +105,13 @@ public class ArchiveItemController {
                 page);
     }
 
-    @GetMapping("/api/v1/archive-categories/{id}/related-filter-categories")
+    @GetMapping("/archive-categories/{id}/related-filter-categories")
     public CollectionResponse<ArchiveRelatedFilterCategoryDto> listRelatedFilterCategories(
             @PathVariable Long id) {
         return CollectionResponse.of(archiveItemSearchService.listRelatedFilterCategories(id));
     }
 
-    @PostMapping("/api/v1/archive-items")
+    @PostMapping("/archive-items")
     @ResponseStatus(HttpStatus.CREATED)
     public ArchiveItemDto createItem(
             @RequestBody CreateArchiveItemRequest request, Authentication authentication) {
@@ -121,7 +121,7 @@ public class ArchiveItemController {
                         authentication == null ? null : authentication.getPrincipal()));
     }
 
-    @GetMapping("/api/v1/archive-items/{id}")
+    @GetMapping("/archive-items/{id}")
     public ArchiveItemDetailDto getItem(
             @PathVariable Long id,
             @RequestParam(required = false) ArchiveLayoutSurface surface,
@@ -133,7 +133,7 @@ public class ArchiveItemController {
                 surface);
     }
 
-    @PatchMapping("/api/v1/archive-items/{id}")
+    @PatchMapping("/archive-items/{id}")
     public ArchiveItemDetailDto updateItem(
             @PathVariable Long id,
             @RequestBody UpdateArchiveItemRequest request,
@@ -145,7 +145,7 @@ public class ArchiveItemController {
                         authentication == null ? null : authentication.getPrincipal()));
     }
 
-    @PostMapping("/api/v1/archive-items/{id}:reassignFonds")
+    @PostMapping("/archive-items/{id}:reassignFonds")
     public ArchiveItemDetailDto reassignItemFonds(
             @PathVariable Long id,
             @RequestBody ReassignArchiveItemFondsRequest request,
@@ -157,7 +157,7 @@ public class ArchiveItemController {
                         authentication == null ? null : authentication.getPrincipal()));
     }
 
-    @DeleteMapping("/api/v1/archive-items/{id}")
+    @DeleteMapping("/archive-items/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteItem(
             @PathVariable Long id,
@@ -170,7 +170,7 @@ public class ArchiveItemController {
                 request);
     }
 
-    @PostMapping("/api/v1/archive-items/{id}:lock")
+    @PostMapping("/archive-items/{id}:lock")
     public ArchiveItemDto lockItem(
             @PathVariable Long id,
             @RequestBody(required = false) LockItemRequest request,
@@ -182,7 +182,7 @@ public class ArchiveItemController {
                 request);
     }
 
-    @PostMapping("/api/v1/archive-items/{id}:unlock")
+    @PostMapping("/archive-items/{id}:unlock")
     public ArchiveItemDto unlockItem(@PathVariable Long id, Authentication authentication) {
         return archiveItemLockService.unlockItem(
                 id,
@@ -190,7 +190,7 @@ public class ArchiveItemController {
                         authentication == null ? null : authentication.getPrincipal()));
     }
 
-    @GetMapping("/api/v1/archive-items/{id}/relations")
+    @GetMapping("/archive-items/{id}/relations")
     public CursorPageResponse<ArchiveItemRelationResponse> listRelations(
             @PathVariable Long id,
             @RequestParam(defaultValue = "1") Integer depth,
@@ -204,7 +204,7 @@ public class ArchiveItemController {
                         authentication == null ? null : authentication.getPrincipal()));
     }
 
-    @PostMapping("/api/v1/archive-items/{id}/relations")
+    @PostMapping("/archive-items/{id}/relations")
     @ResponseStatus(HttpStatus.CREATED)
     public ArchiveItemRelationResponse createRelation(
             @PathVariable Long id,
@@ -217,7 +217,7 @@ public class ArchiveItemController {
                         authentication == null ? null : authentication.getPrincipal()));
     }
 
-    @DeleteMapping("/api/v1/archive-items/{id}/relations/{relationId}")
+    @DeleteMapping("/archive-items/{id}/relations/{relationId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteRelation(
             @PathVariable Long id, @PathVariable Long relationId, Authentication authentication) {

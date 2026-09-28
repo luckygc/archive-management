@@ -16,26 +16,26 @@ import { queryString } from "./query-string";
 
 export function listArchiveLineTables(categoryId: number) {
     return httpClient.get<CollectionResponse<ArchiveLineTableResponse>>(
-        `/api/v1/archive-categories/${categoryId}/item-line-tables`,
+        `/archive-categories/${categoryId}/item-line-tables`,
     );
 }
 
 export function listArchiveItemLineTables(archiveItemId: number) {
     return httpClient.get<CollectionResponse<ArchiveItemLineTableDefinitionResponse>>(
-        `/api/v1/archive-items/${archiveItemId}/line-tables`,
+        `/archive-items/${archiveItemId}/line-tables`,
     );
 }
 
 export function createArchiveLineTable(categoryId: number, payload: CreateArchiveLineTableRequest) {
     return httpClient.post<ArchiveLineTableResponse>(
-        `/api/v1/archive-categories/${categoryId}/item-line-tables`,
+        `/archive-categories/${categoryId}/item-line-tables`,
         payload,
     );
 }
 
 export function listArchiveLineFields(lineTableId: number) {
     return httpClient.get<CollectionResponse<ArchiveLineFieldResponse>>(
-        `/api/v1/archive-item-line-tables/${lineTableId}/fields`,
+        `/archive-item-line-tables/${lineTableId}/fields`,
     );
 }
 
@@ -44,14 +44,14 @@ export function createArchiveLineField(
     payload: CreateArchiveLineFieldRequest,
 ) {
     return httpClient.post<ArchiveLineFieldResponse>(
-        `/api/v1/archive-item-line-tables/${lineTableId}/fields`,
+        `/archive-item-line-tables/${lineTableId}/fields`,
         payload,
     );
 }
 
 export function buildArchiveLineTable(lineTableId: number) {
     return httpClient.post<ArchiveLineTableResponse>(
-        `/api/v1/archive-item-line-tables/${lineTableId}:build`,
+        `/archive-item-line-tables/${lineTableId}:build`,
     );
 }
 
@@ -61,7 +61,7 @@ export function listArchiveItemLineRows(
     query: ListArchiveItemLineRowsQuery = {},
 ) {
     return httpClient.get<CursorPageResponse<ArchiveItemLineRowResponse>>(
-        `/api/v1/archive-items/${archiveItemId}/line-tables/${lineTableId}/rows${queryString({ limit: query.limit, cursor: query.cursor, requestTotal: query.cursor ? undefined : (query.requestTotal ?? true) })}`,
+        `/archive-items/${archiveItemId}/line-tables/${lineTableId}/rows${queryString({ limit: query.limit, cursor: query.cursor, requestTotal: query.cursor ? undefined : (query.requestTotal ?? true) })}`,
     );
 }
 
@@ -71,7 +71,7 @@ export function createArchiveItemLineRow(
     payload: CreateArchiveItemLineRowRequest,
 ) {
     return httpClient.post<ArchiveItemLineRowResponse>(
-        `/api/v1/archive-items/${archiveItemId}/line-tables/${lineTableId}/rows`,
+        `/archive-items/${archiveItemId}/line-tables/${lineTableId}/rows`,
         payload,
     );
 }
@@ -83,7 +83,7 @@ export function patchArchiveItemLineRow(
     payload: PatchArchiveItemLineRowRequest,
 ) {
     return httpClient.patch<ArchiveItemLineRowResponse>(
-        `/api/v1/archive-items/${archiveItemId}/line-tables/${lineTableId}/rows/${rowId}`,
+        `/archive-items/${archiveItemId}/line-tables/${lineTableId}/rows/${rowId}`,
         payload,
     );
 }
@@ -94,6 +94,6 @@ export function deleteArchiveItemLineRow(
     rowId: number,
 ) {
     return httpClient.delete<void>(
-        `/api/v1/archive-items/${archiveItemId}/line-tables/${lineTableId}/rows/${rowId}`,
+        `/archive-items/${archiveItemId}/line-tables/${lineTableId}/rows/${rowId}`,
     );
 }

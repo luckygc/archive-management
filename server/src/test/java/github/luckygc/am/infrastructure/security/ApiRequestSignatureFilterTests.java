@@ -105,8 +105,7 @@ class ApiRequestSignatureFilterTests {
     @DisplayName("登录前置接口不校验请求签名")
     void loginBootstrapRequestSkipsVerification() throws Exception {
         ApiRequestSignatureFilter filter = filter(true);
-        MockHttpServletRequest request =
-                new MockHttpServletRequest("POST", "/api/v1/login-sessions");
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/login-sessions");
         MockHttpServletResponse response = new MockHttpServletResponse();
         AtomicReference<Boolean> invoked = new AtomicReference<>(false);
 
@@ -129,8 +128,7 @@ class ApiRequestSignatureFilterTests {
     }
 
     private MockHttpServletRequest request(String body) {
-        MockHttpServletRequest request =
-                new MockHttpServletRequest("POST", "/api/v1/archive-items");
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/archive-items");
         request.setQueryString("categoryId=1&fondsCode=A");
         request.setContent(body.getBytes(StandardCharsets.UTF_8));
         request.setContentType("application/json");

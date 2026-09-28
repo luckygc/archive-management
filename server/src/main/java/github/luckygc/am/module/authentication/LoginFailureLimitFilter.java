@@ -27,7 +27,7 @@ public class LoginFailureLimitFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         return !"POST".equalsIgnoreCase(request.getMethod())
-                || !"/api/v1/login-sessions".equals(request.getRequestURI());
+                || !"/login-sessions".equals(request.getRequestURI());
     }
 
     @Override

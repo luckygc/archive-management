@@ -21,7 +21,7 @@ export function listAuthenticationUsers(keyword?: string, limit = 100, cursor?: 
         params.set("cursor", cursor);
     }
     return httpClient.get<CursorPageResponse<AuthenticationUserDto>>(
-        `/api/v1/authentication-users?${params.toString()}`,
+        `/authentication-users?${params.toString()}`,
     );
 }
 
@@ -31,35 +31,33 @@ export function listAuthenticationUserOptions(limit = 100, cursor?: string) {
         params.set("cursor", cursor);
     }
     return httpClient.get<CursorPageResponse<AuthenticationUserOptionDto>>(
-        `/api/v1/authentication-user-options?${params.toString()}`,
+        `/authentication-user-options?${params.toString()}`,
     );
 }
 
 export function createAuthenticationUser(payload: CreateAuthenticationUserRequest) {
-    return httpClient.post<AuthenticationUserDto>("/api/v1/authentication-users", payload);
+    return httpClient.post<AuthenticationUserDto>("/authentication-users", payload);
 }
 
 export function getAuthenticationUser(id: number) {
-    return httpClient.get<AuthenticationUserDetailDto>(`/api/v1/authentication-users/${id}`);
+    return httpClient.get<AuthenticationUserDetailDto>(`/authentication-users/${id}`);
 }
 
 export function updateAuthenticationUser(id: number, payload: UpdateAuthenticationUserRequest) {
-    return httpClient.patch<AuthenticationUserDto>(`/api/v1/authentication-users/${id}`, payload);
+    return httpClient.patch<AuthenticationUserDto>(`/authentication-users/${id}`, payload);
 }
 
 export function resetAuthenticationUserPassword(id: number, payload: ResetPasswordRequest) {
-    return httpClient.post<void>(`/api/v1/authentication-users/${id}:resetPassword`, payload);
+    return httpClient.post<void>(`/authentication-users/${id}:resetPassword`, payload);
 }
 
 export function listAuthenticationUserRoles(id: number) {
-    return httpClient.get<CollectionResponse<RoleSummaryDto>>(
-        `/api/v1/authentication-users/${id}/roles`,
-    );
+    return httpClient.get<CollectionResponse<RoleSummaryDto>>(`/authentication-users/${id}/roles`);
 }
 
 export function saveAuthenticationUserRoles(id: number, payload: SaveUserRolesRequest) {
     return httpClient.put<CollectionResponse<RoleSummaryDto>>(
-        `/api/v1/authentication-users/${id}/roles`,
+        `/authentication-users/${id}/roles`,
         payload,
     );
 }

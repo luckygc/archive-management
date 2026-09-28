@@ -28,7 +28,7 @@ public class ArchiveItemSearchProjectionRebuildController {
         this.permissionService = permissionService;
     }
 
-    @PostMapping("/api/v1/archive-categories/{categoryId}:rebuildSearchProjection")
+    @PostMapping("/archive-categories/{categoryId}:rebuildSearchProjection")
     public ResponseEntity<JobAcceptedResponse> startRebuild(
             @PathVariable Long categoryId, Authentication authentication) {
         Long userId = requireMetadataManage(authentication);
@@ -39,7 +39,7 @@ public class ArchiveItemSearchProjectionRebuildController {
                 .body(response);
     }
 
-    @GetMapping("/api/v1/archive-search-projection-rebuild-jobs/{jobId}")
+    @GetMapping("/archive-search-projection-rebuild-jobs/{jobId}")
     public JobStatusResponse getRebuildJob(
             @PathVariable Long jobId, Authentication authentication) {
         requireMetadataManage(authentication);

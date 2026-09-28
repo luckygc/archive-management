@@ -285,14 +285,14 @@
 
 #### 场景： 创建全宗
 
-- **WHEN** 客户端向 `POST /api/v1/archive-fonds` 提交系统全宗编码、全宗名称及可选的起止日期、沿革说明和排序
+- **WHEN** 客户端向 `POST /archive-fonds` 提交系统全宗编码、全宗名称及可选的起止日期、沿革说明和排序
 - **THEN** 系统 SHALL 创建状态为 `ACTIVE` 的全宗记录
 - **AND** 系统全宗编码 SHALL 在全部历史全宗记录中唯一
 - **AND** 创建请求 SHALL NOT 直接登记业务全宗号
 
 #### 场景： 更新全宗基本信息
 
-- **WHEN** 客户端向 `PATCH /api/v1/archive-fonds/{id}` 提交全宗名称、起止日期、沿革说明或排序
+- **WHEN** 客户端向 `PATCH /archive-fonds/{id}` 提交全宗名称、起止日期、沿革说明或排序
 - **THEN** 系统 SHALL 更新对应基本信息
 - **AND** 更新请求 SHALL NOT 修改系统全宗编码、业务全宗号或生命周期状态
 
@@ -305,7 +305,7 @@
 
 #### 场景： 分配业务全宗号
 
-- **WHEN** 客户端向 `POST /api/v1/archive-fonds/{id}:assignNumber` 提交尚无业务全宗号的全宗、非空号码、原因及可选的分配机关和生效时间
+- **WHEN** 客户端向 `POST /archive-fonds/{id}:assignNumber` 提交尚无业务全宗号的全宗、非空号码、原因及可选的分配机关和生效时间
 - **THEN** 系统 SHALL 保存业务全宗号、分配机关和分配时间
 - **AND** 系统 SHALL 在同一事务写入 `NUMBER_ASSIGNED` 全宗事件
 - **AND** 非空业务全宗号 SHALL 在全部历史全宗记录中唯一
@@ -318,7 +318,7 @@
 
 #### 场景： 封闭全宗
 
-- **WHEN** 客户端向 `POST /api/v1/archive-fonds/{id}:close` 提交 `ACTIVE` 全宗、非空原因及可选生效时间
+- **WHEN** 客户端向 `POST /archive-fonds/{id}:close` 提交 `ACTIVE` 全宗、非空原因及可选生效时间
 - **THEN** 系统 SHALL 将全宗状态变为 `CLOSED`
 - **AND** 系统 SHALL 保存封闭时间和原因
 - **AND** 系统 SHALL 在同一事务写入 `CLOSED` 全宗事件
@@ -332,7 +332,7 @@
 
 #### 场景： 恢复全宗
 
-- **WHEN** 客户端向 `POST /api/v1/archive-fonds/{id}:reopen` 提交 `CLOSED` 全宗、非空原因及可选生效时间
+- **WHEN** 客户端向 `POST /archive-fonds/{id}:reopen` 提交 `CLOSED` 全宗、非空原因及可选生效时间
 - **THEN** 系统 SHALL 将全宗状态恢复为 `ACTIVE`
 - **AND** 系统 SHALL 清除当前封闭时间和原因
 - **AND** 系统 SHALL 在同一事务写入 `REOPENED` 全宗事件
@@ -345,7 +345,7 @@
 
 #### 场景： 查询全宗事件
 
-- **WHEN** 客户端请求 `GET /api/v1/archive-fonds/{id}/events`
+- **WHEN** 客户端请求 `GET /archive-fonds/{id}/events`
 - **THEN** 系统 SHALL 按生效时间和事件 ID 倒序返回该全宗的号码登记、封闭和恢复事件
 - **AND** 每条事件 SHALL 包含事件类型、前后值、原因、生效时间和可空操作人
 

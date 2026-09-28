@@ -73,10 +73,7 @@ class TotpLoginFlowIntegrationTests extends PostgreSqlContainerTest {
         assertThat(authenticatedSession).isNotNull();
 
         MvcResult enrollment =
-                mockMvc.perform(
-                                post("/api/v1/totp-enrollments")
-                                        .cookie(authenticatedSession)
-                                        .with(csrf()))
+                mockMvc.perform(post("/totp-enrollments").cookie(authenticatedSession).with(csrf()))
                         .andExpect(status().isOk())
                         .andExpect(header().string("Cache-Control", "no-store"))
                         .andReturn();
@@ -85,7 +82,7 @@ class TotpLoginFlowIntegrationTests extends PostgreSqlContainerTest {
         String initialCode = totpCodeService.generateCode(secret, Instant.now());
 
         mockMvc.perform(
-                        post("/api/v1/totp-credentials")
+                        post("/totp-credentials")
                                 .cookie(authenticatedSession)
                                 .with(csrf())
                                 .contentType(MediaType.APPLICATION_JSON)
@@ -95,7 +92,7 @@ class TotpLoginFlowIntegrationTests extends PostgreSqlContainerTest {
                                         """
                                                 .formatted(enrollmentToken, initialCode)))
                 .andExpect(status().isCreated());
-        mockMvc.perform(get("/api/v1/me").cookie(authenticatedSession).with(csrf()))
+        mockMvc.perform(get("/me").cookie(authenticatedSession).with(csrf()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totpEnabled").value(true));
 
@@ -116,8 +113,8 @@ class TotpLoginFlowIntegrationTests extends PostgreSqlContainerTest {
                 .isNull();
         assertThat(activeSessionCount()).isEqualTo(sessionsBeforeChallenge);
         assertThat(countLogs("login_success")).isEqualTo(successesBeforeChallenge);
-        mockMvc.perform(get("/api/v1/me")).andExpect(status().isUnauthorized());
-        mockMvc.perform(get("/api/v1/me").session(firstStageAnonymousSession))
+        mockMvc.perform(get("/me")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/me").session(firstStageAnonymousSession))
                 .andExpect(status().isUnauthorized());
 
         verifyTotp(challengeToken, initialCode, new MockHttpSession())
@@ -169,7 +166,7 @@ class TotpLoginFlowIntegrationTests extends PostgreSqlContainerTest {
     private org.springframework.test.web.servlet.ResultActions login(
             @Nullable MockHttpSession session) throws Exception {
         var request =
-                post("/api/v1/login-sessions")
+                post("/login-sessions")
                         .with(csrf())
                         .param("username", "admin")
                         .param("password", "Admin123!");
@@ -182,7 +179,7 @@ class TotpLoginFlowIntegrationTests extends PostgreSqlContainerTest {
     private org.springframework.test.web.servlet.ResultActions verifyTotp(
             String challengeToken, String code, MockHttpSession session) throws Exception {
         return mockMvc.perform(
-                post("/api/v1/login-session-challenges:verifyTotp")
+                post("/login-session-challenges:verifyTotp")
                         .session(session)
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)

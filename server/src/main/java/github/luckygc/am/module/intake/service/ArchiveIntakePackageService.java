@@ -182,7 +182,7 @@ public class ArchiveIntakePackageService {
                         DOWNLOAD_TTL,
                         userId);
         return new ArchiveIntakePackageDownloadLinkResponse(
-                "/api/v1/file-links/" + link.code() + ":download", link.expiresAt());
+                "/file-links/" + link.code() + ":download", link.expiresAt());
     }
 
     public CursorPageResponse<ArchiveIntakePackageListItemResponse> list(

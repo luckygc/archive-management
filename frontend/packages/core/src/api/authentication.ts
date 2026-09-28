@@ -33,7 +33,7 @@ export async function login(payload: LoginRequest): Promise<LoginResult> {
     body.set("password", payload.password);
 
     const response = await httpClient.postResponse<LoginSessionDto | TotpLoginChallengeDto>(
-        "/api/v1/login-sessions",
+        "/login-sessions",
         body,
         {
             headers: {
@@ -51,23 +51,23 @@ export async function login(payload: LoginRequest): Promise<LoginResult> {
 }
 
 export function verifyTotpLoginChallenge(payload: VerifyTotpLoginChallengeRequest) {
-    return httpClient.post<LoginSessionDto>("/api/v1/login-session-challenges:verifyTotp", payload);
+    return httpClient.post<LoginSessionDto>("/login-session-challenges:verifyTotp", payload);
 }
 
 export function createTotpEnrollment() {
-    return httpClient.post<TotpEnrollmentDto>("/api/v1/totp-enrollments");
+    return httpClient.post<TotpEnrollmentDto>("/totp-enrollments");
 }
 
 export function createTotpCredential(payload: CreateTotpCredentialRequest) {
-    return httpClient.post<TotpCredentialStatusDto>("/api/v1/totp-credentials", payload);
+    return httpClient.post<TotpCredentialStatusDto>("/totp-credentials", payload);
 }
 
 export function disableTotpCredential(payload: DisableTotpCredentialRequest) {
-    return httpClient.post<void>("/api/v1/totp-credentials:disable", payload);
+    return httpClient.post<void>("/totp-credentials:disable", payload);
 }
 
 export function getCurrentUser() {
-    return httpClient.get<CurrentUserDto>("/api/v1/me");
+    return httpClient.get<CurrentUserDto>("/me");
 }
 
 export function logout(sessionId: string) {
@@ -75,23 +75,19 @@ export function logout(sessionId: string) {
 }
 
 export function listLoginSessions(params: ListLoginSessionsParams = {}) {
-    return httpClient.get<CursorPageDto<LoginSessionDto>>(
-        `/api/v1/login-sessions${queryString(params)}`,
-    );
+    return httpClient.get<CursorPageDto<LoginSessionDto>>(`/login-sessions${queryString(params)}`);
 }
 
 export function deleteLoginSession(sessionId: string) {
-    return httpClient.delete<void>(`/api/v1/login-sessions/${encodeURIComponent(sessionId)}`);
+    return httpClient.delete<void>(`/login-sessions/${encodeURIComponent(sessionId)}`);
 }
 
 export function resetLoginFailureLimit(username: string) {
-    return httpClient.post<void>(
-        `/api/v1/login-failure-limits/${encodeURIComponent(username)}:reset`,
-    );
+    return httpClient.post<void>(`/login-failure-limits/${encodeURIComponent(username)}:reset`);
 }
 
 export function listAuthenticationEvents(params: ListAuthenticationEventsParams = {}) {
     return httpClient.get<CursorPageDto<AuthenticationEventDto>>(
-        `/api/v1/authentication-events${queryString(params)}`,
+        `/authentication-events${queryString(params)}`,
     );
 }

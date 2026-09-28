@@ -14,14 +14,14 @@
 
 #### 场景： 创建档案条目
 
-- **WHEN** 客户端向 `POST /api/v1/archive-items` 提交档案分类、全宗和条目数据
+- **WHEN** 客户端向 `POST /archive-items` 提交档案分类、全宗和条目数据
 - **THEN** 系统 SHALL 在 `am_archive_item` 保存条目的全宗、分类、档号、状态和案卷归属等固定字段
 - **AND** 系统 SHALL 按条目对象类型和字段域找到对应分类动态表写入动态字段值
 - **AND** 分类动态表 SHALL 使用条目 ID 关联 `am_archive_item`
 
 #### 场景： 创建案卷
 
-- **WHEN** 客户端向 `POST /api/v1/archive-volumes` 提交已启用案卷管理的分类、全宗和案卷数据
+- **WHEN** 客户端向 `POST /archive-volumes` 提交已启用案卷管理的分类、全宗和案卷数据
 - **THEN** 系统 SHALL 在 `am_archive_volume` 保存案卷固定字段
 - **AND** 系统 SHALL NOT 将案卷作为 `am_archive_item` 中的一行保存
 
@@ -43,7 +43,7 @@
 
 #### 场景： 查询单分类档案条目
 
-- **WHEN** 客户端通过 `/api/v1/archive-items` 指定档案分类查询条目
+- **WHEN** 客户端通过 `/archive-items` 指定档案分类查询条目
 - **THEN** 系统 SHALL 先从 `am_archive_item` 筛选未删除条目
 - **AND** 系统 SHALL 支持按全宗编码筛选
 - **AND** 系统 SHALL 按该分类的条目动态表补齐列表字段
@@ -62,7 +62,7 @@
 
 #### 场景： 查询案卷
 
-- **WHEN** 客户端通过 `GET /api/v1/archive-volumes` 查询案卷
+- **WHEN** 客户端通过 `GET /archive-volumes` 查询案卷
 - **THEN** 系统 SHALL 从 `am_archive_volume` 返回未删除案卷
 - **AND** 系统 SHALL 支持按全宗编码和分类编码筛选
 - **AND** 系统 SHALL 使用独立于档案条目的游标分页结果
@@ -73,7 +73,7 @@
 
 #### 场景： 删除档案条目
 
-- **WHEN** 客户端向 `DELETE /api/v1/archive-items/{id}` 提交未锁定档案条目的删除请求
+- **WHEN** 客户端向 `DELETE /archive-items/{id}` 提交未锁定档案条目的删除请求
 - **THEN** 系统 SHALL 将 `am_archive_item` 的 `deleted_flag` 标记为 `true` 并写入 `deleted_at` 和 `deleted_by`
 - **AND** 系统 SHALL 将已建的条目元数据表和实物信息表对应行标记为已删除并写入删除时间和删除人
 - **AND** 系统 SHALL 写入 `DELETE` 档案条目操作审计和客户端提交的删除原因
@@ -85,7 +85,7 @@
 
 #### 场景： 将条目加入案卷
 
-- **WHEN** 客户端向 `POST /api/v1/archive-volumes/{id}:addItem` 提交未锁定档案条目
+- **WHEN** 客户端向 `POST /archive-volumes/{id}:addItem` 提交未锁定档案条目
 - **THEN** 系统 SHALL 校验案卷和档案条目的全宗编码一致
 - **AND** 系统 SHALL 校验案卷和档案条目的分类编码一致
 - **AND** 校验通过后 SHALL 将条目的 `volume_id` 更新为目标案卷 ID
@@ -97,14 +97,14 @@
 
 #### 场景： 锁定档案条目
 
-- **WHEN** 客户端向 `POST /api/v1/archive-items/{id}:lock` 提交锁定请求
+- **WHEN** 客户端向 `POST /archive-items/{id}:lock` 提交锁定请求
 - **THEN** 系统 SHALL 将档案条目标记为已锁定
 - **AND** 系统 SHALL 保存锁定原因、锁定人和锁定时间
 - **AND** 系统 SHALL 写入 `LOCK` 档案条目操作审计
 
 #### 场景： 解锁档案条目
 
-- **WHEN** 客户端向 `POST /api/v1/archive-items/{id}:unlock` 提交解锁请求
+- **WHEN** 客户端向 `POST /archive-items/{id}:unlock` 提交解锁请求
 - **THEN** 系统 SHALL 清除业务锁状态、锁定原因、锁定人和锁定时间
 - **AND** 系统 SHALL 写入 `UNLOCK` 档案条目操作审计
 
@@ -120,7 +120,7 @@
 
 #### 场景： 读取档案条目详情
 
-- **WHEN** 客户端请求 `GET /api/v1/archive-items/{id}` 读取未删除档案条目
+- **WHEN** 客户端请求 `GET /archive-items/{id}` 读取未删除档案条目
 - **THEN** 系统 SHALL 返回 `am_archive_item` 固定字段
 - **AND** 系统 SHALL 返回该条目所属档案分类
 - **AND** 系统 SHALL 按请求的布局表面返回有效字段定义
@@ -138,7 +138,7 @@
 
 #### 场景： 编辑未锁定档案条目
 
-- **WHEN** 客户端向 `PATCH /api/v1/archive-items/{id}` 提交未锁定档案条目的编辑请求
+- **WHEN** 客户端向 `PATCH /archive-items/{id}` 提交未锁定档案条目的编辑请求
 - **THEN** 系统 SHALL 校验目标全宗存在且状态为 `ACTIVE`
 - **AND** 系统 SHALL 按字段定义校验并转换元数据和实物信息字段值
 - **AND** 系统 SHALL 更新 `am_archive_item` 及对应条目动态表
@@ -161,7 +161,7 @@
 
 #### 场景： 受控调整正式归档条目全宗
 
-- **WHEN** 客户端向 `POST /api/v1/archive-items/{id}:reassignFonds` 提交目标系统全宗编码和非空原因
+- **WHEN** 客户端向 `POST /archive-items/{id}:reassignFonds` 提交目标系统全宗编码和非空原因
 - **THEN** 系统 SHALL 校验条目修改权限、原归属数据范围、目标归属数据范围、目标全宗状态和全宗分类范围
 - **AND** 系统 SHALL 要求条目未锁定且未归入案卷
 - **AND** 系统 SHALL 执行现有运行时规则、唯一性校验和搜索投影刷新

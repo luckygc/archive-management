@@ -6,15 +6,15 @@
 
 | 内容 | Owner |
 | --- | --- |
-| 新 API 的 REST 设计 | [Zalando RESTful API Guidelines](https://opensource.zalando.com/restful-api-guidelines/) |
-| 现有接口的路径、响应、DTO、分页、过滤、排序、ID、异步任务和 ProblemDetail 兼容合同 | [`api-contract`](../specs/SPEC-项目API合同.md) |
+| 项目自有 API 的设计和路径、响应、DTO、分页、过滤、排序、ID、异步任务及 ProblemDetail 合同 | [`api-contract`](../specs/SPEC-项目API合同.md) |
+| API 风格的选型理由 | [ADR-0001](adr/0001-project-api-style.md) |
 | 业务字段、状态机、权限边界和验收场景 | [`specs/`](../specs/) 下对应业务规格 |
 | 当前默认端口、Session cookie、CORS 和请求签名配置 | [`application.yaml`](../server/src/main/resources/application.yaml) |
 | 认证、授权、数据范围和公开入口的安全指引 | [`security.md`](security.md) |
 
-现有项目自有 API 使用 `/api/v1` 前缀，默认由 Spring Boot 主应用提供；新 API 设计以 Zalando 官方规范为准。登录态保存在服务端 HTTP Session，浏览器使用配置的 session cookie 关联会话。除业务明确声明的公开入口和预检请求外，客户端应按服务端认证、授权、CSRF、CORS 和可选请求签名要求访问。
+项目自有 API 直接以资源路径开始，例如 `/archive-items`，默认由 Spring Boot 主应用提供；新接口按 `api-contract` 中选定的外部规范设计，存量接口在迁移前使用其中单列的兼容合同。登录态保存在服务端 HTTP Session，浏览器使用配置的 session cookie 关联会话。除业务明确声明的公开入口和预检请求外，客户端应按服务端认证、授权、CSRF、CORS 和可选请求签名要求访问。
 
-调用失败时，客户端按 `api-contract` 定义的 ProblemDetail 稳定字段处理，并保留 `traceId` 用于排障；不要依赖异常类名、HTML 错误页或自由文本推断错误类型。集合、分页和异步任务同样只按 `api-contract` 消费，不根据实现框架类型猜测合同。
+调用失败时，客户端按 `api-contract` 定义的 ProblemDetail 处理；新接口用 `type` 识别问题类型，存量接口可保留 `traceId` 用于排障。不要依赖异常类名、HTML 错误页或自由文本推断错误类型。集合、分页和异步任务同样只按 `api-contract` 消费，不根据实现框架类型猜测合同。
 
 ## 业务规格索引
 
@@ -52,7 +52,7 @@
 
 修改项目自有 API 时：
 
-1. 先查 Zalando 官方规范并更新 `api-contract` 或对应业务规格，明确资源、操作、字段、权限和验收场景；现有接口迁移还须说明调用方切换和兼容边界。
+1. 先查 `api-contract`、对应业务规格及合同引用的官方规范，再更新规格以明确资源、操作、字段、权限和验收场景；破坏性接口迁移还须说明调用方切换和兼容边界。
 2. 同步修改 Controller、Request/Response 类型、前端类型和 API client。
 3. 运行 `mise run governance-check`，并执行与前后端改动范围匹配的检查和测试任务。
 

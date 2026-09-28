@@ -26,8 +26,7 @@ class GlobalExceptionHandlerTests {
     @Test
     @DisplayName("ResponseStatusException 转为 ProblemDetail 错误结构")
     void responseStatusExceptionUsesProblemDetailShape() {
-        MockHttpServletRequest request =
-                new MockHttpServletRequest("GET", "/api/v1/archive-items/1");
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/archive-items/1");
         MDC.put(TraceIdFilter.TRACE_ID, "trace-20260622");
         try {
             var response =
@@ -43,7 +42,7 @@ class GlobalExceptionHandlerTests {
                     .containsEntry("code", "NOT_FOUND")
                     .containsEntry("reason", "NOT_FOUND_ERROR")
                     .containsEntry("traceId", "trace-20260622")
-                    .containsEntry("path", "/api/v1/archive-items/1");
+                    .containsEntry("path", "/archive-items/1");
         } finally {
             MDC.remove(TraceIdFilter.TRACE_ID);
         }
@@ -52,8 +51,7 @@ class GlobalExceptionHandlerTests {
     @Test
     @DisplayName("资源冲突异常输出已存在 ProblemDetail")
     void conflictUsesAlreadyExistsProblemDetail() {
-        MockHttpServletRequest request =
-                new MockHttpServletRequest("POST", "/api/v1/archive-categories");
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/archive-categories");
 
         var response =
                 handler.handleResponseStatusException(
@@ -65,14 +63,13 @@ class GlobalExceptionHandlerTests {
         assertThat(response.getBody().getProperties())
                 .containsEntry("code", "ALREADY_EXISTS")
                 .containsEntry("reason", "ALREADY_EXISTS_ERROR")
-                .containsEntry("path", "/api/v1/archive-categories");
+                .containsEntry("path", "/archive-categories");
     }
 
     @Test
     @DisplayName("BadRequestException 输出字段级错误明细")
     void badRequestExceptionIncludesFieldViolations() {
-        MockHttpServletRequest request =
-                new MockHttpServletRequest("POST", "/api/v1/archive-items");
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/archive-items");
 
         var response =
                 handler.handleBadRequestException(
@@ -99,8 +96,7 @@ class GlobalExceptionHandlerTests {
     @Test
     @DisplayName("未登录异常输出未认证 ProblemDetail")
     void unauthenticatedExceptionUsesUnauthenticatedProblemDetail() {
-        MockHttpServletRequest request =
-                new MockHttpServletRequest("GET", "/api/v1/archive-item-audits");
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/archive-item-audits");
 
         var response =
                 handler.handleUnauthenticatedException(new UnauthenticatedException(), request);
@@ -112,14 +108,13 @@ class GlobalExceptionHandlerTests {
         assertThat(response.getBody().getProperties())
                 .containsEntry("code", "UNAUTHENTICATED")
                 .containsEntry("reason", "UNAUTHENTICATED_ERROR")
-                .containsEntry("path", "/api/v1/archive-item-audits");
+                .containsEntry("path", "/archive-item-audits");
     }
 
     @Test
     @DisplayName("Spring MVC 请求体校验异常输出字段级错误明细")
     void methodArgumentNotValidExceptionIncludesFieldViolations() throws Exception {
-        MockHttpServletRequest request =
-                new MockHttpServletRequest("POST", "/api/v1/archive-categories");
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/archive-categories");
         BeanPropertyBindingResult bindingResult =
                 new BeanPropertyBindingResult(new TestRequest(""), "request");
         bindingResult.addError(new FieldError("request", "displayName", "名称不能为空"));
@@ -147,7 +142,7 @@ class GlobalExceptionHandlerTests {
                             assertThat(problem.getProperties())
                                     .containsEntry("code", "INVALID_ARGUMENT")
                                     .containsEntry("reason", "FIELD_VIOLATION")
-                                    .containsEntry("path", "/api/v1/archive-categories");
+                                    .containsEntry("path", "/archive-categories");
                             assertThat(problem.getProperties().get("fieldViolations"))
                                     .asList()
                                     .singleElement()

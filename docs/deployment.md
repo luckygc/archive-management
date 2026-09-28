@@ -73,7 +73,7 @@ archive:
 
 生产环境必须把 CORS Origin 改为实际可信前端地址，并按风险决定是否启用请求签名；启用时通过外部 Secret 提供至少 32 个字符的密钥。Actuator 不向公网暴露全部端点，并结合监控角色、网关、网络策略或安全组限制来源。完整配置指引见 [`security.md`](security.md)。
 
-TOTP 依赖准确时间，所有应用节点必须启用 NTP 并监控时间偏移。`ARCHIVE_TOTP_ENCRYPTION_KEY` 必须在首次允许用户启用 TOTP 前配置，并在所有节点保持一致；当前版本不支持在线轮换，误换或丢失会使既有凭据无法解密。用户遗失验证设备时，管理员通过 `POST /api/v1/authentication-users/{id}:resetTotp` 清除其凭据，再由用户重新绑定。
+TOTP 依赖准确时间，所有应用节点必须启用 NTP 并监控时间偏移。`ARCHIVE_TOTP_ENCRYPTION_KEY` 必须在首次允许用户启用 TOTP 前配置，并在所有节点保持一致；当前版本不支持在线轮换，误换或丢失会使既有凭据无法解密。用户遗失验证设备时，管理员通过 `POST /authentication-users/{id}:resetTotp` 清除其凭据，再由用户重新绑定。
 
 管理员初始化默认关闭。首次部署可在受控窗口临时启用 `archive.authentication.bootstrap-admin.enabled` 并通过外部 Secret 提供密码；初始化完成后立即关闭。
 

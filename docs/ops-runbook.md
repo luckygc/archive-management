@@ -14,7 +14,7 @@ PC 前端：
 
 - 浏览器能访问前端入口。
 - 登录页能提交账号密码。
-- 登录成功后 `GET /api/v1/me` 返回当前主体。
+- 登录成功后 `GET /me` 返回当前主体。
 
 ## 日志位置
 
@@ -53,22 +53,22 @@ logging:
 
 1. 检查浏览器是否收到 `am_session` Cookie。
 2. 检查前端 Origin 是否在 CORS 白名单。
-3. 检查 `POST /api/v1/login-sessions`。
+3. 检查 `POST /login-sessions`。
 4. 检查账号是否启用、密码是否正确、登录失败限制是否触发。
 5. 管理员可查看登录会话和认证审计，并按需踢下线或重置失败限制。
 
 登录失败限制重置接口：
 
 ```http
-POST /api/v1/login-failure-limits/{username}:reset
+POST /login-failure-limits/{username}:reset
 ```
 
 ## 权限问题
 
 排查顺序：
 
-1. `GET /api/v1/me` 确认当前用户。
-2. `GET /api/v1/me/permissions` 确认功能权限点。
+1. `GET /me` 确认当前用户。
+2. `GET /me/permissions` 确认功能权限点。
 3. 检查用户角色绑定和角色是否启用。
 4. 检查角色或用户绑定的数据范围。
 5. 对档案列表、搜索、导出、电子文件下载等能力，确认后端是否命中全宗、分类和动态字段数据范围。
@@ -89,8 +89,8 @@ POST /api/v1/login-failure-limits/{username}:reset
 - 文件记录是否存在且未删除。
 - `bucket_name`、object key 是否与当前对象存储配置一致并能定位文件。
 - 短链是否过期。
-- 私有短链 `/api/v1/file-links/{code}:download` 是否已登录。
-- 公开短链 `/api/v1/public-file-links/{code}:download` 是否使用公开下载路径。
+- 私有短链 `/file-links/{code}:download` 是否已登录。
+- 公开短链 `/public-file-links/{code}:download` 是否使用公开下载路径。
 
 ## 数据库迁移问题
 

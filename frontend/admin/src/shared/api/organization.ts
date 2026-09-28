@@ -9,24 +9,21 @@ import { queryString } from "./query-string";
 
 export function listOrganizationDepartments(enabled?: boolean) {
     return httpClient.get<CollectionResponse<OrganizationDepartmentDto>>(
-        `/api/v1/organization-departments${queryString({ enabled })}`,
+        `/organization-departments${queryString({ enabled })}`,
     );
 }
 
 export function getOrganizationDepartment(id: number) {
-    return httpClient.get<OrganizationDepartmentDto>(`/api/v1/organization-departments/${id}`);
+    return httpClient.get<OrganizationDepartmentDto>(`/organization-departments/${id}`);
 }
 
 export function createOrganizationDepartment(payload: CreateOrganizationDepartmentRequest) {
-    return httpClient.post<OrganizationDepartmentDto>("/api/v1/organization-departments", payload);
+    return httpClient.post<OrganizationDepartmentDto>("/organization-departments", payload);
 }
 
 export function updateOrganizationDepartment(
     id: number,
     payload: UpdateOrganizationDepartmentRequest,
 ) {
-    return httpClient.patch<OrganizationDepartmentDto>(
-        `/api/v1/organization-departments/${id}`,
-        payload,
-    );
+    return httpClient.patch<OrganizationDepartmentDto>(`/organization-departments/${id}`, payload);
 }

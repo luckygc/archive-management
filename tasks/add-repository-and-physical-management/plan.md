@@ -68,7 +68,7 @@
 
 新增 `am_archive_warehouse` 表达真实物理库房，新增 `am_archive_storage_location` 保存所属库房、父位置、编码、名称、位置类型、启用状态、排序和通用审计字段。Service 拒绝跨库房父子关系、自引用及形成环的修改。
 
-实物对象保存 `current_location_id` 作为高频当前值。批量位置调整使用 `POST /api/v1/archive-physical-objects:batchAssignLocation`，在一个事务内逐个推进乐观锁并为每个实际变化写入 `am_archive_physical_location_history`。历史是追加式业务流水，不允许更新或删除。
+实物对象保存 `current_location_id` 作为高频当前值。批量位置调整使用 `POST /archive-physical-objects:batchAssignLocation`，在一个事务内逐个推进乐观锁并为每个实际变化写入 `am_archive_physical_location_history`。历史是追加式业务流水，不允许更新或删除。
 
 档案业务库、实物保管状态和真实库房不存在从属关系，也不要求同步：档案可已进入室藏库但实物仍由业务部门保管；档案室接收实物后也可先处于待上架状态，直到另行关联真实位置。只有档案室保管的实物允许关联库位。
 
@@ -80,7 +80,7 @@
 - 集合规模可控的配置资源使用 `CollectionResponse`；增长型位置历史首期仅按单一实物对象读取，按操作时间和 ID 倒序返回受限集合。
 - 条目和案卷至多关联一个实物对象，分别通过嵌套的单资源路径直接返回；不存在时返回 `404 ProblemDetail`，不使用空集合表达缺失。
 - 标准资源使用 `GET`、`POST`、`PATCH`、`DELETE`；库变更和批量位置关联使用 AIP-136 风格 custom method。
-- 实物移交批次通过 `POST /api/v1/archive-physical-transfers` 创建、`GET /api/v1/archive-physical-transfers/{id}` 读取，并以 `:accept`、`:reject` custom method 完成接收或退回；首期不提供缺少安全数据范围查询合同的批次列表。
+- 实物移交批次通过 `POST /archive-physical-transfers` 创建、`GET /archive-physical-transfers/{id}` 读取，并以 `:accept`、`:reject` custom method 完成接收或退回；首期不提供缺少安全数据范围查询合同的批次列表。
 
 ## 风险与取舍
 

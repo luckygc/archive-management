@@ -29,11 +29,11 @@ class ArchivePhysicalObjectControllerTests {
                         "listLocationHistory", Long.class, Authentication.class);
 
         assertThat(itemObject.getAnnotation(GetMapping.class).value())
-                .containsExactly("/api/v1/archive-items/{archiveItemId}/physical-object");
+                .containsExactly("/archive-items/{archiveItemId}/physical-object");
         assertThat(volumeObject.getAnnotation(GetMapping.class).value())
-                .containsExactly("/api/v1/archive-volumes/{archiveVolumeId}/physical-object");
+                .containsExactly("/archive-volumes/{archiveVolumeId}/physical-object");
         assertThat(history.getAnnotation(GetMapping.class).value())
-                .containsExactly("/api/v1/archive-physical-objects/{id}/location-history");
+                .containsExactly("/archive-physical-objects/{id}/location-history");
     }
 
     @Test
@@ -46,6 +46,6 @@ class ArchivePhysicalObjectControllerTests {
                         Authentication.class);
 
         assertThat(method.getAnnotation(PostMapping.class).value())
-                .containsExactly("/api/v1/archive-physical-objects:batchAssignLocation");
+                .containsExactly("/archive-physical-objects:batchAssignLocation");
     }
 }

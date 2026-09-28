@@ -29,7 +29,7 @@ public class ArchiveVolumeController {
         this.archiveVolumeService = archiveVolumeService;
     }
 
-    @GetMapping("/api/v1/archive-volumes")
+    @GetMapping("/archive-volumes")
     public CursorPageResponse<ArchiveVolumeResponse> listVolumes(
             @Nullable String fondsCode,
             @Nullable String categoryCode,
@@ -43,7 +43,7 @@ public class ArchiveVolumeController {
                         authentication == null ? null : authentication.getPrincipal()));
     }
 
-    @PostMapping("/api/v1/archive-volumes")
+    @PostMapping("/archive-volumes")
     @ResponseStatus(HttpStatus.CREATED)
     public ArchiveVolumeDto createVolume(
             @RequestBody CreateArchiveVolumeRequest request, Authentication authentication) {
@@ -53,7 +53,7 @@ public class ArchiveVolumeController {
                         authentication == null ? null : authentication.getPrincipal()));
     }
 
-    @GetMapping("/api/v1/archive-volumes/{id}")
+    @GetMapping("/archive-volumes/{id}")
     public ArchiveVolumeDto getVolume(@PathVariable Long id, Authentication authentication) {
         return archiveVolumeService.getVolume(
                 id,
@@ -61,7 +61,7 @@ public class ArchiveVolumeController {
                         authentication == null ? null : authentication.getPrincipal()));
     }
 
-    @PostMapping("/api/v1/archive-volumes/{id}:addItem")
+    @PostMapping("/archive-volumes/{id}:addItem")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void addItemToVolume(
             @PathVariable Long id,

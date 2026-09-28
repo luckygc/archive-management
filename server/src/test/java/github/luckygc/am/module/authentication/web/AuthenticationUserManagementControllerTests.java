@@ -35,7 +35,7 @@ class AuthenticationUserManagementControllerTests {
                         .orElseThrow();
 
         assertThat(method.getAnnotation(GetMapping.class).value())
-                .containsExactly("/api/v1/authentication-user-options");
+                .containsExactly("/authentication-user-options");
     }
 
     @Test
@@ -48,6 +48,6 @@ class AuthenticationUserManagementControllerTests {
                         .orElseThrow();
 
         assertThat(method.getAnnotation(PostMapping.class).value())
-                .containsExactly("/api/v1/authentication-users/{id}:resetTotp");
+                .containsExactly("/authentication-users/{id}:resetTotp");
     }
 }

@@ -45,13 +45,13 @@ class ArchiveRuntimeControllerProblemDetailTests {
 
         var response =
                 handler.handleBadRequestException(
-                        exception, new MockHttpServletRequest("POST", "/api/v1/archive-items"));
+                        exception, new MockHttpServletRequest("POST", "/archive-items"));
 
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().getProperties())
                 .containsEntry("code", "FAILED_PRECONDITION")
                 .containsEntry("reason", "ARCHIVE_RUNTIME_BLOCKED")
-                .containsEntry("path", "/api/v1/archive-items");
+                .containsEntry("path", "/archive-items");
         assertThat(response.getBody().getDetail())
                 .contains("archive-year-required")
                 .contains("归档年度不能为空")

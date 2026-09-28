@@ -21,7 +21,7 @@ describe("approval workflow API", () => {
         await listApprovalWorkflowDefinitionVersions(7, { limit: 200, cursor: "next-token" });
 
         expect(httpClientMock.get).toHaveBeenCalledWith(
-            "/api/v1/approval-workflow-definitions/7/versions?limit=200&cursor=next-token",
+            "/approval-workflow-definitions/7/versions?limit=200&cursor=next-token",
         );
     });
 
@@ -33,21 +33,21 @@ describe("approval workflow API", () => {
 
         expect(httpClientMock.post).toHaveBeenNthCalledWith(
             1,
-            "/api/v1/approval-workflow-definitions/1:publish",
+            "/approval-workflow-definitions/1:publish",
         );
         expect(httpClientMock.post).toHaveBeenNthCalledWith(
             2,
-            "/api/v1/approval-workflow-tasks/2:approve",
+            "/approval-workflow-tasks/2:approve",
             { comment: "同意" },
         );
         expect(httpClientMock.post).toHaveBeenNthCalledWith(
             3,
-            "/api/v1/approval-workflow-tasks/3:reject",
+            "/approval-workflow-tasks/3:reject",
             { comment: "材料不完整" },
         );
         expect(httpClientMock.post).toHaveBeenNthCalledWith(
             4,
-            "/api/v1/approval-workflow-instances/4:withdraw",
+            "/approval-workflow-instances/4:withdraw",
             { comment: "业务取消" },
         );
     });

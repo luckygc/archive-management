@@ -18,79 +18,79 @@ import { queryString } from "./query-string";
 
 export function listAuthorizationPermissions() {
     return httpClient.get<CollectionResponse<AuthorizationPermissionDto>>(
-        "/api/v1/authorization-permissions",
+        "/authorization-permissions",
     );
 }
 
 export function getCurrentUserPermissions() {
-    return httpClient.get<CurrentUserPermissionsDto>("/api/v1/me/permissions");
+    return httpClient.get<CurrentUserPermissionsDto>("/me/permissions");
 }
 
 export function getRolePermissions(roleId: number) {
-    return httpClient.get<RolePermissionsDto>(`/api/v1/authorization-roles/${roleId}/permissions`);
+    return httpClient.get<RolePermissionsDto>(`/authorization-roles/${roleId}/permissions`);
 }
 
 export function saveRolePermissions(roleId: number, permissionCodes: string[]) {
-    return httpClient.put<RolePermissionsDto>(`/api/v1/authorization-roles/${roleId}/permissions`, {
+    return httpClient.put<RolePermissionsDto>(`/authorization-roles/${roleId}/permissions`, {
         permissionCodes,
     });
 }
 
 export function listArchiveDataScopes(enabled = true) {
     return httpClient.get<CollectionResponse<ArchiveDataScopeDto>>(
-        `/api/v1/archive-data-scopes${queryString({ enabled })}`,
+        `/archive-data-scopes${queryString({ enabled })}`,
     );
 }
 
 export function createArchiveDataScope(payload: ArchiveDataScopeRequest) {
-    return httpClient.post<ArchiveDataScopeDto>("/api/v1/archive-data-scopes", payload);
+    return httpClient.post<ArchiveDataScopeDto>("/archive-data-scopes", payload);
 }
 
 export function updateArchiveDataScope(id: number, payload: ArchiveDataScopeRequest) {
-    return httpClient.put<ArchiveDataScopeDto>(`/api/v1/archive-data-scopes/${id}`, payload);
+    return httpClient.put<ArchiveDataScopeDto>(`/archive-data-scopes/${id}`, payload);
 }
 
 export function listArchiveDataScopeFields(categoryId: number) {
     return httpClient.get<CollectionResponse<ArchiveFieldDto>>(
-        `/api/v1/archive-categories/${categoryId}/data-scope-fields`,
+        `/archive-categories/${categoryId}/data-scope-fields`,
     );
 }
 
 export function getRoleArchiveDataScopes(roleId: number) {
     return httpClient.get<RoleArchiveDataScopesDto>(
-        `/api/v1/authorization-roles/${roleId}/archive-data-scopes`,
+        `/authorization-roles/${roleId}/archive-data-scopes`,
     );
 }
 
 export function saveRoleArchiveDataScopes(roleId: number, scopeIds: number[]) {
     return httpClient.put<RoleArchiveDataScopesDto>(
-        `/api/v1/authorization-roles/${roleId}/archive-data-scopes`,
+        `/authorization-roles/${roleId}/archive-data-scopes`,
         { scopeIds },
     );
 }
 
 export function getUserArchiveDataScopes(userId: number) {
     return httpClient.get<UserArchiveDataScopesDto>(
-        `/api/v1/authorization-users/${userId}/archive-data-scopes`,
+        `/authorization-users/${userId}/archive-data-scopes`,
     );
 }
 
 export function saveUserArchiveDataScopes(userId: number, scopeIds: number[]) {
     return httpClient.put<UserArchiveDataScopesDto>(
-        `/api/v1/authorization-users/${userId}/archive-data-scopes`,
+        `/authorization-users/${userId}/archive-data-scopes`,
         { scopeIds },
     );
 }
 
 export function getDepartmentArchiveDataScopes(departmentId: number) {
     return httpClient.get<DepartmentArchiveDataScopesDto>(
-        `/api/v1/organization-departments/${departmentId}/archive-data-scopes`,
+        `/organization-departments/${departmentId}/archive-data-scopes`,
     );
 }
 
 export function saveDepartmentArchiveDataScopes(departmentId: number, scopeIds: number[]) {
     return httpClient.put<DepartmentArchiveDataScopesDto>(
-        `/api/v1/organization-departments/${departmentId}/archive-data-scopes`,
+        `/organization-departments/${departmentId}/archive-data-scopes`,
         { scopeIds },
     );
 }
@@ -105,18 +105,18 @@ export function listAuthorizationRoles(enabled?: boolean, limit = 100, cursor?: 
         params.set("cursor", cursor);
     }
     return httpClient.get<CursorPageResponse<AuthorizationRoleDto>>(
-        `/api/v1/authorization-roles?${params.toString()}`,
+        `/authorization-roles?${params.toString()}`,
     );
 }
 
 export function createAuthorizationRole(payload: CreateAuthorizationRoleRequest) {
-    return httpClient.post<AuthorizationRoleDto>("/api/v1/authorization-roles", payload);
+    return httpClient.post<AuthorizationRoleDto>("/authorization-roles", payload);
 }
 
 export function updateAuthorizationRole(id: number, payload: UpdateAuthorizationRoleRequest) {
-    return httpClient.patch<AuthorizationRoleDto>(`/api/v1/authorization-roles/${id}`, payload);
+    return httpClient.patch<AuthorizationRoleDto>(`/authorization-roles/${id}`, payload);
 }
 
 export function deleteAuthorizationRole(id: number) {
-    return httpClient.delete<void>(`/api/v1/authorization-roles/${id}`);
+    return httpClient.delete<void>(`/authorization-roles/${id}`);
 }

@@ -8,6 +8,6 @@ export function listMyUnifiedTodos(
     params: { completed?: boolean; limit?: number; cursor?: string; requestTotal?: boolean } = {},
 ) {
     return httpClient.get<CursorPageResponse<UnifiedTodoDto>>(
-        `/api/v1/unified-todos${queryString({ limit: 100, ...params, requestTotal: params.cursor ? undefined : (params.requestTotal ?? true) })}`,
+        `/unified-todos${queryString({ limit: 100, ...params, requestTotal: params.cursor ? undefined : (params.requestTotal ?? true) })}`,
     );
 }

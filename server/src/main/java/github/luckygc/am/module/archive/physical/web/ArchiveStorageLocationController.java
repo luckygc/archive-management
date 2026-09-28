@@ -31,19 +31,19 @@ public class ArchiveStorageLocationController {
         this.service = service;
     }
 
-    @GetMapping("/api/v1/archive-warehouses")
+    @GetMapping("/archive-warehouses")
     public CollectionResponse<ArchiveWarehouseResponse> listWarehouses(@Nullable Boolean enabled) {
         return CollectionResponse.of(service.listWarehouses(enabled));
     }
 
-    @PostMapping("/api/v1/archive-warehouses")
+    @PostMapping("/archive-warehouses")
     @ResponseStatus(HttpStatus.CREATED)
     public ArchiveWarehouseResponse createWarehouse(
             @RequestBody CreateArchiveWarehouseRequest request, Authentication authentication) {
         return service.createWarehouse(request, userId(authentication));
     }
 
-    @PatchMapping("/api/v1/archive-warehouses/{id}")
+    @PatchMapping("/archive-warehouses/{id}")
     public ArchiveWarehouseResponse updateWarehouse(
             @PathVariable Long id,
             @RequestBody UpdateArchiveWarehouseRequest request,
@@ -51,19 +51,19 @@ public class ArchiveStorageLocationController {
         return service.updateWarehouse(id, request, userId(authentication));
     }
 
-    @DeleteMapping("/api/v1/archive-warehouses/{id}")
+    @DeleteMapping("/archive-warehouses/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteWarehouse(@PathVariable Long id, Authentication authentication) {
         service.deleteWarehouse(id, userId(authentication));
     }
 
-    @GetMapping("/api/v1/archive-storage-locations")
+    @GetMapping("/archive-storage-locations")
     public CollectionResponse<ArchiveStorageLocationResponse> listLocations(
             @Nullable Long warehouseId) {
         return CollectionResponse.of(service.listLocations(warehouseId));
     }
 
-    @PostMapping("/api/v1/archive-storage-locations")
+    @PostMapping("/archive-storage-locations")
     @ResponseStatus(HttpStatus.CREATED)
     public ArchiveStorageLocationResponse createLocation(
             @RequestBody CreateArchiveStorageLocationRequest request,
@@ -71,7 +71,7 @@ public class ArchiveStorageLocationController {
         return service.createLocation(request, userId(authentication));
     }
 
-    @PatchMapping("/api/v1/archive-storage-locations/{id}")
+    @PatchMapping("/archive-storage-locations/{id}")
     public ArchiveStorageLocationResponse updateLocation(
             @PathVariable Long id,
             @RequestBody UpdateArchiveStorageLocationRequest request,
@@ -79,7 +79,7 @@ public class ArchiveStorageLocationController {
         return service.updateLocation(id, request, userId(authentication));
     }
 
-    @DeleteMapping("/api/v1/archive-storage-locations/{id}")
+    @DeleteMapping("/archive-storage-locations/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteLocation(@PathVariable Long id, Authentication authentication) {
         service.deleteLocation(id, userId(authentication));

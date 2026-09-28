@@ -14,8 +14,7 @@ class ClientRequestContextResolverTests {
     @Test
     @DisplayName("采集请求头并解析常见浏览器、系统和设备类型")
     void resolvesHeadersAndUserAgentSummary() {
-        MockHttpServletRequest request =
-                new MockHttpServletRequest("POST", "/api/v1/login-sessions");
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/login-sessions");
         request.setRemoteAddr("10.0.0.12");
         request.setServerName("archive.local");
         request.addHeader("Host", "archive.local:8080");

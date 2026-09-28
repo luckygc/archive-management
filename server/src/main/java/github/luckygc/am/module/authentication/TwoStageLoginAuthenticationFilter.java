@@ -35,7 +35,7 @@ public class TwoStageLoginAuthenticationFilter extends UsernamePasswordAuthentic
         setRequiresAuthenticationRequestMatcher(
                 request ->
                         "POST".equalsIgnoreCase(request.getMethod())
-                                && "/api/v1/login-sessions".equals(request.getRequestURI()));
+                                && "/login-sessions".equals(request.getRequestURI()));
     }
 
     @Override

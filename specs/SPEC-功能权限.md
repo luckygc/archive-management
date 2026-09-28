@@ -83,13 +83,13 @@
 
 - **WHEN** 拥有用户管理权限的管理员更新用户资料、启停用户或重置密码
 - **THEN** 系统 SHALL 校验目标用户存在
-- **AND** 重置密码 SHALL 使用 `POST /api/v1/authentication-users/{id}:resetPassword`
+- **AND** 重置密码 SHALL 使用 `POST /authentication-users/{id}:resetPassword`
 - **AND** 新密码 SHALL 只以哈希结果写入本地用户表
 - **AND** 重置密码或停用用户 SHALL 使该用户未完成的 TOTP enrollment 与登录挑战失效
 
 #### 场景： 管理员清除 TOTP
 
-- **WHEN** 拥有 `authentication:user:manage` 权限的管理员请求 `POST /api/v1/authentication-users/{id}:resetTotp`
+- **WHEN** 拥有 `authentication:user:manage` 权限的管理员请求 `POST /authentication-users/{id}:resetTotp`
 - **THEN** 系统 SHALL 校验目标用户存在
 - **AND** 系统 SHALL 删除目标用户的 TOTP 凭据
 - **AND** 系统 SHALL 删除目标用户未完成的 enrollment 与登录挑战

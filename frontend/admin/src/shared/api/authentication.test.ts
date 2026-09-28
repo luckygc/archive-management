@@ -24,7 +24,7 @@ describe("authentication API", () => {
         await listUserOptions(100, "next-user");
 
         expect(httpClientMock.get).toHaveBeenCalledWith(
-            "/api/v1/authentication-user-options?limit=100&cursor=next-user",
+            "/authentication-user-options?limit=100&cursor=next-user",
         );
     });
 });

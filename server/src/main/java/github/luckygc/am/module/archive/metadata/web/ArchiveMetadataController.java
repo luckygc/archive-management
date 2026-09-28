@@ -69,20 +69,20 @@ public class ArchiveMetadataController {
         this.permissionService = permissionService;
     }
 
-    @GetMapping("/api/v1/archive-fonds")
+    @GetMapping("/archive-fonds")
     public CollectionResponse<ArchiveFondsDto> listFonds(
             @RequestParam(required = false) ArchiveFondsStatus status) {
         return CollectionResponse.of(archiveFondsService.listFonds(status));
     }
 
-    @PostMapping("/api/v1/archive-fonds")
+    @PostMapping("/archive-fonds")
     @ResponseStatus(HttpStatus.CREATED)
     public ArchiveFondsDto createFonds(
             @RequestBody CreateArchiveFondsRequest request, Authentication authentication) {
         return archiveFondsService.createFonds(request, requireMetadataManage(authentication));
     }
 
-    @PatchMapping("/api/v1/archive-fonds/{id}")
+    @PatchMapping("/archive-fonds/{id}")
     public ArchiveFondsDto updateFonds(
             @PathVariable Long id,
             @RequestBody UpdateArchiveFondsRequest request,
@@ -90,7 +90,7 @@ public class ArchiveMetadataController {
         return archiveFondsService.updateFonds(id, request, requireMetadataManage(authentication));
     }
 
-    @PostMapping("/api/v1/archive-fonds/{id}:assignNumber")
+    @PostMapping("/archive-fonds/{id}:assignNumber")
     public ArchiveFondsDto assignFondsNumber(
             @PathVariable Long id,
             @RequestBody AssignArchiveFondsNumberRequest request,
@@ -98,7 +98,7 @@ public class ArchiveMetadataController {
         return archiveFondsService.assignNumber(id, request, requireMetadataManage(authentication));
     }
 
-    @PostMapping("/api/v1/archive-fonds/{id}:close")
+    @PostMapping("/archive-fonds/{id}:close")
     public ArchiveFondsDto closeFonds(
             @PathVariable Long id,
             @RequestBody CloseArchiveFondsRequest request,
@@ -106,7 +106,7 @@ public class ArchiveMetadataController {
         return archiveFondsService.closeFonds(id, request, requireMetadataManage(authentication));
     }
 
-    @PostMapping("/api/v1/archive-fonds/{id}:reopen")
+    @PostMapping("/archive-fonds/{id}:reopen")
     public ArchiveFondsDto reopenFonds(
             @PathVariable Long id,
             @RequestBody ReopenArchiveFondsRequest request,
@@ -114,18 +114,18 @@ public class ArchiveMetadataController {
         return archiveFondsService.reopenFonds(id, request, requireMetadataManage(authentication));
     }
 
-    @GetMapping("/api/v1/archive-fonds/{id}/events")
+    @GetMapping("/archive-fonds/{id}/events")
     public CollectionResponse<ArchiveFondsEventDto> listFondsEvents(@PathVariable Long id) {
         return CollectionResponse.of(archiveFondsService.listEvents(id));
     }
 
-    @GetMapping("/api/v1/archive-fonds/{fondsCode}/category-scopes")
+    @GetMapping("/archive-fonds/{fondsCode}/category-scopes")
     public CollectionResponse<ArchiveFondsCategoryScopeDto> listFondsCategoryScopes(
             @PathVariable String fondsCode) {
         return CollectionResponse.of(archiveCategoryService.listFondsCategoryScopes(fondsCode));
     }
 
-    @PutMapping("/api/v1/archive-fonds/{fondsCode}/category-scopes")
+    @PutMapping("/archive-fonds/{fondsCode}/category-scopes")
     public CollectionResponse<ArchiveFondsCategoryScopeDto> saveFondsCategoryScopes(
             @PathVariable String fondsCode,
             @RequestBody java.util.List<ArchiveFondsCategoryScopeRequest> requests,
@@ -135,19 +135,19 @@ public class ArchiveMetadataController {
                         fondsCode, requests, requireMetadataManage(authentication)));
     }
 
-    @GetMapping("/api/v1/archive-fonds/{fondsCode}/categories")
+    @GetMapping("/archive-fonds/{fondsCode}/categories")
     public CollectionResponse<ArchiveCategoryDto> listCategoriesForFonds(
             @PathVariable String fondsCode, Boolean enabled) {
         return CollectionResponse.of(
                 archiveCategoryService.listCategoriesForFonds(fondsCode, enabled));
     }
 
-    @GetMapping("/api/v1/archive-security-levels")
+    @GetMapping("/archive-security-levels")
     public CollectionResponse<ArchiveSecurityLevelDto> listSecurityLevels(Boolean enabled) {
         return CollectionResponse.of(archiveMetadataReferenceService.listSecurityLevels(enabled));
     }
 
-    @PatchMapping("/api/v1/archive-security-levels/{id}")
+    @PatchMapping("/archive-security-levels/{id}")
     public ArchiveSecurityLevelDto updateSecurityLevel(
             @PathVariable Long id,
             @RequestBody UpdateArchiveSecurityLevelRequest request,
@@ -156,12 +156,12 @@ public class ArchiveMetadataController {
         return archiveMetadataReferenceService.updateSecurityLevel(id, request);
     }
 
-    @GetMapping("/api/v1/archive-retention-periods")
+    @GetMapping("/archive-retention-periods")
     public CollectionResponse<ArchiveRetentionPeriodDto> listRetentionPeriods(Boolean enabled) {
         return CollectionResponse.of(archiveMetadataReferenceService.listRetentionPeriods(enabled));
     }
 
-    @PatchMapping("/api/v1/archive-retention-periods/{id}")
+    @PatchMapping("/archive-retention-periods/{id}")
     public ArchiveRetentionPeriodDto updateRetentionPeriod(
             @PathVariable Long id,
             @RequestBody UpdateArchiveRetentionPeriodRequest request,
@@ -170,12 +170,12 @@ public class ArchiveMetadataController {
         return archiveMetadataReferenceService.updateRetentionPeriod(id, request);
     }
 
-    @GetMapping("/api/v1/archive-categories")
+    @GetMapping("/archive-categories")
     public CollectionResponse<ArchiveCategoryDto> listCategories(Boolean enabled) {
         return CollectionResponse.of(archiveCategoryService.listCategories(enabled));
     }
 
-    @PostMapping("/api/v1/archive-categories")
+    @PostMapping("/archive-categories")
     @ResponseStatus(HttpStatus.CREATED)
     public ArchiveCategoryDto createCategory(
             @RequestBody ArchiveCategoryRequest request, Authentication authentication) {
@@ -183,7 +183,7 @@ public class ArchiveMetadataController {
                 request, requireMetadataManage(authentication));
     }
 
-    @PatchMapping("/api/v1/archive-categories/{id}")
+    @PatchMapping("/archive-categories/{id}")
     public ArchiveCategoryDto updateCategory(
             @PathVariable Long id,
             @RequestBody ArchiveCategoryRequest request,
@@ -192,13 +192,13 @@ public class ArchiveMetadataController {
                 id, request, requireMetadataManage(authentication));
     }
 
-    @DeleteMapping("/api/v1/archive-categories/{id}")
+    @DeleteMapping("/archive-categories/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteCategory(@PathVariable Long id, Authentication authentication) {
         archiveCategoryService.deleteCategory(id, requireMetadataManage(authentication));
     }
 
-    @GetMapping("/api/v1/archive-categories/{categoryId}/fields")
+    @GetMapping("/archive-categories/{categoryId}/fields")
     public CollectionResponse<ArchiveFieldDto> listFields(
             @PathVariable Long categoryId,
             @RequestParam(required = false) ArchiveLevel archiveLevel) {
@@ -208,7 +208,7 @@ public class ArchiveMetadataController {
                         : archiveMetadataService.listFields(categoryId, archiveLevel));
     }
 
-    @PostMapping("/api/v1/archive-categories/{categoryId}/fields")
+    @PostMapping("/archive-categories/{categoryId}/fields")
     @ResponseStatus(HttpStatus.CREATED)
     public ArchiveFieldDto createField(
             @PathVariable Long categoryId,
@@ -218,7 +218,7 @@ public class ArchiveMetadataController {
                 categoryId, request, requireMetadataManage(authentication));
     }
 
-    @PatchMapping("/api/v1/archive-categories/{categoryId}/fields/{fieldId}")
+    @PatchMapping("/archive-categories/{categoryId}/fields/{fieldId}")
     public ArchiveFieldDto updateField(
             @PathVariable Long categoryId,
             @PathVariable Long fieldId,
@@ -228,7 +228,7 @@ public class ArchiveMetadataController {
                 categoryId, fieldId, request, requireMetadataManage(authentication));
     }
 
-    @DeleteMapping("/api/v1/archive-categories/{categoryId}/fields/{fieldId}")
+    @DeleteMapping("/archive-categories/{categoryId}/fields/{fieldId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteField(
             @PathVariable Long categoryId,
@@ -238,7 +238,7 @@ public class ArchiveMetadataController {
                 categoryId, fieldId, requireMetadataManage(authentication));
     }
 
-    @GetMapping("/api/v1/archive-categories/{categoryId}/layouts/{surface}")
+    @GetMapping("/archive-categories/{categoryId}/layouts/{surface}")
     public ArchiveFieldLayoutDto getFieldLayout(
             @PathVariable Long categoryId,
             @PathVariable ArchiveLayoutSurface surface,
@@ -247,7 +247,7 @@ public class ArchiveMetadataController {
         return archiveMetadataService.getFieldLayout(categoryId, archiveLevel, fieldScope, surface);
     }
 
-    @PatchMapping("/api/v1/archive-categories/{categoryId}/layouts/{surface}")
+    @PatchMapping("/archive-categories/{categoryId}/layouts/{surface}")
     public ArchiveFieldLayoutDto savePublicFieldLayout(
             @PathVariable Long categoryId,
             @PathVariable ArchiveLayoutSurface surface,
@@ -264,7 +264,7 @@ public class ArchiveMetadataController {
                 requireMetadataManage(authentication));
     }
 
-    @PostMapping("/api/v1/archive-categories/{id}:buildTable")
+    @PostMapping("/archive-categories/{id}:buildTable")
     public ArchiveCategoryDto buildTable(
             @PathVariable Long id,
             @RequestParam(required = false) ArchiveLevel archiveLevel,
@@ -274,13 +274,13 @@ public class ArchiveMetadataController {
                 id, archiveLevel, fieldScope, requireMetadataManage(authentication));
     }
 
-    @GetMapping("/api/v1/archive-categories/{categoryId}/unique-constraints")
+    @GetMapping("/archive-categories/{categoryId}/unique-constraints")
     public CollectionResponse<ArchiveUniqueConstraintDto> listUniqueConstraints(
             @PathVariable Long categoryId) {
         return CollectionResponse.of(archiveMetadataService.listUniqueConstraints(categoryId));
     }
 
-    @PostMapping("/api/v1/archive-categories/{categoryId}/unique-constraints")
+    @PostMapping("/archive-categories/{categoryId}/unique-constraints")
     @ResponseStatus(HttpStatus.CREATED)
     public ArchiveUniqueConstraintDto createUniqueConstraint(
             @PathVariable Long categoryId,
@@ -290,7 +290,7 @@ public class ArchiveMetadataController {
                 categoryId, request, requireMetadataManage(authentication));
     }
 
-    @PatchMapping("/api/v1/archive-categories/{categoryId}/unique-constraints/{constraintId}")
+    @PatchMapping("/archive-categories/{categoryId}/unique-constraints/{constraintId}")
     public ArchiveUniqueConstraintDto updateUniqueConstraint(
             @PathVariable Long categoryId,
             @PathVariable Long constraintId,
@@ -300,7 +300,7 @@ public class ArchiveMetadataController {
                 categoryId, constraintId, request, requireMetadataManage(authentication));
     }
 
-    @DeleteMapping("/api/v1/archive-categories/{categoryId}/unique-constraints/{constraintId}")
+    @DeleteMapping("/archive-categories/{categoryId}/unique-constraints/{constraintId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteUniqueConstraint(
             @PathVariable Long categoryId,

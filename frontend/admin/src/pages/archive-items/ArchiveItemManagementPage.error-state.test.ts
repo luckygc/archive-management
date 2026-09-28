@@ -107,10 +107,10 @@ afterEach(() => {
 describe("ArchiveItemManagementPage 错误恢复", () => {
     it("模板和导出均通过临时 a 标签打开短链且不创建 Blob URL", async () => {
         mocks.downloadArchiveImportTemplate.mockResolvedValue({
-            href: "/api/v1/file-links/template-code:download",
+            href: "/file-links/template-code:download",
         });
         mocks.exportArchiveRecords.mockResolvedValue({
-            href: "/api/v1/file-links/export-code:download",
+            href: "/file-links/export-code:download",
         });
         const anchorClick = vi
             .spyOn(HTMLAnchorElement.prototype, "click")

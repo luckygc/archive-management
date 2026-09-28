@@ -20,7 +20,7 @@ public class ArchiveRepositoryAssignmentController {
         this.service = service;
     }
 
-    @PostMapping("/api/v1/archive-items/{id}:changeRepository")
+    @PostMapping("/archive-items/{id}:changeRepository")
     public ChangeArchiveRepositoryResponse changeItemRepository(
             @PathVariable Long id,
             @RequestBody ChangeArchiveRepositoryRequest request,
@@ -28,7 +28,7 @@ public class ArchiveRepositoryAssignmentController {
         return service.changeItemRepository(id, request, userId(authentication));
     }
 
-    @PostMapping("/api/v1/archive-volumes/{id}:changeRepository")
+    @PostMapping("/archive-volumes/{id}:changeRepository")
     public ChangeArchiveRepositoryResponse changeVolumeRepository(
             @PathVariable Long id,
             @RequestBody ChangeArchiveRepositoryRequest request,

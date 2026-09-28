@@ -84,7 +84,7 @@ class LoginFailureLimitIntegrationTests extends PostgreSqlContainerTest {
     private org.springframework.test.web.servlet.ResultActions login(
             String username, String password) throws Exception {
         org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder request =
-                post("/api/v1/login-sessions")
+                post("/login-sessions")
                         .with(csrf())
                         .param("username", username)
                         .param("password", password)

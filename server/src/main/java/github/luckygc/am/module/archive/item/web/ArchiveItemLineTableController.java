@@ -26,7 +26,7 @@ public class ArchiveItemLineTableController {
         this.archiveItemLineTableService = archiveItemLineTableService;
     }
 
-    @GetMapping("/api/v1/archive-categories/{categoryId}/item-line-tables")
+    @GetMapping("/archive-categories/{categoryId}/item-line-tables")
     public CollectionResponse<ArchiveItemLineTableDto> listLineTables(
             @PathVariable Long categoryId, Authentication authentication) {
         return CollectionResponse.of(
@@ -36,7 +36,7 @@ public class ArchiveItemLineTableController {
                                 authentication == null ? null : authentication.getPrincipal())));
     }
 
-    @PostMapping("/api/v1/archive-categories/{categoryId}/item-line-tables")
+    @PostMapping("/archive-categories/{categoryId}/item-line-tables")
     @ResponseStatus(HttpStatus.CREATED)
     public ArchiveItemLineTableDto createLineTable(
             @PathVariable Long categoryId,
@@ -49,7 +49,7 @@ public class ArchiveItemLineTableController {
                         authentication == null ? null : authentication.getPrincipal()));
     }
 
-    @GetMapping("/api/v1/archive-item-line-tables/{lineTableId}")
+    @GetMapping("/archive-item-line-tables/{lineTableId}")
     public ArchiveItemLineTableDto getLineTable(
             @PathVariable Long lineTableId, Authentication authentication) {
         return archiveItemLineTableService.getLineTable(
@@ -58,7 +58,7 @@ public class ArchiveItemLineTableController {
                         authentication == null ? null : authentication.getPrincipal()));
     }
 
-    @PostMapping("/api/v1/archive-item-line-tables/{lineTableId}:build")
+    @PostMapping("/archive-item-line-tables/{lineTableId}:build")
     public ArchiveItemLineTableDto buildLineTable(
             @PathVariable Long lineTableId, Authentication authentication) {
         return archiveItemLineTableService.buildLineTable(
@@ -67,7 +67,7 @@ public class ArchiveItemLineTableController {
                         authentication == null ? null : authentication.getPrincipal()));
     }
 
-    @GetMapping("/api/v1/archive-item-line-tables/{lineTableId}/fields")
+    @GetMapping("/archive-item-line-tables/{lineTableId}/fields")
     public CollectionResponse<ArchiveItemLineFieldDto> listLineFields(
             @PathVariable Long lineTableId, Authentication authentication) {
         return CollectionResponse.of(
@@ -77,7 +77,7 @@ public class ArchiveItemLineTableController {
                                 authentication == null ? null : authentication.getPrincipal())));
     }
 
-    @PostMapping("/api/v1/archive-item-line-tables/{lineTableId}/fields")
+    @PostMapping("/archive-item-line-tables/{lineTableId}/fields")
     @ResponseStatus(HttpStatus.CREATED)
     public ArchiveItemLineFieldDto createLineField(
             @PathVariable Long lineTableId,

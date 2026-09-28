@@ -15,7 +15,7 @@ public class IntakeController {
         this.intakeService = intakeService;
     }
 
-    @GetMapping("/api/v1/intake")
+    @GetMapping("/intake")
     public IntakeOverviewDto getOverview() {
         return intakeService.getOverview();
     }

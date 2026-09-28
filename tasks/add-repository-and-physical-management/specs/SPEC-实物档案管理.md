@@ -33,7 +33,7 @@
 
 #### 场景： 按所有者读取实物对象
 
-- **WHEN** 有档案读取权限和数据范围的客户端查询 `GET /api/v1/archive-items/{archiveItemId}/physical-object` 或 `GET /api/v1/archive-volumes/{archiveVolumeId}/physical-object`
+- **WHEN** 有档案读取权限和数据范围的客户端查询 `GET /archive-items/{archiveItemId}/physical-object` 或 `GET /archive-volumes/{archiveVolumeId}/physical-object`
 - **THEN** 系统 SHALL 直接返回该档案的单个实物对象
 - **AND** 档案不存在实物对象时系统 SHALL 返回状态为 `404` 的 `ProblemDetail`
 
@@ -86,14 +86,14 @@
 
 #### 场景： 提交实物移交批次
 
-- **WHEN** 有档案更新权限的用户向 `POST /api/v1/archive-physical-transfers` 提交唯一移交编号、已启用来源部门、1 至 500 个互不重复且处于 `DEPARTMENT_CUSTODY` 的实物对象和可选备注
+- **WHEN** 有档案更新权限的用户向 `POST /archive-physical-transfers` 提交唯一移交编号、已启用来源部门、1 至 500 个互不重复且处于 `DEPARTMENT_CUSTODY` 的实物对象和可选备注
 - **THEN** 系统 SHALL 创建状态为 `PENDING_RECEIPT` 的实物移交批次和清单快照
 - **AND** 系统 SHALL 将批次内实物对象原子更新为 `PENDING_RECEIPT`
 - **AND** 任一实物对象不存在、不可访问、已经接收或正在其他批次移交时系统 SHALL 拒绝整个批次
 
 #### 场景： 接收已入室藏档案的实物
 
-- **WHEN** 档案室通过 `POST /api/v1/archive-physical-transfers/{id}:accept` 确认接收包含室藏档案的待接收批次
+- **WHEN** 档案室通过 `POST /archive-physical-transfers/{id}:accept` 确认接收包含室藏档案的待接收批次
 - **THEN** 系统 SHALL 将批次状态原子更新为 `ACCEPTED`
 - **AND** 系统 SHALL 将全部实物对象更新为 `ARCHIVE_ROOM_CUSTODY`
 - **AND** 系统 SHALL 保存接收人、接收时间和可选接收说明
@@ -102,7 +102,7 @@
 
 #### 场景： 退回实物移交批次
 
-- **WHEN** 档案室通过 `POST /api/v1/archive-physical-transfers/{id}:reject` 提交非空退回原因
+- **WHEN** 档案室通过 `POST /archive-physical-transfers/{id}:reject` 提交非空退回原因
 - **THEN** 系统 SHALL 将批次状态原子更新为 `REJECTED`
 - **AND** 系统 SHALL 将全部实物对象恢复为 `DEPARTMENT_CUSTODY`
 - **AND** 系统 SHALL 保存退回人、退回时间和退回原因
@@ -115,7 +115,7 @@
 
 #### 场景： 查询实物移交批次详情
 
-- **WHEN** 有档案读取权限且可访问批次内全部档案的用户请求 `GET /api/v1/archive-physical-transfers/{id}`
+- **WHEN** 有档案读取权限且可访问批次内全部档案的用户请求 `GET /archive-physical-transfers/{id}`
 - **THEN** 系统 SHALL 返回批次状态、来源部门、责任人和时间以及不可随实物后续编辑而改变的提交清单快照
 
 ### 要求： 真实库房与层级存放位置
@@ -162,7 +162,7 @@
 
 #### 场景： 批量关联位置
 
-- **WHEN** 有档案更新权限的用户向 `POST /api/v1/archive-physical-objects:batchAssignLocation` 提交一组实物对象 ID、已启用目标位置和原因
+- **WHEN** 有档案更新权限的用户向 `POST /archive-physical-objects:batchAssignLocation` 提交一组实物对象 ID、已启用目标位置和原因
 - **THEN** 系统 SHALL 更新全部实物对象的当前位置
 - **AND** 系统 SHALL 为每个当前位置发生变化的实物对象记录来源位置、目标位置、业务类型、业务 ID、原因、操作人和操作时间
 

@@ -42,14 +42,14 @@ class ArchivePhysicalTransferControllerTests {
                         Authentication.class);
 
         assertThat(create.getAnnotation(PostMapping.class).value())
-                .containsExactly("/api/v1/archive-physical-transfers");
+                .containsExactly("/archive-physical-transfers");
         assertThat(create.getAnnotation(ResponseStatus.class).value())
                 .isEqualTo(HttpStatus.CREATED);
         assertThat(get.getAnnotation(GetMapping.class).value())
-                .containsExactly("/api/v1/archive-physical-transfers/{id}");
+                .containsExactly("/archive-physical-transfers/{id}");
         assertThat(accept.getAnnotation(PostMapping.class).value())
-                .containsExactly("/api/v1/archive-physical-transfers/{id}:accept");
+                .containsExactly("/archive-physical-transfers/{id}:accept");
         assertThat(reject.getAnnotation(PostMapping.class).value())
-                .containsExactly("/api/v1/archive-physical-transfers/{id}:reject");
+                .containsExactly("/archive-physical-transfers/{id}:reject");
     }
 }

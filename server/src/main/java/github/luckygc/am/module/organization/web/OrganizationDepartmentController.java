@@ -38,7 +38,7 @@ public class OrganizationDepartmentController {
         this.permissionService = permissionService;
     }
 
-    @GetMapping("/api/v1/organization-departments")
+    @GetMapping("/organization-departments")
     public CollectionResponse<OrganizationDepartmentResponse> listDepartments(
             @RequestParam(required = false) @Nullable Boolean enabled,
             @Nullable Authentication authentication) {
@@ -46,14 +46,14 @@ public class OrganizationDepartmentController {
         return CollectionResponse.of(departmentService.listDepartments(enabled));
     }
 
-    @GetMapping("/api/v1/organization-departments/{organizationDepartment}")
+    @GetMapping("/organization-departments/{organizationDepartment}")
     public OrganizationDepartmentResponse getDepartment(
             @PathVariable Long organizationDepartment, @Nullable Authentication authentication) {
         requireReadPermission(authentication);
         return departmentService.getDepartment(organizationDepartment);
     }
 
-    @PostMapping("/api/v1/organization-departments")
+    @PostMapping("/organization-departments")
     @ResponseStatus(HttpStatus.CREATED)
     public OrganizationDepartmentResponse createDepartment(
             @RequestBody CreateOrganizationDepartmentRequest request,
@@ -62,7 +62,7 @@ public class OrganizationDepartmentController {
         return departmentService.createDepartment(request);
     }
 
-    @PatchMapping("/api/v1/organization-departments/{organizationDepartment}")
+    @PatchMapping("/organization-departments/{organizationDepartment}")
     public OrganizationDepartmentResponse updateDepartment(
             @PathVariable Long organizationDepartment,
             @RequestBody JsonNode request,

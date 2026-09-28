@@ -25,7 +25,7 @@ describe("archive rules API", () => {
         });
 
         expect(httpClientMock.post).toHaveBeenCalledWith(
-            "/api/v1/archive-runtime-traces:search?limit=200&cursor=next-token",
+            "/archive-runtime-traces:search?limit=200&cursor=next-token",
             {
                 triggerPoint: "ITEM_BEFORE_CREATE",
             },

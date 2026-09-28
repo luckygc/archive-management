@@ -34,17 +34,17 @@ class CursorHttpFingerprintTests {
     @DisplayName("关系列表 depth 纳入查询摘要且 limit 和 cursor 不纳入")
     void relationDepthParticipatesInFingerprint() {
         MockHttpServletRequest first =
-                new MockHttpServletRequest("GET", "/api/v1/archive-items/1/relations");
+                new MockHttpServletRequest("GET", "/archive-items/1/relations");
         first.addParameter("depth", "1");
         first.addParameter("limit", "100");
         first.addParameter("cursor", "first-page");
         MockHttpServletRequest same =
-                new MockHttpServletRequest("GET", "/api/v1/archive-items/1/relations");
+                new MockHttpServletRequest("GET", "/archive-items/1/relations");
         same.addParameter("depth", "1");
         same.addParameter("limit", "200");
         same.addParameter("cursor", "next-page");
         MockHttpServletRequest different =
-                new MockHttpServletRequest("GET", "/api/v1/archive-items/1/relations");
+                new MockHttpServletRequest("GET", "/archive-items/1/relations");
         different.addParameter("depth", "2");
 
         assertThat(fingerprint.fingerprint(first)).isEqualTo(fingerprint.fingerprint(same));
@@ -120,7 +120,7 @@ class CursorHttpFingerprintTests {
 
     private static MockHttpServletRequest jsonRequest(String body) {
         MockHttpServletRequest request =
-                new MockHttpServletRequest("POST", "/api/v1/archive-records:search");
+                new MockHttpServletRequest("POST", "/archive-records:search");
         request.setContentType("application/json");
         request.setContent(body.getBytes(StandardCharsets.UTF_8));
         return request;

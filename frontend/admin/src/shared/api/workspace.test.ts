@@ -23,6 +23,6 @@ describe("workspace API", () => {
             lockedCount: 2,
             electronicFileCount: 7,
         });
-        expect(httpClientMock.get).toHaveBeenCalledWith("/api/v1/workspace-summary");
+        expect(httpClientMock.get).toHaveBeenCalledWith("/workspace-summary");
     });
 });

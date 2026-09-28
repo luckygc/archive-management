@@ -53,7 +53,7 @@ class CursorPageTokenValidationInterceptorTests {
     @Test
     @DisplayName("offset 分页 Controller 方法提交 cursor 时拒绝")
     void interceptorShouldRejectCursorForOffsetPageHandlers() throws Exception {
-        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/items");
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/items");
         request.addParameter("cursor", "opaque");
 
         assertThatThrownBy(
@@ -99,7 +99,7 @@ class CursorPageTokenValidationInterceptorTests {
 
     private static MockHttpServletRequest jsonRequest(String body) {
         MockHttpServletRequest request =
-                new MockHttpServletRequest("POST", "/api/v1/archive-items:search");
+                new MockHttpServletRequest("POST", "/archive-items:search");
         request.setContentType("application/json");
         request.setContent(body.getBytes(StandardCharsets.UTF_8));
         return request;

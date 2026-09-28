@@ -44,7 +44,7 @@ public class ArchiveDataScopeController {
         this.permissionService = permissionService;
     }
 
-    @GetMapping("/api/v1/archive-data-scopes")
+    @GetMapping("/archive-data-scopes")
     public CollectionResponse<ArchiveDataScopeResponse> listScopes(
             @RequestParam(defaultValue = "true") boolean enabled,
             @Nullable Authentication authentication) {
@@ -52,7 +52,7 @@ public class ArchiveDataScopeController {
         return CollectionResponse.of(dataScopeService.listScopes(enabled));
     }
 
-    @PostMapping("/api/v1/archive-data-scopes")
+    @PostMapping("/archive-data-scopes")
     public ArchiveDataScopeResponse createScope(
             @RequestBody CreateArchiveDataScopeRequest request,
             @Nullable Authentication authentication) {
@@ -60,14 +60,14 @@ public class ArchiveDataScopeController {
         return dataScopeService.createScope(request);
     }
 
-    @GetMapping("/api/v1/archive-data-scopes/{archiveDataScope}")
+    @GetMapping("/archive-data-scopes/{archiveDataScope}")
     public ArchiveDataScopeResponse getScope(
             @PathVariable Long archiveDataScope, @Nullable Authentication authentication) {
         requirePermission(authentication);
         return dataScopeService.getScope(archiveDataScope);
     }
 
-    @PutMapping("/api/v1/archive-data-scopes/{archiveDataScope}")
+    @PutMapping("/archive-data-scopes/{archiveDataScope}")
     public ArchiveDataScopeResponse updateScope(
             @PathVariable Long archiveDataScope,
             @RequestBody UpdateArchiveDataScopeRequest request,
@@ -76,14 +76,14 @@ public class ArchiveDataScopeController {
         return dataScopeService.updateScope(archiveDataScope, request);
     }
 
-    @GetMapping("/api/v1/authorization-roles/{role}/archive-data-scopes")
+    @GetMapping("/authorization-roles/{role}/archive-data-scopes")
     public RoleArchiveDataScopesResponse listRoleDataScopes(
             @PathVariable Long role, @Nullable Authentication authentication) {
         requirePermission(authentication);
         return dataScopeService.listRoleDataScopes(role);
     }
 
-    @PutMapping("/api/v1/authorization-roles/{role}/archive-data-scopes")
+    @PutMapping("/authorization-roles/{role}/archive-data-scopes")
     public RoleArchiveDataScopesResponse saveRoleDataScopes(
             @PathVariable Long role,
             @RequestBody UpdateRoleArchiveDataScopesRequest request,
@@ -92,14 +92,14 @@ public class ArchiveDataScopeController {
         return dataScopeService.saveRoleDataScopes(role, request.scopeIds());
     }
 
-    @GetMapping("/api/v1/authorization-users/{user}/archive-data-scopes")
+    @GetMapping("/authorization-users/{user}/archive-data-scopes")
     public UserArchiveDataScopesResponse listUserDataScopes(
             @PathVariable Long user, @Nullable Authentication authentication) {
         requirePermission(authentication);
         return dataScopeService.listUserDataScopes(user);
     }
 
-    @PutMapping("/api/v1/authorization-users/{user}/archive-data-scopes")
+    @PutMapping("/authorization-users/{user}/archive-data-scopes")
     public UserArchiveDataScopesResponse saveUserDataScopes(
             @PathVariable Long user,
             @RequestBody UpdateUserArchiveDataScopesRequest request,
@@ -108,14 +108,14 @@ public class ArchiveDataScopeController {
         return dataScopeService.saveUserDataScopes(user, request.scopeIds());
     }
 
-    @GetMapping("/api/v1/organization-departments/{organizationDepartment}/archive-data-scopes")
+    @GetMapping("/organization-departments/{organizationDepartment}/archive-data-scopes")
     public DepartmentArchiveDataScopesResponse listDepartmentDataScopes(
             @PathVariable Long organizationDepartment, @Nullable Authentication authentication) {
         requirePermission(authentication);
         return dataScopeService.listDepartmentDataScopes(organizationDepartment);
     }
 
-    @PutMapping("/api/v1/organization-departments/{organizationDepartment}/archive-data-scopes")
+    @PutMapping("/organization-departments/{organizationDepartment}/archive-data-scopes")
     public DepartmentArchiveDataScopesResponse saveDepartmentDataScopes(
             @PathVariable Long organizationDepartment,
             @RequestBody UpdateDepartmentArchiveDataScopesRequest request,
@@ -125,7 +125,7 @@ public class ArchiveDataScopeController {
                 organizationDepartment, request.scopeIds());
     }
 
-    @GetMapping("/api/v1/archive-categories/{archiveCategory}/data-scope-fields")
+    @GetMapping("/archive-categories/{archiveCategory}/data-scope-fields")
     public CollectionResponse<ArchiveFieldDto> listDataScopeFields(
             @PathVariable Long archiveCategory,
             @RequestParam(defaultValue = "ITEM") ArchiveLevel archiveLevel,

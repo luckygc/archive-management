@@ -41,7 +41,7 @@ public class ArchiveItemLineRowController {
         this.archiveItemLineRowService = archiveItemLineRowService;
     }
 
-    @GetMapping("/api/v1/archive-items/{archiveItem}/line-tables/{lineTable}/rows")
+    @GetMapping("/archive-items/{archiveItem}/line-tables/{lineTable}/rows")
     public CursorPageResponse<ArchiveItemLineRowResponse> listRows(
             @PathVariable Long archiveItem,
             @PathVariable Long lineTable,
@@ -51,14 +51,14 @@ public class ArchiveItemLineRowController {
                 archiveItem, lineTable, page, userId(authentication));
     }
 
-    @GetMapping("/api/v1/archive-items/{archiveItem}/line-tables")
+    @GetMapping("/archive-items/{archiveItem}/line-tables")
     public CollectionResponse<ArchiveItemLineTableDefinitionResponse> listLineTables(
             @PathVariable Long archiveItem, Authentication authentication) {
         return CollectionResponse.of(
                 archiveItemLineRowService.listLineTables(archiveItem, userId(authentication)));
     }
 
-    @PostMapping("/api/v1/archive-items/{archiveItem}/line-tables/{lineTable}/rows")
+    @PostMapping("/archive-items/{archiveItem}/line-tables/{lineTable}/rows")
     @ResponseStatus(HttpStatus.CREATED)
     public ArchiveItemLineRowResponse createRow(
             @PathVariable Long archiveItem,
@@ -69,7 +69,7 @@ public class ArchiveItemLineRowController {
                 archiveItem, lineTable, request, userId(authentication));
     }
 
-    @PatchMapping("/api/v1/archive-items/{archiveItem}/line-tables/{lineTable}/rows/{row}")
+    @PatchMapping("/archive-items/{archiveItem}/line-tables/{lineTable}/rows/{row}")
     public ArchiveItemLineRowResponse patchRow(
             @PathVariable Long archiveItem,
             @PathVariable Long lineTable,
@@ -80,7 +80,7 @@ public class ArchiveItemLineRowController {
                 archiveItem, lineTable, row, parsePatch(body), userId(authentication));
     }
 
-    @DeleteMapping("/api/v1/archive-items/{archiveItem}/line-tables/{lineTable}/rows/{row}")
+    @DeleteMapping("/archive-items/{archiveItem}/line-tables/{lineTable}/rows/{row}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteRow(
             @PathVariable Long archiveItem,

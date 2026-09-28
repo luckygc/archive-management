@@ -17,7 +17,7 @@ class CachedBodyHttpServletRequestWrapperTests {
     @DisplayName("超过预算的 JSON 请求体拒绝缓存")
     void oversizedJsonBodyShouldBeRejected() {
         MockHttpServletRequest request =
-                new MockHttpServletRequest("POST", "/api/v1/archive-records:search");
+                new MockHttpServletRequest("POST", "/archive-records:search");
         request.setContentType("application/json");
         request.setContent(
                 ("{\"keyword\":\"" + "a".repeat(1024 * 1024) + "\"}")

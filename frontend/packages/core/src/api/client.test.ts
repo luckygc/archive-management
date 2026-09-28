@@ -6,8 +6,8 @@ describe("httpClient", () => {
     it("generates browser download links without reading response bodies", () => {
         const fetchSpy = vi.spyOn(window, "fetch");
 
-        expect(httpClient.download("/api/v1/files/10/content")).toEqual({
-            href: "/api/v1/files/10/content",
+        expect(httpClient.download("/files/10/content")).toEqual({
+            href: "/files/10/content",
         });
         expect(fetchSpy).not.toHaveBeenCalled();
 
@@ -30,7 +30,7 @@ describe("httpClient", () => {
         );
 
         await expect(
-            httpClient.patch("http://localhost/api/v1/archive-items/9", {}),
+            httpClient.patch("http://localhost/archive-items/9", {}),
         ).rejects.toMatchObject({
             code: "INVALID_ARGUMENT",
             fieldViolations: [{ field: "archiveNo", message: "档号已存在" }],
@@ -48,7 +48,7 @@ describe("httpClient", () => {
         );
 
         await expect(
-            httpClient.postResponse("http://localhost/api/v1/login-sessions", {}),
+            httpClient.postResponse("http://localhost/login-sessions", {}),
         ).resolves.toEqual({
             status: 202,
             data: { challengeToken: "challenge-1", expiresAt: "soon" },
@@ -72,7 +72,7 @@ describe("httpClient", () => {
         );
 
         await expect(
-            httpClient.post("http://localhost/api/v1/login-session-challenges:verifyTotp", {
+            httpClient.post("http://localhost/login-session-challenges:verifyTotp", {
                 challengeToken: "challenge-1",
                 code: "123456",
             }),

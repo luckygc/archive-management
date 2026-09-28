@@ -29,8 +29,7 @@ class PageRequestArgumentResolverTests {
     void cursorResolverShouldOnlyParsePageParameters() throws Exception {
         CursorPageTokenContext context = new CursorPageTokenContext("first-fingerprint");
         String cursor = CursorPageTokenCodec.encode("next", List.of(99L), 50, context);
-        MockHttpServletRequest request =
-                new MockHttpServletRequest("GET", "/api/v1/archive-item-audits");
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/archive-item-audits");
         request.addParameter("archiveItemId", "10");
         request.addParameter("limit", "50");
         request.addParameter("cursor", cursor);
@@ -51,14 +50,14 @@ class PageRequestArgumentResolverTests {
     @DisplayName("cursor 分页只解析 URL 查询参数")
     void cursorResolverShouldParseOnlyUrlQueryPageParameters() throws Exception {
         MockHttpServletRequest first =
-                jsonRequest("POST", "/api/v1/archive-records:search", "{\"keyword\":\"合同\"}");
+                jsonRequest("POST", "/archive-records:search", "{\"keyword\":\"合同\"}");
         first.addParameter("limit", "50");
         CursorPageTokenContext context = new CursorPageTokenContext("fingerprint");
         String cursor = CursorPageTokenCodec.encode("next", List.of(99L), 50, context);
         MockHttpServletRequest request =
                 jsonRequest(
                         "POST",
-                        "/api/v1/archive-records:search",
+                        "/archive-records:search",
                         "{\"keyword\":\"合同\",\"limit\":10,\"cursor\":\"ignored\",\"requestTotal\":false}");
         request.addParameter("limit", "50");
         request.addParameter("cursor", cursor);
@@ -85,7 +84,7 @@ class PageRequestArgumentResolverTests {
         MockHttpServletRequest request =
                 jsonRequest(
                         "POST",
-                        "/api/v1/archive-records:search",
+                        "/archive-records:search",
                         "{\"keyword\":\"合同\",\"limit\":50,\"requestTotal\":true}");
         CursorPageArgumentResolver resolver = new CursorPageArgumentResolver();
 
@@ -106,7 +105,7 @@ class PageRequestArgumentResolverTests {
     @DisplayName("multipart 请求不能携带 cursor 分页参数")
     void cursorResolverShouldRejectMultipartPageParameters() throws Exception {
         MockHttpServletRequest request =
-                new MockHttpServletRequest("POST", "/api/v1/archive-records:search");
+                new MockHttpServletRequest("POST", "/archive-records:search");
         request.setContentType("multipart/form-data; boundary=----test");
         request.addParameter("cursor", "opaque-token");
         CursorPageArgumentResolver resolver = new CursorPageArgumentResolver();
@@ -138,7 +137,7 @@ class PageRequestArgumentResolverTests {
     @DisplayName("非 JSON 请求体不能携带 cursor 分页参数")
     void cursorResolverShouldRejectFormPageParameters() throws Exception {
         MockHttpServletRequest request =
-                new MockHttpServletRequest("POST", "/api/v1/archive-records:search");
+                new MockHttpServletRequest("POST", "/archive-records:search");
         request.setContentType("application/x-www-form-urlencoded");
         request.addParameter("limit", "50");
         CursorPageArgumentResolver resolver = new CursorPageArgumentResolver();
@@ -168,7 +167,7 @@ class PageRequestArgumentResolverTests {
     @Test
     @DisplayName("解析 offset 分页 URL 参数")
     void offsetResolverShouldParsePageSizeAndPageNo() throws Exception {
-        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/items");
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/items");
         request.addParameter("pageSize", "200");
         request.addParameter("pageNo", "3");
         OffsetPageRequestArgumentResolver resolver = new OffsetPageRequestArgumentResolver();
@@ -187,7 +186,7 @@ class PageRequestArgumentResolverTests {
     @DisplayName("offset 分页只解析 URL 查询参数")
     void offsetResolverShouldParseOnlyUrlQueryPageParameters() throws Exception {
         MockHttpServletRequest request =
-                jsonRequest("POST", "/api/v1/items:search", "{\"pageSize\":10,\"pageNo\":2}");
+                jsonRequest("POST", "/items:search", "{\"pageSize\":10,\"pageNo\":2}");
         request.addParameter("pageSize", "200");
         request.addParameter("pageNo", "3");
         OffsetPageRequestArgumentResolver resolver = new OffsetPageRequestArgumentResolver();
@@ -210,7 +209,7 @@ class PageRequestArgumentResolverTests {
     @DisplayName("offset 分页不读取 JSON 请求体中的分页参数")
     void offsetResolverShouldIgnoreJsonBodyPageParameters() throws Exception {
         MockHttpServletRequest request =
-                jsonRequest("POST", "/api/v1/items:search", "{\"pageSize\":200,\"pageNo\":3}");
+                jsonRequest("POST", "/items:search", "{\"pageSize\":200,\"pageNo\":3}");
         OffsetPageRequestArgumentResolver resolver = new OffsetPageRequestArgumentResolver();
 
         OffsetPageRequest page =
@@ -230,7 +229,7 @@ class PageRequestArgumentResolverTests {
     @Test
     @DisplayName("multipart 请求不能携带 offset 分页参数")
     void offsetResolverShouldRejectMultipartPageParameters() throws Exception {
-        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/items");
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/items");
         request.setContentType("multipart/form-data; boundary=----test");
         request.addParameter("pageSize", "200");
         request.addParameter("pageNo", "3");
@@ -262,7 +261,7 @@ class PageRequestArgumentResolverTests {
     @Test
     @DisplayName("非 JSON 请求体不能携带 offset 分页参数")
     void offsetResolverShouldRejectFormPageParameters() throws Exception {
-        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/items");
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/items");
         request.setContentType("application/x-www-form-urlencoded");
         request.addParameter("pageSize", "200");
         request.addParameter("pageNo", "3");

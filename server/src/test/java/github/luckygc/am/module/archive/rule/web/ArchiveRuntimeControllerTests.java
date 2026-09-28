@@ -107,7 +107,7 @@ class ArchiveRuntimeControllerTests {
                                 PageRequest.class,
                                 org.springframework.security.core.Authentication.class)
                         .getAnnotation(PostMapping.class);
-        assertThat(mapping.value()).containsExactly("/api/v1/archive-runtime-traces:search");
+        assertThat(mapping.value()).containsExactly("/archive-runtime-traces:search");
         ArgumentCaptor<SearchArchiveRuntimeTracesRequest> requestCaptor =
                 ArgumentCaptor.forClass(SearchArchiveRuntimeTracesRequest.class);
         verify(traceService)

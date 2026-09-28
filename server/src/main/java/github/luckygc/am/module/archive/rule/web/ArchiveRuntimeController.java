@@ -57,7 +57,7 @@ public class ArchiveRuntimeController {
         this.permissionService = permissionService;
     }
 
-    @GetMapping("/api/v1/archive-runtime-definitions")
+    @GetMapping("/archive-runtime-definitions")
     public CollectionResponse<ArchiveRuntimeDefinitionResponse> listDefinitions(
             @RequestParam(required = false) ArchiveRuntimeStatus status,
             Authentication authentication) {
@@ -65,14 +65,14 @@ public class ArchiveRuntimeController {
         return CollectionResponse.of(definitionService.listDefinitions(status));
     }
 
-    @GetMapping("/api/v1/archive-runtime-definitions/{definitionId}")
+    @GetMapping("/archive-runtime-definitions/{definitionId}")
     public ArchiveRuntimeDefinitionResponse getDefinition(
             @PathVariable Long definitionId, Authentication authentication) {
         requireManage(authentication);
         return definitionService.getDefinition(definitionId);
     }
 
-    @PostMapping("/api/v1/archive-runtime-definitions")
+    @PostMapping("/archive-runtime-definitions")
     @ResponseStatus(HttpStatus.CREATED)
     public ArchiveRuntimeDefinitionResponse createDefinition(
             @RequestBody SaveArchiveRuntimeDefinitionRequest request,
@@ -80,7 +80,7 @@ public class ArchiveRuntimeController {
         return definitionService.createDefinition(request, requireManage(authentication));
     }
 
-    @PutMapping("/api/v1/archive-runtime-definitions/{definitionId}")
+    @PutMapping("/archive-runtime-definitions/{definitionId}")
     public ArchiveRuntimeDefinitionResponse updateDefinition(
             @PathVariable Long definitionId,
             @RequestBody SaveArchiveRuntimeDefinitionRequest request,
@@ -89,31 +89,31 @@ public class ArchiveRuntimeController {
                 definitionId, request, requireManage(authentication));
     }
 
-    @PostMapping("/api/v1/archive-runtime-definitions/{definitionId}:publish")
+    @PostMapping("/archive-runtime-definitions/{definitionId}:publish")
     public ArchiveRuntimeDefinitionResponse publishDefinition(
             @PathVariable Long definitionId, Authentication authentication) {
         return definitionService.publishDefinition(definitionId, requireManage(authentication));
     }
 
-    @PostMapping("/api/v1/archive-runtime-definitions/{definitionId}:enable")
+    @PostMapping("/archive-runtime-definitions/{definitionId}:enable")
     public ArchiveRuntimeDefinitionResponse enableDefinition(
             @PathVariable Long definitionId, Authentication authentication) {
         return definitionService.updateEnabled(definitionId, true, requireManage(authentication));
     }
 
-    @PostMapping("/api/v1/archive-runtime-definitions/{definitionId}:disable")
+    @PostMapping("/archive-runtime-definitions/{definitionId}:disable")
     public ArchiveRuntimeDefinitionResponse disableDefinition(
             @PathVariable Long definitionId, Authentication authentication) {
         return definitionService.updateEnabled(definitionId, false, requireManage(authentication));
     }
 
-    @DeleteMapping("/api/v1/archive-runtime-definitions/{definitionId}")
+    @DeleteMapping("/archive-runtime-definitions/{definitionId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteDefinition(@PathVariable Long definitionId, Authentication authentication) {
         definitionService.deleteDefinition(definitionId, requireManage(authentication));
     }
 
-    @GetMapping("/api/v1/archive-runtime-fields")
+    @GetMapping("/archive-runtime-fields")
     public ArchiveRuntimeFieldCatalog getFieldCatalog(
             @RequestParam(required = false) @Nullable String categoryCode,
             @RequestParam ArchiveRuntimeTriggerPoint triggerPoint,
@@ -122,14 +122,14 @@ public class ArchiveRuntimeController {
         return fieldCatalogService.catalog(categoryCode, triggerPoint);
     }
 
-    @PostMapping("/api/v1/archive-runtime-definitions:simulate")
+    @PostMapping("/archive-runtime-definitions:simulate")
     public ArchiveRuntimeExecutionResult simulate(
             @RequestBody ArchiveRuntimeExecutionRequest request, Authentication authentication) {
         Long userId = requireManage(authentication);
         return executionService.simulate(withUserId(request, userId));
     }
 
-    @PostMapping("/api/v1/archive-runtime-traces:search")
+    @PostMapping("/archive-runtime-traces:search")
     public CursorPageResponse<Map<String, Object>> searchTraces(
             @RequestBody SearchArchiveRuntimeTracesRequest request,
             PageRequest pageRequest,

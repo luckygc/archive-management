@@ -79,13 +79,13 @@ DA/T 70—2018 的移交接收检测中，目录结构、XML 可解析性、字�
 
 ### 5. API 以包资源表达，同步返回最终状态
 
-- `POST /api/v1/archive-intake-packages` 使用 multipart 字段 `file` 创建包资源，返回 `201` 和自动检测后的 `PENDING_REVIEW` 或 `FAILED` 包详情。
-- `GET /api/v1/archive-intake-packages` 使用统一 `limit`/`cursor`，只返回当前用户的接收记录。
-- `GET /api/v1/archive-intake-packages/{id}` 只返回当前用户的包详情和生成条目。
-- `POST /api/v1/archive-intake-packages/{id}:accept` 接收人工复核与交接确认，确认后直接入系统 `HOLDING` 库。
-- `POST /api/v1/archive-intake-packages/{id}:reject` 保存退回原因并终止该包接收。
-- `POST /api/v1/archive-intake-packages/{id}:createDownloadLink` 为当前用户创建十分钟原包下载短链。
-- `GET /api/v1/intake` 保留兼容，改为说明本地信息包已可用、外部连接仍未配置。
+- `POST /archive-intake-packages` 使用 multipart 字段 `file` 创建包资源，返回 `201` 和自动检测后的 `PENDING_REVIEW` 或 `FAILED` 包详情。
+- `GET /archive-intake-packages` 使用统一 `limit`/`cursor`，只返回当前用户的接收记录。
+- `GET /archive-intake-packages/{id}` 只返回当前用户的包详情和生成条目。
+- `POST /archive-intake-packages/{id}:accept` 接收人工复核与交接确认，确认后直接入系统 `HOLDING` 库。
+- `POST /archive-intake-packages/{id}:reject` 保存退回原因并终止该包接收。
+- `POST /archive-intake-packages/{id}:createDownloadLink` 为当前用户创建十分钟原包下载短链。
+- `GET /intake` 保留兼容，改为说明本地信息包已可用、外部连接仍未配置。
 
 自动检测失败返回 `201` 的 `FAILED` 资源，而不是把已成功创建的接收记录伪装成 HTTP 请求失败。未认证、权限不足、文件缺失或超过上传边界发生在创建资源前，继续使用统一 ProblemDetail。
 

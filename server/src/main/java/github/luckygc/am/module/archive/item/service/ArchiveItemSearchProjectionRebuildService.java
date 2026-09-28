@@ -23,8 +23,7 @@ import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.Ar
 @Service
 public class ArchiveItemSearchProjectionRebuildService {
 
-    private static final String JOB_RESOURCE_PATH =
-            "/api/v1/archive-search-projection-rebuild-jobs/";
+    private static final String JOB_RESOURCE_PATH = "/archive-search-projection-rebuild-jobs/";
 
     private final ArchiveCategoryService archiveCategoryService;
     private final ArchiveMapper archiveMapper;

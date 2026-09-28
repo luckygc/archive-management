@@ -27,7 +27,7 @@ public class TotpCredentialController {
         this.credentialService = credentialService;
     }
 
-    @PostMapping("/api/v1/totp-enrollments")
+    @PostMapping("/totp-enrollments")
     public ResponseEntity<TotpEnrollmentResponse> prepareEnrollment(
             @Nullable Authentication authentication) {
         Long userId = userId(authentication);
@@ -36,7 +36,7 @@ public class TotpCredentialController {
                 .body(credentialService.prepareEnrollment(userId));
     }
 
-    @PostMapping("/api/v1/totp-credentials")
+    @PostMapping("/totp-credentials")
     @ResponseStatus(HttpStatus.CREATED)
     public TotpCredentialStatusResponse createCredential(
             @RequestBody CreateTotpCredentialRequest request,
@@ -47,7 +47,7 @@ public class TotpCredentialController {
         return new TotpCredentialStatusResponse(true);
     }
 
-    @PostMapping("/api/v1/totp-credentials:disable")
+    @PostMapping("/totp-credentials:disable")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void disableCredential(
             @RequestBody DisableTotpCredentialRequest request,

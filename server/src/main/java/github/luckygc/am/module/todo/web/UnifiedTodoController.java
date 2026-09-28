@@ -22,7 +22,7 @@ public class UnifiedTodoController {
         this.service = service;
     }
 
-    @GetMapping("/api/v1/unified-todos")
+    @GetMapping("/unified-todos")
     public CursorPageResponse<UnifiedTodoItem> listMyTodos(
             @RequestParam(defaultValue = "false") boolean completed,
             PageRequest page,

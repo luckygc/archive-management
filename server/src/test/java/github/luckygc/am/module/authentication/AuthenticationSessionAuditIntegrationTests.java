@@ -88,7 +88,7 @@ class AuthenticationSessionAuditIntegrationTests extends PostgreSqlContainerTest
         assertThat(countLogs("login_success", sessionId)).isEqualTo(1);
         assertThat(firstLog("login_success", sessionId).getBrowserName()).isEqualTo("Safari");
 
-        mockMvc.perform(withClientHeaders(get("/api/v1/login-sessions")).cookie(sessionCookie))
+        mockMvc.perform(withClientHeaders(get("/login-sessions")).cookie(sessionCookie))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].username").value("admin"))
                 .andExpect(jsonPath("$.items[0].client.browserName").value("Safari"))
@@ -115,7 +115,7 @@ class AuthenticationSessionAuditIntegrationTests extends PostgreSqlContainerTest
         String sessionId = loginSessionId(loginResult);
 
         mockMvc.perform(
-                        withClientHeaders(delete("/api/v1/login-sessions/{session}", sessionId))
+                        withClientHeaders(delete("/login-sessions/{session}", sessionId))
                                 .cookie(sessionCookie))
                 .andExpect(status().isNoContent());
 
@@ -136,7 +136,7 @@ class AuthenticationSessionAuditIntegrationTests extends PostgreSqlContainerTest
                         .getCookie("SESSION");
 
         mockMvc.perform(
-                        withClientHeaders(delete("/api/v1/login-sessions/{session}", sessionId))
+                        withClientHeaders(delete("/login-sessions/{session}", sessionId))
                                 .cookie(operatorCookie))
                 .andExpect(status().isNoContent());
 
@@ -157,7 +157,7 @@ class AuthenticationSessionAuditIntegrationTests extends PostgreSqlContainerTest
         login("cursor-failure-user-2", "wrong-password").andExpect(status().isUnauthorized());
         MvcResult firstPage =
                 mockMvc.perform(
-                                withClientHeaders(get("/api/v1/authentication-events"))
+                                withClientHeaders(get("/authentication-events"))
                                         .cookie(sessionCookie)
                                         .param("eventType", "login_failure")
                                         .param("limit", "1"))
@@ -167,7 +167,7 @@ class AuthenticationSessionAuditIntegrationTests extends PostgreSqlContainerTest
         String next = JsonPath.read(firstPage.getResponse().getContentAsString(), "$.next");
 
         mockMvc.perform(
-                        withClientHeaders(get("/api/v1/authentication-events"))
+                        withClientHeaders(get("/authentication-events"))
                                 .cookie(sessionCookie)
                                 .param("eventType", "login_success")
                                 .param("limit", "1")
@@ -178,7 +178,7 @@ class AuthenticationSessionAuditIntegrationTests extends PostgreSqlContainerTest
     private org.springframework.test.web.servlet.ResultActions login(
             String username, String password) throws Exception {
         return mockMvc.perform(
-                withClientHeaders(post("/api/v1/login-sessions"))
+                withClientHeaders(post("/login-sessions"))
                         .with(csrf())
                         .param("username", username)
                         .param("password", password));

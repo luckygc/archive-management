@@ -27,19 +27,19 @@ public class ArchiveRepositoryController {
         this.service = service;
     }
 
-    @GetMapping("/api/v1/archive-repositories")
+    @GetMapping("/archive-repositories")
     public CollectionResponse<ArchiveRepositoryResponse> list(Boolean enabled) {
         return CollectionResponse.of(service.list(enabled));
     }
 
-    @PostMapping("/api/v1/archive-repositories")
+    @PostMapping("/archive-repositories")
     @ResponseStatus(HttpStatus.CREATED)
     public ArchiveRepositoryResponse create(
             @RequestBody CreateArchiveRepositoryRequest request, Authentication authentication) {
         return service.create(request, userId(authentication));
     }
 
-    @PatchMapping("/api/v1/archive-repositories/{id}")
+    @PatchMapping("/archive-repositories/{id}")
     public ArchiveRepositoryResponse update(
             @PathVariable Long id,
             @RequestBody UpdateArchiveRepositoryRequest request,
@@ -47,7 +47,7 @@ public class ArchiveRepositoryController {
         return service.update(id, request, userId(authentication));
     }
 
-    @DeleteMapping("/api/v1/archive-repositories/{id}")
+    @DeleteMapping("/archive-repositories/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id, Authentication authentication) {
         service.delete(id, userId(authentication));

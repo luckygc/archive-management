@@ -17,7 +17,7 @@ public class ArchiveWorkspaceController {
         this.workspaceService = workspaceService;
     }
 
-    @GetMapping("/api/v1/workspace-summary")
+    @GetMapping("/workspace-summary")
     public WorkspaceSummaryResponse getSummary(Authentication authentication) {
         ArchiveWorkspaceSummary summary =
                 workspaceService.getSummary(

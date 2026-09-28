@@ -46,7 +46,7 @@ public class AuthenticationUserManagementController {
         this.totpCredentialService = totpCredentialService;
     }
 
-    @GetMapping("/api/v1/authentication-users")
+    @GetMapping("/authentication-users")
     public CursorPageResponse<AuthenticationUserDto> listUsers(
             @RequestParam(required = false) @Nullable String keyword,
             PageRequest page,
@@ -58,7 +58,7 @@ public class AuthenticationUserManagementController {
                         authentication == null ? null : authentication.getPrincipal()));
     }
 
-    @GetMapping("/api/v1/authentication-user-options")
+    @GetMapping("/authentication-user-options")
     public CursorPageResponse<AuthenticationUserOptionResponse> listUserOptions(
             PageRequest page, @Nullable Authentication authentication) {
         return userService.listUserOptions(
@@ -67,7 +67,7 @@ public class AuthenticationUserManagementController {
                         authentication == null ? null : authentication.getPrincipal()));
     }
 
-    @PostMapping("/api/v1/authentication-users")
+    @PostMapping("/authentication-users")
     @ResponseStatus(HttpStatus.CREATED)
     public AuthenticationUserDto createUser(
             @RequestBody CreateAuthenticationUserRequest request,
@@ -78,7 +78,7 @@ public class AuthenticationUserManagementController {
                         authentication == null ? null : authentication.getPrincipal()));
     }
 
-    @GetMapping("/api/v1/authentication-users/{id}")
+    @GetMapping("/authentication-users/{id}")
     public AuthenticationUserDetailDto getUserDetail(
             @PathVariable Long id, @Nullable Authentication authentication) {
         return userService.getUserDetail(
@@ -87,7 +87,7 @@ public class AuthenticationUserManagementController {
                         authentication == null ? null : authentication.getPrincipal()));
     }
 
-    @PatchMapping("/api/v1/authentication-users/{id}")
+    @PatchMapping("/authentication-users/{id}")
     public AuthenticationUserDto updateUser(
             @PathVariable Long id,
             @RequestBody JsonNode request,
@@ -99,7 +99,7 @@ public class AuthenticationUserManagementController {
                         authentication == null ? null : authentication.getPrincipal()));
     }
 
-    @PostMapping("/api/v1/authentication-users/{id}:resetPassword")
+    @PostMapping("/authentication-users/{id}:resetPassword")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void resetPassword(
             @PathVariable Long id,
@@ -112,7 +112,7 @@ public class AuthenticationUserManagementController {
                         authentication == null ? null : authentication.getPrincipal()));
     }
 
-    @PostMapping("/api/v1/authentication-users/{id}:resetTotp")
+    @PostMapping("/authentication-users/{id}:resetTotp")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void resetTotp(
             @PathVariable Long id,
@@ -128,7 +128,7 @@ public class AuthenticationUserManagementController {
                 request);
     }
 
-    @GetMapping("/api/v1/authentication-users/{id}/roles")
+    @GetMapping("/authentication-users/{id}/roles")
     public CollectionResponse<RoleSummary> listUserRoles(
             @PathVariable Long id, @Nullable Authentication authentication) {
         return CollectionResponse.of(
@@ -138,7 +138,7 @@ public class AuthenticationUserManagementController {
                                 authentication == null ? null : authentication.getPrincipal())));
     }
 
-    @PutMapping("/api/v1/authentication-users/{id}/roles")
+    @PutMapping("/authentication-users/{id}/roles")
     public CollectionResponse<RoleSummary> saveUserRoles(
             @PathVariable Long id,
             @RequestBody SaveUserRolesRequest request,

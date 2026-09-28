@@ -37,7 +37,7 @@ public class ArchiveItemElectronicFileController {
         this.electronicFileLinkService = electronicFileLinkService;
     }
 
-    @GetMapping("/api/v1/archive-items/{archiveItem}/electronic-files")
+    @GetMapping("/archive-items/{archiveItem}/electronic-files")
     public CollectionResponse<ArchiveItemElectronicFileResponse> listFiles(
             @PathVariable Long archiveItem, Authentication authentication) {
         return CollectionResponse.of(
@@ -45,7 +45,7 @@ public class ArchiveItemElectronicFileController {
     }
 
     @PostMapping(
-            value = "/api/v1/archive-items/{archiveItem}/electronic-files",
+            value = "/archive-items/{archiveItem}/electronic-files",
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
     public ArchiveItemElectronicFileResponse uploadFile(
@@ -70,7 +70,7 @@ public class ArchiveItemElectronicFileController {
         }
     }
 
-    @DeleteMapping("/api/v1/archive-items/{archiveItem}/electronic-files/{electronicFile}")
+    @DeleteMapping("/archive-items/{archiveItem}/electronic-files/{electronicFile}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteFile(
             @PathVariable Long archiveItem,
@@ -81,7 +81,7 @@ public class ArchiveItemElectronicFileController {
     }
 
     @PostMapping(
-            "/api/v1/archive-items/{archiveItem}/electronic-files/{electronicFile}:createDownloadLink")
+            "/archive-items/{archiveItem}/electronic-files/{electronicFile}:createDownloadLink")
     public ArchiveItemElectronicFileDownloadLinkResponse createDownloadLink(
             @PathVariable Long archiveItem,
             @PathVariable Long electronicFile,
@@ -90,7 +90,7 @@ public class ArchiveItemElectronicFileController {
                 electronicFileLinkService.createDownloadLink(
                         archiveItem, electronicFile, currentUserId(authentication));
         return new ArchiveItemElectronicFileDownloadLinkResponse(
-                "/api/v1/file-links/" + created.code() + ":download", created.expiresAt());
+                "/file-links/" + created.code() + ":download", created.expiresAt());
     }
 
     private Long currentUserId(@Nullable Authentication authentication) {

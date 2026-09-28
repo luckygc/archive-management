@@ -25,7 +25,7 @@ public class ArchivePhysicalTransferController {
         this.service = service;
     }
 
-    @PostMapping("/api/v1/archive-physical-transfers")
+    @PostMapping("/archive-physical-transfers")
     @ResponseStatus(HttpStatus.CREATED)
     public ArchivePhysicalTransferResponse create(
             @RequestBody CreateArchivePhysicalTransferRequest request,
@@ -33,13 +33,13 @@ public class ArchivePhysicalTransferController {
         return service.create(request, userId(authentication));
     }
 
-    @GetMapping("/api/v1/archive-physical-transfers/{id}")
+    @GetMapping("/archive-physical-transfers/{id}")
     public ArchivePhysicalTransferResponse get(
             @PathVariable Long id, Authentication authentication) {
         return service.get(id, userId(authentication));
     }
 
-    @PostMapping("/api/v1/archive-physical-transfers/{id}:accept")
+    @PostMapping("/archive-physical-transfers/{id}:accept")
     public ArchivePhysicalTransferResponse accept(
             @PathVariable Long id,
             @RequestBody AcceptArchivePhysicalTransferRequest request,
@@ -47,7 +47,7 @@ public class ArchivePhysicalTransferController {
         return service.accept(id, request, userId(authentication));
     }
 
-    @PostMapping("/api/v1/archive-physical-transfers/{id}:reject")
+    @PostMapping("/archive-physical-transfers/{id}:reject")
     public ArchivePhysicalTransferResponse reject(
             @PathVariable Long id,
             @RequestBody RejectArchivePhysicalTransferRequest request,

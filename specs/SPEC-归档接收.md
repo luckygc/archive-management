@@ -14,7 +14,7 @@
 
 #### 场景： 查询归档接收入口概览
 
-- **WHEN** 前端请求 `GET /api/v1/intake`
+- **WHEN** 前端请求 `GET /intake`
 - **THEN** 系统 SHALL 返回归档接收入口概览
 - **AND** 响应 SHALL 明确表示当前未配置外部连接
 - **AND** 响应 SHALL 明确表示当前未对接外部系统

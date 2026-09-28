@@ -23,7 +23,7 @@ describe("archive volume API", () => {
         await listArchiveVolumes({ fondsCode: "F001", limit: 100, cursor: "next-volume" });
 
         expect(httpClientMock.get).toHaveBeenCalledWith(
-            "/api/v1/archive-volumes?fondsCode=F001&limit=100&cursor=next-volume",
+            "/archive-volumes?fondsCode=F001&limit=100&cursor=next-volume",
         );
     });
 
@@ -40,8 +40,8 @@ describe("archive volume API", () => {
         await createArchiveVolume(payload);
         await getArchiveVolume(12);
 
-        expect(httpClientMock.post).toHaveBeenCalledWith("/api/v1/archive-volumes", payload);
-        expect(httpClientMock.get).toHaveBeenCalledWith("/api/v1/archive-volumes/12");
+        expect(httpClientMock.post).toHaveBeenCalledWith("/archive-volumes", payload);
+        expect(httpClientMock.get).toHaveBeenCalledWith("/archive-volumes/12");
     });
 
     it("将档案加入指定案卷并按 204 处理", async () => {
@@ -50,7 +50,7 @@ describe("archive volume API", () => {
         const response = addArchiveItemToVolume(12, 91, 3);
 
         await expect(response).resolves.toBeUndefined();
-        expect(httpClientMock.post).toHaveBeenCalledWith("/api/v1/archive-volumes/12:addItem", {
+        expect(httpClientMock.post).toHaveBeenCalledWith("/archive-volumes/12:addItem", {
             itemId: 91,
             displayOrder: 3,
         });
@@ -61,7 +61,7 @@ describe("archive volume API", () => {
 
         await addArchiveItemToVolume(12, 91);
 
-        expect(httpClientMock.post).toHaveBeenCalledWith("/api/v1/archive-volumes/12:addItem", {
+        expect(httpClientMock.post).toHaveBeenCalledWith("/archive-volumes/12:addItem", {
             itemId: 91,
         });
     });

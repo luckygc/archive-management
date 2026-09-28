@@ -26,7 +26,7 @@ public class ArchiveItemAuditController {
         this.auditSearchService = auditSearchService;
     }
 
-    @GetMapping("/api/v1/archive-item-audits")
+    @GetMapping("/archive-item-audits")
     public CursorPageResponse<ArchiveItemAuditResponse> listAudits(
             @RequestParam(required = false) @Nullable Long archiveItemId,
             @RequestParam(required = false) @Nullable String fondsCode,

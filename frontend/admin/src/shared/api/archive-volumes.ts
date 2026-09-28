@@ -11,16 +11,16 @@ import { queryString } from "./query-string";
 
 export function listArchiveVolumes(query: ListArchiveVolumesQuery) {
     return httpClient.get<CursorPageResponse<ArchiveVolumeResponse>>(
-        `/api/v1/archive-volumes${queryString({ ...query, requestTotal: query.cursor ? undefined : (query.requestTotal ?? true) })}`,
+        `/archive-volumes${queryString({ ...query, requestTotal: query.cursor ? undefined : (query.requestTotal ?? true) })}`,
     );
 }
 
 export function createArchiveVolume(payload: CreateArchiveVolumeRequest) {
-    return httpClient.post<ArchiveVolumeDetailResponse>("/api/v1/archive-volumes", payload);
+    return httpClient.post<ArchiveVolumeDetailResponse>("/archive-volumes", payload);
 }
 
 export function getArchiveVolume(volumeId: number) {
-    return httpClient.get<ArchiveVolumeDetailResponse>(`/api/v1/archive-volumes/${volumeId}`);
+    return httpClient.get<ArchiveVolumeDetailResponse>(`/archive-volumes/${volumeId}`);
 }
 
 export function addArchiveItemToVolume(
@@ -28,7 +28,7 @@ export function addArchiveItemToVolume(
     itemId: number,
     displayOrder?: number,
 ): Promise<void> {
-    return httpClient.post<void>(`/api/v1/archive-volumes/${volumeId}:addItem`, {
+    return httpClient.post<void>(`/archive-volumes/${volumeId}:addItem`, {
         itemId,
         ...(displayOrder === undefined ? {} : { displayOrder }),
     });

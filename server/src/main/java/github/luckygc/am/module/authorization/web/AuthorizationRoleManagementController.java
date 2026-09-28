@@ -31,7 +31,7 @@ public class AuthorizationRoleManagementController {
         this.roleService = roleService;
     }
 
-    @GetMapping("/api/v1/authorization-roles")
+    @GetMapping("/authorization-roles")
     public CursorPageResponse<AuthorizationRoleDto> listRoles(
             @RequestParam(required = false) @Nullable Boolean enabled,
             PageRequest page,
@@ -43,7 +43,7 @@ public class AuthorizationRoleManagementController {
                         authentication == null ? null : authentication.getPrincipal()));
     }
 
-    @PostMapping("/api/v1/authorization-roles")
+    @PostMapping("/authorization-roles")
     @ResponseStatus(HttpStatus.CREATED)
     public AuthorizationRoleDto createRole(
             @RequestBody CreateAuthorizationRoleRequest request,
@@ -54,7 +54,7 @@ public class AuthorizationRoleManagementController {
                         authentication == null ? null : authentication.getPrincipal()));
     }
 
-    @GetMapping("/api/v1/authorization-roles/{id}")
+    @GetMapping("/authorization-roles/{id}")
     public AuthorizationRoleDto getRoleDetail(
             @PathVariable Long id, @Nullable Authentication authentication) {
         return roleService.getRole(
@@ -63,7 +63,7 @@ public class AuthorizationRoleManagementController {
                         authentication == null ? null : authentication.getPrincipal()));
     }
 
-    @PatchMapping("/api/v1/authorization-roles/{id}")
+    @PatchMapping("/authorization-roles/{id}")
     public AuthorizationRoleDto updateRole(
             @PathVariable Long id,
             @RequestBody UpdateAuthorizationRoleRequest request,
@@ -75,7 +75,7 @@ public class AuthorizationRoleManagementController {
                         authentication == null ? null : authentication.getPrincipal()));
     }
 
-    @DeleteMapping("/api/v1/authorization-roles/{id}")
+    @DeleteMapping("/authorization-roles/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteRole(@PathVariable Long id, @Nullable Authentication authentication) {
         roleService.deleteRole(

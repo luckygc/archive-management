@@ -34,8 +34,7 @@ public class ArchiveItemImportExportController {
         this.importExportService = importExportService;
     }
 
-    @PostMapping(
-            "/api/v1/archive-categories/{categoryId}/archive-items:createImportTemplateDownloadLink")
+    @PostMapping("/archive-categories/{categoryId}/archive-items:createImportTemplateDownloadLink")
     public ArchiveItemDownloadLinkResponse createImportTemplateDownloadLink(
             @PathVariable Long categoryId, Authentication authentication) {
         return toResponse(
@@ -44,7 +43,7 @@ public class ArchiveItemImportExportController {
     }
 
     @PostMapping(
-            path = "/api/v1/archive-categories/{categoryId}/archive-items:import",
+            path = "/archive-categories/{categoryId}/archive-items:import",
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ArchiveImportResult importItems(
             @PathVariable Long categoryId,
@@ -58,7 +57,7 @@ public class ArchiveItemImportExportController {
                         authentication == null ? null : authentication.getPrincipal()));
     }
 
-    @PostMapping("/api/v1/archive-items:createExportDownloadLink")
+    @PostMapping("/archive-items:createExportDownloadLink")
     public ArchiveItemDownloadLinkResponse createExportDownloadLink(
             @RawRequestStrings @RequestBody(required = false)
                     @Nullable ExportArchiveRecordsRequest request,
@@ -76,9 +75,7 @@ public class ArchiveItemImportExportController {
 
     private ArchiveItemDownloadLinkResponse toResponse(DownloadLinkCreated link) {
         return new ArchiveItemDownloadLinkResponse(
-                "/api/v1/file-links/" + link.code() + ":download",
-                link.expiresAt(),
-                link.warnings());
+                "/file-links/" + link.code() + ":download", link.expiresAt(), link.warnings());
     }
 
     public record ArchiveItemDownloadLinkResponse(

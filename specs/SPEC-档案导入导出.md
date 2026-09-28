@@ -22,7 +22,7 @@
 #### 场景： 创建导入模板下载短链
 
 - **WHEN** 已认证用户请求档案导入模板
-- **THEN** 客户端 SHALL 调用 `POST /api/v1/archive-categories/{categoryId}/archive-items:createImportTemplateDownloadLink`
+- **THEN** 客户端 SHALL 调用 `POST /archive-categories/{categoryId}/archive-items:createImportTemplateDownloadLink`
 - **AND** 服务端 SHALL 校验创建或编辑权限与分类数据范围
 - **AND** 服务端 SHALL 生成临时 S3 对象，且该对象 SHALL 自创建起 10 分钟过期
 - **AND** 服务端 SHALL 创建当前用户绑定短链，且该短链 SHALL 自创建起 10 分钟过期
@@ -51,7 +51,7 @@
 
 - **WHEN** 已认证用户请求导出档案管理查询结果
 - **THEN** 系统 SHALL 校验用户具备导出功能权限
-- **AND** 客户端 SHALL 使用 `POST /api/v1/archive-items:createExportDownloadLink` 在 JSON 请求体中提交当前查询条件
+- **AND** 客户端 SHALL 使用 `POST /archive-items:createExportDownloadLink` 在 JSON 请求体中提交当前查询条件
 - **AND** 请求体 SHALL 仅使用 `categoryId`、`fondsCode`、`volumeId`、`where`、`relatedGroups` 和 `orderBy` 作为业务查询字段
 - **AND** 非空 `keyword` SHALL NOT 属于管理查询导出业务条件，服务端 SHALL 拒绝包含非空 `keyword` 的导出请求
 - **AND** 请求体 SHALL NOT 接收或提交 `limit`、`cursor` 和 `requestTotal` 分页控制字段

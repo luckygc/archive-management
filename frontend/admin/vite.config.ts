@@ -24,10 +24,11 @@ export default defineConfig({
     },
     server: {
         proxy: {
-            "/api": {
-                target: "http://localhost:8080",
-                changeOrigin: true,
-            },
+            "^/(?:approval-|archive-|authentication-(?:events|user-options|users)(?:/|:|$)|authorization-|file-links(?:/|:|$)|intake(?:/|:|$)|login-|me(?:/|:|$)|organization-|public-file-links(?:/|:|$)|totp-|unified-todos(?:/|:|$)|workspace-summary(?:/|:|$))":
+                {
+                    target: "http://localhost:8080",
+                    changeOrigin: true,
+                },
             "/actuator": {
                 target: "http://localhost:8080",
                 changeOrigin: true,

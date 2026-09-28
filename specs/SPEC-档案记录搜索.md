@@ -174,9 +174,9 @@
 
 #### 场景： 启动搜索投影重建任务
 
-- **WHEN** 具有档案元数据管理权限的用户调用 `POST /api/v1/archive-categories/{categoryId}:rebuildSearchProjection`
+- **WHEN** 具有档案元数据管理权限的用户调用 `POST /archive-categories/{categoryId}:rebuildSearchProjection`
 - **THEN** 系统 SHALL 返回 `202 Accepted` 和 `JobAcceptedResponse`
-- **AND** 响应 SHALL 提供指向 `/api/v1/archive-search-projection-rebuild-jobs/{jobId}` 的 `operationLocation`
+- **AND** 响应 SHALL 提供指向 `/archive-search-projection-rebuild-jobs/{jobId}` 的 `operationLocation`
 - **AND** 系统 SHALL 冻结任务创建时待处理档案条目的 ID 上界
 - **AND** 系统 SHALL NOT 在启动请求内同步遍历该分类全部档案条目
 
@@ -190,7 +190,7 @@
 
 #### 场景： 查询搜索投影重建任务
 
-- **WHEN** 具有档案元数据管理权限的用户调用 `GET /api/v1/archive-search-projection-rebuild-jobs/{jobId}`
+- **WHEN** 具有档案元数据管理权限的用户调用 `GET /archive-search-projection-rebuild-jobs/{jobId}`
 - **THEN** 系统 SHALL 返回 `JobStatusResponse`
 - **AND** 成功任务的 `status` SHALL 为 `succeeded` 且 `progress` SHALL 为 `100`
 - **AND** 成功任务的 `result` SHALL 包含分类 ID 和实际重建数量

@@ -31,7 +31,7 @@ class CursorPageResponseAdviceTests {
     @Test
     @DisplayName("将分页 slice 包装为带签名 cursor token 的统一响应")
     void shouldWrapSliceWithCursorTokens() throws Exception {
-        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/items");
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/items");
         CursorPageTokenContext context = new CursorPageTokenContext("digest");
         CursorPageTokenValidationInterceptor.setContext(request, context);
         CursorPageResponse<String> page =
@@ -79,7 +79,7 @@ class CursorPageResponseAdviceTests {
     @Test
     @DisplayName("支持自定义 CursorPageResponse 实现")
     void shouldEncodeCustomCursorPageResponseImplementation() throws Exception {
-        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/items");
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/items");
         CursorPageTokenContext context = new CursorPageTokenContext("custom-digest");
         CursorPageTokenValidationInterceptor.setContext(request, context);
         CustomCursorPageResponse page =

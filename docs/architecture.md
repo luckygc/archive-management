@@ -72,7 +72,11 @@ Hibernate 与 MyBatis 均从该 provider 获取审计上下文；Service 不预�
 
 ## HTTP API
 
-新 API 的资源建模、URL 和 HTTP 方法直接参考 [Zalando RESTful API Guidelines](https://opensource.zalando.com/restful-api-guidelines/)；现有接口的 DTO、分页、过滤、排序、ID、异步任务、ProblemDetail 错误合同及迁移边界以 [API 能力规格](../specs/SPEC-项目API合同.md) 为准。具体业务字段、状态机、权限和验收场景由相应业务规格承担；[`api.md`](api.md) 仅提供使用入口和规格索引。
+项目自有 API 的无前缀资源路径、受约束的冒号动作、`camelCase` 字段，以及分页、过滤、排序、ID、异步任务和 ProblemDetail 错误合同，均以 [API 能力规格](../specs/SPEC-项目API合同.md) 为准；其中新接口采用外部规范，存量接口另列兼容合同。设计取舍见 [ADR-0001](adr/0001-project-api-style.md)。具体业务字段、状态机、权限和验收场景由相应业务规格承担；[`api.md`](api.md) 仅提供使用入口和规格索引。
+
+新增顶层 API 资源路径时，须同步核对服务端 `ApiRequestPaths` 和前端开发代理的匹配，确保鉴权、可选请求签名与开发环境同源访问覆盖该路径。PC 使用 hash 路由，页面地址的 `#` 片段不会发送给服务端。
+
+Controller 方法显式声明完整 URL，不通过类级 `@RequestMapping` 与方法级相对路径拼接项目自有 API；冒号动作也不通过相对路径拼接。该约束属于项目内部实现边界，不是外部 HTTP API 规范。
 
 会话认证由 Spring Security 与 Spring Session 承担，浏览器端状态不能替代服务端认证、授权和数据范围判断。
 

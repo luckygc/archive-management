@@ -28,7 +28,7 @@ describe("归档接收 API", () => {
         await listArchiveIntakePackages({ limit: 100, cursor: "next-token" });
 
         expect(httpClient.get).toHaveBeenCalledWith(
-            "/api/v1/archive-intake-packages?limit=100&cursor=next-token",
+            "/archive-intake-packages?limit=100&cursor=next-token",
         );
     });
 
@@ -48,7 +48,7 @@ describe("归档接收 API", () => {
 
         await getArchiveIntakePackage(12);
 
-        expect(httpClient.get).toHaveBeenCalledWith("/api/v1/archive-intake-packages/12");
+        expect(httpClient.get).toHaveBeenCalledWith("/archive-intake-packages/12");
     });
 
     it("提交完整人工复核结论后确认接收", async () => {
@@ -64,10 +64,7 @@ describe("归档接收 API", () => {
 
         await acceptArchiveIntakePackage(12, review);
 
-        expect(httpClient.post).toHaveBeenCalledWith(
-            "/api/v1/archive-intake-packages/12:accept",
-            review,
-        );
+        expect(httpClient.post).toHaveBeenCalledWith("/archive-intake-packages/12:accept", review);
     });
 
     it("携带原因退回信息包", async () => {
@@ -75,19 +72,19 @@ describe("归档接收 API", () => {
 
         await rejectArchiveIntakePackage(12, "移交清单不一致");
 
-        expect(httpClient.post).toHaveBeenCalledWith("/api/v1/archive-intake-packages/12:reject", {
+        expect(httpClient.post).toHaveBeenCalledWith("/archive-intake-packages/12:reject", {
             reason: "移交清单不一致",
         });
     });
 
     it("创建短期链接并下载原始信息包", async () => {
         vi.mocked(httpClient.post).mockResolvedValue({
-            url: "/api/v1/file-links/code:download",
+            url: "/file-links/code:download",
             expiresAt: "2026-07-29T12:00:00",
         });
 
         await downloadArchiveIntakePackage(12);
 
-        expect(httpClient.download).toHaveBeenCalledWith("/api/v1/file-links/code:download");
+        expect(httpClient.download).toHaveBeenCalledWith("/file-links/code:download");
     });
 });

@@ -35,7 +35,7 @@ describe("authentication API", () => {
 
         await getCurrentUser();
 
-        expect(httpClientMock.get).toHaveBeenCalledWith("/api/v1/me");
+        expect(httpClientMock.get).toHaveBeenCalledWith("/me");
     });
 
     it("submits password login as a form request", async () => {
@@ -56,7 +56,7 @@ describe("authentication API", () => {
         });
 
         expect(httpClientMock.postResponse).toHaveBeenCalledWith(
-            "/api/v1/login-sessions",
+            "/login-sessions",
             expect.any(URLSearchParams),
             {
                 headers: {
@@ -86,10 +86,10 @@ describe("authentication API", () => {
 
         await verifyTotpLoginChallenge({ challengeToken: "challenge/1", code: "123456" });
 
-        expect(httpClientMock.post).toHaveBeenCalledWith(
-            "/api/v1/login-session-challenges:verifyTotp",
-            { challengeToken: "challenge/1", code: "123456" },
-        );
+        expect(httpClientMock.post).toHaveBeenCalledWith("/login-session-challenges:verifyTotp", {
+            challengeToken: "challenge/1",
+            code: "123456",
+        });
     });
 
     it("uses local account TOTP enrollment and credential resources", async () => {
@@ -103,13 +103,13 @@ describe("authentication API", () => {
         });
         await disableTotpCredential({ currentPassword: "secret", code: "654321" });
 
-        expect(httpClientMock.post).toHaveBeenNthCalledWith(1, "/api/v1/totp-enrollments");
-        expect(httpClientMock.post).toHaveBeenNthCalledWith(2, "/api/v1/totp-credentials", {
+        expect(httpClientMock.post).toHaveBeenNthCalledWith(1, "/totp-enrollments");
+        expect(httpClientMock.post).toHaveBeenNthCalledWith(2, "/totp-credentials", {
             enrollmentToken: "enrollment-1",
             currentPassword: "secret",
             code: "123456",
         });
-        expect(httpClientMock.post).toHaveBeenNthCalledWith(3, "/api/v1/totp-credentials:disable", {
+        expect(httpClientMock.post).toHaveBeenNthCalledWith(3, "/totp-credentials:disable", {
             currentPassword: "secret",
             code: "654321",
         });
@@ -121,7 +121,7 @@ describe("authentication API", () => {
         await resetLoginFailureLimit("admin@example.com");
 
         expect(httpClientMock.post).toHaveBeenCalledWith(
-            "/api/v1/login-failure-limits/admin%40example.com:reset",
+            "/login-failure-limits/admin%40example.com:reset",
         );
     });
 });

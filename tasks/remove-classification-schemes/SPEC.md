@@ -22,7 +22,7 @@
 
 ## 变更范围
 
-- **BREAKING** 删除分类方案数据库表、实体、Repository、Service、DTO 和 `/api/v1/archive-classification-schemes` API。
+- **BREAKING** 删除分类方案数据库表、实体、Repository、Service、DTO 和 `/archive-classification-schemes` API。
 - **BREAKING** 从档案分类数据库、API 和前端类型中删除 `schemeId`，分类父子关系只校验存在性和无循环。
 - **BREAKING** 从全宗可用分类关系、API 和前端类型中删除 `defaultFlag`，系统不再维护默认分类。
 - 档案分类页面移除方案选择器与方案标签，直接展示全局分类树。

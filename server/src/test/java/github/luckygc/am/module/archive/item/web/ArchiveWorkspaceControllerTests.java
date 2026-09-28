@@ -36,7 +36,7 @@ class ArchiveWorkspaceControllerTests {
                                 "getSummary",
                                 org.springframework.security.core.Authentication.class)
                         .getAnnotation(GetMapping.class);
-        assertThat(mapping.value()).containsExactly("/api/v1/workspace-summary");
+        assertThat(mapping.value()).containsExactly("/workspace-summary");
         assertThat(response).isEqualTo(new WorkspaceSummaryResponse(12, 3, 2, 7));
         verify(service).getSummary(8L);
     }

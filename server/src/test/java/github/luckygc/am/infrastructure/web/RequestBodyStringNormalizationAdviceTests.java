@@ -42,7 +42,7 @@ class RequestBodyStringNormalizationAdviceTests {
     @Test
     @DisplayName("POST JSON 请求体在转换前递归 trimToNull")
     void beforeBodyReadShouldNormalizePostJsonBodyBeforeConversion() throws Exception {
-        bindRequest(HttpMethod.POST, "/api/v1/authentication-users");
+        bindRequest(HttpMethod.POST, "/authentication-users");
         MethodParameter parameter = bodyParameter("write");
         HttpInputMessage input =
                 jsonInput(
@@ -71,7 +71,7 @@ class RequestBodyStringNormalizationAdviceTests {
     @Test
     @DisplayName("标注 RawRequestStrings 的请求体不做 trimToNull")
     void beforeBodyReadShouldKeepRawBodyWhenParameterIsAnnotated() throws Exception {
-        bindRequest(HttpMethod.POST, "/api/v1/archive-items:search");
+        bindRequest(HttpMethod.POST, "/archive-items:search");
         MethodParameter parameter = bodyParameter("raw");
         HttpInputMessage input = jsonInput("{\"keyword\":\"  合同  \"}");
 
@@ -86,7 +86,7 @@ class RequestBodyStringNormalizationAdviceTests {
     @Test
     @DisplayName("GET 请求体不做 trimToNull")
     void beforeBodyReadShouldSkipReadOnlyMethods() throws Exception {
-        bindRequest(HttpMethod.GET, "/api/v1/items");
+        bindRequest(HttpMethod.GET, "/items");
         MethodParameter parameter = bodyParameter("write");
         HttpInputMessage input = jsonInput("{\"keyword\":\"  合同  \"}");
 
@@ -120,10 +120,10 @@ class RequestBodyStringNormalizationAdviceTests {
 
     private static final class DemoController {
 
-        @PostMapping("/api/v1/demo")
+        @PostMapping("/demo")
         void write(@RequestBody DemoRequest request) throws IOException {}
 
-        @PostMapping("/api/v1/demo:search")
+        @PostMapping("/demo:search")
         void raw(@RawRequestStrings @RequestBody DemoRequest request) throws IOException {}
     }
 }

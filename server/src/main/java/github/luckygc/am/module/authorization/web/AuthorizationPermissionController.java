@@ -25,7 +25,7 @@ public class AuthorizationPermissionController {
         this.permissionService = permissionService;
     }
 
-    @GetMapping("/api/v1/authorization-permissions")
+    @GetMapping("/authorization-permissions")
     public CollectionResponse<PermissionDefinition> listPermissions(
             @Nullable Authentication authentication) {
         permissionService.requirePermission(
@@ -35,7 +35,7 @@ public class AuthorizationPermissionController {
         return CollectionResponse.of(permissionService.listPermissionCatalog());
     }
 
-    @GetMapping("/api/v1/me/permissions")
+    @GetMapping("/me/permissions")
     public CurrentUserPermissionsResponse listCurrentUserPermissions(
             @Nullable Authentication authentication) {
         Long userId =
@@ -46,7 +46,7 @@ public class AuthorizationPermissionController {
                 permissionService.isSuperAdmin(userId));
     }
 
-    @GetMapping("/api/v1/authorization-roles/{role}/permissions")
+    @GetMapping("/authorization-roles/{role}/permissions")
     public RolePermissionsResponse listRolePermissions(
             @PathVariable Long role, @Nullable Authentication authentication) {
         permissionService.requirePermission(
@@ -56,7 +56,7 @@ public class AuthorizationPermissionController {
         return new RolePermissionsResponse(role, permissionService.listRolePermissionCodes(role));
     }
 
-    @PutMapping("/api/v1/authorization-roles/{role}/permissions")
+    @PutMapping("/authorization-roles/{role}/permissions")
     public RolePermissionsResponse saveRolePermissions(
             @PathVariable Long role,
             @RequestBody UpdateRolePermissionsRequest request,

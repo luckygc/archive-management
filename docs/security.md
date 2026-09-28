@@ -28,7 +28,7 @@
 
 用户可以自主启用 RFC 6238 TOTP。已启用用户只有在密码通过后再完成 TOTP 验证才会创建认证会话；中间挑战与 enrollment 均短时有效、一次性消费，数据库只保存随机 token 的 SHA-256 摘要。验证码时间步只允许接受一次，服务器必须通过 NTP 保持可靠时间同步。
 
-TOTP secret 使用 AES-256-GCM 加密。`ARCHIVE_TOTP_ENCRYPTION_KEY`（对应 `archive.authentication.totp.encryption-key`）必须由外部 Secret 提供 Base64 编码的 32 字节随机值。源码和生产配置不设置固定值，也不得把 secret、密文、验证码、challenge/enrollment token 或 `otpauth` URI 写入日志。密钥缺失、错误或密文损坏时相关登录失败关闭；持有用户管理权限的管理员仍可调用 `POST /api/v1/authentication-users/{id}:resetTotp` 清除凭据，供设备遗失恢复。
+TOTP secret 使用 AES-256-GCM 加密。`ARCHIVE_TOTP_ENCRYPTION_KEY`（对应 `archive.authentication.totp.encryption-key`）必须由外部 Secret 提供 Base64 编码的 32 字节随机值。源码和生产配置不设置固定值，也不得把 secret、密文、验证码、challenge/enrollment token 或 `otpauth` URI 写入日志。密钥缺失、错误或密文损坏时相关登录失败关闭；持有用户管理权限的管理员仍可调用 `POST /authentication-users/{id}:resetTotp` 清除凭据，供设备遗失恢复。
 
 会话超时、cookie 名称和 JDBC 表配置以 `application.yaml` 为准。Spring Session 表由 Flyway 管理，不由运行期自动建表。退出、踢下线、失败限制和认证审计属于认证业务合同，不在本文复制接口表。
 
@@ -49,17 +49,17 @@ TOTP secret 使用 AES-256-GCM 加密。`ARCHIVE_TOTP_ENCRYPTION_KEY`（对应 `
 
 当前本地 CORS 默认值在 `application.yaml`。生产环境必须把 `archive.security.cors.allowed-origins` 替换为实际可信前端 Origin；允许凭证时不得使用宽泛 Origin，并只开放业务需要的方法、请求头和响应头。
 
-Spring Security 使用 SPA CSRF 保护。前端按框架约定读取并回传 CSRF token。CORS 预检和 CSRF 豁免应保持最小，不因开发便利扩大到全部 `/api/**`。
+Spring Security 使用 SPA CSRF 保护。前端按框架约定读取并回传 CSRF token。CORS 预检和 CSRF 豁免应保持最小，不因开发便利扩大到全部项目自有 API。
 
 ## 请求签名
 
-`archive.security.request-signature.enabled` 默认关闭。部署环境按威胁模型决定是否开启。开启后，请求签名覆盖项目 `/api/**` 请求，但以下稳定类别不进入签名校验：
+`archive.security.request-signature.enabled` 默认关闭。部署环境按威胁模型决定是否开启。开启后，请求签名覆盖项目自有 API 请求，但以下稳定类别不进入签名校验：
 
 - OPTIONS 预检请求。
 - 登录所需的引导类公开请求。
 - 通过登录文件短链或公开文件短链执行的 GET 下载请求。
 
-其余 `/api/**` 请求携带：
+其余项目自有 API 请求携带：
 
 - `X-AM-Timestamp`
 - `X-AM-Nonce`

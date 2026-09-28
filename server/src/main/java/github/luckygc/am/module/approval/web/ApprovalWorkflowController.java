@@ -44,7 +44,7 @@ public class ApprovalWorkflowController {
         this.instanceService = instanceService;
     }
 
-    @GetMapping("/api/v1/approval-workflow-definitions")
+    @GetMapping("/approval-workflow-definitions")
     public CursorPageResponse<ApprovalWorkflowDefinitionResponse> listDefinitions(
             @RequestParam(required = false) @Nullable Boolean enabled,
             PageRequest page,
@@ -52,25 +52,25 @@ public class ApprovalWorkflowController {
         return definitionService.listDefinitions(enabled, page, userId(authentication));
     }
 
-    @GetMapping("/api/v1/approval-workflow-definition-options")
+    @GetMapping("/approval-workflow-definition-options")
     public CollectionResponse<ApprovalWorkflowDefinitionOption> listDefinitionOptions(
             @Nullable Authentication authentication) {
         return CollectionResponse.of(definitionService.listEnabledOptions(userId(authentication)));
     }
 
-    @GetMapping("/api/v1/approval-workflow-definitions/{id}")
+    @GetMapping("/approval-workflow-definitions/{id}")
     public ApprovalWorkflowDefinitionResponse getDefinition(
             @PathVariable Long id, @Nullable Authentication authentication) {
         return definitionService.getDefinition(id, userId(authentication));
     }
 
-    @GetMapping("/api/v1/approval-workflow-definitions/{id}/versions")
+    @GetMapping("/approval-workflow-definitions/{id}/versions")
     public CursorPageResponse<ApprovalWorkflowDefinitionVersionResponse> listDefinitionVersions(
             @PathVariable Long id, PageRequest page, @Nullable Authentication authentication) {
         return definitionService.listVersions(id, page, userId(authentication));
     }
 
-    @PostMapping("/api/v1/approval-workflow-definitions")
+    @PostMapping("/approval-workflow-definitions")
     @ResponseStatus(HttpStatus.CREATED)
     public ApprovalWorkflowDefinitionResponse createDefinition(
             @RequestBody CreateApprovalWorkflowDefinitionRequest request,
@@ -78,7 +78,7 @@ public class ApprovalWorkflowController {
         return definitionService.createDefinition(request, userId(authentication));
     }
 
-    @PatchMapping("/api/v1/approval-workflow-definitions/{id}")
+    @PatchMapping("/approval-workflow-definitions/{id}")
     public ApprovalWorkflowDefinitionResponse updateDefinition(
             @PathVariable Long id,
             @RequestBody UpdateApprovalWorkflowDefinitionRequest request,
@@ -86,25 +86,25 @@ public class ApprovalWorkflowController {
         return definitionService.updateDefinition(id, request, userId(authentication));
     }
 
-    @PostMapping("/api/v1/approval-workflow-definitions/{id}:publish")
+    @PostMapping("/approval-workflow-definitions/{id}:publish")
     public ApprovalWorkflowDefinitionVersionResponse publishDefinition(
             @PathVariable Long id, @Nullable Authentication authentication) {
         return definitionService.publishDefinition(id, userId(authentication));
     }
 
-    @PostMapping("/api/v1/approval-workflow-definitions/{id}:enable")
+    @PostMapping("/approval-workflow-definitions/{id}:enable")
     public ApprovalWorkflowDefinitionResponse enableDefinition(
             @PathVariable Long id, @Nullable Authentication authentication) {
         return definitionService.setEnabled(id, true, userId(authentication));
     }
 
-    @PostMapping("/api/v1/approval-workflow-definitions/{id}:disable")
+    @PostMapping("/approval-workflow-definitions/{id}:disable")
     public ApprovalWorkflowDefinitionResponse disableDefinition(
             @PathVariable Long id, @Nullable Authentication authentication) {
         return definitionService.setEnabled(id, false, userId(authentication));
     }
 
-    @PostMapping("/api/v1/approval-workflow-instances")
+    @PostMapping("/approval-workflow-instances")
     @ResponseStatus(HttpStatus.CREATED)
     public ApprovalWorkflowInstanceResponse startInstance(
             @RequestBody StartApprovalWorkflowInstanceRequest request,
@@ -112,7 +112,7 @@ public class ApprovalWorkflowController {
         return instanceService.startInstance(request, userId(authentication));
     }
 
-    @GetMapping("/api/v1/approval-workflow-instances")
+    @GetMapping("/approval-workflow-instances")
     public CursorPageResponse<ApprovalWorkflowInstanceResponse> listMyStarted(
             @RequestParam(required = false) @Nullable ApprovalInstanceStatus status,
             PageRequest page,
@@ -120,13 +120,13 @@ public class ApprovalWorkflowController {
         return instanceService.listMyStarted(status, page, userId(authentication));
     }
 
-    @GetMapping("/api/v1/approval-workflow-instances/{id}")
+    @GetMapping("/approval-workflow-instances/{id}")
     public ApprovalWorkflowInstanceDetailResponse getInstance(
             @PathVariable Long id, @Nullable Authentication authentication) {
         return instanceService.getInstance(id, userId(authentication));
     }
 
-    @PostMapping("/api/v1/approval-workflow-instances/{id}:withdraw")
+    @PostMapping("/approval-workflow-instances/{id}:withdraw")
     public ApprovalWorkflowInstanceDetailResponse withdrawInstance(
             @PathVariable Long id,
             @RequestBody ApprovalWorkflowInstanceActionRequest request,
@@ -134,7 +134,7 @@ public class ApprovalWorkflowController {
         return instanceService.withdrawInstance(id, request, userId(authentication));
     }
 
-    @PostMapping("/api/v1/approval-workflow-instances/{id}:terminate")
+    @PostMapping("/approval-workflow-instances/{id}:terminate")
     public ApprovalWorkflowInstanceDetailResponse terminateInstance(
             @PathVariable Long id,
             @RequestBody ApprovalWorkflowInstanceActionRequest request,
@@ -142,7 +142,7 @@ public class ApprovalWorkflowController {
         return instanceService.terminateInstance(id, request, userId(authentication));
     }
 
-    @PostMapping("/api/v1/approval-workflow-tasks/{id}:approve")
+    @PostMapping("/approval-workflow-tasks/{id}:approve")
     public ApprovalWorkflowInstanceDetailResponse approveTask(
             @PathVariable Long id,
             @RequestBody CompleteApprovalWorkflowTaskRequest request,
@@ -150,7 +150,7 @@ public class ApprovalWorkflowController {
         return instanceService.approveTask(id, request, userId(authentication));
     }
 
-    @PostMapping("/api/v1/approval-workflow-tasks/{id}:reject")
+    @PostMapping("/approval-workflow-tasks/{id}:reject")
     public ApprovalWorkflowInstanceDetailResponse rejectTask(
             @PathVariable Long id,
             @RequestBody CompleteApprovalWorkflowTaskRequest request,

@@ -27,9 +27,9 @@ class ArchiveRepositoryControllerTests {
                         "delete", Long.class, Authentication.class);
 
         assertThat(list.getAnnotation(GetMapping.class).value())
-                .containsExactly("/api/v1/archive-repositories");
+                .containsExactly("/archive-repositories");
         assertThat(delete.getAnnotation(DeleteMapping.class).value())
-                .containsExactly("/api/v1/archive-repositories/{id}");
+                .containsExactly("/archive-repositories/{id}");
         assertThat(delete.getAnnotation(ResponseStatus.class).value())
                 .isEqualTo(HttpStatus.NO_CONTENT);
     }
@@ -51,8 +51,8 @@ class ArchiveRepositoryControllerTests {
                         Authentication.class);
 
         assertThat(item.getAnnotation(PostMapping.class).value())
-                .containsExactly("/api/v1/archive-items/{id}:changeRepository");
+                .containsExactly("/archive-items/{id}:changeRepository");
         assertThat(volume.getAnnotation(PostMapping.class).value())
-                .containsExactly("/api/v1/archive-volumes/{id}:changeRepository");
+                .containsExactly("/archive-volumes/{id}:changeRepository");
     }
 }

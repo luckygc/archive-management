@@ -102,7 +102,7 @@ class ArchiveItemElectronicFileControllerTests {
         ArchiveItemElectronicFileController.ArchiveItemElectronicFileDownloadLinkResponse response =
                 controller.createDownloadLink(10L, 30L, authentication(9L));
 
-        assertThat(response.url()).isEqualTo("/api/v1/file-links/AbCdEfGhIjKlMnOpQrStUv:download");
+        assertThat(response.url()).isEqualTo("/file-links/AbCdEfGhIjKlMnOpQrStUv:download");
         assertThat(response.expiresAt()).isEqualTo(LocalDateTime.of(2026, 7, 1, 10, 10));
         verify(electronicFileLinkService).createDownloadLink(10L, 30L, 9L);
     }

@@ -54,7 +54,7 @@ class ArchiveItemSearchProjectionRebuildServiceTests {
         assertThat(response.jobId()).isEqualTo(17L);
         assertThat(response.status()).isEqualTo("queued");
         assertThat(response.operationLocation())
-                .isEqualTo("/api/v1/archive-search-projection-rebuild-jobs/17");
+                .isEqualTo("/archive-search-projection-rebuild-jobs/17");
         verify(repository)
                 .insert(
                         org.mockito.ArgumentMatchers.argThat(

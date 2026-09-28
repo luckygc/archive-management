@@ -37,7 +37,7 @@ class ArchiveItemImportExportControllerTests {
 
         var response = controller.createImportTemplateDownloadLink(1L, authentication);
 
-        assertThat(response.url()).isEqualTo("/api/v1/file-links/template-code:download");
+        assertThat(response.url()).isEqualTo("/file-links/template-code:download");
         assertThat(response.expiresAt()).isEqualTo(LocalDateTime.of(2026, 7, 15, 10, 10));
         verify(importExportService).createImportTemplateDownloadLink(1L, 9L);
     }
@@ -57,7 +57,7 @@ class ArchiveItemImportExportControllerTests {
 
         var response = controller.createExportDownloadLink(request, authentication);
 
-        assertThat(response.url()).isEqualTo("/api/v1/file-links/export-code:download");
+        assertThat(response.url()).isEqualTo("/file-links/export-code:download");
         verify(importExportService).createExportDownloadLink(internalRequest, 9L);
     }
 

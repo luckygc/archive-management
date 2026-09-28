@@ -38,9 +38,7 @@ public class ArchiveIntakePackageController {
         this.service = service;
     }
 
-    @PostMapping(
-            value = "/api/v1/archive-intake-packages",
-            consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = "/archive-intake-packages", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
     public ArchiveIntakePackageDetailResponse create(
             @RequestPart("file") MultipartFile file, Authentication authentication) {
@@ -66,7 +64,7 @@ public class ArchiveIntakePackageController {
         }
     }
 
-    @GetMapping("/api/v1/archive-intake-packages")
+    @GetMapping("/archive-intake-packages")
     public CursorPageResponse<ArchiveIntakePackageListItemResponse> list(
             PageRequest pageRequest, Authentication authentication) {
         return service.list(
@@ -75,7 +73,7 @@ public class ArchiveIntakePackageController {
                         authentication == null ? null : authentication.getPrincipal()));
     }
 
-    @GetMapping("/api/v1/archive-intake-packages/{id}")
+    @GetMapping("/archive-intake-packages/{id}")
     public ArchiveIntakePackageDetailResponse get(
             @PathVariable Long id, Authentication authentication) {
         return service.get(
@@ -84,7 +82,7 @@ public class ArchiveIntakePackageController {
                         authentication == null ? null : authentication.getPrincipal()));
     }
 
-    @PostMapping("/api/v1/archive-intake-packages/{id}:accept")
+    @PostMapping("/archive-intake-packages/{id}:accept")
     public ArchiveIntakePackageDetailResponse accept(
             @PathVariable Long id,
             @RequestBody AcceptanceReview review,
@@ -96,7 +94,7 @@ public class ArchiveIntakePackageController {
                         authentication == null ? null : authentication.getPrincipal()));
     }
 
-    @PostMapping("/api/v1/archive-intake-packages/{id}:reject")
+    @PostMapping("/archive-intake-packages/{id}:reject")
     public ArchiveIntakePackageDetailResponse reject(
             @PathVariable Long id,
             @RequestBody RejectArchiveIntakePackageRequest request,
@@ -108,7 +106,7 @@ public class ArchiveIntakePackageController {
                         authentication == null ? null : authentication.getPrincipal()));
     }
 
-    @PostMapping("/api/v1/archive-intake-packages/{id}:createDownloadLink")
+    @PostMapping("/archive-intake-packages/{id}:createDownloadLink")
     public ArchiveIntakePackageDownloadLinkResponse createDownloadLink(
             @PathVariable Long id, Authentication authentication) {
         return service.createDownloadLink(

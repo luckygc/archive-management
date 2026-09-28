@@ -22,7 +22,7 @@
 
 ## 4. HTTP API 与定义发布
 
-- [x] 4.1 新增运行时定义 CRUD、发布、启停、字段目录、试运行和追踪 API，使用完整 `/api/v1` URL、专用 Request/Response 与 ProblemDetail；验证：`cd server && mise exec -- mvn -Dtest=ArchiveRuntimeControllerTests,ArchiveRuntimeControllerProblemDetailTests test` 退出码为 0，且 URL、状态码、字段错误和稳定错误码断言通过。
+- [x] 4.1 新增运行时定义 CRUD、发布、启停、字段目录、试运行和追踪 API，使用完整资源 URL、专用 Request/Response 与 ProblemDetail；验证：`cd server && mise exec -- mvn -Dtest=ArchiveRuntimeControllerTests,ArchiveRuntimeControllerProblemDetailTests test` 退出码为 0，且 URL、状态码、字段错误和稳定错误码断言通过。
 - [x] 4.2 让运行时定义直接携带作用域，移除 `RULE_SET`、本体和字段语义绑定；验证：无效运行时定义无法发布，已发布定义不可原地修改。
 - [x] 4.3 让试运行复用真实执行核心但禁止主数据、审计和追踪写入；验证：`cd server && mise exec -- mvn -Dtest=ArchiveRuntimeSimulationIntegrationTests test` 退出码为 0，且返回顺序、命中、候选变化、警告和阻断与真实执行一致，相关业务表计数不变。
 

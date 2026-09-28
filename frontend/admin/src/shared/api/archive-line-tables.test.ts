@@ -33,11 +33,9 @@ describe("archive line table API", () => {
         await listArchiveLineTables(7);
         await createArchiveLineTable(7, payload);
 
-        expect(httpClientMock.get).toHaveBeenCalledWith(
-            "/api/v1/archive-categories/7/item-line-tables",
-        );
+        expect(httpClientMock.get).toHaveBeenCalledWith("/archive-categories/7/item-line-tables");
         expect(httpClientMock.post).toHaveBeenCalledWith(
-            "/api/v1/archive-categories/7/item-line-tables",
+            "/archive-categories/7/item-line-tables",
             payload,
         );
     });
@@ -57,11 +55,9 @@ describe("archive line table API", () => {
         await listArchiveLineFields(12);
         await createArchiveLineField(12, payload);
 
-        expect(httpClientMock.get).toHaveBeenCalledWith(
-            "/api/v1/archive-item-line-tables/12/fields",
-        );
+        expect(httpClientMock.get).toHaveBeenCalledWith("/archive-item-line-tables/12/fields");
         expect(httpClientMock.post).toHaveBeenCalledWith(
-            "/api/v1/archive-item-line-tables/12/fields",
+            "/archive-item-line-tables/12/fields",
             payload,
         );
     });
@@ -71,9 +67,7 @@ describe("archive line table API", () => {
 
         await buildArchiveLineTable(12);
 
-        expect(httpClientMock.post).toHaveBeenCalledWith(
-            "/api/v1/archive-item-line-tables/12:build",
-        );
+        expect(httpClientMock.post).toHaveBeenCalledWith("/archive-item-line-tables/12:build");
     });
 
     it("使用档案与明细表下的游标集合资源列出和创建行", async () => {
@@ -85,10 +79,10 @@ describe("archive line table API", () => {
         await createArchiveItemLineRow(3, 4, payload);
 
         expect(httpClientMock.get).toHaveBeenCalledWith(
-            "/api/v1/archive-items/3/line-tables/4/rows?limit=100&cursor=next-token",
+            "/archive-items/3/line-tables/4/rows?limit=100&cursor=next-token",
         );
         expect(httpClientMock.post).toHaveBeenCalledWith(
-            "/api/v1/archive-items/3/line-tables/4/rows",
+            "/archive-items/3/line-tables/4/rows",
             payload,
         );
     });
@@ -98,7 +92,7 @@ describe("archive line table API", () => {
 
         await listArchiveItemLineTables(3);
 
-        expect(httpClientMock.get).toHaveBeenCalledWith("/api/v1/archive-items/3/line-tables");
+        expect(httpClientMock.get).toHaveBeenCalledWith("/archive-items/3/line-tables");
     });
 
     it("PATCH 保留显式 null 且删除使用精确行资源", async () => {
@@ -108,11 +102,9 @@ describe("archive line table API", () => {
         await deleteArchiveItemLineRow(3, 4, 9);
 
         expect(httpClientMock.patch).toHaveBeenCalledWith(
-            "/api/v1/archive-items/3/line-tables/4/rows/9",
+            "/archive-items/3/line-tables/4/rows/9",
             payload,
         );
-        expect(httpClientMock.delete).toHaveBeenCalledWith(
-            "/api/v1/archive-items/3/line-tables/4/rows/9",
-        );
+        expect(httpClientMock.delete).toHaveBeenCalledWith("/archive-items/3/line-tables/4/rows/9");
     });
 });

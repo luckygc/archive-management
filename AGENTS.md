@@ -16,7 +16,7 @@
 | 改动类型 | 必读真相源/技能 |
 | --- | --- |
 | 业务、状态机、权限、验收 | 对应 `specs/SPEC-*.md` 与 `tasks/*/specs/SPEC-*.md` 中的进行中增量 |
-| 项目自有 API | `specs/SPEC-项目API合同.md` + [Zalando RESTful API Guidelines](https://opensource.zalando.com/restful-api-guidelines/) |
+| 项目自有 API | `specs/SPEC-项目API合同.md` + 对应业务规格；合同已转述采纳的外部规则，只有未覆盖的新问题才查官方来源 |
 | 产品定位 | `SPEC.md` |
 | 前端界面 | `SPEC.md`、`docs/design-system.md` |
 | 稳定架构和包边界 | `docs/architecture.md` + ArchUnit |
@@ -40,7 +40,7 @@
 
 ## 技能与文档查询
 
-- 通用 Addy 技能位于 `.agents/skills/`。任务命中技能时先完整读取对应 `SKILL.md`；前端任务还必须先读 `SPEC.md` 和 `docs/design-system.md`。项目自有 API 设计直接查 Zalando 官方规范，现有接口的过渡约束见项目 API 合同。
+- 通用 Addy 技能位于 `.agents/skills/`。任务命中技能时先完整读取对应 `SKILL.md`；前端任务还必须先读 `SPEC.md` 和 `docs/design-system.md`。项目自有 API 先查项目 API 合同与对应业务规格；合同对已选外部规范的中文转述就是项目执行口径，只有合同未覆盖的新问题或需要核对上游变化时才查 Zalando、Google AIP 等官方来源；无前缀资源路径、`camelCase`、受约束的冒号动作和异步任务响应以项目合同为准。
 - 外部技能统一在仓库根目录用 `pnpx skills add`、`pnpx skills remove`、`pnpx skills update` 管理项目级安装，保留 `skills-lock.json` 中的来源与内容校验记录；不手动复制上游技能文件。更新后核对项目规则适配与实际安装清单。
 - Vue 编码使用 `vue-best-practices`，排障使用 `vue-debug-guides`，测试使用 `vue-testing-best-practices`。Vue Router 5 与 Pinia 4 的版本行为核对对应官方文档。本项目使用 Vite+，其 `vp` 命令及 lint、fmt、test、run、构建配置先查 `frontend/node_modules/vite-plus/docs/` 和 `pnpm exec vp help`，执行入口以 `mise.toml` 与 `frontend/package.json` 为准；测试通过项目脚本执行。
 - 使用 `vueuse-functions` 前先核对前端包的直接依赖、已安装版本和对应官方文档；仅在当前需求适合时采用 VueUse，不因技能示例自动引入依赖或替换现有实现。

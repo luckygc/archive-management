@@ -15,15 +15,12 @@ import { queryString } from "./query-string";
 
 export function listArchiveRuntimeDefinitions(status?: ArchiveRuntimeStatus) {
     return httpClient.get<CollectionResponse<ArchiveRuntimeDefinitionDto>>(
-        `/api/v1/archive-runtime-definitions${queryString({ status })}`,
+        `/archive-runtime-definitions${queryString({ status })}`,
     );
 }
 
 export function createArchiveRuntimeDefinition(payload: ArchiveRuntimeDefinitionRequest) {
-    return httpClient.post<ArchiveRuntimeDefinitionDto>(
-        "/api/v1/archive-runtime-definitions",
-        payload,
-    );
+    return httpClient.post<ArchiveRuntimeDefinitionDto>("/archive-runtime-definitions", payload);
 }
 
 export function updateArchiveRuntimeDefinition(
@@ -31,30 +28,30 @@ export function updateArchiveRuntimeDefinition(
     payload: ArchiveRuntimeDefinitionRequest,
 ) {
     return httpClient.put<ArchiveRuntimeDefinitionDto>(
-        `/api/v1/archive-runtime-definitions/${id}`,
+        `/archive-runtime-definitions/${id}`,
         payload,
     );
 }
 
 export function deleteArchiveRuntimeDefinition(id: number) {
-    return httpClient.delete<void>(`/api/v1/archive-runtime-definitions/${id}`);
+    return httpClient.delete<void>(`/archive-runtime-definitions/${id}`);
 }
 
 export function publishArchiveRuntimeDefinition(id: number) {
     return httpClient.post<ArchiveRuntimeDefinitionDto>(
-        `/api/v1/archive-runtime-definitions/${id}:publish`,
+        `/archive-runtime-definitions/${id}:publish`,
     );
 }
 
 export function enableArchiveRuntimeDefinition(id: number) {
     return httpClient.post<ArchiveRuntimeDefinitionDto>(
-        `/api/v1/archive-runtime-definitions/${id}:enable`,
+        `/archive-runtime-definitions/${id}:enable`,
     );
 }
 
 export function disableArchiveRuntimeDefinition(id: number) {
     return httpClient.post<ArchiveRuntimeDefinitionDto>(
-        `/api/v1/archive-runtime-definitions/${id}:disable`,
+        `/archive-runtime-definitions/${id}:disable`,
     );
 }
 
@@ -63,13 +60,13 @@ export function getArchiveRuntimeFields(params: {
     triggerPoint: ArchiveRuntimeTriggerPoint;
 }) {
     return httpClient.get<ArchiveRuntimeFieldCatalogDto>(
-        `/api/v1/archive-runtime-fields${queryString(params)}`,
+        `/archive-runtime-fields${queryString(params)}`,
     );
 }
 
 export function simulateArchiveRuntimeDefinitions(payload: ArchiveRuntimeExecutionRequest) {
     return httpClient.post<ArchiveRuntimeExecutionResult>(
-        "/api/v1/archive-runtime-definitions:simulate",
+        "/archive-runtime-definitions:simulate",
         payload,
     );
 }
@@ -77,7 +74,7 @@ export function simulateArchiveRuntimeDefinitions(payload: ArchiveRuntimeExecuti
 export function searchArchiveRuntimeTraces(query: SearchArchiveRuntimeTracesQuery) {
     const { limit, cursor, requestTotal, ...body } = query;
     return httpClient.post<CursorPageResponse<ArchiveRuntimeTraceDto>>(
-        `/api/v1/archive-runtime-traces:search${queryString({ limit, cursor, requestTotal: cursor ? undefined : (requestTotal ?? true) })}`,
+        `/archive-runtime-traces:search${queryString({ limit, cursor, requestTotal: cursor ? undefined : (requestTotal ?? true) })}`,
         body,
     );
 }
