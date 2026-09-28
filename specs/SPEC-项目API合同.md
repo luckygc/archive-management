@@ -400,46 +400,19 @@ Content-Type: application/json
 - **AND** 大表或复杂查询入口 SHALL 优先使用键集分页，并通过单独 `:count` 方法表达总数需求，避免影响默认列表性能
 - **AND** 如果显式返回总数，响应 SHOULD 区分精确总数和估算总数，例如 `totalExact`
 
-### 要求： 异步任务与 202 响应
+### 要求： 交互式认证挑战的 202 响应
 
-项目自有 API 启动异步业务处理时默认使用 `202 Accepted` 和可轮询任务资源表达。只有业务认证规格明确规定的短时效、不可授权、交互式二次验证挑战 MAY 使用不带任务资源的 `202 Accepted`；其他同步动作 SHALL NOT 使用该例外。
-
-#### 场景： 启动异步任务
-
-- **WHEN** API 以业务动作启动导入、导出、批处理、外部同步、AI/OCR 或其他无法在当前请求内稳定完成的任务
-- **THEN** 服务端 SHALL 在可靠记录任务、保证任务资源可查询后返回 HTTP `202 Accepted`；若未能接收任务，SHALL 返回相应错误
-- **AND** 响应体 SHALL 使用 `JobAcceptedResponse`
-- **AND** 响应体 SHALL 包含 `jobId`、`status` 和 `operationLocation`
-- **AND** `operationLocation` SHALL 指向可轮询的任务资源路径，例如 `/archive-import-jobs/{jobId}`
-- **AND** 服务端 SHALL 返回指向同一任务资源的 `Location` 响应头
-- **AND** 服务端 SHOULD 同时返回 `Operation-Location` 响应头
-- **AND** 服务端 MAY 返回 `Retry-After` 响应头提示客户端轮询间隔
-- **AND** 已同步完成且不产生后台任务的动作 SHALL NOT 伪造 `202 Accepted`
-
-#### 场景： 明确创建任务资源
-
-- **WHEN** API 的主要语义是通过 `POST /{jobs}` 创建独立任务资源，且该资源已可靠创建并可查询
-- **THEN** 服务端 MAY 返回 `201 Created`、任务资源表示及指向该资源的 `Location`
-- **AND** 此例外 SHALL NOT 用于以冒号动作启动尚未完成的业务处理
+业务认证规格明确规定的短时效、不可授权、交互式二次验证挑战 MAY 使用不带操作监视资源的 `202 Accepted`。
 
 #### 场景： 返回交互式二次认证挑战
 
 - **GIVEN** 业务认证规格明确要求当前主体完成第二个认证因子
 - **WHEN** 客户端已通过第一阶段凭证但整个认证流程尚未完成
 - **THEN** 服务端 MAY 返回 HTTP `202 Accepted` 和短时效认证挑战
-- **AND** 响应体 SHALL 使用对应认证规格定义的挑战结构，不得伪装成 `JobAcceptedResponse`
+- **AND** 响应体 SHALL 使用对应认证规格定义的挑战结构，不得伪装成后台操作监视资源
 - **AND** 响应 SHALL 设置 `Cache-Control: no-store`
 - **AND** 服务端 SHALL NOT 因返回挑战而创建已认证会话、保存 SecurityContext 或授予任何业务权限
 - **AND** 客户端 SHALL 通过认证规格定义的固定端点继续该交互，不得轮询任务资源
-
-#### 场景： 查询异步任务状态
-
-- **WHEN** 客户端查询任务资源
-- **THEN** 服务端 SHALL 返回 `JobStatusResponse`
-- **AND** 响应体 SHALL 包含 `jobId`、`status`、`progress`、`createdAt` 和 `updatedAt`
-- **AND** `status` SHALL 至少覆盖 `queued`、`running`、`succeeded`、`failed` 和 `cancelled`
-- **AND** 成功完成的任务 MAY 在 `result` 中返回结果摘要或结果资源位置
-- **AND** 失败任务 SHALL 返回稳定 `errorCode` 和可展示 `errorMessage`
 
 ### 要求： API 错误响应
 

@@ -7,7 +7,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDateTime;
-import java.util.Optional;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -33,7 +32,7 @@ class ArchiveItemSearchProjectionRebuildServiceTests {
                     categoryService, archiveMapper, repository);
 
     @Test
-    @DisplayName("启动任务冻结待重建记录上界并返回任务资源")
+    @DisplayName("启动任务冻结待重建记录上界并返回任务 ID")
     void startCreatesQueuedJob() {
         when(categoryService.getCategory(3L)).thenReturn(category());
         when(archiveMapper.tableExists("am_archive_item_contract")).thenReturn(1);
@@ -49,12 +48,9 @@ class ArchiveItemSearchProjectionRebuildServiceTests {
                             return job;
                         });
 
-        var response = service.start(3L, 9L);
+        Long jobId = service.start(3L, 9L);
 
-        assertThat(response.jobId()).isEqualTo(17L);
-        assertThat(response.status()).isEqualTo("queued");
-        assertThat(response.operationLocation())
-                .isEqualTo("/archive-search-projection-rebuild-jobs/17");
+        assertThat(jobId).isEqualTo(17L);
         verify(repository)
                 .insert(
                         org.mockito.ArgumentMatchers.argThat(
@@ -66,30 +62,6 @@ class ArchiveItemSearchProjectionRebuildServiceTests {
                                                                 .QUEUED
                                                 && job.getTotalCount() == 250
                                                 && job.getMaxItemId().equals(250L)));
-    }
-
-    @Test
-    @DisplayName("成功任务返回进度和结果摘要")
-    void getReturnsSucceededJobStatus() {
-        LocalDateTime now = LocalDateTime.of(2026, 8, 9, 12, 0);
-        ArchiveItemSearchProjectionRebuildJob job = new ArchiveItemSearchProjectionRebuildJob();
-        job.setId(17L);
-        job.setCategoryId(3L);
-        job.setStatus(ArchiveItemSearchProjectionRebuildJobStatus.SUCCEEDED);
-        job.setTotalCount(250);
-        job.setProcessedCount(250);
-        job.setCreatedAt(now);
-        job.setUpdatedAt(now);
-        when(repository.findById(17L)).thenReturn(Optional.of(job));
-
-        var response = service.get(17L);
-
-        assertThat(response.status()).isEqualTo("succeeded");
-        assertThat(response.progress()).isEqualTo(100);
-        assertThat(response.result())
-                .containsEntry("categoryId", 3L)
-                .containsEntry("rebuiltCount", 250);
-        assertThat(response.errorCode()).isNull();
     }
 
     private static ArchiveCategoryDto category() {

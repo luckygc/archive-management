@@ -5,9 +5,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.time.LocalDateTime;
-import java.util.Map;
-
 import jakarta.servlet.http.HttpServletRequest;
 
 import org.junit.jupiter.api.DisplayName;
@@ -15,9 +12,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 
-import github.luckygc.am.common.api.JobAcceptedResponse;
-import github.luckygc.am.common.api.JobStatusResponse;
 import github.luckygc.am.common.security.AuthenticatedUser;
+import github.luckygc.am.module.archive.item.service.ArchiveItemSearchProjectionOperationService;
+import github.luckygc.am.module.archive.item.service.ArchiveItemSearchProjectionOperationService.OperationMonitor;
 import github.luckygc.am.module.archive.item.service.ArchiveItemSearchProjectionRebuildService;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionCode;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
@@ -27,19 +24,24 @@ class ArchiveItemSearchProjectionRebuildControllerTests {
 
     private final ArchiveItemSearchProjectionRebuildService rebuildService =
             mock(ArchiveItemSearchProjectionRebuildService.class);
+    private final ArchiveItemSearchProjectionOperationService operationService =
+            mock(ArchiveItemSearchProjectionOperationService.class);
     private final AuthorizationPermissionService permissionService =
             mock(AuthorizationPermissionService.class);
     private final ArchiveItemSearchProjectionRebuildController controller =
-            new ArchiveItemSearchProjectionRebuildController(rebuildService, permissionService);
+            new ArchiveItemSearchProjectionRebuildController(
+                    rebuildService, operationService, permissionService);
 
     @Test
-    @DisplayName("启动重建返回 202 和任务资源位置")
+    @DisplayName("启动重建返回 202 和操作监视资源")
     void startRebuildReturnsAcceptedJob() {
         Authentication authentication = authentication(9L);
-        JobAcceptedResponse accepted =
-                new JobAcceptedResponse(
-                        17L, "queued", "/archive-search-projection-rebuild-jobs/17");
-        when(rebuildService.start(3L, 9L)).thenReturn(accepted);
+        when(rebuildService.start(3L, 9L)).thenReturn(17L);
+        String operationId = ArchiveItemSearchProjectionOperationService.operationId(17L);
+        OperationMonitor monitor =
+                new OperationMonitor(
+                        operationId, "NotStarted", "archiveSearchProjectionRebuild", null, null);
+        when(operationService.get(operationId, 9L)).thenReturn(monitor);
         HttpServletRequest request = mock(HttpServletRequest.class);
         when(request.getRequestURL())
                 .thenReturn(
@@ -54,25 +56,8 @@ class ArchiveItemSearchProjectionRebuildControllerTests {
         assertThat(response.getHeaders().getFirst("Operation-Id"))
                 .isEqualTo("archive-search-projection-rebuild-17");
         assertThat(response.getHeaders().getFirst("Retry-After")).isEqualTo("5");
-        assertThat(response.getHeaders().getFirst("Location"))
-                .isEqualTo(accepted.operationLocation());
-        assertThat(response.getBody()).isEqualTo(accepted);
-        verify(permissionService)
-                .requirePermission(9L, AuthorizationPermissionCode.ARCHIVE_METADATA_MANAGE);
-    }
-
-    @Test
-    @DisplayName("任务状态通过独立资源查询")
-    void getRebuildJobReturnsStatusResource() {
-        Authentication authentication = authentication(9L);
-        LocalDateTime now = LocalDateTime.of(2026, 8, 9, 12, 0);
-        JobStatusResponse status =
-                new JobStatusResponse(
-                        17L, "succeeded", 100, now, now, Map.of("rebuiltCount", 250), null, null);
-        when(rebuildService.get(17L)).thenReturn(status);
-
-        assertThat(controller.getRebuildJob(17L, authentication)).isEqualTo(status);
-
+        assertThat(response.getHeaders().getFirst("Location")).isNull();
+        assertThat(response.getBody()).isEqualTo(monitor);
         verify(permissionService)
                 .requirePermission(9L, AuthorizationPermissionCode.ARCHIVE_METADATA_MANAGE);
     }

@@ -24,6 +24,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import github.luckygc.am.app.ArchiveManagementApplication;
 import github.luckygc.am.common.api.CursorPageTokenContext;
+import github.luckygc.am.module.archive.item.service.ArchiveItemSearchProjectionOperationService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemSearchProjectionRebuildProcessor;
 import github.luckygc.am.module.archive.item.service.ArchiveItemSearchProjectionRebuildService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemSearchService;
@@ -60,6 +61,8 @@ class ArchiveFullTextSearchIntegrationTests {
     @Autowired private ArchiveItemSearchService archiveItemQueryService;
 
     @Autowired private ArchiveItemSearchProjectionRebuildService projectionRebuildService;
+
+    @Autowired private ArchiveItemSearchProjectionOperationService operationService;
 
     @Autowired private ArchiveItemSearchProjectionRebuildProcessor projectionRebuildProcessor;
 
@@ -142,20 +145,19 @@ class ArchiveFullTextSearchIntegrationTests {
                                 .formatted(tableName),
                         Integer.class);
 
-        var accepted = projectionRebuildService.start(categoryId, 1L);
-        Long jobId = accepted.jobId();
+        Long jobId = projectionRebuildService.start(categoryId, 1L);
+        String operationId = ArchiveItemSearchProjectionOperationService.operationId(jobId);
         for (int batch = 0; batch < 10; batch++) {
             projectionRebuildProcessor.markRunning(jobId);
             projectionRebuildProcessor.processNextBatch(jobId);
-            if ("succeeded".equals(projectionRebuildService.get(jobId).status())) {
+            if ("Succeeded".equals(operationService.get(operationId, 1L).status())) {
                 break;
             }
         }
 
-        var status = projectionRebuildService.get(jobId);
+        var status = operationService.get(operationId, 1L);
         assertThat(expectedCount).isGreaterThan(100);
-        assertThat(status.status()).isEqualTo("succeeded");
-        assertThat(status.progress()).isEqualTo(100);
+        assertThat(status.status()).isEqualTo("Succeeded");
         assertThat(status.result()).containsEntry("rebuiltCount", expectedCount);
         assertThat(
                         jdbcTemplate.queryForObject(
