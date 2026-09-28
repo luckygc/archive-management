@@ -15,7 +15,7 @@
 - 对已有资源执行的新接口长耗时冒号动作采用 [Azure 长耗时操作的状态监视资源](https://github.com/microsoft/api-guidelines/blob/vNext/azure/Guidelines.md#long-running-operations--jobs)：`202 Accepted`、`Operation-Id`、`Operation-Location`、Azure 状态值与轮询约束。监视资源中的 Azure `ErrorDetail` 与普通 HTTP 错误使用的 RFC 9457 Problem Details 分别适用。
 - 用户长耗时任务在服务端持久执行。关闭浏览器只停止客户端轮询；重新登录后可从有权限的操作列表恢复监视。任务可靠执行、权限重检、主动取消和结果保留是本项目的业务要求，Azure 只提供状态监视资源与列表的 HTTP 模式。
 - 新接口的条件请求、幂等重试、日期时间、缓存和文件响应沿用相应 HTTP RFC 与 Zalando 指引；是否需要条件写入、可重试命令及缓存，由具体资源接口声明。
-- 当前路径直接以资源开始，不保留 `/api` 或 `/v1` 别名及重定向。确需并行提供不兼容表示结构时才用 Zalando 媒体类型版本；URL、HTTP 方法或操作语义的变更须新增资源或动作，或先迁移调用方。分页导航已改为包含游标的链接；存量 `requestTotal`、`pageNo/pageSize`、自定义任务与错误字段继续由旧合同约束，迁移完成后移除。
+- 当前路径直接以资源开始，不保留 `/api` 或 `/v1` 别名及重定向。确需并行提供不兼容表示结构时才用 Zalando 媒体类型版本；URL、HTTP 方法或操作语义的变更须新增资源或动作，或先迁移调用方。分页导航已改为包含游标的链接；首页总数使用 `Prefer: return=total-count` 请求。存量 `pageNo/pageSize`、自定义任务与错误字段继续由旧合同约束，迁移完成后移除。
 
 ## 替代方案
 

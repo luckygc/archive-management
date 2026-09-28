@@ -136,8 +136,8 @@
 - **THEN** 系统 SHALL 通过 `am_archive_item.volume_id` 过滤指定案卷内的未删除档案
 - **AND** `volumeId` SHALL 作为业务筛选字段进入 JSON 请求体和 cursor 查询摘要
 - **AND** 带 cursor 的后续请求 SHALL 重复提交与首次查询相同的 `volumeId`
-- **AND** URL query 中的 `limit`、`cursor` 和 `requestTotal` SHALL 继续作为分页控制字段
-- **AND** `limit`、`cursor` 和 `requestTotal` SHALL NOT 进入 cursor 查询摘要
+- **AND** URL query 中的 `limit`、`cursor` SHALL 作为分页控制字段；需要首页总数时使用 `Prefer: return=total-count`
+- **AND** `limit`、`cursor` 和总数偏好 SHALL NOT 进入 cursor 查询摘要
 
 ### 要求： 条目全文投影
 

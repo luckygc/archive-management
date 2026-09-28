@@ -24,7 +24,6 @@ public class CursorHttpFingerprint {
     private static final String OFFSET_PARAM = "offset";
     private static final String PAGE_NO_PARAM = "pageNo";
     private static final String PAGE_SIZE_PARAM = "pageSize";
-    private static final String REQUEST_TOTAL_PARAM = "requestTotal";
 
     public String fingerprint(HttpServletRequest request) {
         StringBuilder builder = new StringBuilder();
@@ -51,8 +50,7 @@ public class CursorHttpFingerprint {
                 || LIMIT_PARAM.equals(name)
                 || OFFSET_PARAM.equals(name)
                 || PAGE_NO_PARAM.equals(name)
-                || PAGE_SIZE_PARAM.equals(name)
-                || REQUEST_TOTAL_PARAM.equals(name);
+                || PAGE_SIZE_PARAM.equals(name);
     }
 
     private void appendBody(StringBuilder builder, HttpServletRequest request) {

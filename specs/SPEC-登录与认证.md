@@ -147,7 +147,7 @@
 - **WHEN** 客户端请求 `GET /login-sessions`
 - **THEN** 系统 SHALL 返回当前仍有效的 Spring Session 登录会话列表
 - **AND** 响应 SHALL 使用 cursor 分页响应对象
-- **AND** 当请求参数 `requestTotal=true` 且未提交 `cursor` 时，响应 SHALL 返回与本次筛选条件一致的 `total`
+- **AND** 当请求头包含 `Prefer: return=total-count` 且未提交 `cursor` 时，响应 SHALL 返回与本次筛选条件一致的 `total`
 - **AND** 每条登录会话 SHALL 包含 `sessionId`、`username`、`displayName`、`roles`、`creationTime`、`lastAccessTime`、`expiresAt`、`current`、`client` 和 `request` 字段
 - **AND** `client` SHALL 包含原始 `userAgent`、浏览器、操作系统和设备类型摘要
 - **AND** `request` SHALL 包含登录时采集的 IP、Host、Forwarded、X-Forwarded-For 和 X-Real-IP 信息
@@ -201,7 +201,7 @@
 - **WHEN** 客户端请求 `GET /authentication-events`
 - **THEN** 系统 SHALL 返回认证审计日志列表
 - **AND** 响应 SHALL 使用 cursor 分页响应对象
-- **AND** 当请求参数 `requestTotal=true` 且未提交 `cursor` 时，响应 SHALL 返回与本次筛选条件一致的 `total`
+- **AND** 当请求头包含 `Prefer: return=total-count` 且未提交 `cursor` 时，响应 SHALL 返回与本次筛选条件一致的 `total`
 - **AND** 请求 SHALL 支持按事件类型、用户名、关键字和时间范围筛选
 - **AND** 日志 SHALL 按发生时间倒序、ID 倒序稳定排序
 

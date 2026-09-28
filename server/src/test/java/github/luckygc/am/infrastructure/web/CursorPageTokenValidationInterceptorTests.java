@@ -40,7 +40,7 @@ class CursorPageTokenValidationInterceptorTests {
                 jsonRequest("{\"categoryId\":1,\"orderBy\":[{\"field\":\"createdAt\"}]}");
         request.addParameter("limit", "50");
         request.addParameter("cursor", cursor);
-        request.addParameter("requestTotal", "true");
+        request.addHeader("Prefer", "return=total-count");
 
         CachedBodyHttpServletRequestWrapper wrapped =
                 new CachedBodyHttpServletRequestWrapper(request);

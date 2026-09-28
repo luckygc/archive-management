@@ -60,14 +60,12 @@ class CursorHttpFingerprintTests {
         first.addParameter("pageNo", "1");
         first.addParameter("offset", "0");
         first.addParameter("cursor", "old");
-        first.addParameter("requestTotal", "true");
         first.addParameter("operationType", "update");
         first.addParameter("categoryId", "1");
 
         MockHttpServletRequest second = jsonRequest("{\"categoryId\":1,\"keyword\":\"合同\"}");
         second.addParameter("categoryId", "1");
         second.addParameter("operationType", "update");
-        second.addParameter("requestTotal", "false");
         second.addParameter("cursor", "next");
         second.addParameter("offset", "100");
         second.addParameter("pageNo", "2");

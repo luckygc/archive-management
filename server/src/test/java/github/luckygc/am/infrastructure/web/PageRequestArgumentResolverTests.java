@@ -33,7 +33,7 @@ class PageRequestArgumentResolverTests {
         request.addParameter("archiveItemId", "10");
         request.addParameter("limit", "50");
         request.addParameter("cursor", cursor);
-        request.addParameter("requestTotal", "true");
+        request.addHeader("Prefer", "return=total-count");
         CursorPageArgumentResolver resolver = new CursorPageArgumentResolver();
 
         PageRequest page =
@@ -49,19 +49,16 @@ class PageRequestArgumentResolverTests {
     @Test
     @DisplayName("cursor 分页只解析 URL 查询参数")
     void cursorResolverShouldParseOnlyUrlQueryPageParameters() throws Exception {
-        MockHttpServletRequest first =
-                jsonRequest("POST", "/archive-records:search", "{\"keyword\":\"合同\"}");
-        first.addParameter("limit", "50");
         CursorPageTokenContext context = new CursorPageTokenContext("fingerprint");
         String cursor = CursorPageTokenCodec.encode("next", List.of(99L), 50, context);
         MockHttpServletRequest request =
                 jsonRequest(
                         "POST",
                         "/archive-records:search",
-                        "{\"keyword\":\"合同\",\"limit\":10,\"cursor\":\"ignored\",\"requestTotal\":false}");
+                        "{\"keyword\":\"合同\",\"limit\":10,\"cursor\":\"ignored\"}");
         request.addParameter("limit", "50");
         request.addParameter("cursor", cursor);
-        request.addParameter("requestTotal", "true");
+        request.addHeader("Prefer", "respond-async, return=total-count");
         CursorPageArgumentResolver resolver = new CursorPageArgumentResolver();
 
         PageRequest page =
@@ -85,7 +82,7 @@ class PageRequestArgumentResolverTests {
                 jsonRequest(
                         "POST",
                         "/archive-records:search",
-                        "{\"keyword\":\"合同\",\"limit\":50,\"requestTotal\":true}");
+                        "{\"keyword\":\"合同\",\"limit\":50,\"cursor\":\"ignored\"}");
         CursorPageArgumentResolver resolver = new CursorPageArgumentResolver();
 
         PageRequest page =
@@ -99,6 +96,51 @@ class PageRequestArgumentResolverTests {
 
         assertThat(page.size()).isEqualTo(100);
         assertThat(page.requestTotal()).isFalse();
+    }
+
+    @Test
+    @DisplayName("首页仅在请求总数偏好时计算总数")
+    void cursorResolverShouldHonorTotalCountPreferenceOnlyOnFirstPage() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/archive-item-audits");
+        request.addParameter("limit", "50");
+        request.addHeader("Prefer", "respond-async, RETURN=TOTAL-COUNT; ignored=value");
+
+        PageRequest page =
+                (PageRequest)
+                        new CursorPageArgumentResolver()
+                                .resolveArgument(
+                                        cursorParameter(),
+                                        null,
+                                        new ServletWebRequest(request),
+                                        null);
+
+        assertThat(page.requestTotal()).isTrue();
+    }
+
+    @Test
+    @DisplayName("旧 requestTotal 查询参数明确拒绝")
+    void cursorResolverShouldRejectRequestTotalQueryParameter() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/archive-item-audits");
+        request.addParameter("requestTotal", "true");
+
+        assertThatThrownBy(
+                        () ->
+                                new CursorPageArgumentResolver()
+                                        .resolveArgument(
+                                                cursorParameter(),
+                                                null,
+                                                new ServletWebRequest(request),
+                                                null))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("分页参数不合法")
+                .satisfies(
+                        exception ->
+                                assertThat(((BadRequestException) exception).fieldViolations())
+                                        .singleElement()
+                                        .satisfies(
+                                                violation ->
+                                                        assertThat(violation.field())
+                                                                .isEqualTo("requestTotal")));
     }
 
     @Test

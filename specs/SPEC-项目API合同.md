@@ -271,8 +271,8 @@ Content-Type: application/json
 - **AND** 请求 SHALL 支持 `limit` 和不透明 `cursor`
 - **AND** 服务端 SHALL NOT 默认提供 `offset` 参数
 - **AND** 服务端 SHALL NOT 默认返回 `total`
-- **AND** 如确需总数，SHALL 优先通过 `:count` custom method 或明确请求参数单独表达
-- **AND** 使用明确请求参数返回总数时，服务端 SHALL 只在未提交 `cursor` 的首页请求执行 count
+- **AND** 如确需总数，SHALL 优先通过 `:count` custom method 或 `Prefer: return=total-count` 单独表达
+- **AND** 采纳总数偏好时，服务端 SHALL 只在未提交 `cursor` 的首页请求执行 count
 - **AND** 带 `cursor` 的后续翻页请求 SHALL NOT 执行 count
 - **AND** 当 count 成本不稳定或可能耗时较长时，系统 SHALL 将 count 设计为独立 `:count` 方法或异步任务，不得让默认分页列表隐式等待 count
 
@@ -280,12 +280,12 @@ Content-Type: application/json
 
 - **WHEN** 客户端提交项目自有分页请求
 - **THEN** 分页控制参数 SHALL 通过 URL query 参数提交
-- **AND** cursor 分页接口 SHALL 使用 URL query 参数提交 `limit`、`cursor` 和 `requestTotal`
+- **AND** cursor 分页接口 SHALL 使用 URL query 参数提交 `limit`、`cursor`；可通过 `Prefer: return=total-count` 请求首页总数
 - **AND** offset 分页接口 SHALL 使用 URL query 参数提交 `pageSize` 和 `pageNo`
 - **AND** 使用 JSON 请求体表达复杂查询条件的 cursor 搜索接口 SHALL 将 `orderBy` 放在同一个 JSON 请求体中
 - **AND** offset 分页接口的 `orderBy` SHALL 通过 URL query 参数提交
 - **AND** 服务端 SHALL NOT 从 JSON 请求体解析分页控制参数
-- **AND** 服务端 SHALL 将 URL query 中的 `limit`、`cursor`、`pageSize`、`pageNo`、`offset` 和 `requestTotal` 视为分页控制字段，不纳入 cursor 查询摘要
+- **AND** 服务端 SHALL 将 URL query 中的 `limit`、`cursor`、`pageSize`、`pageNo` 和 `offset` 视为分页控制字段，不纳入 cursor 查询摘要；总数偏好也不纳入查询摘要
 - **AND** 服务端 SHALL 拒绝通过非 JSON 请求体提交分页请求
 
 #### 场景： 请求 offset 分页集合
@@ -369,8 +369,8 @@ Content-Type: application/json
 - **AND** 响应 MAY 包含 `first` 链接
 - **AND** 大数据量集合 SHOULD NOT 提供 `last`
 - **AND** 响应默认 SHALL NOT 返回 `total`
-- **AND** 当接口明确支持 `requestTotal=true` 且请求未提交 `cursor` 时，响应 MAY 返回与本次筛选条件一致的 `total`
-- **AND** 当请求提交 `cursor` 时，即使 `requestTotal=true`，服务端 SHALL NOT 执行 count，响应 SHALL NOT 返回 `total`
+- **AND** 当接口明确支持 `Prefer: return=total-count` 且请求未提交 `cursor` 时，响应 MAY 返回与本次筛选条件一致的 `total`
+- **AND** 当请求提交 `cursor` 时，即使带有总数偏好，服务端 SHALL NOT 执行 count，响应 SHALL NOT 返回 `total`
 - **AND** 服务端 SHALL NOT 为键集分页默认执行 count 查询
 - **AND** `POST /{resources}:search` 返回的分页响应 MAY 包含 `query`，用于回显本次查询条件
 
@@ -392,10 +392,10 @@ Content-Type: application/json
 #### 场景： 返回总数
 
 - **WHEN** 客户端需要总数
-- **THEN** 系统 SHALL 通过 `POST /{resources}:count` 或显式请求参数单独表达
+- **THEN** 系统 SHALL 通过 `POST /{resources}:count` 或 `Prefer: return=total-count` 单独表达
 - **AND** 只有业务规格明确允许的 offset 分页响应 SHALL 返回 `total`
 - **AND** 键集分页默认响应 SHALL NOT 返回 `total`
-- **AND** 键集分页在 `requestTotal=true` 且未提交 `cursor` 的首页请求 MAY 返回 `total`
+- **AND** 键集分页在带有总数偏好且未提交 `cursor` 的首页请求 MAY 返回 `total`
 - **AND** 键集分页后续带 `cursor` 请求 SHALL NOT 执行 count 或返回 `total`
 - **AND** 服务端 SHALL 将总数查询作为单独 count 查询执行，不得让默认列表查询隐式承担 count 成本
 - **AND** 当总数查询可能超过交互式请求预算时，系统 SHALL 返回可轮询的异步 count 任务，或提供独立 `:count` 能力由客户端按需触发
