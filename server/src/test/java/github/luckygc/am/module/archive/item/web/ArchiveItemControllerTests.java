@@ -2,7 +2,10 @@ package github.luckygc.am.module.archive.item.web;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.List;
 
@@ -10,7 +13,9 @@ import jakarta.data.page.PageRequest;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.common.api.CursorPageTokenCodec;
@@ -43,6 +48,45 @@ class ArchiveItemControllerTests {
                     archiveItemReadService,
                     archiveItemRelationService,
                     archiveItemLockService);
+
+    @Test
+    @DisplayName("档案条目局部更新只接受 Merge Patch")
+    void patchItemRequiresMergePatchMediaType() throws Exception {
+        var mvc = MockMvcBuilders.standaloneSetup(controller).build();
+        TestingAuthenticationToken authentication =
+                new TestingAuthenticationToken(
+                        new AuthenticatedUser() {
+                            @Override
+                            public Long id() {
+                                return 9L;
+                            }
+
+                            @Override
+                            public String displayName() {
+                                return "测试用户";
+                            }
+                        },
+                        null);
+
+        mvc.perform(
+                        patch("/archive-items/7")
+                                .principal(authentication)
+                                .contentType("application/json")
+                                .content("{\"item\":{\"archiveNo\":\"A-002\"}}"))
+                .andExpect(status().isUnsupportedMediaType());
+        verifyNoInteractions(archiveItemService);
+        mvc.perform(
+                        patch("/archive-items/7")
+                                .principal(authentication)
+                                .contentType("application/merge-patch+json")
+                                .content("{\"item\":{\"archiveNo\":\"A-002\"}}"))
+                .andExpect(status().isOk());
+        verify(archiveItemService)
+                .patchItem(
+                        org.mockito.ArgumentMatchers.eq(7L),
+                        org.mockito.ArgumentMatchers.any(),
+                        org.mockito.ArgumentMatchers.eq(9L));
+    }
 
     @Test
     @DisplayName("搜索接口从 URL 查询参数接收 cursor 分页控制")

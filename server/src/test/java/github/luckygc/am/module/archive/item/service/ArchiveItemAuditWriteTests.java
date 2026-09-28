@@ -84,7 +84,8 @@ class ArchiveItemAuditWriteTests {
                         archiveItemReadService,
                         new ArchiveItemFieldValueConverter(),
                         ArchiveRuntimeTestSupport.passthroughExecutionService(),
-                        ArchiveRuntimeTestSupport.traceService());
+                        ArchiveRuntimeTestSupport.traceService(),
+                        tools.jackson.databind.json.JsonMapper.builder().build());
         archiveItemLockService =
                 new ArchiveItemLockService(
                         archiveMapper, archiveItemReadService, permissionService, auditRepository);

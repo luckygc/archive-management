@@ -4,9 +4,11 @@ import java.time.LocalDateTime;
 import java.time.Year;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jspecify.annotations.Nullable;
@@ -17,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import github.luckygc.am.common.api.JsonMergePatch;
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.archive.ArchiveLevel;
@@ -44,6 +47,13 @@ import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeExecutionServ
 import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeTraceService;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
 
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.JsonNodeFactory;
+import tools.jackson.databind.node.ObjectNode;
+
 @Service
 public class ArchiveItemService {
 
@@ -55,6 +65,32 @@ public class ArchiveItemService {
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final int DEFAULT_PAGE_LIMIT = 100;
     private static final int MAX_PAGE_LIMIT = 1000;
+    private static final Set<String> PATCH_TOP_FIELDS =
+            Set.of("item", "dynamicFields", "physicalFieldValues");
+    private static final Set<String> PATCH_TOP_READ_ONLY_FIELDS =
+            Set.of("category", "fields", "physicalFields");
+    private static final Set<String> PATCH_ITEM_FIELDS =
+            Set.of(
+                    "volumeId",
+                    "fondsCode",
+                    "archiveNo",
+                    "archiveYear",
+                    "securityLevelId",
+                    "retentionPeriodId");
+    private static final Set<String> PATCH_ITEM_READ_ONLY_FIELDS =
+            Set.of(
+                    "id",
+                    "fondsName",
+                    "categoryCode",
+                    "categoryName",
+                    "lockedFlag",
+                    "lockReason",
+                    "lockedBy",
+                    "lockedAt",
+                    "repositoryId",
+                    "archivedAt");
+    private static final TypeReference<Map<String, @Nullable Object>> PATCH_FIELD_VALUES_TYPE =
+            new TypeReference<>() {};
     private final ArchiveMetadataService archiveMetadataService;
     private final ArchiveMetadataReferenceService archiveMetadataReferenceService;
     private final ArchiveCategoryService archiveCategoryService;
@@ -67,6 +103,7 @@ public class ArchiveItemService {
     private final ArchiveItemFieldValueConverter fieldValueConverter;
     private final ArchiveRuntimeExecutionService runtimeExecutionService;
     private final ArchiveRuntimeTraceService runtimeTraceService;
+    private final JsonMapper jsonMapper;
 
     public ArchiveItemService(
             ArchiveMetadataService archiveMetadataService,
@@ -80,7 +117,8 @@ public class ArchiveItemService {
             ArchiveItemReadService archiveItemReadService,
             ArchiveItemFieldValueConverter fieldValueConverter,
             ArchiveRuntimeExecutionService runtimeExecutionService,
-            ArchiveRuntimeTraceService runtimeTraceService) {
+            ArchiveRuntimeTraceService runtimeTraceService,
+            JsonMapper jsonMapper) {
         this.archiveMetadataService = archiveMetadataService;
         this.archiveMetadataReferenceService = archiveMetadataReferenceService;
         this.archiveCategoryService = archiveCategoryService;
@@ -93,6 +131,7 @@ public class ArchiveItemService {
         this.fieldValueConverter = fieldValueConverter;
         this.runtimeExecutionService = runtimeExecutionService;
         this.runtimeTraceService = runtimeTraceService;
+        this.jsonMapper = jsonMapper;
     }
 
     @Transactional
@@ -223,7 +262,135 @@ public class ArchiveItemService {
         if (request == null) {
             throw badRequest("请求体不能为空");
         }
-        return updateItemCore(id, request, userId, null, false);
+        return updateItemCore(id, request, userId, null, false, Set.of(), null);
+    }
+
+    @Transactional
+    public ArchiveItemDetailDto patchItem(Long id, JsonNode patch, Long userId) {
+        requirePermission(userId, "archive:item:update");
+        ArchiveItemDetailDto before =
+                archiveItemReadService.getItemDetail(id, userId, ArchiveLayoutSurface.EDIT);
+        archiveItemReadService.assertItemInDataScope(userId, before.category(), before.item());
+        archiveItemReadService.ensureItemEditable(before.item());
+        requirePatchObject(patch, PATCH_TOP_FIELDS, PATCH_TOP_READ_ONLY_FIELDS, "");
+        JsonNode itemPatch = patch.get("item");
+        if (itemPatch != null) {
+            requirePatchObject(itemPatch, PATCH_ITEM_FIELDS, PATCH_ITEM_READ_ONLY_FIELDS, "item");
+        }
+        for (String field : List.of("dynamicFields", "physicalFieldValues")) {
+            JsonNode fieldPatch = patch.get(field);
+            if (fieldPatch != null && !fieldPatch.isObject()) {
+                throw new BadRequestException(field + " 补丁必须是对象", field, "字段值必须是对象");
+            }
+        }
+        ObjectNode representation = JsonNodeFactory.instance.objectNode();
+        ObjectNode item = (ObjectNode) jsonMapper.valueToTree(before.item());
+        for (String field : PATCH_ITEM_READ_ONLY_FIELDS) {
+            item.remove(field);
+        }
+        representation.set("item", item);
+        representation.set(
+                "dynamicFields",
+                jsonMapper.valueToTree(nonNullFieldValues(before.dynamicFields())));
+        representation.set(
+                "physicalFieldValues",
+                jsonMapper.valueToTree(nonNullFieldValues(before.physicalFieldValues())));
+        JsonNode merged = JsonMergePatch.apply(representation, patch);
+        if (merged.equals(representation)) {
+            return before;
+        }
+        JsonNode mergedItem = merged.get("item");
+        String fondsCode = requiredPatchText(mergedItem, "fondsCode");
+        JsonNode yearNode = mergedItem.get("archiveYear");
+        if (yearNode == null || !yearNode.isInt()) {
+            throw new BadRequestException("archiveYear 不能删除或改变类型", "item.archiveYear", "年度不合法");
+        }
+        Set<String> removedItemFields = new HashSet<>();
+        if (itemPatch != null) {
+            for (String field : itemPatch.propertyNames()) {
+                if (itemPatch.get(field).isNull()) {
+                    removedItemFields.add(field);
+                }
+            }
+        }
+        UpdateArchiveItemRequest request =
+                new UpdateArchiveItemRequest(
+                        optionalPatchLong(mergedItem, "volumeId"),
+                        fondsCode,
+                        optionalPatchText(mergedItem, "archiveNo"),
+                        yearNode.intValue(),
+                        optionalPatchLong(mergedItem, "securityLevelId"),
+                        optionalPatchLong(mergedItem, "retentionPeriodId"),
+                        patch.has("physicalFieldValues")
+                                ? patchFieldValues(merged.get("physicalFieldValues"))
+                                : null,
+                        patch.has("dynamicFields")
+                                ? patchFieldValues(merged.get("dynamicFields"))
+                                : null);
+        return updateItemCore(id, request, userId, null, false, removedItemFields, before);
+    }
+
+    private void requirePatchObject(
+            JsonNode patch, Set<String> fields, Set<String> readOnlyFields, String path) {
+        if (patch == null || !patch.isObject()) {
+            throw new BadRequestException(path + " 补丁必须是对象");
+        }
+        for (String field : patch.propertyNames()) {
+            if (readOnlyFields.contains(field)
+                    || (!fields.contains(field) && !patch.get(field).isNull())) {
+                throw new BadRequestException(
+                        "不支持修改字段 " + field, path.isEmpty() ? field : path + "." + field, "字段不可修改");
+            }
+        }
+    }
+
+    private String requiredPatchText(JsonNode item, String field) {
+        JsonNode value = item.get(field);
+        if (value == null || !value.isTextual()) {
+            throw new BadRequestException(field + " 不能删除或改变类型", "item." + field, "字段不合法");
+        }
+        return value.asText();
+    }
+
+    private @Nullable String optionalPatchText(JsonNode item, String field) {
+        JsonNode value = item.get(field);
+        if (value == null) {
+            return null;
+        }
+        if (!value.isTextual()) {
+            throw new BadRequestException(field + " 类型不合法", "item." + field, "必须是字符串");
+        }
+        return value.asText();
+    }
+
+    private @Nullable Long optionalPatchLong(JsonNode item, String field) {
+        JsonNode value = item.get(field);
+        if (value == null) {
+            return null;
+        }
+        if (!value.isIntegralNumber()) {
+            throw new BadRequestException(field + " 类型不合法", "item." + field, "必须是整数");
+        }
+        return value.longValue();
+    }
+
+    private Map<String, @Nullable Object> patchFieldValues(JsonNode value) {
+        try {
+            return jsonMapper.readValue(value.toString(), PATCH_FIELD_VALUES_TYPE);
+        } catch (JacksonException exception) {
+            throw new BadRequestException("动态字段补丁格式不合法");
+        }
+    }
+
+    private Map<String, Object> nonNullFieldValues(Map<String, @Nullable Object> values) {
+        Map<String, Object> present = new LinkedHashMap<>();
+        values.forEach(
+                (field, value) -> {
+                    if (value != null) {
+                        present.put(field, value);
+                    }
+                });
+        return present;
     }
 
     @Transactional
@@ -263,7 +430,7 @@ public class ArchiveItemService {
         String auditReason =
                 "原全宗 %s -> 目标全宗 %s；%s"
                         .formatted(before.item().fondsCode(), targetFondsCode, reason);
-        return updateItemCore(id, updateRequest, userId, auditReason, true);
+        return updateItemCore(id, updateRequest, userId, auditReason, true, Set.of(), null);
     }
 
     private ArchiveItemDetailDto updateItemCore(
@@ -271,9 +438,14 @@ public class ArchiveItemService {
             UpdateArchiveItemRequest request,
             Long userId,
             @Nullable String auditReason,
-            boolean allowArchivedReassignment) {
+            boolean allowArchivedReassignment,
+            Set<String> removedItemFields,
+            @Nullable ArchiveItemDetailDto preparedBefore) {
         ArchiveItemDetailDto before =
-                archiveItemReadService.getItemDetail(id, userId, ArchiveLayoutSurface.EDIT);
+                preparedBefore == null
+                        ? archiveItemReadService.getItemDetail(
+                                id, userId, ArchiveLayoutSurface.EDIT)
+                        : preparedBefore;
         archiveItemReadService.assertItemInDataScope(userId, before.category(), before.item());
         archiveItemReadService.ensureItemEditable(before.item());
         ArchiveCategoryDto category = before.category();
@@ -294,7 +466,9 @@ public class ArchiveItemService {
         Long volumeId =
                 validateParentForWrite(
                         ArchiveLevel.ITEM,
-                        request.volumeId() == null ? before.item().volumeId() : request.volumeId(),
+                        request.volumeId() == null && !removedItemFields.contains("volumeId")
+                                ? before.item().volumeId()
+                                : request.volumeId(),
                         before.item().categoryCode(),
                         fonds.fondsCode());
         int archiveYear =
@@ -340,9 +514,11 @@ public class ArchiveItemService {
                         archiveNo,
                         archiveYear,
                         request.securityLevelId() == null
+                                        && !removedItemFields.contains("securityLevelId")
                                 ? before.item().securityLevelId()
                                 : request.securityLevelId(),
                         request.retentionPeriodId() == null
+                                        && !removedItemFields.contains("retentionPeriodId")
                                 ? before.item().retentionPeriodId()
                                 : request.retentionPeriodId(),
                         allFields,

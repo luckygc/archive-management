@@ -113,15 +113,17 @@ export interface CreateArchiveRecordRequest {
     dynamicFields: Record<string, unknown>;
 }
 
-export interface UpdateArchiveRecordRequest {
-    volumeId?: number;
-    fondsCode: string;
-    archiveNo?: string;
-    archiveYear?: number;
-    securityLevelId?: number;
-    retentionPeriodId?: number;
-    physicalFields?: Record<string, unknown>;
-    dynamicFields: Record<string, unknown>;
+export interface PatchArchiveRecordRequest {
+    item?: {
+        volumeId?: number | null;
+        fondsCode?: string;
+        archiveNo?: string | null;
+        archiveYear?: number;
+        securityLevelId?: number | null;
+        retentionPeriodId?: number | null;
+    };
+    dynamicFields?: Record<string, unknown>;
+    physicalFieldValues?: Record<string, unknown>;
 }
 
 export interface ReassignArchiveRecordFondsRequest {

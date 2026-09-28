@@ -16,6 +16,8 @@ import org.springframework.jdbc.support.JdbcUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.archive.ArchiveLevel;
@@ -313,6 +315,7 @@ public class ArchiveItemReadService {
         return row.get(JdbcUtils.convertPropertyNameToUnderscoreName(key));
     }
 
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     public record ArchiveItemDto(
             Long id,
             @Nullable Long volumeId,
@@ -335,7 +338,9 @@ public class ArchiveItemReadService {
             ArchiveItemDto item,
             ArchiveCategoryDto category,
             List<ArchiveFieldDto> fields,
-            Map<String, @Nullable Object> dynamicFields,
+            @JsonInclude(content = JsonInclude.Include.NON_NULL)
+                    Map<String, @Nullable Object> dynamicFields,
             List<ArchiveFieldDto> physicalFields,
-            Map<String, @Nullable Object> physicalFieldValues) {}
+            @JsonInclude(content = JsonInclude.Include.NON_NULL)
+                    Map<String, @Nullable Object> physicalFieldValues) {}
 }

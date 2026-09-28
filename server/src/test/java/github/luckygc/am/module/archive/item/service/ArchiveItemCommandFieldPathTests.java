@@ -72,7 +72,8 @@ class ArchiveItemCommandFieldPathTests {
                         mock(ArchiveItemReadService.class),
                         new ArchiveItemFieldValueConverter(),
                         ArchiveRuntimeTestSupport.passthroughExecutionService(),
-                        ArchiveRuntimeTestSupport.traceService());
+                        ArchiveRuntimeTestSupport.traceService(),
+                        tools.jackson.databind.json.JsonMapper.builder().build());
 
         assertThatThrownBy(
                         () ->

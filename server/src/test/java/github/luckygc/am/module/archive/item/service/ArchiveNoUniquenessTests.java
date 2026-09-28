@@ -86,7 +86,8 @@ class ArchiveNoUniquenessTests {
                         archiveItemReadService,
                         new ArchiveItemFieldValueConverter(),
                         ArchiveRuntimeTestSupport.passthroughExecutionService(),
-                        ArchiveRuntimeTestSupport.traceService());
+                        ArchiveRuntimeTestSupport.traceService(),
+                        tools.jackson.databind.json.JsonMapper.builder().build());
         archiveVolumeService =
                 new ArchiveVolumeService(
                         archiveMapper,

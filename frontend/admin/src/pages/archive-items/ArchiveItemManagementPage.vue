@@ -273,7 +273,17 @@ async function saveRecord() {
         if (mode === "create")
             await createArchiveRecord({ ...common, categoryId: editorForm.categoryId! });
         else if (mode === "edit")
-            await updateArchiveRecord(editorState.value.archiveItemId!, common);
+            await updateArchiveRecord(editorState.value.archiveItemId!, {
+                item: {
+                    fondsCode: common.fondsCode,
+                    archiveNo: common.archiveNo ?? null,
+                    archiveYear: common.archiveYear,
+                    securityLevelId: common.securityLevelId ?? null,
+                    retentionPeriodId: common.retentionPeriodId ?? null,
+                },
+                dynamicFields: common.dynamicFields,
+                physicalFieldValues: common.physicalFields,
+            });
         ElMessage.success(mode === "create" ? "档案已创建" : "档案已更新");
         closeEditor();
         await refresh();

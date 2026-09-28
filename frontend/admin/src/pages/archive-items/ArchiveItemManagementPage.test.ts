@@ -180,9 +180,8 @@ describe("ArchiveItemManagementPage", () => {
             expect(mocks.updateArchiveRecord).toHaveBeenCalledWith(
                 9,
                 expect.objectContaining({
-                    securityLevelId: 2,
-                    retentionPeriodId: 3,
-                    physicalFields: { box_no: "BOX-009" },
+                    item: expect.objectContaining({ securityLevelId: 2, retentionPeriodId: 3 }),
+                    physicalFieldValues: { box_no: "BOX-009" },
                     dynamicFields: { title: "建设工程档案（修订）" },
                 }),
             ),

@@ -13,10 +13,10 @@ import type {
     CreateArchiveRecordRequest,
     ListArchiveItemAuditsRequest,
     ListArchiveItemRelationsQuery,
+    PatchArchiveRecordRequest,
     ReassignArchiveRecordFondsRequest,
     SearchArchiveRecordsQuery,
     SearchArchiveRecordsRequest,
-    UpdateArchiveRecordRequest,
 } from "../types/archive-records";
 import type { CollectionResponse, CursorPageResponse } from "../types/pagination";
 import { queryString } from "./query-string";
@@ -51,8 +51,10 @@ export function getArchiveRecord(id: number, surface?: ArchiveLayoutSurface) {
     );
 }
 
-export function updateArchiveRecord(id: number, payload: UpdateArchiveRecordRequest) {
-    return httpClient.patch<ArchiveRecordDetailDto>(`/archive-items/${id}`, payload);
+export function updateArchiveRecord(id: number, payload: PatchArchiveRecordRequest) {
+    return httpClient.patch<ArchiveRecordDetailDto>(`/archive-items/${id}`, payload, {
+        headers: { "Content-Type": "application/merge-patch+json" },
+    });
 }
 
 export function reassignArchiveRecordFonds(id: number, payload: ReassignArchiveRecordFondsRequest) {

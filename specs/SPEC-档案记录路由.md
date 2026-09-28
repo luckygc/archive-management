@@ -139,7 +139,10 @@
 #### 场景： 编辑未锁定档案条目
 
 - **WHEN** 客户端向 `PATCH /archive-items/{id}` 提交未锁定档案条目的编辑请求
-- **THEN** 系统 SHALL 校验目标全宗存在且状态为 `ACTIVE`
+- **THEN** 请求 SHALL 使用 JSON Merge Patch，按详情表示中的 `item`、`dynamicFields` 和 `physicalFieldValues` 合并；动态字段成员递归合并，显式 `null` 删除字段值
+- **AND** 未出现的成员 SHALL 保持不变，删除可空固定字段 SHALL 从响应表示中省略该成员
+- **AND** 必需字段删除、只读成员改写以及非对象字段集合 SHALL 被拒绝
+- **AND** 系统 SHALL 校验目标全宗存在且状态为 `ACTIVE`
 - **AND** 系统 SHALL 按字段定义校验并转换元数据和实物信息字段值
 - **AND** 系统 SHALL 更新 `am_archive_item` 及对应条目动态表
 - **AND** 系统 SHALL 刷新全文检索投影

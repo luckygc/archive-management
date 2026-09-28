@@ -34,8 +34,9 @@ import github.luckygc.am.module.archive.item.service.ArchiveItemService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemService.CreateArchiveItemRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemService.DeleteItemRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemService.ReassignArchiveItemFondsRequest;
-import github.luckygc.am.module.archive.item.service.ArchiveItemService.UpdateArchiveItemRequest;
 import github.luckygc.am.module.archive.metadata.ArchiveLayoutSurface;
+
+import tools.jackson.databind.JsonNode;
 
 @RestController
 public class ArchiveItemController {
@@ -133,12 +134,10 @@ public class ArchiveItemController {
                 surface);
     }
 
-    @PatchMapping("/archive-items/{id}")
+    @PatchMapping(value = "/archive-items/{id}", consumes = "application/merge-patch+json")
     public ArchiveItemDetailDto updateItem(
-            @PathVariable Long id,
-            @RequestBody UpdateArchiveItemRequest request,
-            Authentication authentication) {
-        return archiveItemService.updateItem(
+            @PathVariable Long id, @RequestBody JsonNode request, Authentication authentication) {
+        return archiveItemService.patchItem(
                 id,
                 request,
                 AuthenticatedUsers.requireUserId(

@@ -91,7 +91,8 @@ class ArchiveItemDataScopeQueryTests {
                         archiveItemReadService,
                         new ArchiveItemFieldValueConverter(),
                         ArchiveRuntimeTestSupport.passthroughExecutionService(),
-                        ArchiveRuntimeTestSupport.traceService());
+                        ArchiveRuntimeTestSupport.traceService(),
+                        tools.jackson.databind.json.JsonMapper.builder().build());
         archiveItemQueryService =
                 new ArchiveItemSearchService(
                         archiveMetadataService,
