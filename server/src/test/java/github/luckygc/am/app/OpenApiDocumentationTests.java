@@ -73,7 +73,14 @@ class OpenApiDocumentationTests {
                 .andExpect(
                         jsonPath(
                                         "$.paths['/archive-items:search'].post.responses['200'].content['application/json']")
-                                .exists());
+                                .exists())
+                .andExpect(
+                        jsonPath(
+                                        "$.paths['/archive-items:search'].post.responses.default.content['application/problem+json'].schema['$ref']")
+                                .value("#/components/schemas/ProblemDetail"))
+                .andExpect(
+                        jsonPath("$.components.schemas.ProblemDetail.properties.type.type")
+                                .value("string"));
     }
 
     @Test
