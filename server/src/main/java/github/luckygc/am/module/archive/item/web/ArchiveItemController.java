@@ -67,12 +67,16 @@ public class ArchiveItemController {
 
     @GetMapping("/archive-items")
     public ArchiveItemListDto listItems(
-            Long categoryId, String fondsCode, Authentication authentication) {
+            @Nullable Long categoryId,
+            @Nullable String fondsCode,
+            PageRequest page,
+            Authentication authentication) {
         return archiveItemSearchService.listItems(
                 categoryId,
                 fondsCode,
                 AuthenticatedUsers.requireUserId(
-                        authentication == null ? null : authentication.getPrincipal()));
+                        authentication == null ? null : authentication.getPrincipal()),
+                page);
     }
 
     @PostMapping("/archive-items:search")

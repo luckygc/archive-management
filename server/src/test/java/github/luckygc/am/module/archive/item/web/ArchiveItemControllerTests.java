@@ -4,6 +4,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -14,6 +15,7 @@ import jakarta.data.page.PageRequest;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.core.MethodParameter;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -25,6 +27,7 @@ import org.springframework.web.method.support.ModelAndViewContainer;
 
 import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.common.security.AuthenticatedUser;
+import github.luckygc.am.infrastructure.web.CursorPageArgumentResolver;
 import github.luckygc.am.module.archive.item.service.ArchiveItemLockService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemReadService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRelationService;
@@ -52,6 +55,31 @@ class ArchiveItemControllerTests {
                     archiveItemReadService,
                     archiveItemRelationService,
                     archiveItemLockService);
+
+    @Test
+    @DisplayName("档案概览从 URL 接收分页大小和全宗筛选")
+    void listItemsShouldBindPageControls() throws Exception {
+        var mvc =
+                MockMvcBuilders.standaloneSetup(controller)
+                        .setCustomArgumentResolvers(new CursorPageArgumentResolver())
+                        .build();
+
+        mvc.perform(
+                        get("/archive-items")
+                                .param("fondsCode", "F001")
+                                .param("limit", "2")
+                                .principal(authentication(9L)))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<PageRequest> page = ArgumentCaptor.forClass(PageRequest.class);
+        verify(archiveItemQueryService)
+                .listItems(
+                        org.mockito.ArgumentMatchers.isNull(),
+                        org.mockito.ArgumentMatchers.eq("F001"),
+                        org.mockito.ArgumentMatchers.eq(9L),
+                        page.capture());
+        org.assertj.core.api.Assertions.assertThat(page.getValue().size()).isEqualTo(2);
+    }
 
     @Test
     @DisplayName("档案条目局部更新只接受 Merge Patch")

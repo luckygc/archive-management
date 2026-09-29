@@ -36,7 +36,11 @@ public interface ArchiveMapper {
             @Param("tableName") String tableName,
             @Param("tableStatus") String tableStatus);
 
-    List<Map<String, Object>> listItemOverview();
+    List<Map<String, Object>> listItemOverview(
+            @Param("fondsCode") @Nullable String fondsCode,
+            @Param("page") ArchiveDynamicItemPageWindow page);
+
+    long countItemOverview(@Param("fondsCode") @Nullable String fondsCode);
 
     List<Map<String, Object>> listRelatedFilterCategories(@Param("categoryId") Long categoryId);
 

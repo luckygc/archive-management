@@ -41,6 +41,36 @@ class ArchiveItemCursorPageAssembler {
         this.archiveMapper = archiveMapper;
     }
 
+    CursoredPage<Map<String, @Nullable Object>> queryOverviewPage(
+            PageRequest pageRequest, @Nullable String fondsCode, @Nullable Cursor cursor) {
+        int limit = pageRequest.size();
+        List<ArchiveSqlOrder> orders =
+                List.of(
+                        new ArchiveSqlOrder("i.created_at", Direction.DESC),
+                        new ArchiveSqlOrder("i.id", Direction.DESC));
+        List<ArchiveSqlOrder> queryOrders = isPreviousCursor(pageRequest) ? invert(orders) : orders;
+        ArchiveDynamicItemPageWindow window =
+                new ArchiveDynamicItemPageWindow(
+                        queryOrders, cursorPredicates(queryOrders, cursor), limit + 1);
+        List<Map<String, @Nullable Object>> rows =
+                archiveMapper.listItemOverview(fondsCode, window);
+        boolean hasMore = rows.size() > limit;
+        List<Map<String, @Nullable Object>> pageItems = hasMore ? rows.subList(0, limit) : rows;
+        if (isPreviousCursor(pageRequest)) {
+            pageItems = pageItems.reversed();
+        }
+        List<PageRequest.Cursor> cursors =
+                pageItems.stream().map(row -> rowCursor(orders, row)).toList();
+        Long total = pageRequest.requestTotal() ? archiveMapper.countItemOverview(fondsCode) : null;
+        return new KeysetCursoredPageRecord<>(
+                pageRequest,
+                pageItems,
+                cursors,
+                !pageItems.isEmpty() && (isPreviousCursor(pageRequest) ? hasMore : cursor != null),
+                !pageItems.isEmpty() && (isPreviousCursor(pageRequest) ? cursor != null : hasMore),
+                total);
+    }
+
     CursoredPage<Map<String, @Nullable Object>> queryDynamicItemPage(
             PageRequest pageRequest,
             ArchiveDynamicItemSource source,
@@ -75,8 +105,10 @@ class ArchiveItemCursorPageAssembler {
                 pageRequest,
                 pageItems,
                 cursors,
-                cursor != null && !rawPageItems.isEmpty(),
-                hasMore && !rawPageItems.isEmpty(),
+                !rawPageItems.isEmpty()
+                        && (isPreviousCursor(pageRequest) ? hasMore : cursor != null),
+                !rawPageItems.isEmpty()
+                        && (isPreviousCursor(pageRequest) ? cursor != null : hasMore),
                 total);
     }
 

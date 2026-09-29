@@ -135,9 +135,22 @@ class ArchiveItemDataScopeQueryTests {
     void listItemsShouldRejectOverviewWhenDataScopeIsNotAll() {
         when(dataScopeService.resolveUserDataScope(9L)).thenReturn(ResolvedArchiveDataScope.none());
 
-        archiveItemQueryService.listItems(null, null, 9L);
+        archiveItemQueryService.listItems(null, null, 9L, PageRequest.ofSize(100));
 
-        verify(archiveMapper, org.mockito.Mockito.never()).listItemOverview();
+        org.mockito.Mockito.verifyNoInteractions(archiveMapper);
+    }
+
+    @Test
+    @DisplayName("档案概览按全宗和请求分页查询")
+    void listItemsShouldApplyFondsAndPageControls() {
+        when(dataScopeService.resolveUserDataScope(9L)).thenReturn(ResolvedArchiveDataScope.all());
+        when(archiveMapper.listItemOverview(any(), any())).thenReturn(List.of());
+        PageRequest page = PageRequest.ofSize(2);
+
+        var result = archiveItemQueryService.listItems(null, " F001 ", 9L, page);
+
+        assertThat(result.items()).isEmpty();
+        verify(archiveMapper).listItemOverview(eq("F001"), any());
     }
 
     @Test

@@ -79,11 +79,14 @@ public class ArchiveItemSearchService {
     }
 
     public ArchiveItemListDto listItems(
-            @Nullable Long categoryId, @Nullable String fondsCode, Long userId) {
+            @Nullable Long categoryId,
+            @Nullable String fondsCode,
+            Long userId,
+            PageRequest pageRequest) {
         SearchArchiveItemsRequest request =
                 new SearchArchiveItemsRequest(
                         categoryId, fondsCode, null, null, null, null, null, null);
-        return queryItems(request, userId, false, false, pageRequest(request));
+        return queryItems(request, userId, false, false, pageRequest);
     }
 
     public ArchiveItemListDto searchItems(
@@ -168,10 +171,17 @@ public class ArchiveItemSearchService {
             if (!dataScopeService.resolveUserDataScope(userId).allData()) {
                 return itemList(null, List.of(), emptyPage(pageRequest, 0L));
             }
-            int limit = pageRequest.size();
-            List<Map<String, @Nullable Object>> rows =
-                    archiveMapper.listItemOverview().stream().limit(limit).toList();
-            return itemList(null, List.of(), rows);
+            return itemList(
+                    null,
+                    List.of(),
+                    CursorPageResponse.from(
+                            pageAssembler.queryOverviewPage(
+                                    pageRequest,
+                                    StringUtils.trimToNull(
+                                            request == null ? null : request.fondsCode()),
+                                    cursor(pageRequest)),
+                            pageRequest,
+                            item -> item));
         }
 
         ArchiveCategoryDto category = archiveCategoryService.getCategory(request.categoryId());
@@ -223,16 +233,6 @@ public class ArchiveItemSearchService {
                 pageLimit(request == null ? null : request.limit()),
                 request == null ? null : request.cursor(),
                 false);
-    }
-
-    private ArchiveItemListDto itemList(
-            @Nullable ArchiveCategoryDto category,
-            List<ArchiveFieldDto> fields,
-            List<Map<String, @Nullable Object>> items) {
-        return itemList(
-                category,
-                fields,
-                CursorPageResponse.withCursorValues(items, 0, null, null, null, null, null));
     }
 
     private ArchiveItemListDto itemList(

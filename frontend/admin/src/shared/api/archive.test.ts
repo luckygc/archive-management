@@ -13,6 +13,7 @@ import {
     discoverArchiveRecords,
     downloadArchiveImportTemplate,
     exportArchiveRecords,
+    listArchiveRecords,
     listArchiveItemRelations,
     searchArchiveRecords,
     uploadArchiveItemElectronicFile,
@@ -34,6 +35,18 @@ vi.mock("@archive-management/frontend-core/api", () => ({
 beforeEach(() => vi.clearAllMocks());
 
 describe("archive API", () => {
+    it("档案概览沿用服务端游标链接", async () => {
+        await listArchiveRecords({
+            fondsCode: "F001",
+            limit: 2,
+            cursor: "/archive-items?fondsCode=F001&cursor=opaque&limit=2",
+        });
+
+        expect(httpClientMock.get).toHaveBeenCalledWith(
+            "/archive-items?fondsCode=F001&cursor=opaque&limit=2",
+        );
+    });
+
     it("updates archive fonds through the resource PATCH endpoint", async () => {
         const payload = {
             fondsName: "华东公司",

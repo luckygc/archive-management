@@ -22,8 +22,13 @@ import type {
 import type { CollectionResponse, CursorPageResponse } from "../types/pagination";
 import { pageUrl, queryString } from "./query-string";
 
-export function listArchiveRecords(params: { categoryId?: number; fondsCode?: string }) {
-    return httpClient.get<ArchiveRecordListDto>(`/archive-items${queryString(params)}`);
+export function listArchiveRecords(params: {
+    categoryId?: number;
+    fondsCode?: string;
+    limit?: number;
+    cursor?: string;
+}) {
+    return httpClient.get<ArchiveRecordListDto>(pageUrl("/archive-items", params));
 }
 
 export function searchArchiveRecords(query: SearchArchiveRecordsQuery) {

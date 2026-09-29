@@ -47,6 +47,7 @@
 - **THEN** 系统 SHALL 先从 `am_archive_item` 筛选未删除条目
 - **AND** 系统 SHALL 支持按全宗编码筛选
 - **AND** 系统 SHALL 按该分类的条目动态表补齐列表字段
+- **AND** 系统 SHALL 通过 URL query 中的 `limit`、`cursor` 返回稳定的游标分页结果
 
 #### 场景： 查询未建表分类的条目
 
@@ -59,6 +60,7 @@
 - **WHEN** 客户端未指定档案分类查询档案条目概览
 - **THEN** 系统 SHALL 只返回 `am_archive_item` 的通用字段
 - **AND** 系统 SHALL NOT 跨多张分类动态表拼接不同分类字段
+- **AND** 系统 SHALL 在数据库中按 `createdAt DESC`、`id DESC` 稳定分页；可按 `fondsCode` 筛选，不得读取完整集合后在内存中截断
 
 #### 场景： 查询案卷
 

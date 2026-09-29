@@ -479,6 +479,9 @@ create unique index uk_am_archive_item_category_archive_no_active
     on am_archive_item (category_code, archive_no)
     where deleted_flag = false;
 create index idx_am_archive_item_created_at on am_archive_item (created_at);
+create index idx_am_archive_item_overview_active
+    on am_archive_item (created_at desc, id desc)
+    where deleted_flag = false;
 create index idx_am_archive_item_deleted_at
     on am_archive_item (deleted_at desc, id desc)
     where deleted_flag = true;
