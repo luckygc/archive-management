@@ -5,6 +5,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.List;
@@ -13,13 +14,16 @@ import jakarta.data.page.PageRequest;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.core.MethodParameter;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.bind.support.WebDataBinderFactory;
+import org.springframework.web.context.request.NativeWebRequest;
+import org.springframework.web.method.support.HandlerMethodArgumentResolver;
+import org.springframework.web.method.support.ModelAndViewContainer;
 
 import github.luckygc.am.common.api.CursorPageResponse;
-import github.luckygc.am.common.api.CursorPageTokenCodec;
-import github.luckygc.am.common.api.CursorPageTokenContext;
 import github.luckygc.am.common.security.AuthenticatedUser;
 import github.luckygc.am.module.archive.item.service.ArchiveItemLockService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemReadService;
@@ -28,7 +32,6 @@ import github.luckygc.am.module.archive.item.service.ArchiveItemSearchService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemSearchService.SearchArchiveItemsRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemService.ReassignArchiveItemFondsRequest;
-import github.luckygc.am.module.archive.item.web.ArchiveItemController.SearchArchiveItemsBody;
 
 @DisplayName("档案条目 HTTP 入口")
 class ArchiveItemControllerTests {
@@ -90,15 +93,37 @@ class ArchiveItemControllerTests {
     }
 
     @Test
-    @DisplayName("搜索接口从 URL 查询参数接收 cursor 分页控制")
-    void searchItemsShouldUseUrlQueryPageControls() {
-        SearchArchiveItemsBody body = new SearchArchiveItemsBody(1L, "F001", "合同", null, null, 12L);
-        Authentication authentication = authentication(9L);
-        CursorPageTokenContext context = new CursorPageTokenContext("fingerprint");
-        String cursor = CursorPageTokenCodec.encode("next", List.of(99L), 50, context);
-        PageRequest page = CursorPageTokenCodec.pageRequest(50, cursor, false, context);
+    @DisplayName("搜索接口从 URL 查询参数接收多列排序")
+    void searchItemsShouldBindSortQuery() throws Exception {
+        PageRequest page = PageRequest.ofSize(50);
+        var mvc =
+                MockMvcBuilders.standaloneSetup(controller)
+                        .setCustomArgumentResolvers(
+                                new HandlerMethodArgumentResolver() {
+                                    @Override
+                                    public boolean supportsParameter(MethodParameter parameter) {
+                                        return parameter.getParameterType() == PageRequest.class;
+                                    }
 
-        controller.searchItems(body, "-createdAt,+id", page, authentication);
+                                    @Override
+                                    public Object resolveArgument(
+                                            MethodParameter parameter,
+                                            ModelAndViewContainer mavContainer,
+                                            NativeWebRequest webRequest,
+                                            WebDataBinderFactory binderFactory) {
+                                        return page;
+                                    }
+                                })
+                        .build();
+
+        mvc.perform(
+                        post("/archive-items:search")
+                                .param("sort", "-createdAt,+id")
+                                .principal(authentication(9L))
+                                .contentType("application/json")
+                                .content(
+                                        "{\"categoryId\":1,\"fondsCode\":\"F001\",\"keyword\":\"合同\",\"volumeId\":12}"))
+                .andExpect(status().isOk());
 
         verify(archiveItemQueryService)
                 .searchItems(
