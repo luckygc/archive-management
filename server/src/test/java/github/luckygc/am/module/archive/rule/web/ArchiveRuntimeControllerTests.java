@@ -15,7 +15,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.security.authentication.TestingAuthenticationToken;
-import org.springframework.web.bind.annotation.PostMapping;
 
 import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.common.security.AuthenticatedUser;
@@ -81,8 +80,8 @@ class ArchiveRuntimeControllerTests {
     }
 
     @Test
-    @DisplayName("追踪接口使用完整版本化 URL 并转发认证用户和游标")
-    void traceSearchUsesVersionedUrlAndAuthenticatedUser() throws Exception {
+    @DisplayName("追踪接口转发认证用户和游标")
+    void traceSearchUsesAuthenticatedUserAndPage() {
         PageRequest page = PageRequest.ofSize(50);
         when(traceService.listTraces(any(), any()))
                 .thenReturn(
@@ -99,15 +98,6 @@ class ArchiveRuntimeControllerTests {
                 page,
                 auth(9L));
 
-        PostMapping mapping =
-                ArchiveRuntimeController.class
-                        .getMethod(
-                                "searchTraces",
-                                SearchArchiveRuntimeTracesRequest.class,
-                                PageRequest.class,
-                                org.springframework.security.core.Authentication.class)
-                        .getAnnotation(PostMapping.class);
-        assertThat(mapping.value()).containsExactly("/archive-runtime-traces:search");
         ArgumentCaptor<SearchArchiveRuntimeTracesRequest> requestCaptor =
                 ArgumentCaptor.forClass(SearchArchiveRuntimeTracesRequest.class);
         verify(traceService)

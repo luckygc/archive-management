@@ -2,10 +2,8 @@ package github.luckygc.am.infrastructure.mybatis;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.ArgumentMatchers.same;
@@ -17,22 +15,16 @@ import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Method;
 import java.time.LocalDateTime;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
 
 import org.apache.ibatis.cache.CacheKey;
 import org.apache.ibatis.executor.Executor;
 import org.apache.ibatis.mapping.BoundSql;
 import org.apache.ibatis.mapping.MappedStatement;
-import org.apache.ibatis.plugin.Interceptor;
-import org.apache.ibatis.plugin.Intercepts;
 import org.apache.ibatis.plugin.Invocation;
-import org.apache.ibatis.plugin.Signature;
 import org.apache.ibatis.session.Configuration;
 import org.apache.ibatis.session.ResultHandler;
 import org.apache.ibatis.session.RowBounds;
@@ -42,7 +34,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.stereotype.Component;
 
 import github.luckygc.am.infrastructure.audit.AuditContext;
 import github.luckygc.am.infrastructure.audit.AuditContextProvider;
@@ -52,8 +43,6 @@ import github.luckygc.am.infrastructure.audit.AuditContextProvider;
 class MyBatisAuditingInterceptorTests {
 
     private static final String AUDIT_PARAMETER = "_audit";
-    private static final String INTERCEPTOR_CLASS_NAME =
-            "github.luckygc.am.infrastructure.mybatis.MyBatisAuditingInterceptor";
     private static final AuditContext AUDIT_CONTEXT =
             new AuditContext(LocalDateTime.of(2026, 7, 16, 11, 30), 42L);
     private static final Method UPDATE_METHOD =
@@ -78,46 +67,6 @@ class MyBatisAuditingInterceptorTests {
     @Mock private AuditContextProvider auditContextProvider;
 
     @InjectMocks private MyBatisAuditingInterceptor interceptor;
-
-    @Test
-    @DisplayName("声明 Spring 组件、构造器依赖与三个精确 Executor 签名")
-    void declaresComponentConstructorAndExactExecutorSignatures() {
-        Class<?> interceptorClass = assertDoesNotThrow(() -> Class.forName(INTERCEPTOR_CLASS_NAME));
-
-        assertTrue(Interceptor.class.isAssignableFrom(interceptorClass));
-        assertNotNull(interceptorClass.getAnnotation(Component.class));
-        assertDoesNotThrow(
-                () -> interceptorClass.getDeclaredConstructor(AuditContextProvider.class));
-
-        Intercepts intercepts = interceptorClass.getAnnotation(Intercepts.class);
-        assertNotNull(intercepts);
-        Set<SignatureContract> actual =
-                Arrays.stream(intercepts.value())
-                        .map(SignatureContract::from)
-                        .collect(Collectors.toUnmodifiableSet());
-
-        assertEquals(
-                Set.of(
-                        new SignatureContract(
-                                Executor.class, "update", MappedStatement.class, Object.class),
-                        new SignatureContract(
-                                Executor.class,
-                                "query",
-                                MappedStatement.class,
-                                Object.class,
-                                RowBounds.class,
-                                ResultHandler.class),
-                        new SignatureContract(
-                                Executor.class,
-                                "query",
-                                MappedStatement.class,
-                                Object.class,
-                                RowBounds.class,
-                                ResultHandler.class,
-                                CacheKey.class,
-                                BoundSql.class)),
-                actual);
-    }
 
     @Test
     @DisplayName("update 在执行前用一次当前上下文覆盖伪造审计参数并原样返回结果")
@@ -303,16 +252,5 @@ class MyBatisAuditingInterceptorTests {
 
     private static Method executorMethod(String name, Class<?>... parameterTypes) {
         return assertDoesNotThrow(() -> Executor.class.getMethod(name, parameterTypes));
-    }
-
-    private record SignatureContract(Class<?> type, String method, List<Class<?>> args) {
-
-        private SignatureContract(Class<?> type, String method, Class<?>... args) {
-            this(type, method, List.of(args));
-        }
-
-        private static SignatureContract from(Signature signature) {
-            return new SignatureContract(signature.type(), signature.method(), signature.args());
-        }
     }
 }

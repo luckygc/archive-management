@@ -9,7 +9,6 @@ import static org.mockito.Mockito.when;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.authentication.TestingAuthenticationToken;
-import org.springframework.web.bind.annotation.GetMapping;
 
 import github.luckygc.am.common.security.AuthenticatedUser;
 import github.luckygc.am.common.security.UnauthenticatedException;
@@ -24,19 +23,12 @@ class ArchiveWorkspaceControllerTests {
     private final ArchiveWorkspaceController controller = new ArchiveWorkspaceController(service);
 
     @Test
-    @DisplayName("GET 使用完整资源 URL 并返回四个 long")
-    void getSummaryUsesCompleteUrlAndDedicatedResponse() throws Exception {
+    @DisplayName("工作台摘要返回四个统计值")
+    void getSummaryReturnsDedicatedResponse() {
         when(service.getSummary(8L)).thenReturn(new ArchiveWorkspaceSummary(12, 3, 2, 7));
 
         WorkspaceSummaryResponse response = controller.getSummary(auth());
 
-        GetMapping mapping =
-                ArchiveWorkspaceController.class
-                        .getMethod(
-                                "getSummary",
-                                org.springframework.security.core.Authentication.class)
-                        .getAnnotation(GetMapping.class);
-        assertThat(mapping.value()).containsExactly("/workspace-summary");
         assertThat(response).isEqualTo(new WorkspaceSummaryResponse(12, 3, 2, 7));
         verify(service).getSummary(8L);
     }

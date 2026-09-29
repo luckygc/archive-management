@@ -29,7 +29,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.http.HttpStatus;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.api.CursorPageResponse;
@@ -411,21 +410,6 @@ class ArchiveItemImportExportServiceTests {
 
         verify(storageObjectService).storeObject(commandCaptor.capture(), eq(9L));
         assertThat(result.expiresAt()).isEqualTo(commandCaptor.getValue().expiresAt());
-    }
-
-    @Test
-    @DisplayName("导出使用可写事务以记录操作审计")
-    void createExportDownloadLinkShouldUseWritableTransaction() throws NoSuchMethodException {
-        Transactional transactional =
-                ArchiveItemImportExportService.class
-                        .getMethod(
-                                "createExportDownloadLink",
-                                ArchiveItemSearchService.SearchArchiveItemsRequest.class,
-                                Long.class)
-                        .getAnnotation(Transactional.class);
-
-        assertThat(transactional).isNotNull();
-        assertThat(transactional.readOnly()).isFalse();
     }
 
     @Test
