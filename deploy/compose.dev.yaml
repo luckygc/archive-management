@@ -1,5 +1,6 @@
 name: archive-management-dev
 
+# 不配置数据卷；日常使用 stop/start 复用容器，删除或重建容器后不保留数据。
 services:
     postgres:
         image: postgres:18
@@ -9,9 +10,6 @@ services:
             POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
         ports:
             - "${POSTGRES_PORT:-5433}:5432"
-        # 开发数据只存于 tmpfs，不声明命名卷；容器删除后数据随即清空。
-        tmpfs:
-            - /var/lib/postgresql
         healthcheck:
             test: ["CMD-SHELL", 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
             interval: 5s
@@ -20,7 +18,7 @@ services:
             start_period: 10s
 
     object-storage:
-        image: rustfs/rustfs:1.0.0-beta.4
+        image: rustfs/rustfs:1.0.0
         environment:
             RUSTFS_ACCESS_KEY: ${ARCHIVE_STORAGE_ACCESS_KEY:-rustfsadmin}
             RUSTFS_SECRET_KEY: ${ARCHIVE_STORAGE_SECRET_KEY:-rustfsadmin}
@@ -29,9 +27,6 @@ services:
         ports:
             - "${ARCHIVE_STORAGE_PORT:-9000}:9000"
             - "${ARCHIVE_STORAGE_CONSOLE_PORT:-9001}:9001"
-        # 对象数据同样不落命名卷，保证重建后得到空存储。
-        tmpfs:
-            - /data:uid=10001,gid=10001,mode=0750
         command: ["/data"]
         healthcheck:
             test: ["CMD-SHELL", "curl -fsS http://localhost:9000/health >/dev/null"]
