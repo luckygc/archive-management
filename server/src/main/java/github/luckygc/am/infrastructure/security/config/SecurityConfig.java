@@ -6,7 +6,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -18,12 +17,10 @@ import org.springframework.security.config.annotation.web.configurers.ExceptionH
 import org.springframework.security.config.annotation.web.configurers.SecurityContextConfigurer;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
-import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.session.ChangeSessionIdAuthenticationStrategy;
 import org.springframework.security.web.context.SecurityContextRepository;
@@ -32,6 +29,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import github.luckygc.am.infrastructure.security.ApiAuthenticationEntryPoint;
 import github.luckygc.am.infrastructure.security.ApiRequestPaths;
 import github.luckygc.am.infrastructure.security.ApiRequestSignatureFilter;
 
@@ -47,6 +45,7 @@ public class SecurityConfig {
     private final AuthenticationFailureHandler totpChallengeAuthenticationFailureHandler;
     private final SecurityCorsProperties corsProperties;
     private final SecurityAuthorizationProperties authorizationProperties;
+    private final ApiAuthenticationEntryPoint apiAuthenticationEntryPoint;
 
     public SecurityConfig(
             SecurityContextRepository securityContextRepository,
@@ -56,7 +55,8 @@ public class SecurityConfig {
             @Qualifier("formLoginAuthenticationFailureHandler") AuthenticationFailureHandler authenticationFailureHandler,
             @Qualifier("totpChallengeAuthenticationFailureHandler") AuthenticationFailureHandler totpChallengeAuthenticationFailureHandler,
             SecurityCorsProperties corsProperties,
-            SecurityAuthorizationProperties authorizationProperties) {
+            SecurityAuthorizationProperties authorizationProperties,
+            ApiAuthenticationEntryPoint apiAuthenticationEntryPoint) {
         this.securityContextRepository = securityContextRepository;
         this.apiRequestSignatureFilter = apiRequestSignatureFilter;
         this.loginFailureLimitFilter = loginFailureLimitFilter;
@@ -65,6 +65,7 @@ public class SecurityConfig {
         this.totpChallengeAuthenticationFailureHandler = totpChallengeAuthenticationFailureHandler;
         this.corsProperties = corsProperties;
         this.authorizationProperties = authorizationProperties;
+        this.apiAuthenticationEntryPoint = apiAuthenticationEntryPoint;
     }
 
     @Bean
@@ -136,11 +137,7 @@ public class SecurityConfig {
     private void configureExceptionHandling(
             ExceptionHandlingConfigurer<HttpSecurity> exceptionHandling) {
         exceptionHandling.defaultAuthenticationEntryPointFor(
-                unauthorizedEntryPoint(), new ApiRequestMatcher());
-    }
-
-    private AuthenticationEntryPoint unauthorizedEntryPoint() {
-        return new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED);
+                apiAuthenticationEntryPoint, new ApiRequestMatcher());
     }
 
     @Bean
