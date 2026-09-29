@@ -14,6 +14,8 @@
 
 项目自有 API 直接以资源路径开始，例如 `/archive-items`，默认由 Spring Boot 主应用提供；新接口按 `api-contract` 中选定的外部规范设计，存量接口在迁移前使用其中单列的兼容合同。登录态保存在服务端 HTTP Session，浏览器使用配置的 session cookie 关联会话。除业务明确声明的公开入口和预检请求外，客户端应按服务端认证、授权、CSRF、CORS 和可选请求签名要求访问。
 
+后端运行时在 `/v3/api-docs` 提供 OpenAPI JSON，需使用已认证的会话访问。分页接口在文档中使用 `limit`、`cursor` 查询参数；具体业务字段、可排序字段和权限仍以对应业务规格为准。
+
 调用失败时，客户端按 `api-contract` 定义的 ProblemDetail 处理；新接口用 `type` 识别问题类型，存量接口可保留 `traceId` 用于排障。不要依赖异常类名、HTML 错误页或自由文本推断错误类型。集合、分页和异步任务同样只按 `api-contract` 消费，不根据实现框架类型猜测合同。
 
 搜索投影重建任务已支持断线后找回：受理响应体是操作监视资源，响应头的 `Operation-Location` 是绝对监视地址，客户端可按 `Retry-After` 轮询；重新登录后可通过 `GET /operations` 查找自己发起且仍有权限查看的任务，再通过 `GET /operations/{id}` 读取状态。当前操作类型、分页限额和结果保留见[档案记录搜索规格](../specs/SPEC-档案记录搜索.md)。本地 Vite 开发服务器会将 `/operations` 转发到 Spring Boot。
