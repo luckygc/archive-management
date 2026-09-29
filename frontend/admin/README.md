@@ -7,7 +7,8 @@ PC 主应用使用 Vue 3 + TypeScript，并继续以 Vite+ 作为统一工具链
 - `vue`：页面与组件运行时。
 - `vue-router`：Hash 路由、认证守卫和页面元数据。
 - `pinia`：仅保存登录态、权限摘要和页签等全局客户端状态。
-- `element-plus`：表格、表单、菜单、页签、抽屉、对话框和反馈组件。
+- `@tanstack/vue-table`：管理端数据表格的状态与排序。
+- `element-plus`：表单、菜单、页签、抽屉、对话框和反馈组件。
 - `axios`：由 `frontend/packages/core` 封装统一 API client。
 - `zod`：动态字段和必要外部边界的运行时校验。
 - `dayjs`：日期输入与 API 字符串转换。
@@ -30,3 +31,5 @@ PC 主应用使用 Vue 3 + TypeScript，并继续以 Vite+ 作为统一工具链
 - 登出当前会话：`DELETE /login-sessions/{session}`
 
 非登录页由 Vue Router 守卫校验 session；后端返回 401 时清理会话、权限和页签状态，并跳转到 `/login?redirect=...`。登录成功后返回 redirect 指向的业务页面。
+
+项目自有 API 使用无 `/api` 前缀的根路径，JSON 与 query 字段保持 `camelCase`。档案搜索和导出把多列排序放在 URL 的 `sort` 参数中，复杂业务查询条件放在 JSON 请求体中；cursor 列表直接沿用服务端返回的分页链接。具体协议以[项目 API 合同](../../specs/SPEC-项目API合同.md)及对应业务规格为准。
