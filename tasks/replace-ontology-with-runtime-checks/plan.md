@@ -1,4 +1,4 @@
-# 实施计划：replace-ontology-with-runtime-checks
+# 实施计划：以运行时约束替换本体
 
 ## 背景
 

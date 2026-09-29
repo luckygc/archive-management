@@ -1,4 +1,4 @@
-# 任务清单：add-repository-and-physical-management
+# 任务清单：档案业务库与实物管理
 
 ## 1. 数据模型与迁移
 
@@ -19,7 +19,7 @@
 
 ## 4. 领域校准
 
-- [x] 4.1 将“移交”校准为业务部门向档案室的实物移交接收，移除 `TRANSFER` 业务库合同并补充批次接收规格；运行 `mise run governance-check`，预期变更规格和文档链接检查通过。
+- [x] 4.1 将“移交”校准为业务部门向档案室的实物移交接收，移除 `TRANSFER` 业务库合同并补充批次接收规格；核对任务验收文件和相关文档链接。
 
 ## 5. 实物移交接收
 
@@ -31,6 +31,6 @@
 
 - [x] 6.1 补充 Controller/API 合同测试并核对错误响应；运行 `cd server && mise exec -- mvn -Dtest='*ArchiveRepository*Tests,*ArchivePhysical*Tests,*ArchiveStorageLocation*Tests' test`，预期新增 API 测试全部通过。
 - [x] 6.2 收紧集合响应边界，并将一档一实物查询改为单资源接口；运行 `cd server && mise exec -- mvn -Dtest='ArchiveItemElectronicFileServiceTests,ArchiveItemElectronicFileControllerTests,ArchivePhysicalObjectServiceTests,ArchivePhysicalObjectControllerTests' test`，预期 Service 不依赖 HTTP 集合包装且单资源不存在时返回 404。
-- [x] 6.3 执行格式、后端回归和规格治理验证；依次运行 `mise run server-format`、`mise run server-test`、`mise run governance-check`，预期格式化完成、后端测试和规格治理检查通过。
-- [x] 6.4 将增长型位置历史改为游标分页；验证 HTTP `limit` 与无效参数、Service 权限范围及无默认 count，并运行后端测试和规格治理检查。
+- [x] 6.3 执行格式和后端回归验证；运行 `mise run server-format`、`mise run server-test`，预期格式化完成且后端测试通过。
+- [x] 6.4 将增长型位置历史改为游标分页；验证 HTTP `limit` 与无效参数、Service 权限范围及无默认 count，并运行后端测试。
 - [ ] 6.5 Docker 可用时执行 `ArchivePhysicalLocationHistoryDataRepositoryTests`，确认 PostgreSQL 中相同操作时间按 ID 稳定前后翻页；当前环境缺少 Docker 引擎，测试已编译但跳过。

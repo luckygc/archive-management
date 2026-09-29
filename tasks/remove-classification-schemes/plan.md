@@ -1,8 +1,8 @@
-# 实施计划：remove-classification-schemes
+# 实施计划：移除分类方案
 
 ## 背景
 
-当前数据库通过 `am_archive_classification_scheme` 和 `am_archive_category.scheme_id` 将全局分类树分组，分类页面也要求先选择方案。但全宗真正保存的是 `am_archive_fonds_category_scope(fonds_code, category_id)`，分类字段、动态表、明细表、布局和规则都直接归属于分类。稳定 `archive-metadata` 规格已经把分类定义为不单独维护门类或分类分组的全局多层级结构，分类方案因此与现有业务模型重复。
+当前数据库通过 `am_archive_classification_scheme` 和 `am_archive_category.scheme_id` 将全局分类树分组，分类页面也要求先选择方案。但全宗真正保存的是 `am_archive_fonds_category_scope(fonds_code, category_id)`，分类字段、动态表、明细表、布局和规则都直接归属于分类。稳定档案元数据规格已经把分类定义为不单独维护门类或分类分组的全局多层级结构，分类方案因此与现有业务模型重复。
 
 当前分类方案还承担两项隐式默认行为：系统初始化默认方案；全宗未配置分类范围时返回默认方案下的分类。全宗分类关系另有 `default_flag`。用户已明确系统不需要任何默认分类，所有全宗都应显式勾选可用分类。
 
@@ -49,7 +49,7 @@
 
 ### 4. API 直接删除未发布资源
 
-删除分类方案集合及成员 API，不增加兼容端点。档案分类请求与响应删除 `schemeId`；全宗分类范围请求与响应删除 `defaultFlag`。其余 URL 和集合响应保持现有 `api-contract`。
+删除分类方案集合及成员 API，不增加兼容端点。档案分类请求与响应删除 `schemeId`；全宗分类范围请求与响应删除 `defaultFlag`。其余 URL 和集合响应保持现有项目 API 合同。
 
 前端分类页面移除方案选择器和方案标签，分类树直接展示所有分类；全宗可用分类弹窗移除默认复选框，保留分类选择、排序、添加和删除操作。
 

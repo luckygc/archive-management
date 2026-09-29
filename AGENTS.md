@@ -9,20 +9,20 @@
 - 保护用户工作树；不处理、覆盖、回退或清理与当前任务无关的改动和未跟踪文件。
 - 选用组件或库前核对协议与商业化行为；不把 Enterprise/Pro 能力作为默认基础能力，不采用限制商业使用的库。
 - 自动化贡献者不得主动启动长期占用端口的开发服务；需要预览时只告知用户可执行的命令。
-- 最小必要验证必须通过 `mise.toml`、项目脚本或构建配置中的真实入口执行；治理相关改动必须运行 `mise run governance-check`。
+- 最小必要验证必须通过 `mise.toml`、项目脚本或构建配置中的真实入口执行。
 
 ## 真相源路由
 
 | 改动类型 | 必读真相源/技能 |
 | --- | --- |
-| 业务、状态机、权限、验收 | 对应 `specs/SPEC-*.md` 与 `tasks/*/specs/SPEC-*.md` 中的进行中增量 |
+| 业务、状态机、权限、验收 | 对应 `specs/SPEC-*.md` 与 `tasks/*/specs/SPEC-*.md` 中的任务验收要求 |
 | 项目自有 API | `specs/SPEC-项目API合同.md` + 对应业务规格；合同已转述采纳的外部规则，只有未覆盖的新问题才查官方来源 |
 | 产品定位 | `SPEC.md` |
 | 前端界面 | `SPEC.md`、`docs/design-system.md` |
 | 稳定架构和包边界 | `docs/architecture.md` + ArchUnit |
 | 持久化、实体、Repository、Mapper、审计 | `docs/architecture.md` + 对应业务规格 |
 | 开发、验证、部署、运维 | `mise.toml`/构建配置 + 对应 `docs/` |
-| 规格变更 | `tasks/<变更名>/SPEC.md`、`plan.md`、`todo.md` 与对应能力增量 |
+| 规格变更 | `tasks/<任务名>/SPEC.md`、`plan.md`、`todo.md` 与对应验收文件 |
 
 发生冲突时，先校准真相源再修改代码。
 

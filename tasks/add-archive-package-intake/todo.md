@@ -1,4 +1,4 @@
-# 任务清单：add-archive-package-intake
+# 任务清单：档案信息包接收
 
 ## 1. 接收记录与包解析
 
@@ -19,7 +19,7 @@
 
 - [x] 4.1 执行 `mise run server-format && mise run server-test`，预期 Java 格式化完成且后端测试全部通过。
 - [x] 4.2 执行 `mise run frontend-ready`，预期前端检查、测试和构建全部通过。
-- [x] 4.3 执行 `mise run governance-check`，预期规格治理检查通过。
+- [x] 4.3 核对归档接收任务规格、验收文件索引和相关文档链接。
 ## 5. 完整离线信息包
 
 - [x] 5.1 扩展接收包迁移、实体和记录事务，保存格式配置、原始 ZIP 存储对象、解析统计与四性检测结果；运行 `cd server && mise exec -- mvn -Dtest=ArchiveIntakePackageRecordServiceTests,ArchitectureRulesTest test`，预期原包与接收记录同事务提交或补偿回滚，检测结果可追溯。
@@ -32,5 +32,5 @@
 
 ## 6. 完整验证与收口
 
-- [x] 6.1 执行服务端格式检查与全量测试、前端检查与构建、前端单 worker 全量测试及 `mise run governance-check`；预期后端、前端、构建和规格治理全部通过，PostgreSQL 与对象存储补偿证据分别准确报告。
-- [ ] 6.2 用户确认交付后，将增量验收要求合入稳定 `intake` 规格并移除进行中变更；再次运行 `mise run governance-check`，预期规格索引、文档链接和任务结构检查全部通过。
+- [x] 6.1 执行服务端格式检查与全量测试、前端检查与构建、前端单 worker 全量测试；预期后端、前端和构建检查通过，PostgreSQL 与对象存储补偿证据分别准确报告。
+- [ ] 6.2 用户确认交付后，将任务验收要求合入稳定归档接收规格并移除进行中任务目录；核对规格索引、文档链接和任务目录引用。

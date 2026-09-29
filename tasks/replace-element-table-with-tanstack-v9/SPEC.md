@@ -1,4 +1,4 @@
-# 变更规格：replace-element-table-with-tanstack-v9
+# 任务规格：替换管理表格实现
 
 项目命令、代码风格、测试策略和工程边界见[项目总规格](../../SPEC.md)。
 
@@ -27,24 +27,14 @@
 - 不替换 Element Plus 的表单、弹窗、按钮、标签等非表格组件。
 - 不在本次变更中引入虚拟滚动、列拖拽、行内编辑或新的分页模式。
 
-## 受影响能力
-
-### New Capabilities
-
-- `admin-data-table`: 统一管理端数据表格的渲染、可访问性、本地与远程多列排序、加载、空状态、树形行和响应式行为。
-
-### Modified Capabilities
-
-- `archive-record-search`: 管理端档案检索结果表由单列远程排序改为提交有优先级的多列 `sort`。
-
 ## 实施影响
 
-- 受影响真相源：新增 `admin-data-table` 规格，并增量修改 `archive-record-search`；设计仍遵循[项目总规格](../../SPEC.md)与[设计系统](../../docs/design-system.md)。
+- 受影响真相源：新增管理端数据表格规格，并调整档案记录搜索规格；设计仍遵循[项目总规格](../../SPEC.md)与[设计系统](../../docs/design-system.md)。
 - 受影响代码：`frontend/admin/src` 下共享组件、所有直接使用 `el-table` 的业务页面及其测试。
 - 依赖变化：`frontend/admin` 新增 MIT 协议的 `@tanstack/vue-table` v9；Element Plus 保留用于其他界面组件。
 - API 与后端：沿用档案检索的多列排序能力，对外使用 `sort` 查询参数，不新增接口、数据库迁移或后端依赖。
 
-## 验收增量
+## 验收文件
 
-- [admin-data-table](specs/SPEC-管理端数据表格.md)
-- [archive-record-search](specs/SPEC-档案记录搜索.md)
+- [管理端数据表格](specs/SPEC-管理端数据表格.md)：统一渲染、可访问性、排序、加载、空状态、树形行和响应式行为。
+- [档案记录搜索](specs/SPEC-档案记录搜索.md)：检索结果表提交有优先级的多列 `sort`。

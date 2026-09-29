@@ -1,4 +1,4 @@
-# 变更规格：add-repository-and-physical-management
+# 任务规格：档案业务库与实物管理
 
 项目命令、代码风格、测试策略和工程边界见[项目总规格](../../SPEC.md)。
 
@@ -30,18 +30,6 @@
 - 本变更不实现一个档案对象对应多个独立实物载体，也不实现箱盒等可移动容器模型。
 - 本变更不交付新的 PC 管理页面，仅建立后端业务与 API 闭环。
 
-## 受影响能力
-
-### New Capabilities
-
-- `archive-repository-management`: 定义业务库配置、档案当前业务库、库变更和正式检索隔离。
-- `physical-archive-management`: 定义条目/案卷实物对象、实物保管状态、业务部门实物移交接收、层级存放位置、批量关联位置和变更历史。
-
-### Modified Capabilities
-
-- `archive-record-routing`: 条目和案卷主表增加当前业务库，并按业务库角色约束正式查询与库变更。
-- `archive-metadata`: `PHYSICAL` 动态字段仅表达分类特有实物扩展属性，不再作为实物存在性和当前位置的真相源。
-
 ## 实施影响
 
 - 受影响真相源：`specs/SPEC-档案记录路由.md`、`specs/SPEC-档案元数据.md`，以及新增两项业务规格。
@@ -50,9 +38,9 @@
 - 档案条目与案卷创建、读取、正式查询及库变更接口需要同步当前业务库合同。
 - 不新增第三方依赖；复用现有认证、权限、审计和 ProblemDetail 错误机制。
 
-## 验收增量
+## 验收文件
 
-- [archive-metadata](specs/SPEC-档案元数据.md)
-- [archive-record-routing](specs/SPEC-档案记录路由.md)
-- [archive-repository-management](specs/SPEC-档案业务库管理.md)
-- [physical-archive-management](specs/SPEC-实物档案管理.md)
+- [档案元数据](specs/SPEC-档案元数据.md)：`PHYSICAL` 动态字段只表达分类特有实物扩展属性，不承担实物存在性和当前位置的真相源。
+- [档案记录路由](specs/SPEC-档案记录路由.md)：条目和案卷增加当前业务库，并按业务库角色约束正式查询与库变更。
+- [档案业务库管理](specs/SPEC-档案业务库管理.md)：定义业务库配置、当前业务库、库变更和正式检索隔离。
+- [实物档案管理](specs/SPEC-实物档案管理.md)：定义实物对象、保管状态、移交接收、存放位置和变更历史。

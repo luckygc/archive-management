@@ -13,7 +13,7 @@ Archive Management 是面向机构内部使用的档案管理系统。PC 工作�
 ## 能力与验收
 
 - [稳定能力规格](specs/README.md)定义业务字段、状态机、权限、API 和可测试场景。
-- [进行中的变更](tasks/README.md)分别维护本次目标、增量验收、实施计划和任务清单；完成后把最终要求并入稳定能力规格。
+- [进行中的任务](tasks/README.md)分别维护本次目标、验收要求、实施计划和任务清单；完成后把最终要求并入稳定能力规格。
 - [领域词汇](docs/domain-glossary.md)统一术语，[架构总览](docs/architecture.md)记录稳定技术边界。说明文档不能覆盖验收要求。
 
 ## 技术与命令
@@ -26,7 +26,6 @@ Archive Management 是面向机构内部使用的档案管理系统。PC 工作�
 | 服务端格式检查 | `mise run server-format-check` |
 | 服务端测试 | `mise run server-test` |
 | 前端检查、测试与构建 | `mise run frontend-ready` |
-| 规格与文档治理 | `mise run governance-check` |
 | 本地前端预览 | `mise run web-dev`，仅由开发者按需启动 |
 
 ## 项目结构
@@ -60,7 +59,7 @@ public class IntakeService {
 
 ## 测试策略
 
-业务状态、权限、数据范围、持久化和失败恢复由服务端测试验证；API 边界验证请求与响应；前端测试覆盖用户可见状态和交互。修改范围决定最窄必要验证，规格与治理文件改动执行 `mise run governance-check`。涉及包边界时运行 ArchUnit，涉及 PostgreSQL 行为时使用项目已有的集成测试入口。
+业务状态、权限、数据范围、持久化和失败恢复由服务端测试验证；API 边界验证请求与响应；前端测试覆盖用户可见状态和交互。修改范围决定最窄必要验证。涉及包边界时运行 ArchUnit，涉及 PostgreSQL 行为时使用项目已有的集成测试入口。
 
 ## 工程边界
 

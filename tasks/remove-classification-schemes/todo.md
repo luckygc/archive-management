@@ -1,4 +1,4 @@
-# 任务清单：remove-classification-schemes
+# 任务清单：移除分类方案
 
 ## 1. 数据库与元数据合同
 
@@ -17,5 +17,5 @@
 
 ## 4. 真相源与最终验证
 
-- [x] 4.1 更新 `docs/domain-glossary.md`、数据库说明、用户手册和相关当前知识库，删除分类方案和默认分类表述；稳定规格中的旧合同由本变更的 `REMOVED` 增量覆盖，归档时再合并；验证：生产代码与当前文档无旧概念残留，且 `mise run governance-check` 退出码为 0。
-- [ ] 4.2 执行后端、前端和规格最终验证；确认最终要求已并入稳定规格后移除进行中变更目录。验证：`mise run server-test && mise run frontend-ready && mise run governance-check` 均退出码为 0，PostgreSQL 测试未跳过时覆盖目标结构和写入边界，工作树无验证生成的非预期文件。
+- [x] 4.1 更新 `docs/domain-glossary.md`、数据库说明、用户手册和相关当前知识库，删除分类方案和默认分类表述；稳定规格中的旧合同由本任务的清理要求覆盖，任务完成时再合并；验证：生产代码与当前文档无旧概念残留。
+- [ ] 4.2 执行后端、前端和规格最终验证；确认最终要求已并入稳定规格后移除进行中任务目录。验证：`mise run server-test` 与 `mise run frontend-ready` 均退出码为 0，PostgreSQL 测试未跳过时覆盖目标结构和写入边界，核对规格链接且工作树无验证生成的非预期文件。

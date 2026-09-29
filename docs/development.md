@@ -94,7 +94,6 @@ mise run web-dev
 
 | 改动范围 | 真实入口 |
 | --- | --- |
-| 当前规格或工程文档 | `mise run governance-check` |
 | 全部前端包 | `mise run frontend-check`、`mise run frontend-test`；影响构建时运行 `mise run frontend-build` |
 | 单个前端包 | `mise run web-check`、`mise run web-test` 等对应任务，或使用 `frontend-core-check`、`frontend-core-test` 等共享包任务 |
 | 后端 Java | `mise run server-format-check`、`mise run server-compile`、相关 `mise run server-test` |

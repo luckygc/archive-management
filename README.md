@@ -35,7 +35,6 @@
 ```bash
 mise tasks ls
 mise run frontend-install
-mise run governance-check
 ```
 
 本地准备、运行和按范围验证详见 [`docs/development.md`](docs/development.md)。`mise run web-dev` 会长期占用端口，仅由开发者在需要预览时本地启动。

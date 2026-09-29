@@ -57,7 +57,7 @@ archive-management 是面向机构内部使用的档案管理系统，覆盖档�
 ## 真相源
 
 - 产品定位和用户：`SPEC.md`
-- 业务、状态机、权限与验收：对应 `specs/` 和 `tasks/` 中的变更规格
+- 业务、状态机、权限与验收：对应 `specs/` 中的稳定规格和 `tasks/` 中的任务验收
 - 稳定技术边界：`docs/architecture.md`
 - 项目 API 合同：`specs/SPEC-项目API合同.md`
 - 前端视觉与交互：`docs/design-system.md`

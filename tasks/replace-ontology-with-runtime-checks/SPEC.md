@@ -1,4 +1,4 @@
-# 变更规格：replace-ontology-with-runtime-checks
+# 任务规格：以运行时约束替换本体
 
 项目命令、代码风格、测试策略和工程边界见[项目总规格](../../SPEC.md)。
 
@@ -30,26 +30,17 @@
 - 新增 PostgreSQL 数据不变量清单及迁移：普通约束优先；仅对发布后不可变和必须在事务结束检查的跨表状态使用版本化触发函数/约束触发器。
 - 当前版本为 `0.0.1`，按未发布目标结构直接重写运行时规则 Flyway，删除本体表、旧规则/effect 表、相关历史变更和兼容迁移，不保留旧模型数据或双读分支。
 
-## 受影响能力
-
-### Modified Capabilities
-
-- `archive-ontology-core`: 删除字段语义注册及所有现行本体合同，不再保留替代性本体资源。
-- `archive-local-rule-engine`: 将泛化规则/effect 和手工执行模型改为用户定义条件、系统固定触发点与固定动作的运行时约束和规则。
-- `archive-record-routing`: 条目和案卷状态变更在同一事务内执行对应运行时检查并处理阻断/警告结果。
-- `archive-import-export`: 导入复用逐条写入检查，导出在生成文件前执行运行时检查。
-
 ## 实施影响
 
 - 真相源：本任务的 `specs/SPEC-档案本体移除.md`，稳定规格 `specs/SPEC-运行时规则引擎.md`、`specs/SPEC-档案记录路由.md`、`specs/SPEC-档案导入导出.md`、`specs/SPEC-项目API合同.md`，以及 `docs/database.md`、`docs/ops-runbook.md` 和档案知识库现状说明。
 - 后端：删除 `module/archive/ontology` 残留和字段语义资源，新增基于真实元数据的字段目录，重构约束/规则实体、Repository、Mapper、固定动作执行器、Service、Controller，并接入条目、案卷、电子文件和导出 Service。
 - 数据库：直接维护 `0.0.1` 目标 Flyway，建立运行时定义、动作、追踪、约束和固定触发函数，删除旧本体与泛化规则结构。
-- API：删除字段语义接口；运行时检查 CRUD、发布和试运行遵循现有 `api-contract` 和 ProblemDetail。
+- API：删除字段语义接口；运行时检查 CRUD、发布和试运行遵循现有项目 API 合同和 ProblemDetail。
 - 前端：删除旧本体/字段语义页面、路由、类型和 client；重做运行时规则工作区、字段选择、固定动作参数表单、发布校验和试运行反馈。
 
-## 验收增量
+## 验收文件
 
-- [archive-import-export](specs/SPEC-档案导入导出.md)
-- [archive-local-rule-engine](specs/SPEC-运行时规则引擎.md)
-- [archive-ontology-core](specs/SPEC-档案本体移除.md)
-- [archive-record-routing](specs/SPEC-档案记录路由.md)
+- [档案导入导出](specs/SPEC-档案导入导出.md)：导入逐条执行运行时检查，导出在生成文件前执行检查。
+- [运行时规则引擎](specs/SPEC-运行时规则引擎.md)：用真实字段、固定触发点和固定动作替换泛化规则和手工执行模型。
+- [档案本体移除](specs/SPEC-档案本体移除.md)：删除字段语义注册及现行本体合同。
+- [档案记录路由](specs/SPEC-档案记录路由.md)：条目和案卷的业务变更在事务内执行运行时检查。

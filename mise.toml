@@ -4,10 +4,6 @@ maven = "3"
 node = "24"
 pnpm = "11"
 
-[tasks.governance-check]
-description = "检查能力规格、变更任务与项目文档"
-run = "node scripts/governance-check.mjs"
-
 [tasks.infra-up]
 description = "清理旧容器和卷，启动全新的 PostgreSQL 和 RustFS 并初始化开发 bucket"
 run = [

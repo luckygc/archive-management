@@ -31,6 +31,6 @@
 
 - 文档中涉及接口字段、状态机、权限边界或验收场景时，先更新对应能力规格或进行中变更，再更新说明文档。
 - 文档中涉及命令、端口、环境变量或配置项时，以 `mise.toml`、`frontend/package.json`、`server/src/main/resources/application.yaml` 和实际源码为准。
-- 规格或治理文档变更必须运行 `mise run governance-check`；其他验证按改动范围从 `mise.toml` 选择。
+- 代码验证按改动范围从 `mise.toml` 选择。
 - 不把未实现能力写成已交付能力；未接入的功能写成边界、限制或规划说明。
 - 不在文档里提交密钥、口令、连接串中的真实密码或客户环境信息。
