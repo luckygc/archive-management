@@ -6,6 +6,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 
+import jakarta.data.page.PageRequest;
+
 import org.apache.commons.lang3.StringUtils;
 import org.jspecify.annotations.Nullable;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -14,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.archive.metadata.ArchiveFonds;
 import github.luckygc.am.module.archive.metadata.ArchiveFondsEvent;
@@ -181,11 +184,12 @@ public class ArchiveFondsService {
         return toDto(updated);
     }
 
-    public List<ArchiveFondsEventDto> listEvents(Long id) {
+    public CursorPageResponse<ArchiveFondsEventDto> listEvents(Long id, PageRequest pageRequest) {
         ArchiveFonds fonds = loadFonds(id);
-        return eventRepository.findByFondsCode(fonds.getFondsCode()).stream()
-                .map(this::toEventDto)
-                .toList();
+        return CursorPageResponse.from(
+                eventRepository.findByFondsCode(fonds.getFondsCode(), pageRequest.withoutTotal()),
+                pageRequest,
+                this::toEventDto);
     }
 
     private void insertEvent(

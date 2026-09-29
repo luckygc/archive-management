@@ -373,7 +373,9 @@
 #### 场景： 查询全宗事件
 
 - **WHEN** 客户端请求 `GET /archive-fonds/{id}/events`
-- **THEN** 系统 SHALL 按生效时间和事件 ID 倒序返回该全宗的号码登记、封闭和恢复事件
+- **THEN** 系统 SHALL 按生效时间和事件 ID 倒序分页返回该全宗的号码登记、封闭和恢复事件
+- **AND** 请求 SHALL 支持 `limit` 与不透明 `cursor`；默认 `limit` 为 `100`，最大为 `1000`
+- **AND** 响应 SHALL 使用 `CursorPageResponse` 提供翻页链接，默认不计算或返回 `total`
 - **AND** 每条事件 SHALL 包含事件类型、前后值、原因、生效时间和可空操作人
 
 #### 场景： 不再删除或复用全宗编码

@@ -17,6 +17,9 @@ import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 
+import jakarta.data.page.CursoredPage;
+import jakarta.data.page.PageRequest;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -226,7 +229,7 @@ class ArchiveFondsServiceTests {
     }
 
     @Test
-    @DisplayName("事件按全宗稳定编码读取")
+    @DisplayName("事件按全宗稳定编码分页读取且不执行总数查询")
     void eventsAreReadByStableFondsCode() {
         ArchiveFonds fonds = fonds(ArchiveFondsStatus.ACTIVE);
         ArchiveFondsEvent event = new ArchiveFondsEvent();
@@ -238,15 +241,24 @@ class ArchiveFondsServiceTests {
         event.setEffectiveAt(NOW);
         event.setCreatedAt(NOW);
         when(fondsRepository.findById(1L)).thenReturn(Optional.of(fonds));
-        when(eventRepository.findByFondsCode("SYS-HD")).thenReturn(List.of(event));
+        @SuppressWarnings("unchecked")
+        CursoredPage<ArchiveFondsEvent> page = mock(CursoredPage.class);
+        when(page.content()).thenReturn(List.of(event));
+        when(eventRepository.findByFondsCode(org.mockito.ArgumentMatchers.eq("SYS-HD"), any()))
+                .thenReturn(page);
 
-        assertThat(service.listEvents(1L))
+        assertThat(service.listEvents(1L, PageRequest.ofSize(2).withTotal()).items())
                 .singleElement()
                 .satisfies(
                         dto -> {
                             assertThat(dto.fondsCode()).isEqualTo("SYS-HD");
                             assertThat(dto.currentValue()).isEqualTo("HD-001");
                         });
+        ArgumentCaptor<PageRequest> capturedPage = ArgumentCaptor.forClass(PageRequest.class);
+        verify(eventRepository)
+                .findByFondsCode(org.mockito.ArgumentMatchers.eq("SYS-HD"), capturedPage.capture());
+        assertThat(capturedPage.getValue().size()).isEqualTo(2);
+        assertThat(capturedPage.getValue().requestTotal()).isFalse();
     }
 
     private ArchiveFonds fonds(ArchiveFondsStatus status) {

@@ -25,8 +25,8 @@ import type {
     UpdateArchiveFondsRequest,
 } from "../types/archive-metadata";
 import type { ArchiveRelatedFilterCategoryDto } from "../types/archive-records";
-import type { CollectionResponse } from "../types/pagination";
-import { queryString } from "./query-string";
+import type { CollectionResponse, CursorPageResponse } from "../types/pagination";
+import { pageUrl, queryString } from "./query-string";
 
 export function listArchiveFonds(status?: ArchiveFondsStatus) {
     return httpClient.get<CollectionResponse<ArchiveFondsDto>>(
@@ -56,8 +56,11 @@ export function reopenArchiveFonds(id: number, payload: ArchiveFondsLifecycleReq
     return httpClient.post<ArchiveFondsDto>(`/archive-fonds/${id}:reopen`, payload);
 }
 
-export function listArchiveFondsEvents(id: number) {
-    return httpClient.get<CollectionResponse<ArchiveFondsEventDto>>(`/archive-fonds/${id}/events`);
+export function listArchiveFondsEvents(id: number, limit = 100, cursor?: string) {
+    const path = `/archive-fonds/${id}/events`;
+    return httpClient.get<CursorPageResponse<ArchiveFondsEventDto>>(
+        pageUrl(path, { limit, cursor }),
+    );
 }
 
 export function listArchiveFondsCategoryScopes(fondsCode: string) {

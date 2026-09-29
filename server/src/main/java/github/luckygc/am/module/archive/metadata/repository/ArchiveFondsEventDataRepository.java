@@ -1,8 +1,8 @@
 package github.luckygc.am.module.archive.metadata.repository;
 
-import java.util.List;
-
 import jakarta.annotation.Nonnull;
+import jakarta.data.page.CursoredPage;
+import jakarta.data.page.PageRequest;
 import jakarta.data.repository.Find;
 import jakarta.data.repository.Insert;
 import jakarta.data.repository.OrderBy;
@@ -24,5 +24,6 @@ public interface ArchiveFondsEventDataRepository {
     @Find
     @OrderBy(value = "effectiveAt", descending = true)
     @OrderBy(value = "id", descending = true)
-    List<ArchiveFondsEvent> findByFondsCode(@Nonnull String fondsCode);
+    CursoredPage<ArchiveFondsEvent> findByFondsCode(
+            @Nonnull String fondsCode, PageRequest pageRequest);
 }

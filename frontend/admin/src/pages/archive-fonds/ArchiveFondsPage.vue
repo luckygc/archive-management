@@ -11,6 +11,7 @@ import {
     reopenArchiveFonds,
     updateArchiveFonds,
 } from "@/shared/api/archive-metadata";
+import CursorPagination from "@/shared/components/CursorPagination.vue";
 import { AmDataTable } from "@/shared/components/data-table";
 import { requestErrorMessage } from "@/shared/requestError";
 import type {
@@ -19,6 +20,7 @@ import type {
     ArchiveFondsEventType,
     ArchiveFondsStatus,
 } from "@/shared/types/archive-metadata";
+import type { CursorPageResponse } from "@/shared/types/pagination";
 
 const fonds = ref<ArchiveFondsDto[]>([]);
 const loading = ref(false);
@@ -48,7 +50,9 @@ const lifecycleForm = reactive({ reason: "", effectiveAt: "" });
 const eventsOpen = ref(false);
 const eventsLoading = ref(false);
 const eventsTarget = ref<ArchiveFondsDto>();
-const events = ref<ArchiveFondsEventDto[]>([]);
+const eventsPage = ref<CursorPageResponse<ArchiveFondsEventDto>>();
+const eventsLimit = ref(100);
+let eventsRequest = 0;
 
 const eventTypeLabels: Record<ArchiveFondsEventType, string> = {
     NUMBER_ASSIGNED: "分配全宗号",
@@ -188,16 +192,31 @@ async function saveLifecycle() {
 
 async function openEvents(row: ArchiveFondsDto) {
     eventsTarget.value = row;
-    events.value = [];
+    eventsPage.value = undefined;
     eventsOpen.value = true;
+    await loadEvents();
+}
+
+async function loadEvents(cursor?: string) {
+    const targetId = eventsTarget.value?.id;
+    if (targetId === undefined) return;
+    const request = ++eventsRequest;
     eventsLoading.value = true;
     try {
-        events.value = (await listArchiveFondsEvents(row.id)).items;
+        const page = await listArchiveFondsEvents(targetId, eventsLimit.value, cursor);
+        if (request === eventsRequest && eventsOpen.value) eventsPage.value = page;
     } catch (error) {
-        ElMessage.error(requestErrorMessage(error, "全宗事件加载失败"));
+        if (request === eventsRequest && eventsOpen.value)
+            ElMessage.error(requestErrorMessage(error, "全宗事件加载失败"));
     } finally {
-        eventsLoading.value = false;
+        if (request === eventsRequest) eventsLoading.value = false;
     }
+}
+
+function changeEventsLimit(limit: number) {
+    eventsLimit.value = limit;
+    eventsPage.value = undefined;
+    void loadEvents();
 }
 
 function replaceFonds(updated: ArchiveFondsDto) {
@@ -424,7 +443,7 @@ onMounted(loadFonds);
             destroy-on-close
         >
             <AmDataTable
-                :data="events"
+                :data="eventsPage?.items ?? []"
                 :loading="eventsLoading"
                 row-key="id"
                 empty-text="暂无事件记录"
@@ -443,6 +462,16 @@ onMounted(loadFonds);
                     {{ row.previousValue || "—" }} → {{ row.currentValue || "—" }}
                 </template>
             </AmDataTable>
+            <div class="am-table-footer">
+                <CursorPagination
+                    :limit="eventsLimit"
+                    :prev="eventsPage?.prev"
+                    :next="eventsPage?.next"
+                    :loading="eventsLoading"
+                    @page="loadEvents"
+                    @limit-change="changeEventsLimit"
+                />
+            </div>
         </el-drawer>
     </section>
 </template>

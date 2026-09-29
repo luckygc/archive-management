@@ -90,15 +90,55 @@ describe("ArchiveFondsPage", () => {
         );
     });
 
-    it("展示全宗号与生命周期历史事件", async () => {
+    it("展示全宗事件并沿用服务端链接翻到下一页", async () => {
+        const next = "/archive-fonds/1/events?limit=100&cursor=opaque";
+        archiveApiMocks.listArchiveFondsEvents.mockResolvedValueOnce({
+            items: [
+                {
+                    id: 11,
+                    fondsCode: "SYS-HD",
+                    eventType: "NUMBER_ASSIGNED",
+                    previousValue: null,
+                    currentValue: "HD",
+                    reason: "完成全宗登记",
+                    effectiveAt: "2026-08-01T10:00:00",
+                    operatedBy: 1,
+                    createdAt: "2026-08-01T10:00:00",
+                },
+            ],
+            next,
+        });
+        archiveApiMocks.listArchiveFondsEvents.mockResolvedValueOnce({
+            items: [
+                {
+                    id: 12,
+                    fondsCode: "SYS-HD",
+                    eventType: "CLOSED",
+                    previousValue: "ACTIVE",
+                    currentValue: "CLOSED",
+                    reason: "机构撤并",
+                    effectiveAt: "2026-08-02T10:00:00",
+                    operatedBy: 1,
+                    createdAt: "2026-08-02T10:00:00",
+                },
+            ],
+        });
         render(ArchiveFondsPage, { global: { plugins: [ElementPlus] } });
 
         const eventButtons = await screen.findAllByRole("button", { name: "事件" });
         await fireEvent.click(eventButtons[0]!);
 
-        await waitFor(() => expect(archiveApiMocks.listArchiveFondsEvents).toHaveBeenCalledWith(1));
+        await waitFor(() =>
+            expect(archiveApiMocks.listArchiveFondsEvents).toHaveBeenCalledWith(1, 100, undefined),
+        );
         expect(await screen.findByText("完成全宗登记")).toBeInTheDocument();
         expect(screen.getAllByText("分配全宗号")).toHaveLength(2);
+        await fireEvent.click(screen.getByRole("button", { name: "下一页" }));
+        await waitFor(() =>
+            expect(archiveApiMocks.listArchiveFondsEvents).toHaveBeenCalledWith(1, 100, next),
+        );
+        expect(await screen.findByText("机构撤并")).toBeInTheDocument();
+        expect(screen.queryByText("完成全宗登记")).not.toBeInTheDocument();
     });
 
     it("不提供删除入口，并为未编号全宗提供分配动作", async () => {

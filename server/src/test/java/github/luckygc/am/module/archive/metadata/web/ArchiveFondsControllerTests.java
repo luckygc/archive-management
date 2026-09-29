@@ -7,12 +7,15 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.LocalDateTime;
 import java.util.List;
+
+import jakarta.data.page.PageRequest;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -21,7 +24,10 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.common.security.AuthenticatedUser;
+import github.luckygc.am.infrastructure.web.CursorPageArgumentResolver;
+import github.luckygc.am.infrastructure.web.CursorPageResponseAdvice;
 import github.luckygc.am.infrastructure.web.GlobalExceptionHandler;
 import github.luckygc.am.module.archive.metadata.ArchiveFondsEventType;
 import github.luckygc.am.module.archive.metadata.ArchiveFondsStatus;
@@ -139,8 +145,8 @@ class ArchiveFondsControllerTests {
     }
 
     @Test
-    @DisplayName("事件列表是独立只读子资源")
-    void eventsAreExposedAsReadOnlySubresource() {
+    @DisplayName("事件列表使用 URL limit 分页且默认不返回总数")
+    void eventsUseCursorPage() throws Exception {
         ArchiveFondsEventDto event =
                 new ArchiveFondsEventDto(
                         11L,
@@ -152,12 +158,26 @@ class ArchiveFondsControllerTests {
                         NOW,
                         9L,
                         NOW);
-        when(fondsService.listEvents(1L)).thenReturn(List.of(event));
+        when(fondsService.listEvents(eq(1L), any(PageRequest.class)))
+                .thenReturn(
+                        CursorPageResponse.withLinks(List.of(event), null, null, null, null, null));
+        var mvc =
+                MockMvcBuilders.standaloneSetup(controller)
+                        .setCustomArgumentResolvers(new CursorPageArgumentResolver())
+                        .setControllerAdvice(
+                                new GlobalExceptionHandler(), new CursorPageResponseAdvice())
+                        .build();
 
-        var response = controller.listFondsEvents(1L);
+        mvc.perform(get("/archive-fonds/1/events?limit=2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].id").value(11))
+                .andExpect(jsonPath("$.total").doesNotExist());
+        ArgumentCaptor<PageRequest> page = ArgumentCaptor.forClass(PageRequest.class);
+        verify(fondsService).listEvents(eq(1L), page.capture());
+        assertThat(page.getValue().size()).isEqualTo(2);
+        assertThat(page.getValue().requestTotal()).isFalse();
 
-        assertThat(response.items()).containsExactly(event);
-        verify(fondsService).listEvents(1L);
+        mvc.perform(get("/archive-fonds/1/events?limit=1001")).andExpect(status().isBadRequest());
     }
 
     private ArchiveFondsDto fonds() {

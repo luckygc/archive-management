@@ -4,6 +4,8 @@ import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.Set;
 
+import jakarta.data.page.PageRequest;
+
 import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -19,6 +21,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import github.luckygc.am.common.api.CollectionResponse;
+import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.archive.ArchiveLevel;
@@ -219,8 +222,9 @@ public class ArchiveMetadataController {
     }
 
     @GetMapping("/archive-fonds/{id}/events")
-    public CollectionResponse<ArchiveFondsEventDto> listFondsEvents(@PathVariable Long id) {
-        return CollectionResponse.of(archiveFondsService.listEvents(id));
+    public CursorPageResponse<ArchiveFondsEventDto> listFondsEvents(
+            @PathVariable Long id, PageRequest pageRequest) {
+        return archiveFondsService.listEvents(id, pageRequest);
     }
 
     @GetMapping("/archive-fonds/{fondsCode}/category-scopes")
