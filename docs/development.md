@@ -11,7 +11,7 @@
 | Java | 25 |
 | Maven | 3 |
 | Node.js | 24 |
-| pnpm | 11 |
+| pnpm | 12.6.0 |
 
 优先通过 `mise run` 执行仓库任务；需要直接调用工具时使用 `mise exec -- <command>`。[`frontend/package.json`](../frontend/package.json) 声明 Node.js 最低版本为 `>=22.12.0`。
 
@@ -58,15 +58,18 @@ archive:
     authentication:
         bootstrap-admin:
             enabled: true
-            password: 变更-me-local-only
 ```
 
-`db/sample` 只用于本地演示或测试。管理员初始化只在本地初始化或受控部署窗口启用；共享环境不启用 Flyway clean。部署环境通过 Spring Boot 标准外部配置提供数据库、S3 endpoint、bucket 和密钥，详见 [`deployment.md`](deployment.md)。
+`db/sample` 只用于本地演示或测试。内置 `admin` 账号在首次启动且账号不存在时自动创建；未提供密码时生成随机初始密码，在数据库事务提交后输出到终端和应用日志，重启不会重复输出或重置密码。请及时保存初始密码并在首次登录后修改。共享环境不启用 Flyway clean。部署环境通过 Spring Boot 标准外部配置提供数据库、S3 endpoint、bucket 和密钥，详见 [`deployment.md`](deployment.md)。
 
-需要在本机测试 TOTP 启用和登录时，先为当前终端生成临时主密钥再启动后端：
+需要在本机强制所有用户登录时绑定 TOTP，先配置 `archive.authentication.totp.required: true`，并为后端配置持久的 TOTP 加密主密钥。未绑定用户密码验证通过后，登录页展示密钥；保存到身份验证器并提交动态验证码后才可进入系统。
+
+仅在临时数据库中测试时，可为当前 PowerShell 终端生成临时主密钥再启动后端：
 
 ```bash
-export ARCHIVE_TOTP_ENCRYPTION_KEY="$(openssl rand -base64 32)"
+$totpBytes = [byte[]]::new(32)
+[System.Security.Cryptography.RandomNumberGenerator]::Fill($totpBytes)
+$env:ARCHIVE_TOTP_ENCRYPTION_KEY = [Convert]::ToBase64String($totpBytes)
 mise run server-run
 ```
 

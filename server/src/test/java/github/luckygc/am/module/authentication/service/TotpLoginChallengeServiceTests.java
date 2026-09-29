@@ -57,7 +57,8 @@ class TotpLoginChallengeServiceTests {
                         userDetailsService,
                         credentialService,
                         failureLimitService,
-                        Clock.fixed(NOW, ZoneOffset.UTC));
+                        Clock.fixed(NOW, ZoneOffset.UTC),
+                        false);
     }
 
     @Test
@@ -68,7 +69,7 @@ class TotpLoginChallengeServiceTests {
                 .when(failureLimitService)
                 .assertLoginAllowed("admin");
 
-        TotpLoginChallengeService.VerificationResult result = service.verify(TOKEN, "123456");
+        TotpLoginChallengeService.VerificationResult result = service.verify(TOKEN, "123456", null);
 
         assertThat(result.errorCode()).isEqualTo("TOTP_CHALLENGE_INVALID");
         verify(challengeRepository).deleteById(TOKEN_KEY);
@@ -81,7 +82,7 @@ class TotpLoginChallengeServiceTests {
         prepareValidState(challenge(4));
         when(credentialService.verifyAndAdvance(7L, "123456")).thenReturn(false);
 
-        TotpLoginChallengeService.VerificationResult result = service.verify(TOKEN, "123456");
+        TotpLoginChallengeService.VerificationResult result = service.verify(TOKEN, "123456", null);
 
         assertThat(result.errorCode()).isEqualTo("TOTP_CHALLENGE_INVALID");
         verify(challengeRepository)
@@ -96,7 +97,7 @@ class TotpLoginChallengeServiceTests {
         prepareValidState(challenge(0));
         when(credentialService.verifyAndAdvance(7L, "123456")).thenReturn(false);
 
-        TotpLoginChallengeService.VerificationResult result = service.verify(TOKEN, "123456");
+        TotpLoginChallengeService.VerificationResult result = service.verify(TOKEN, "123456", null);
 
         assertThat(result.errorCode()).isEqualTo("TOTP_CODE_INVALID");
         verify(challengeRepository)
@@ -112,7 +113,7 @@ class TotpLoginChallengeServiceTests {
         expired.setExpiresAt(LocalDateTime.ofInstant(NOW, ZoneId.systemDefault()));
         when(challengeRepository.findById(TOKEN_KEY)).thenReturn(Optional.of(expired));
 
-        TotpLoginChallengeService.VerificationResult result = service.verify(TOKEN, "123456");
+        TotpLoginChallengeService.VerificationResult result = service.verify(TOKEN, "123456", null);
 
         assertThat(result.errorCode()).isEqualTo("TOTP_CHALLENGE_INVALID");
         verify(challengeRepository).deleteById(TOKEN_KEY);

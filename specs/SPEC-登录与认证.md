@@ -4,7 +4,7 @@
 
 ## 目标
 
-提供 PC 端账号密码登录、用户可选的 TOTP 二次验证、基于服务端会话的认证状态保持，以及当前主体查询和退出登录能力。
+提供 PC 端账号密码登录、可选或部署强制的 TOTP 二次验证、基于服务端会话的认证状态保持，以及当前主体查询和退出登录能力。
 
 ## 验收要求
 
@@ -41,6 +41,18 @@
 - **AND** 系统 SHALL NOT 在该阶段保存 SecurityContext 或创建已认证会话
 - **AND** 系统 SHALL NOT 在该阶段执行登录成功审计
 - **AND** 挑战记录 SHALL NOT 保存密码或 TOTP 验证码
+
+#### 场景： 部署强制 TOTP 后首次登录绑定
+
+- **GIVEN** `archive.authentication.totp.required` 为 `true`
+- **AND** 用户通过账号密码验证，但尚无已确认的 TOTP 凭据
+- **WHEN** 系统处理登录请求
+- **THEN** 系统 SHALL 生成一次性 TOTP 密钥及最多 5 分钟有效的登录挑战
+- **AND** 响应 SHALL 为 `202 Accepted`，包含 `challengeToken`、`expiresAt`、`manualKey` 和 `otpauthUri`，并设置 `Cache-Control: no-store`
+- **AND** 待确认密钥 SHALL 加密保存，数据库只保存挑战 token 摘要
+- **AND** 系统 SHALL NOT 在用户提交有效动态验证码前创建已认证会话或已启用凭据
+- **AND** 有效验证码 SHALL 原子消费挑战与待确认密钥、创建凭据并建立会话
+- **AND** 错误、过期和重放 SHALL 不建立会话；重新通过密码登录可获得新的绑定密钥
 
 #### 场景： 完成 TOTP 二次验证
 
@@ -234,20 +246,26 @@
 - **AND** 写入 Spring Security 权限时 SHALL 自动添加 `ROLE_` 前缀
 - **AND** 对外返回当前用户时 SHALL 去除 `ROLE_` 前缀
 
-#### 场景： 显式初始化管理员账号
+#### 场景： 初始化内置管理员账号
 
-- **GIVEN** 配置 `archive.authentication.bootstrap-admin.enabled` 为 `true`
-- **AND** 配置提供非空管理员账号、密码和显示名称
+- **GIVEN** `archive.authentication.bootstrap-admin.enabled` 默认值为 `true`
 - **WHEN** 应用启动且管理员账号不存在
 - **THEN** 系统 SHALL 创建该管理员用户
-- **AND** 系统 SHALL 使用 `PasswordEncoder` 保存密码密文
-- **AND** 该管理员用户 SHALL 具有 `系统管理员` 和 `系统监控` 角色
+- **AND** 未提供初始化密码时系统 SHALL 生成高熵随机初始密码，只存储其 `PasswordEncoder` 哈希
+- **AND** 随机初始密码 SHALL 仅在创建事务成功提交后输出至终端和应用日志一次
+- **AND** 该管理员用户 SHALL 具有 `超级管理员` 和 `系统监控` 角色
 
-#### 场景： 不创建固定默认管理员
+#### 场景： 管理员已存在时不重置密码
+
+- **GIVEN** 内置管理员账号已存在
+- **WHEN** 应用再次启动
+- **THEN** 系统 SHALL 保留现有密码且不输出初始密码
+
+#### 场景： 显式禁用内置管理员初始化
 
 - **GIVEN** 配置 `archive.authentication.bootstrap-admin.enabled` 不为 `true`
 - **WHEN** 应用启动
-- **THEN** 系统 SHALL NOT 创建固定账号密码的默认管理员
+- **THEN** 系统 SHALL NOT 创建内置管理员
 
 ### 要求： 用户管理
 
@@ -308,6 +326,13 @@ PC 端 SHALL 集成账号密码登录、可选 TOTP、认证状态初始化和�
 - **AND** PC 端 SHALL 清除内存中的密码
 - **AND** PC 端 SHALL 只在内存中保留 challengeToken 与过期时间
 - **AND** PC 端 SHALL NOT 在二次验证成功前初始化认证状态或导航到工作台
+
+#### 场景： 首次登录展示绑定密钥
+
+- **WHEN** 登录接口的 `202 Accepted` 响应包含 `manualKey` 与 `otpauthUri`
+- **THEN** PC 端 SHALL 在登录页展示本地生成的二维码和可复制的手工密钥
+- **AND** 用户输入动态验证码成功前 SHALL 不进入工作台
+- **AND** 离开、过期或完成验证时 SHALL 从内存清除密钥与挑战
 
 #### 场景： 提交 TOTP 二次验证
 

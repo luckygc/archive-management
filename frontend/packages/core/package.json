@@ -9,7 +9,7 @@
         "./types": "./src/types/index.ts"
     },
     "scripts": {
-        "check": "vp lint src && tsc --noEmit",
+        "check": "vp lint src vite.config.ts && tsc --noEmit",
         "check:deprecated": "vp lint --type-aware -D typescript/no-deprecated --quiet src",
         "check:fix": "vp lint --fix src",
         "lint": "vp lint src",
@@ -21,6 +21,7 @@
         "axios": "catalog:"
     },
     "devDependencies": {
+        "jsdom": "catalog:",
         "typescript": "~6.0.3",
         "vite-plus": "catalog:",
         "vitest": "catalog:"

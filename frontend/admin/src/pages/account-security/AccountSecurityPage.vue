@@ -160,16 +160,8 @@ async function copyManualKey() {
     }
 }
 
-function normalizeEnableCode(value: string) {
-    enableForm.code = normalizeCode(value);
-}
-
-function normalizeDisableCode(value: string) {
-    disableForm.code = normalizeCode(value);
-}
-
-function normalizeCode(value: string) {
-    return value.replace(/\D/g, "").slice(0, 6);
+function isTotpDigit(value: string) {
+    return /^\d$/.test(value);
 }
 
 function expireEnrollment() {
@@ -271,14 +263,11 @@ onBeforeUnmount(() => {
                                 />
                             </ElFormItem>
                             <ElFormItem label="验证码">
-                                <ElInput
-                                    :model-value="enableForm.code"
-                                    autocomplete="one-time-code"
+                                <ElInputOtp
+                                    v-model="enableForm.code"
+                                    :validator="isTotpDigit"
                                     :disabled="enabling"
                                     inputmode="numeric"
-                                    maxlength="6"
-                                    placeholder="6 位数字验证码"
-                                    @update:model-value="normalizeEnableCode"
                                 />
                             </ElFormItem>
                             <div class="account-security__actions">
@@ -316,14 +305,11 @@ onBeforeUnmount(() => {
                             />
                         </ElFormItem>
                         <ElFormItem label="验证码">
-                            <ElInput
-                                :model-value="disableForm.code"
-                                autocomplete="one-time-code"
+                            <ElInputOtp
+                                v-model="disableForm.code"
+                                :validator="isTotpDigit"
                                 :disabled="disabling"
                                 inputmode="numeric"
-                                maxlength="6"
-                                placeholder="6 位数字验证码"
-                                @update:model-value="normalizeDisableCode"
                             />
                         </ElFormItem>
                         <div class="account-security__actions">

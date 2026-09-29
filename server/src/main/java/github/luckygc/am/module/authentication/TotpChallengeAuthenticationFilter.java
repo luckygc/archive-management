@@ -44,7 +44,8 @@ public class TotpChallengeAuthenticationFilter extends AbstractAuthenticationPro
             throws AuthenticationException, IOException {
         VerifyTotpRequest body = readBody(request);
         try {
-            VerificationResult result = challengeService.verify(body.challengeToken(), body.code());
+            VerificationResult result =
+                    challengeService.verify(body.challengeToken(), body.code(), request);
             if (!result.successful()) {
                 throw new TotpChallengeAuthenticationException(
                         result.errorCode(), result.username(), null);

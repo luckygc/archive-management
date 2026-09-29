@@ -1,12 +1,18 @@
 package github.luckygc.am.module.authentication;
 
+import java.security.SecureRandom;
+import java.util.Base64;
+
 import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import github.luckygc.am.module.authentication.repository.AuthenticationUserDataRepository;
 import github.luckygc.am.module.authorization.AuthorizationRole;
@@ -15,11 +21,10 @@ import github.luckygc.am.module.authorization.repository.AuthorizationRoleDataRe
 import github.luckygc.am.module.authorization.repository.AuthorizationUserRoleRelationDataRepository;
 
 @Component
-@ConditionalOnProperty(
-        prefix = "archive.authentication.bootstrap-admin",
-        name = "enabled",
-        havingValue = "true")
 public class BootstrapAdminInitializer implements ApplicationRunner {
+
+    private static final Logger log = LoggerFactory.getLogger(BootstrapAdminInitializer.class);
+    private static final SecureRandom RANDOM = new SecureRandom();
 
     private final BootstrapAdminProperties properties;
     private final AuthenticationUserDataRepository userRepository;
@@ -51,10 +56,6 @@ public class BootstrapAdminInitializer implements ApplicationRunner {
                 requireText(
                         properties.getUsername(),
                         "archive.authentication.bootstrap-admin.username");
-        String password =
-                requireText(
-                        properties.getPassword(),
-                        "archive.authentication.bootstrap-admin.password");
         String displayName =
                 requireText(
                         properties.getDisplayName(),
@@ -62,11 +63,22 @@ public class BootstrapAdminInitializer implements ApplicationRunner {
 
         AuthenticationUser user = userRepository.findOptionalByUsername(username);
         if (user == null) {
+            String configuredPassword = StringUtils.trimToNull(properties.getPassword());
+            String password = configuredPassword == null ? randomPassword() : configuredPassword;
             user = new AuthenticationUser();
             user.setUsername(username);
             user.setPassword(passwordEncoder.encode(password));
             user.setDisplayName(displayName);
             user = userRepository.insert(user);
+            if (configuredPassword == null) {
+                TransactionSynchronizationManager.registerSynchronization(
+                        new TransactionSynchronization() {
+                            @Override
+                            public void afterCommit() {
+                                log.warn("内置管理员账号 {} 的初始密码：{}。请首次登录后立即修改", username, password);
+                            }
+                        });
+            }
         }
 
         for (String roleName : properties.getRoleNames()) {
@@ -96,5 +108,11 @@ public class BootstrapAdminInitializer implements ApplicationRunner {
             throw new IllegalStateException("缺少初始化管理员配置: " + propertyName);
         }
         return value.trim();
+    }
+
+    private static String randomPassword() {
+        byte[] bytes = new byte[32];
+        RANDOM.nextBytes(bytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 }

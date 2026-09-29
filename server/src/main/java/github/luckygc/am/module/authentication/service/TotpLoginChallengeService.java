@@ -9,8 +9,11 @@ import java.time.ZoneId;
 import java.util.Base64;
 import java.util.Optional;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 import org.apache.commons.codec.digest.DigestUtils;
 import org.jspecify.annotations.Nullable;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -39,6 +42,7 @@ public class TotpLoginChallengeService {
     private final LoginFailureLimitService failureLimitService;
     private final Clock clock;
     private final SecureRandom secureRandom = new SecureRandom();
+    private final boolean totpRequired;
 
     public TotpLoginChallengeService(
             AuthenticationTotpLoginChallengeDataRepository challengeRepository,
@@ -47,7 +51,8 @@ public class TotpLoginChallengeService {
             DatabaseUserDetailsService userDetailsService,
             TotpCredentialService credentialService,
             LoginFailureLimitService failureLimitService,
-            Clock clock) {
+            Clock clock,
+            @Value("${archive.authentication.totp.required:false}") boolean totpRequired) {
         this.challengeRepository = challengeRepository;
         this.credentialRepository = credentialRepository;
         this.userRepository = userRepository;
@@ -55,12 +60,14 @@ public class TotpLoginChallengeService {
         this.credentialService = credentialService;
         this.failureLimitService = failureLimitService;
         this.clock = clock;
+        this.totpRequired = totpRequired;
     }
 
     @Transactional(rollbackFor = Throwable.class)
     public Optional<TotpLoginChallengeResponse> startIfRequired(Authentication authentication) {
         Long userId = AuthenticatedUsers.requireUserId(authentication.getPrincipal());
-        if (credentialRepository.findById(userId).isEmpty()) {
+        boolean hasCredential = credentialRepository.findById(userId).isPresent();
+        if (!totpRequired && !hasCredential) {
             return Optional.empty();
         }
         byte[] tokenBytes = new byte[32];
@@ -72,12 +79,23 @@ public class TotpLoginChallengeService {
         challenge.setUserId(userId);
         challenge.setFailedAttempts(0);
         challenge.setExpiresAt(localDateTime(expiresAt));
+        TotpCredentialService.LoginTotpEnrollment enrollment =
+                hasCredential
+                        ? null
+                        : credentialService.prepareLoginEnrollment(
+                                userId, authentication.getName(), challengeToken, expiresAt);
         challengeRepository.insert(challenge);
-        return Optional.of(new TotpLoginChallengeResponse(challengeToken, expiresAt));
+        return Optional.of(
+                new TotpLoginChallengeResponse(
+                        challengeToken,
+                        expiresAt,
+                        enrollment == null ? null : enrollment.manualKey(),
+                        enrollment == null ? null : enrollment.otpauthUri()));
     }
 
     @Transactional(rollbackFor = Throwable.class)
-    public VerificationResult verify(String challengeToken, String code) {
+    public VerificationResult verify(
+            String challengeToken, String code, HttpServletRequest httpRequest) {
         String key = tokenKey(challengeToken);
         AuthenticationTotpLoginChallenge challenge = challengeRepository.findById(key).orElse(null);
         LocalDateTime now = localDateTime(clock.instant());
@@ -91,11 +109,14 @@ public class TotpLoginChallengeService {
         }
 
         AuthenticationUser user = userRepository.findById(challenge.getUserId()).orElse(null);
-        if (user == null
-                || !user.isEnabled()
-                || credentialRepository.findById(challenge.getUserId()).isEmpty()) {
+        if (user == null || !user.isEnabled()) {
             challengeRepository.deleteById(key);
             return VerificationResult.challengeInvalid(user == null ? null : user.getUsername());
+        }
+        boolean hasCredential = credentialRepository.findById(challenge.getUserId()).isPresent();
+        if (!hasCredential && !totpRequired) {
+            challengeRepository.deleteById(key);
+            return VerificationResult.challengeInvalid(user.getUsername());
         }
         try {
             failureLimitService.assertLoginAllowed(user.getUsername());
@@ -104,7 +125,16 @@ public class TotpLoginChallengeService {
             return VerificationResult.challengeInvalid(user.getUsername());
         }
 
-        if (!credentialService.verifyAndAdvance(user.getId(), code)) {
+        boolean verified =
+                hasCredential
+                        ? credentialService.verifyAndAdvance(user.getId(), code)
+                        : credentialService.confirmLoginEnrollment(
+                                user.getId(),
+                                challengeToken,
+                                code,
+                                user.getUsername(),
+                                httpRequest);
+        if (!verified) {
             challengeRepository.recordFailure(key, now, MAX_ATTEMPTS);
             failureLimitService.recordFailure(user.getUsername());
             if (challenge.getFailedAttempts() + 1 >= MAX_ATTEMPTS) {
@@ -132,7 +162,11 @@ public class TotpLoginChallengeService {
         return LocalDateTime.ofInstant(instant, ZoneId.systemDefault());
     }
 
-    public record TotpLoginChallengeResponse(String challengeToken, Instant expiresAt) {}
+    public record TotpLoginChallengeResponse(
+            String challengeToken,
+            Instant expiresAt,
+            @Nullable String manualKey,
+            @Nullable String otpauthUri) {}
 
     public record VerificationResult(
             @Nullable Authentication authentication, @Nullable String username, String errorCode) {

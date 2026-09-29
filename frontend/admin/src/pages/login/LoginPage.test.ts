@@ -131,8 +131,48 @@ describe("LoginPage", () => {
         expect(mocks.replace).not.toHaveBeenCalled();
         expect(useSessionStore().currentUser).toBeNull();
         expect(inputs[1]).toHaveValue("");
-        expect(screen.getByLabelText("验证码")).toHaveAttribute("autocomplete", "one-time-code");
-        expect(screen.getByLabelText("验证码")).toHaveAttribute("inputmode", "numeric");
+        expect(getOtpInput()).toHaveAttribute("autocomplete", "one-time-code");
+        expect(getOtpInput()).toHaveAttribute("inputmode", "numeric");
+    });
+
+    it("强制绑定时展示一次性密钥并在验证成功后清除", async () => {
+        mocks.login.mockResolvedValue({
+            status: 202,
+            challenge: {
+                challengeToken: "challenge-1",
+                expiresAt: "2099-08-09T10:05:00Z",
+                manualKey: "ABCDEF123456",
+                otpauthUri:
+                    "otpauth://totp/Archive%20Management:admin?secret=ABCDEF123456&issuer=Archive%20Management",
+            },
+        });
+        mocks.verifyTotp.mockResolvedValue({
+            sessionId: "session-1",
+            username: "admin",
+            displayName: "管理员",
+            roles: ["超级管理员"],
+        });
+        const pinia = createPinia();
+        setActivePinia(pinia);
+        const { container } = render(LoginPage, { global: { plugins: [ElementPlus, pinia] } });
+        const inputs = container.querySelectorAll("input");
+        await fireEvent.update(inputs[0], "admin");
+        await fireEvent.update(inputs[1], "secret");
+        await fireEvent.click(screen.getByRole("button", { name: "登录系统" }));
+
+        expect(await screen.findByRole("heading", { name: "设置身份验证器" })).toBeInTheDocument();
+        expect(screen.getByLabelText("TOTP 手工密钥")).toHaveValue("ABCDEF123456");
+        expect(screen.getByAltText("TOTP 身份验证器配置二维码")).toHaveAttribute(
+            "src",
+            expect.stringMatching(/^data:/),
+        );
+        expect(useSessionStore().currentUser).toBeNull();
+        expect(mocks.replace).not.toHaveBeenCalled();
+
+        await fireEvent.update(getOtpInput(), "123456");
+        await fireEvent.click(screen.getByRole("button", { name: "验证并登录" }));
+        await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith("/"));
+        expect(screen.queryByLabelText("TOTP 手工密钥")).not.toBeInTheDocument();
     });
 
     it("明确提交正确 TOTP 后才进入工作台", async () => {
@@ -151,7 +191,7 @@ describe("LoginPage", () => {
         const { container } = render(LoginPage, { global: { plugins: [ElementPlus, pinia] } });
         await completeFirstStep(container);
 
-        await fireEvent.update(screen.getByLabelText("验证码"), "123456");
+        await fireEvent.update(getOtpInput(), "123456");
         expect(mocks.verifyTotp).not.toHaveBeenCalled();
         await fireEvent.click(screen.getByRole("button", { name: "验证并登录" }));
 
@@ -178,7 +218,7 @@ describe("LoginPage", () => {
         setActivePinia(pinia);
         const { container } = render(LoginPage, { global: { plugins: [ElementPlus, pinia] } });
         await completeFirstStep(container);
-        const codeInput = screen.getByLabelText("验证码");
+        const codeInput = getOtpInput();
         const form = codeInput.closest("form")!;
         await fireEvent.update(codeInput, "123456");
 
@@ -216,7 +256,7 @@ describe("LoginPage", () => {
         const { container } = render(LoginPage, { global: { plugins: [ElementPlus, pinia] } });
         await completeFirstStep(container);
 
-        const codeInput = screen.getByLabelText("验证码");
+        const codeInput = getOtpInput();
         await fireEvent.update(codeInput, "123456");
         await fireEvent.click(screen.getByRole("button", { name: "验证并登录" }));
 
@@ -246,7 +286,7 @@ describe("LoginPage", () => {
         const { container } = render(LoginPage, { global: { plugins: [ElementPlus, pinia] } });
         await completeFirstStep(container);
 
-        await fireEvent.update(screen.getByLabelText("验证码"), "123456");
+        await fireEvent.update(getOtpInput(), "123456");
         await fireEvent.click(screen.getByRole("button", { name: "验证并登录" }));
 
         expect(await screen.findByRole("heading", { name: "账号登录" })).toBeInTheDocument();
@@ -280,6 +320,10 @@ async function completeFirstStep(container: Element) {
     await fireEvent.update(inputs[1], "secret");
     await fireEvent.click(screen.getByRole("button", { name: "登录系统" }));
     await screen.findByRole("heading", { name: "二次验证" });
+}
+
+function getOtpInput() {
+    return screen.getByRole("group", { name: "验证码" }).querySelector("input")!;
 }
 
 function deferred<T>() {

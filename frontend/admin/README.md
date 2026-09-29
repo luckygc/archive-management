@@ -30,6 +30,6 @@ PC 主应用使用 Vue 3 + TypeScript，并继续以 Vite+ 作为统一工具链
 - 登录：`POST /login-sessions`
 - 登出当前会话：`DELETE /login-sessions/{session}`
 
-非登录页由 Vue Router 守卫校验 session；后端返回 401 时清理会话、权限和页签状态，并跳转到 `/login?redirect=...`。登录成功后返回 redirect 指向的业务页面。
+部署要求 TOTP 时，未绑定用户在密码通过后于登录页保存一次性密钥并提交动态验证码；验证成功前不建立会话。非登录页由 Vue Router 守卫校验 session；后端返回 401 时清理会话、权限和页签状态，并跳转到 `/login?redirect=...`。登录成功后返回 redirect 指向的业务页面。
 
 项目自有 API 使用无 `/api` 前缀的根路径，JSON 与 query 字段保持 `camelCase`。档案搜索和导出把多列排序放在 URL 的 `sort` 参数中，复杂业务查询条件放在 JSON 请求体中；cursor 列表直接沿用服务端返回的分页链接。具体协议以[项目 API 合同](../../specs/SPEC-项目API合同.md)及对应业务规格为准。

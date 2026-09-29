@@ -14,6 +14,8 @@ export interface CurrentUserDto {
 export interface TotpLoginChallengeDto {
     challengeToken: string;
     expiresAt: string;
+    manualKey?: string | null;
+    otpauthUri?: string | null;
 }
 
 export type LoginResult =

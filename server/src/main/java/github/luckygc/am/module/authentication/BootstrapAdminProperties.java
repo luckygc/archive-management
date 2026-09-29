@@ -10,7 +10,7 @@ import lombok.Data;
 @ConfigurationProperties(prefix = "archive.authentication.bootstrap-admin")
 public class BootstrapAdminProperties {
 
-    private boolean enabled = false;
+    private boolean enabled = true;
 
     private String username = "admin";
 

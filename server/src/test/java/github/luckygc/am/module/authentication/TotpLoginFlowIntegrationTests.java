@@ -119,7 +119,10 @@ class TotpLoginFlowIntegrationTests extends PostgreSqlContainerTest {
 
         verifyTotp(challengeToken, initialCode, new MockHttpSession())
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value("TOTP_CODE_INVALID"))
+                .andExpect(
+                        jsonPath("$.type")
+                                .value(
+                                        "https://github.com/luckygc/archive-management/blob/main/docs/api-problems.md#totp-code-invalid"))
                 .andExpect(jsonPath("$.traceId").isNotEmpty());
         assertThat(countLogs("login_success")).isEqualTo(successesBeforeChallenge);
 
@@ -141,7 +144,10 @@ class TotpLoginFlowIntegrationTests extends PostgreSqlContainerTest {
         long failuresBeforeRejectedReplay = countLogs("login_failure");
         verifyTotp(competingChallengeToken, nextCode, new MockHttpSession())
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value("TOTP_CODE_INVALID"));
+                .andExpect(
+                        jsonPath("$.type")
+                                .value(
+                                        "https://github.com/luckygc/archive-management/blob/main/docs/api-problems.md#totp-code-invalid"));
         assertThat(countLogs("login_failure")).isEqualTo(failuresBeforeRejectedReplay + 1);
         assertThat(
                         challengeRepository

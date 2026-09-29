@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, reactive, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 
 import {
@@ -12,6 +12,7 @@ import type { TotpLoginChallengeDto } from "@archive-management/frontend-core/ty
 import { usePageTabsStore } from "@/stores/pageTabsStore";
 import { usePermissionStore } from "@/stores/permissionStore";
 import { useSessionStore } from "@/stores/sessionStore";
+import TotpLoginEnrollment from "./TotpLoginEnrollment.vue";
 
 const props = withDefaults(defineProps<{ redirect?: string }>(), { redirect: "/" });
 const router = useRouter();
@@ -22,6 +23,12 @@ const form = reactive({ username: "", password: "" });
 const step = ref<"credentials" | "totp">("credentials");
 const totpCode = ref("");
 const totpChallenge = ref<TotpLoginChallengeDto | null>(null);
+const enrollment = computed(() => {
+    const challenge = totpChallenge.value;
+    return challenge?.manualKey && challenge.otpauthUri
+        ? { manualKey: challenge.manualKey, otpauthUri: challenge.otpauthUri }
+        : null;
+});
 const submitting = ref(false);
 const loginError = ref("");
 let challengeExpiryTimer: number | undefined;
@@ -135,8 +142,8 @@ function challengeExpired(challenge: TotpLoginChallengeDto) {
     return !Number.isFinite(expiresAt) || expiresAt <= Date.now();
 }
 
-function normalizeTotpCode(value: string) {
-    totpCode.value = value.replace(/\D/g, "").slice(0, 6);
+function isTotpDigit(value: string) {
+    return /^\d$/.test(value);
 }
 
 onMounted(() => {
@@ -155,12 +162,18 @@ onBeforeUnmount(() => {
 <template>
     <main class="am-login">
         <ElCard class="am-login__panel" shadow="never">
-            <h1>{{ step === "credentials" ? "账号登录" : "二次验证" }}</h1>
+            <h1>
+                {{
+                    step === "credentials" ? "账号登录" : enrollment ? "设置身份验证器" : "二次验证"
+                }}
+            </h1>
             <p class="am-text-secondary">
                 {{
                     step === "credentials"
                         ? "进入档案业务工作台"
-                        : "请输入身份验证器生成的 6 位验证码"
+                        : enrollment
+                          ? "请保存密钥并完成首次验证"
+                          : "请输入身份验证器生成的 6 位验证码"
                 }}
             </p>
             <ElForm
@@ -188,16 +201,13 @@ onBeforeUnmount(() => {
                 >
             </ElForm>
             <ElForm v-if="step === 'totp'" label-position="top" @submit.prevent="submitTotp">
+                <TotpLoginEnrollment
+                    v-if="enrollment"
+                    :manual-key="enrollment.manualKey"
+                    :otpauth-uri="enrollment.otpauthUri"
+                />
                 <ElFormItem label="验证码">
-                    <ElInput
-                        :model-value="totpCode"
-                        autocomplete="one-time-code"
-                        autofocus
-                        inputmode="numeric"
-                        maxlength="6"
-                        placeholder="6 位数字验证码"
-                        @update:model-value="normalizeTotpCode"
-                    />
+                    <ElInputOtp v-model="totpCode" :validator="isTotpDigit" inputmode="numeric" />
                 </ElFormItem>
                 <p v-if="loginError" class="am-form-error" role="alert">{{ loginError }}</p>
                 <ElButton

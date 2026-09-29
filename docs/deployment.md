@@ -39,7 +39,7 @@ docker build -f frontend/admin/Dockerfile --target web .
 
 - PostgreSQL 地址、数据库、用户名、密码和连接池容量。
 - S3 endpoint、region、bucket、access key、secret key 和 path-style 行为。
-- 可信前端 Origin、请求签名策略、管理员初始化策略和 Actuator 暴露范围。
+- 可信前端 Origin、请求签名策略、TOTP 强制策略、管理员初始化策略和 Actuator 暴露范围。
 - 通过 Secret 提供 `ARCHIVE_TOTP_ENCRYPTION_KEY`，值为 Base64 编码的 32 字节随机主密钥；例如在受控终端以 `openssl rand -base64 32` 生成。
 
 密钥、生产连接串、客户环境参数和管理员口令不得写入 Git。
@@ -75,7 +75,9 @@ archive:
 
 TOTP 依赖准确时间，所有应用节点必须启用 NTP 并监控时间偏移。`ARCHIVE_TOTP_ENCRYPTION_KEY` 必须在首次允许用户启用 TOTP 前配置，并在所有节点保持一致；当前版本不支持在线轮换，误换或丢失会使既有凭据无法解密。用户遗失验证设备时，管理员通过 `POST /authentication-users/{id}:resetTotp` 清除其凭据，再由用户重新绑定。
 
-管理员初始化默认关闭。首次部署可在受控窗口临时启用 `archive.authentication.bootstrap-admin.enabled` 并通过外部 Secret 提供密码；初始化完成后立即关闭。
+内置 `admin` 默认在账号不存在时创建，密码可由外部 Secret 提供；未提供时生成随机初始密码，并在事务提交后一次性输出到控制台和应用日志。已有账号不会在重启时重置密码。请在部署时限制启动日志访问、保存并及时修改初始密码。若不需要内置账号，设置 `archive.authentication.bootstrap-admin.enabled=false`。
+
+`archive.authentication.totp.required` 默认关闭。开启后，尚未绑定 TOTP 的用户在密码验证成功后于登录页取得一次性密钥，保存到身份验证器并输入有效动态验证码后才会建立会话。部署时必须先提供稳定的 `ARCHIVE_TOTP_ENCRYPTION_KEY`。
 
 ## 部署顺序
 

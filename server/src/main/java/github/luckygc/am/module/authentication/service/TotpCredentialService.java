@@ -115,6 +115,60 @@ public class TotpCredentialService {
     }
 
     @Transactional(rollbackFor = Throwable.class)
+    public LoginTotpEnrollment prepareLoginEnrollment(
+            Long userId, String username, String challengeToken, Instant expiresAt) {
+        String secret = codeService.generateSecret();
+        String encryptedSecret = textEncryptor.encrypt(secret);
+        enrollmentRepository.deleteByUserId(userId);
+        AuthenticationTotpEnrollment enrollment = new AuthenticationTotpEnrollment();
+        enrollment.setTokenKey(tokenKey(challengeToken));
+        enrollment.setUserId(userId);
+        enrollment.setEncryptedSecret(encryptedSecret);
+        enrollment.setExpiresAt(localDateTime(expiresAt));
+        enrollmentRepository.insert(enrollment);
+        return new LoginTotpEnrollment(
+                secret, codeService.provisioningUri(ISSUER, username, secret));
+    }
+
+    @Transactional(rollbackFor = Throwable.class)
+    public boolean confirmLoginEnrollment(
+            Long userId,
+            String challengeToken,
+            String code,
+            String username,
+            HttpServletRequest httpRequest) {
+        AuthenticationTotpEnrollment enrollment =
+                enrollmentRepository.findById(tokenKey(challengeToken)).orElse(null);
+        if (enrollment == null
+                || !enrollment.getUserId().equals(userId)
+                || !enrollment.getExpiresAt().isAfter(localDateTime(clock.instant()))) {
+            return false;
+        }
+        String secret = textEncryptor.decrypt(enrollment.getEncryptedSecret());
+        OptionalLong step = codeService.findMatchingStep(secret, code, clock.instant());
+        if (step.isEmpty()) {
+            return false;
+        }
+        if (enrollmentRepository.consume(
+                        enrollment.getTokenKey(), userId, localDateTime(clock.instant()))
+                != 1) {
+            return false;
+        }
+        AuthenticationTotpCredential credential = new AuthenticationTotpCredential();
+        credential.setUserId(userId);
+        credential.setEncryptedSecret(enrollment.getEncryptedSecret());
+        credential.setLastAcceptedStep(step.orElseThrow());
+        credentialRepository.insert(credential);
+        auditService.recordTotpCredentialEvent(
+                httpRequest,
+                AuthenticationLoginEventType.TOTP_ENABLED,
+                requireEnabledUser(userId),
+                userId,
+                username);
+        return true;
+    }
+
+    @Transactional(rollbackFor = Throwable.class)
     public void createCredential(
             CreateTotpCredentialRequest request,
             Long userId,
@@ -299,6 +353,8 @@ public class TotpCredentialService {
 
     public record TotpEnrollmentResponse(
             String enrollmentToken, String manualKey, String otpauthUri, Instant expiresAt) {}
+
+    public record LoginTotpEnrollment(String manualKey, String otpauthUri) {}
 
     public record CreateTotpCredentialRequest(
             String enrollmentToken, String currentPassword, String code) {}

@@ -83,7 +83,7 @@ describe("AccountSecurityPage", () => {
         await fireEvent.click(screen.getByRole("button", { name: "启用身份验证器" }));
 
         await fireEvent.update(screen.getByLabelText("当前密码"), "secret");
-        await fireEvent.update(screen.getByLabelText("验证码"), "123456");
+        await fireEvent.update(getOtpInput(), "123456");
         await fireEvent.click(screen.getByRole("button", { name: "确认启用" }));
 
         await waitFor(() => expect(screen.getByText("已启用")).toBeInTheDocument());
@@ -104,7 +104,7 @@ describe("AccountSecurityPage", () => {
         renderPage(false);
         await fireEvent.click(screen.getByRole("button", { name: "启用身份验证器" }));
         await fireEvent.update(screen.getByLabelText("当前密码"), "secret");
-        const codeInput = screen.getByLabelText("验证码");
+        const codeInput = getOtpInput();
         const form = codeInput.closest("form")!;
         await fireEvent.update(codeInput, "123456");
 
@@ -115,7 +115,7 @@ describe("AccountSecurityPage", () => {
         expect(apiMocks.createTotpCredential).toHaveBeenCalledTimes(1);
         expect(screen.getByRole("button", { name: "确认启用" })).toBeDisabled();
         expect(screen.getByLabelText("当前密码")).toBeDisabled();
-        expect(screen.getByLabelText("验证码")).toBeDisabled();
+        expect(getOtpInput()).toBeDisabled();
 
         pending.resolve({ totpEnabled: true });
         await waitFor(() => expect(screen.getByText("已启用")).toBeInTheDocument());
@@ -135,7 +135,7 @@ describe("AccountSecurityPage", () => {
         renderPage(false);
         await fireEvent.click(screen.getByRole("button", { name: "启用身份验证器" }));
         await fireEvent.update(screen.getByLabelText("当前密码"), "secret");
-        await fireEvent.update(screen.getByLabelText("验证码"), "123456");
+        await fireEvent.update(getOtpInput(), "123456");
 
         await fireEvent.click(screen.getByRole("button", { name: "确认启用" }));
 
@@ -151,7 +151,7 @@ describe("AccountSecurityPage", () => {
         renderPage(false);
         await fireEvent.click(screen.getByRole("button", { name: "启用身份验证器" }));
         await fireEvent.update(screen.getByLabelText("当前密码"), "secret");
-        await fireEvent.update(screen.getByLabelText("验证码"), "123456");
+        await fireEvent.update(getOtpInput(), "123456");
 
         await fireEvent.click(screen.getByRole("button", { name: "确认启用" }));
 
@@ -185,7 +185,7 @@ describe("AccountSecurityPage", () => {
 
         await fireEvent.click(screen.getByRole("button", { name: "停用身份验证器" }));
         await fireEvent.update(screen.getByLabelText("当前密码"), "secret");
-        const codeInput = screen.getByLabelText("验证码");
+        const codeInput = getOtpInput();
         const form = codeInput.closest("form")!;
         await fireEvent.update(codeInput, "654321");
 
@@ -211,6 +211,10 @@ function renderPage(totpEnabled: boolean) {
     sessionStore.initialized = true;
     sessionStore.currentUser = currentUser(totpEnabled);
     return render(AccountSecurityPage, { global: { plugins: [ElementPlus, pinia] } });
+}
+
+function getOtpInput() {
+    return screen.getByRole("group", { name: "验证码" }).querySelector("input")!;
 }
 
 function currentUser(totpEnabled: boolean) {
