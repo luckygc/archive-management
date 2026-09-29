@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
+import jakarta.data.page.PageRequest;
+
 import org.apache.commons.lang3.StringUtils;
 import org.jspecify.annotations.Nullable;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -18,6 +20,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 
+import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.archive.item.service.ArchiveItemReadService;
@@ -205,11 +208,15 @@ public class ArchivePhysicalObjectService {
         return new BatchAssignArchiveLocationResponse(ids.size(), changed, target.getId());
     }
 
-    public List<ArchivePhysicalLocationHistoryResponse> listLocationHistory(Long id, Long userId) {
+    public CursorPageResponse<ArchivePhysicalLocationHistoryResponse> listLocationHistory(
+            Long id, PageRequest pageRequest, Long userId) {
         requireReadPermission(userId);
         ArchivePhysicalObject object = object(id);
         assertOwnerInDataScope(object.getArchiveItemId(), object.getArchiveVolumeId(), userId);
-        return historyRepository.list(id).stream().map(this::toHistoryResponse).toList();
+        return CursorPageResponse.from(
+                historyRepository.list(id, pageRequest.withoutTotal()),
+                pageRequest,
+                this::toHistoryResponse);
     }
 
     private void insertLocationHistory(

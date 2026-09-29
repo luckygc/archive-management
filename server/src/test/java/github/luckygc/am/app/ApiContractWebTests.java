@@ -30,10 +30,16 @@ import github.luckygc.am.module.archive.item.service.ArchiveItemRelationService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemSearchService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemService;
 import github.luckygc.am.module.archive.item.web.ArchiveItemController;
+import github.luckygc.am.module.archive.physical.service.ArchivePhysicalObjectService;
+import github.luckygc.am.module.archive.physical.web.ArchivePhysicalObjectController;
 import github.luckygc.am.module.storage.service.FileLinkService;
 import github.luckygc.am.module.storage.web.FileLinkDownloadController;
 
-@WebMvcTest({ArchiveItemController.class, FileLinkDownloadController.class})
+@WebMvcTest({
+    ArchiveItemController.class,
+    ArchivePhysicalObjectController.class,
+    FileLinkDownloadController.class
+})
 @AutoConfigureMockMvc(addFilters = false)
 @ImportAutoConfiguration({
     SpringDocConfiguration.class,
@@ -45,6 +51,7 @@ class ApiContractWebTests {
     @SpringBootConfiguration
     @Import({
         ArchiveItemController.class,
+        ArchivePhysicalObjectController.class,
         FileLinkDownloadController.class,
         OpenApiConfiguration.class
     })
@@ -57,6 +64,7 @@ class ApiContractWebTests {
     @MockitoBean private ArchiveItemRelationService archiveItemRelationService;
     @MockitoBean private ArchiveItemLockService archiveItemLockService;
     @MockitoBean private FileLinkService fileLinkService;
+    @MockitoBean private ArchivePhysicalObjectService archivePhysicalObjectService;
 
     @Test
     void publishesArchiveItemRoutesAsOpenApi() throws Exception {
@@ -100,5 +108,19 @@ class ApiContractWebTests {
         mockMvc.perform(options("/archive-items/42"))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Accept-Patch", "application/merge-patch+json"));
+    }
+
+    @Test
+    void describesPhysicalLocationHistoryPagination() throws Exception {
+        mockMvc.perform(get("/v3/api-docs"))
+                .andExpect(status().isOk())
+                .andExpect(
+                        jsonPath(
+                                "$.paths['/archive-physical-objects/{id}/location-history'].get.parameters[*].name",
+                                hasItems("id", "limit", "cursor")))
+                .andExpect(
+                        jsonPath(
+                                "$.paths['/archive-physical-objects/{id}/location-history'].get.parameters[*].name",
+                                not(hasItem("page"))));
     }
 }

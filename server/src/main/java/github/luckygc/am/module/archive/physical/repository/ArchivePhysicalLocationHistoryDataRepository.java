@@ -1,8 +1,8 @@
 package github.luckygc.am.module.archive.physical.repository;
 
-import java.util.List;
-
 import jakarta.annotation.Nonnull;
+import jakarta.data.page.CursoredPage;
+import jakarta.data.page.PageRequest;
 import jakarta.data.repository.By;
 import jakarta.data.repository.Find;
 import jakarta.data.repository.Insert;
@@ -25,6 +25,6 @@ public interface ArchivePhysicalLocationHistoryDataRepository {
     @Find
     @OrderBy(value = "operatedAt", descending = true)
     @OrderBy(value = "id", descending = true)
-    List<ArchivePhysicalLocationHistory> list(
-            @By("physicalObjectId") @Nonnull Long physicalObjectId);
+    CursoredPage<ArchivePhysicalLocationHistory> list(
+            @By("physicalObjectId") @Nonnull Long physicalObjectId, PageRequest pageRequest);
 }

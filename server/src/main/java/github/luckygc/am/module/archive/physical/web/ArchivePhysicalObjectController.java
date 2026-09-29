@@ -3,6 +3,8 @@ package github.luckygc.am.module.archive.physical.web;
 import java.math.BigDecimal;
 import java.util.Set;
 
+import jakarta.data.page.PageRequest;
+
 import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -15,7 +17,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import github.luckygc.am.common.api.CollectionResponse;
+import github.luckygc.am.common.api.CursorPageResponse;
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.archive.physical.service.ArchivePhysicalObjectService;
@@ -115,9 +117,9 @@ public class ArchivePhysicalObjectController {
     }
 
     @GetMapping("/archive-physical-objects/{id}/location-history")
-    public CollectionResponse<ArchivePhysicalLocationHistoryResponse> listLocationHistory(
-            @PathVariable Long id, Authentication authentication) {
-        return CollectionResponse.of(service.listLocationHistory(id, userId(authentication)));
+    public CursorPageResponse<ArchivePhysicalLocationHistoryResponse> listLocationHistory(
+            @PathVariable Long id, PageRequest page, Authentication authentication) {
+        return service.listLocationHistory(id, page, userId(authentication));
     }
 
     private Long userId(Authentication authentication) {

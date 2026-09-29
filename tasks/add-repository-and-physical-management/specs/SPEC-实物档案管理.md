@@ -194,5 +194,7 @@
 
 #### 场景： 查询位置历史
 
-- **WHEN** 有档案读取权限和数据范围的客户端查询实物对象位置历史
+- **WHEN** 有档案读取权限和数据范围的客户端请求 `GET /archive-physical-objects/{id}/location-history`
 - **THEN** 系统 SHALL 按操作时间和 ID 倒序返回不可覆盖的历史
+- **AND** 请求 SHALL 使用 `limit`、不透明 `cursor` 查询参数，响应 SHALL 使用 `CursorPageResponse`
+- **AND** 默认 `limit` SHALL 为 `100`，最大 SHALL 为 `1000`，默认响应 SHALL NOT 计算或返回 `total`
