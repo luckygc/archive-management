@@ -31,6 +31,6 @@
 
 - [x] 6.1 补充 Controller/API 合同测试并核对错误响应；运行 `cd server && mise exec -- mvn -Dtest='*ArchiveRepository*Tests,*ArchivePhysical*Tests,*ArchiveStorageLocation*Tests' test`，预期新增 API 测试全部通过。
 - [x] 6.2 收紧集合响应边界，并将一档一实物查询改为单资源接口；运行 `cd server && mise exec -- mvn -Dtest='ArchiveItemElectronicFileServiceTests,ArchiveItemElectronicFileControllerTests,ArchivePhysicalObjectServiceTests,ArchivePhysicalObjectControllerTests' test`，预期 Service 不依赖 HTTP 集合包装且单资源不存在时返回 404。
-- [x] 6.3 执行格式和后端回归验证；运行 `mise run server-format`、`mise run server-test`，预期格式化完成且后端测试通过。
+- [x] 6.3 执行格式和后端回归验证；运行 `mise exec -- mvn -f server/pom.xml spotless:apply`、`mise exec -- mvn -f server/pom.xml test`，预期格式化完成且后端测试通过。
 - [x] 6.4 将增长型位置历史改为游标分页；验证 HTTP `limit` 与无效参数、Service 权限范围及无默认 count，并运行后端测试。
 - [ ] 6.5 Docker 可用时执行 `ArchivePhysicalLocationHistoryDataRepositoryTests`，确认 PostgreSQL 中相同操作时间按 ID 稳定前后翻页；当前环境缺少 Docker 引擎，测试已编译但跳过。

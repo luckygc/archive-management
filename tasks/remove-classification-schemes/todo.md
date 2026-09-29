@@ -3,7 +3,7 @@
 ## 1. 数据库与元数据合同
 
 - [x] 1.1 重写 `V20260622_0100__create_archive_tables.sql` 和示例数据，删除分类方案表、分类 `scheme_id`、全宗分类 `default_flag` 及相关索引，并让示例全宗显式关联分类；验证：`cd server && mise exec -- mvn -Dtest=ArchiveMetadataServiceTests test` 退出码为 0，空库和示例数据初始化不存在分类方案或默认分类列。
-- [x] 1.2 删除分类方案实体、Repository、Service、Controller、DTO，收敛分类和全宗分类范围请求响应；验证：`mise run server-format-check && mise run server-compile` 均退出码为 0，且 `rg 'ArchiveClassificationScheme|schemeId|scheme_id|defaultFlag|default_flag' server/src/main` 不返回分类方案或默认分类生产代码残留。
+- [x] 1.2 删除分类方案实体、Repository、Service、Controller、DTO，收敛分类和全宗分类范围请求响应；验证：`mise exec -- mvn -f server/pom.xml spotless:check && mise exec -- mvn -f server/pom.xml compile` 均退出码为 0，且 `rg 'ArchiveClassificationScheme|schemeId|scheme_id|defaultFlag|default_flag' server/src/main` 不返回分类方案或默认分类生产代码残留。
 
 ## 2. 服务端业务边界
 
@@ -13,9 +13,9 @@
 ## 3. PC 前端
 
 - [x] 3.1 删除分类方案前端类型和 API client，分类页面直接展示全局树并移除方案选择器、标签和表单字段；验证：`cd frontend && mise exec -- pnpm --filter @archive-management/web test -- ArchiveCategoriesPage.test.ts` 退出码为 0，页面不再出现“分类方案”且分类树仍可新增、编辑和选择。
-- [x] 3.2 从全宗可用分类弹窗删除默认分类字段和复选框，保留显式分类与排序操作并补充组件测试；验证：`mise run frontend-check && mise run frontend-test` 均退出码为 0，保存请求不包含 `defaultFlag`，空集合可成功保存。
+- [x] 3.2 从全宗可用分类弹窗删除默认分类字段和复选框，保留显式分类与排序操作并补充组件测试；验证：`mise exec -- pnpm --dir frontend run check && mise exec -- pnpm --dir frontend run test` 均退出码为 0，保存请求不包含 `defaultFlag`，空集合可成功保存。
 
 ## 4. 真相源与最终验证
 
 - [x] 4.1 更新 `docs/domain-glossary.md`、数据库说明、用户手册和相关当前知识库，删除分类方案和默认分类表述；稳定规格中的旧合同由本任务的清理要求覆盖，任务完成时再合并；验证：生产代码与当前文档无旧概念残留。
-- [ ] 4.2 执行后端、前端和规格最终验证；确认最终要求已并入稳定规格后移除进行中任务目录。验证：`mise run server-test` 与 `mise run frontend-ready` 均退出码为 0，PostgreSQL 测试未跳过时覆盖目标结构和写入边界，核对规格链接且工作树无验证生成的非预期文件。
+- [ ] 4.2 执行后端、前端和规格最终验证；确认最终要求已并入稳定规格后移除进行中任务目录。验证：`mise exec -- mvn -f server/pom.xml test` 与 `mise exec -- pnpm --dir frontend run ready` 均退出码为 0，PostgreSQL 测试未跳过时覆盖目标结构和写入边界，核对规格链接且工作树无验证生成的非预期文件。

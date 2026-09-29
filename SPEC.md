@@ -22,11 +22,11 @@ Archive Management 是面向机构内部使用的档案管理系统。PC 工作�
 
 | 操作 | 命令 |
 | --- | --- |
-| 服务端编译 | `mise run server-compile` |
-| 服务端格式检查 | `mise run server-format-check` |
-| 服务端测试 | `mise run server-test` |
-| 前端检查、测试与构建 | `mise run frontend-ready` |
-| 本地前端预览 | `mise run web-dev`，仅由开发者按需启动 |
+| 服务端编译 | `mise exec -- mvn -f server/pom.xml compile` |
+| 服务端格式检查 | `mise exec -- mvn -f server/pom.xml spotless:check` |
+| 服务端测试 | `mise exec -- mvn -f server/pom.xml test` |
+| 前端检查、测试与构建 | `mise exec -- pnpm --dir frontend run ready` |
+| 本地前端预览 | `mise exec -- pnpm --dir frontend run dev:web`，仅由开发者按需启动 |
 
 ## 项目结构
 

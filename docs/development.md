@@ -13,31 +13,41 @@
 | Node.js | 24 |
 | pnpm | 12.6.0 |
 
-优先通过 `mise run` 执行仓库任务；需要直接调用工具时使用 `mise exec -- <command>`。[`frontend/package.json`](../frontend/package.json) 声明 Node.js 最低版本为 `>=22.12.0`。
+简单命令直接使用 Maven 或项目 pnpm 脚本，不在 mise 中重复包装。下面从仓库根目录执行的命令通过 `mise exec -- <command>` 使用仓库指定的工具版本；已激活 mise 的终端也可进入 `server/` 或 `frontend/` 直接执行。组合步骤或较长固定参数保留为 mise 任务，名称按 `:` 分组，可用 `mise tasks ls` 查看。[`frontend/package.json`](../frontend/package.json) 声明 Node.js 最低版本为 `>=22.12.0`。
 
 ## 首次准备
 
-拉取远程变更后、开始开发前安装或刷新前端依赖：
+拉取远程变更后、开始开发前安装或刷新前后端依赖：
 
 ```bash
-mise run frontend-install
+mise run install
 ```
 
-启动本地 PostgreSQL、S3 兼容对象存储并初始化开发 bucket：
+该任务并行执行前端 `pnpm install` 和后端 `mvn dependency:resolve`；后端步骤下载项目依赖，不编译或打包应用。
+
+启动本地 PostgreSQL 和 S3 兼容对象存储：
 
 ```bash
-mise run infra-up
+mise run infra:up
 ```
 
-该任务由 [`deploy/compose.dev.yaml`](../deploy/compose.dev.yaml)、[`mise.toml`](../mise.toml) 和 [`scripts/ensure-dev-bucket.mjs`](../scripts/ensure-dev-bucket.mjs) 定义。每次启动前都会停止并删除旧容器、命名卷和匿名卷，再创建全新的 PostgreSQL 与对象存储容器；等待两个服务健康后，通过 AWS SigV4 创建开发 bucket。本地默认端口、账号和临时数据策略以这些文件为准；Compose 环境只用于开发，不提供生产持久化、高可用或灾备。
+该任务由 [`deploy/compose.dev.yaml`](../deploy/compose.dev.yaml) 和 [`mise.toml`](../mise.toml) 定义。首次运行创建 PostgreSQL 与对象存储容器；再次运行会启动已有容器，等待两个服务健康。Compose 文件不配置数据卷；停止并重新启动同一容器时数据保留，删除或重建容器后数据不保证保留。PostgreSQL 官方镜像会自行创建匿名卷，因此不要使用 `docker compose down` 后期望下一次 `up` 找回原数据。Compose 环境只用于开发，不提供生产级备份、高可用或灾备。
 
 已有 PostgreSQL 和 S3 兼容服务时，无需启动 Compose，可通过本机覆盖配置连接现有服务。停止仓库提供的本地基础设施使用：
 
 ```bash
-mise run infra-down
+mise run infra:stop
 ```
 
-停止任务也会删除容器、命名卷和匿名卷，不保留本地基础设施数据。
+该命令只停止容器，不删除容器或数据；下次执行 `mise run infra:up` 会恢复原容器。
+
+停止并删除本地容器及 Compose 网络使用：
+
+```bash
+mise run infra:down
+```
+
+`infra:down` 不附加 `--volumes`，但容器删除后，再次 `infra:up` 不保证恢复原数据；需要保留当前开发环境时使用 `infra:stop`。
 
 ## 本机覆盖配置
 
@@ -70,26 +80,34 @@ archive:
 $totpBytes = [byte[]]::new(32)
 [System.Security.Cryptography.RandomNumberGenerator]::Fill($totpBytes)
 $env:ARCHIVE_TOTP_ENCRYPTION_KEY = [Convert]::ToBase64String($totpBytes)
-mise run server-run
+mise exec -- mvn -f server/pom.xml spring-boot:run
 ```
 
 该变量只作用于当前终端，不写入仓库或 Compose。保留已有 TOTP 测试数据时必须继续使用同一密钥；本地数据库重建后可以重新生成。
 
 ## 运行入口
 
+同时启动后端和 PC 前端开发服务：
+
+```bash
+mise run dev
+```
+
+`dev` 通过两个内部任务并行启动服务。运行前安装前端依赖，并确保 PostgreSQL 和对象存储可用；使用本地 Compose 时先执行 `mise run infra:up`。该命令长期占用端口，仅由开发者按需执行，自动化代理不主动启动。
+
 Spring Boot 主应用：
 
 ```bash
-mise run server-run
+mise exec -- mvn -f server/pom.xml spring-boot:run
 ```
 
 PC 前端开发服务：
 
 ```bash
-mise run web-dev
+mise exec -- pnpm --dir frontend run dev:web
 ```
 
-`mise run web-dev` 会长期占用端口，只由开发者在需要预览时本地执行；自动化代理不主动启动。
+`mise exec -- pnpm --dir frontend run dev:web` 会长期占用端口，只由开发者在需要预览时本地执行；自动化代理不主动启动。
 
 默认端口和运行参数分别以 `application.yaml` 和 Vite+ 配置为准，本文不复制运行参数表。
 
@@ -97,12 +115,26 @@ mise run web-dev
 
 | 改动范围 | 真实入口 |
 | --- | --- |
-| 全部前端包 | `mise run frontend-check`、`mise run frontend-test`；影响构建时运行 `mise run frontend-build` |
-| 单个前端包 | `mise run web-check`、`mise run web-test` 等对应任务，或使用 `frontend-core-check`、`frontend-core-test` 等共享包任务 |
-| 后端 Java | `mise run server-format-check`、`mise run server-compile`、相关 `mise run server-test` |
-| 后端发布包 | `mise run server-package` |
+| 全部前端包 | `mise exec -- pnpm --dir frontend run check`、`mise exec -- pnpm --dir frontend run test`；影响构建时运行 `mise exec -- pnpm --dir frontend run build` |
+| 单个前端包 | `mise exec -- pnpm --dir frontend --filter @archive-management/web run check`、`mise exec -- pnpm --dir frontend --filter @archive-management/web run test` ；共享包将 `--filter` 的值替换为 `@archive-management/frontend-core` |
+| 后端 Java | `mise exec -- mvn -f server/pom.xml spotless:check`、`mise exec -- mvn -f server/pom.xml compile`、相关 `mise exec -- mvn -f server/pom.xml test` |
+| 后端发布包 | `mise exec -- mvn -f server/pom.xml package` |
 
 后端需要直接运行 Maven 时，先 `cd server` 再执行 Maven 命令。前端需要直接运行 pnpm 或 Vite+ 时先 `cd frontend`，再使用项目依赖提供的 `pnpm ...` 或 `pnpm exec vp ...`；可用子命令以 `pnpm exec vp help` 为准。
+
+## 保留的 mise 任务
+
+| 任务 | 用途 |
+| --- | --- |
+| `mise run install` | 并行安装前端依赖和下载后端 Maven 依赖 |
+| `mise run dev` | 并行启动后端和 PC 前端开发服务 |
+| `mise run infra:up` | 使用固定 Compose 文件启动或恢复容器，等待健康且不重建 |
+| `mise run infra:stop` | 停止容器，保留容器及数据 |
+| `mise run infra:down` | 停止并删除容器及 Compose 网络，不附加 `--volumes` |
+| `mise run frontend:deprecated:check` | 依次检查共享包和 PC 前端的过时 API |
+| `mise run server:deprecated:check` | 使用固定 OpenRewrite 配方检查过时 API 并导出结果 |
+
+后端格式化、依赖下载和 OpenRewrite 迁移可在 `server/` 直接运行 `mise exec -- mvn spotless:apply`、`mise exec -- mvn dependency:resolve`、`mise exec -- mvn rewrite:dryRun` 或 `mise exec -- mvn rewrite:run`。前端自动修复可在 `frontend/` 运行 `mise exec -- pnpm run check:fix`。
 
 ## 工具链排障
 

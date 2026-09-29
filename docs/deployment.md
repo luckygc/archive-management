@@ -16,11 +16,11 @@
 构建发布产物：
 
 ```bash
-mise run server-package
-mise run frontend-build
+mise exec -- mvn -f server/pom.xml package
+mise exec -- pnpm --dir frontend run build
 ```
 
-发布前按范围运行 `mise run server-test`、`mise run frontend-ready`。所有任务均以根 [`mise.toml`](../mise.toml) 为准。
+发布前按范围运行 `mise exec -- mvn -f server/pom.xml test`、`mise exec -- pnpm --dir frontend run ready`。工具版本以根 [`mise.toml`](../mise.toml) 为准，构建和验证入口以 [`server/pom.xml`](../server/pom.xml) 和 [`frontend/package.json`](../frontend/package.json) 为准。
 
 两个可部署应用分别拥有自己的容器构建定义。需要构建镜像时从仓库根目录执行：
 

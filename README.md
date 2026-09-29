@@ -34,9 +34,9 @@
 
 ```bash
 mise tasks ls
-mise run frontend-install
+mise run install
 ```
 
-本地准备、运行和按范围验证详见 [`docs/development.md`](docs/development.md)。`mise run web-dev` 会长期占用端口，仅由开发者在需要预览时本地启动。
+本地准备、运行和按范围验证详见 [`docs/development.md`](docs/development.md)。`mise exec -- pnpm --dir frontend run dev:web` 会长期占用端口，仅由开发者在需要预览时本地启动。
 
 当前仓库未声明开源许可证；对外开源或分发前须由项目所有者明确许可证和版权声明。
