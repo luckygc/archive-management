@@ -5,7 +5,9 @@ import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -38,7 +40,7 @@ import github.luckygc.am.module.storage.web.FileLinkDownloadController;
     SpringDocConfigProperties.class,
     SpringDocWebMvcConfiguration.class
 })
-class OpenApiDocumentationTests {
+class ApiContractWebTests {
 
     @SpringBootConfiguration
     @Import({
@@ -91,5 +93,12 @@ class OpenApiDocumentationTests {
                         jsonPath(
                                         "$.paths['/file-links/{code}:download'].get.responses['200'].content['application/octet-stream'].schema.format")
                                 .value("binary"));
+    }
+
+    @Test
+    void announcesMergePatchOnOptions() throws Exception {
+        mockMvc.perform(options("/archive-items/42"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Accept-Patch", "application/merge-patch+json"));
     }
 }
