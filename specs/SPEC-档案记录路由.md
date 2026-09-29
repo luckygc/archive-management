@@ -61,6 +61,13 @@
 - **THEN** 系统 SHALL 只返回 `am_archive_item` 的通用字段
 - **AND** 系统 SHALL NOT 跨多张分类动态表拼接不同分类字段
 - **AND** 系统 SHALL 在数据库中按 `createdAt DESC`、`id DESC` 稳定分页；可按 `fondsCode` 筛选，不得读取完整集合后在内存中截断
+- **AND** 无分类概览不支持动态字段、关联、案卷和自定义排序条件；客户端提交这些条件时 SHALL 返回字段级错误，不得静默忽略
+
+#### 场景： 查询已删除档案条目
+
+- **WHEN** 客户端通过 `/archive-items:searchDeleted` 查询回收站
+- **THEN** 客户端 SHALL 指定档案分类；缺少分类时系统 SHALL 返回字段级错误，不得回退到未删除条目概览
+- **AND** 系统 SHALL 按 `deletedAt DESC`、`id DESC` 稳定分页
 
 #### 场景： 查询案卷
 

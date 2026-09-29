@@ -33,6 +33,9 @@ import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeRe
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemAuditDataRepository;
 import github.luckygc.am.module.archive.item.service.ArchiveItemRelationService.ArchiveItemRelationRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemSearchService.ArchiveItemOrderByRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemSearchService.ArchiveItemRelatedGroupRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemSearchService.ArchiveItemWhereRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemSearchService.SearchArchiveItemsRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemService.CreateArchiveItemRequest;
 import github.luckygc.am.module.archive.mapper.ArchiveDataScopeSqlGroup;
@@ -151,6 +154,90 @@ class ArchiveItemDataScopeQueryTests {
 
         assertThat(result.items()).isEmpty();
         verify(archiveMapper).listItemOverview(eq("F001"), any());
+    }
+
+    @Test
+    @DisplayName("未指定分类的回收站查询不能返回普通档案概览")
+    void searchDeletedItemsShouldRequireCategory() {
+        when(dataScopeService.resolveUserDataScope(9L)).thenReturn(ResolvedArchiveDataScope.all());
+
+        assertThatThrownBy(
+                        () ->
+                                archiveItemQueryService.searchDeletedItems(
+                                        new SearchArchiveItemsRequest(
+                                                null, null, null, null, null, null, null, null),
+                                        9L,
+                                        PageRequest.ofSize(100)))
+                .isInstanceOfSatisfying(
+                        BadRequestException.class,
+                        exception ->
+                                assertThat(exception.fieldViolations())
+                                        .singleElement()
+                                        .satisfies(
+                                                violation ->
+                                                        assertThat(violation.field())
+                                                                .isEqualTo("categoryId")));
+        org.mockito.Mockito.verifyNoInteractions(archiveMapper);
+    }
+
+    @Test
+    @DisplayName("无分类概览拒绝无法执行的高级筛选")
+    void searchItemsShouldRejectFiltersWithoutCategory() {
+        when(dataScopeService.resolveUserDataScope(9L)).thenReturn(ResolvedArchiveDataScope.all());
+
+        assertOverviewFilterRejected(
+                new SearchArchiveItemsRequest(
+                        null,
+                        null,
+                        null,
+                        new ArchiveItemWhereRequest(List.of()),
+                        null,
+                        null,
+                        null,
+                        null),
+                "where");
+        assertOverviewFilterRejected(
+                new SearchArchiveItemsRequest(
+                        null,
+                        null,
+                        null,
+                        null,
+                        List.of(new ArchiveItemRelatedGroupRequest(1L, null, null)),
+                        null,
+                        null,
+                        null),
+                "relatedGroups");
+        assertOverviewFilterRejected(
+                new SearchArchiveItemsRequest(null, null, null, null, null, null, null, null, 12L),
+                "volumeId");
+        assertOverviewFilterRejected(
+                new SearchArchiveItemsRequest(
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        List.of(new ArchiveItemOrderByRequest("id", "DESC"))),
+                "sort");
+        org.mockito.Mockito.verifyNoInteractions(archiveMapper);
+    }
+
+    private void assertOverviewFilterRejected(SearchArchiveItemsRequest request, String field) {
+        assertThatThrownBy(
+                        () ->
+                                archiveItemQueryService.searchItems(
+                                        request, 9L, PageRequest.ofSize(100)))
+                .isInstanceOfSatisfying(
+                        BadRequestException.class,
+                        exception ->
+                                assertThat(exception.fieldViolations())
+                                        .singleElement()
+                                        .satisfies(
+                                                violation ->
+                                                        assertThat(violation.field())
+                                                                .isEqualTo(field)));
     }
 
     @Test

@@ -119,7 +119,7 @@
         limit #{page.limit}
     </select>
 
-    <select id="countItemOverview" resultType="int">
+    <select id="countItemOverview" resultType="long">
         select count(1)
         <include refid="itemOverviewFromWhere"/>
     </select>

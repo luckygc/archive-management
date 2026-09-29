@@ -165,8 +165,25 @@ public class ArchiveItemSearchService {
                     "档案管理列表不支持全文关键词检索", "keyword", "档案管理列表只支持数据库字段筛选；全文检索用于查档、借阅等普通用户业务入口");
         }
         if (request == null || request.categoryId() == null) {
+            if (deleted) {
+                throw badRequest("回收站查询必须选择档案分类", "categoryId", "回收站查询必须选择档案分类");
+            }
             if (StringUtils.isNotBlank(keyword)) {
                 throw badRequest("全文检索必须选择档案分类", "categoryId", "全文检索必须选择档案分类");
+            }
+            if (request != null) {
+                if (request.where() != null) {
+                    throw badRequest("高级筛选必须选择档案分类", "where", "高级筛选必须选择档案分类");
+                }
+                if (request.relatedGroups() != null && !request.relatedGroups().isEmpty()) {
+                    throw badRequest("关联筛选必须选择档案分类", "relatedGroups", "关联筛选必须选择档案分类");
+                }
+                if (request.volumeId() != null) {
+                    throw badRequest("案卷筛选必须选择档案分类", "volumeId", "案卷筛选必须选择档案分类");
+                }
+                if (request.orderBy() != null && !request.orderBy().isEmpty()) {
+                    throw badRequest("自定义排序必须选择档案分类", "sort", "自定义排序必须选择档案分类");
+                }
             }
             if (!dataScopeService.resolveUserDataScope(userId).allData()) {
                 return itemList(null, List.of(), emptyPage(pageRequest, 0L));
