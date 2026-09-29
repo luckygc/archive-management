@@ -19,7 +19,6 @@ import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.archive.item.service.ArchiveItemImportExportService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemImportExportService.ArchiveImportResult;
 import github.luckygc.am.module.archive.item.service.ArchiveItemImportExportService.DownloadLinkCreated;
-import github.luckygc.am.module.archive.item.service.ArchiveItemSearchService.ArchiveItemOrderByRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemSearchService.ArchiveItemRelatedGroupRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemSearchService.ArchiveItemWhereRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemSearchService.SearchArchiveItemsRequest;
@@ -61,11 +60,19 @@ public class ArchiveItemImportExportController {
     public ArchiveItemDownloadLinkResponse createExportDownloadLink(
             @RawRequestStrings @RequestBody(required = false)
                     @Nullable ExportArchiveRecordsRequest request,
+            @RequestParam(required = false) @Nullable String sort,
             Authentication authentication) {
+        SearchArchiveItemsRequest searchRequest = null;
+        if (request != null || sort != null) {
+            ExportArchiveRecordsRequest body =
+                    request == null
+                            ? new ExportArchiveRecordsRequest(null, null, null, null, null, null)
+                            : request;
+            searchRequest = body.toSearchRequest(sort);
+        }
         return toResponse(
                 importExportService.createExportDownloadLink(
-                        request == null ? null : request.toSearchRequest(),
-                        currentUserId(authentication)));
+                        searchRequest, currentUserId(authentication)));
     }
 
     private Long currentUserId(Authentication authentication) {
@@ -87,10 +94,9 @@ public class ArchiveItemImportExportController {
             @Nullable Long volumeId,
             @Nullable String keyword,
             @Nullable ArchiveItemWhereRequest where,
-            @Nullable List<@Nullable ArchiveItemRelatedGroupRequest> relatedGroups,
-            @Nullable List<@Nullable ArchiveItemOrderByRequest> orderBy) {
+            @Nullable List<@Nullable ArchiveItemRelatedGroupRequest> relatedGroups) {
 
-        private SearchArchiveItemsRequest toSearchRequest() {
+        private SearchArchiveItemsRequest toSearchRequest(@Nullable String sort) {
             return new SearchArchiveItemsRequest(
                     categoryId,
                     fondsCode,
@@ -99,7 +105,7 @@ public class ArchiveItemImportExportController {
                     relatedGroups,
                     null,
                     null,
-                    orderBy,
+                    ArchiveItemSortQuery.parse(sort),
                     volumeId);
         }
     }

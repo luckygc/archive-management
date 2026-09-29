@@ -27,12 +27,12 @@ export interface SearchArchiveRecordsRequest {
     keyword?: string;
     where?: ArchiveItemWhere;
     relatedGroups?: ArchiveItemRelatedGroup[];
-    orderBy?: ArchiveRecordOrderBy[];
 }
 
 export interface SearchArchiveRecordsQuery extends SearchArchiveRecordsRequest {
     limit?: number;
     cursor?: string;
+    orderBy?: ArchiveRecordOrderBy[];
 }
 
 export interface ArchiveRecordOrderBy {

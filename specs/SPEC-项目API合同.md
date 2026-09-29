@@ -41,13 +41,16 @@
 以下示例是本项目对已选规则的写法，不是从外部规范复制的原文；真实资源字段、权限和分页大小由对应业务规格及 OpenAPI 声明。
 
 ```http
-GET /archive-items?limit=50&sort=-createdAt,%2Bid HTTP/1.1
+POST /archive-items:search?limit=1&sort=-createdAt,%2Bid HTTP/1.1
 Accept: application/json
+Content-Type: application/json
+
+{}
 
 HTTP/1.1 200 OK
 Content-Type: application/json
 
-{"items":[],"self":"https://example.org/archive-items?limit=50","next":"https://example.org/archive-items?cursor=opaque&limit=50"}
+{"category":null,"fields":[],"items":[{"id":42}],"self":"/archive-items:search?sort=-createdAt,%2Bid&limit=1","next":"/archive-items:search?sort=-createdAt,%2Bid&cursor=opaque&limit=1"}
 ```
 
 默认分页不计算总数。若接口支持按需总数，客户端可使用 `Prefer: return=total-count`，服务端可以不采纳；不能为此新增 `requestTotal`。分页链接包含后续请求所需的分页参数，cursor 对客户端不透明。
@@ -279,7 +282,7 @@ Content-Type: application/json
 - **WHEN** 客户端提交项目自有分页请求
 - **THEN** 分页控制参数 SHALL 通过 URL query 参数提交
 - **AND** cursor 分页接口 SHALL 使用 URL query 参数提交 `limit`、`cursor`；可通过 `Prefer: return=total-count` 请求首页总数
-- **AND** 使用 JSON 请求体表达复杂查询条件的 cursor 搜索接口 SHALL 将 `orderBy` 放在同一个 JSON 请求体中
+- **AND** 使用 JSON 请求体表达复杂查询条件的 cursor 搜索接口 SHALL 通过 URL query 参数提交 `sort`，请求体只承载业务查询条件
 - **AND** 服务端 SHALL NOT 从 JSON 请求体解析分页控制参数
 - **AND** 服务端 SHALL 将 URL query 中的 `limit`、`cursor` 视为分页控制字段，不纳入 cursor 查询摘要；总数偏好也不纳入查询摘要
 - **AND** 服务端 SHALL 拒绝通过非 JSON 请求体提交分页请求
@@ -301,8 +304,8 @@ Content-Type: application/json
 
 #### 场景： 用户自定义排序
 
-- **WHEN** 客户端提交 `orderBy`
-- **THEN** `orderBy` SHALL 使用 API 字段名和 `ASC` / `DESC` 方向
+- **WHEN** 客户端提交 `sort`
+- **THEN** `sort` SHALL 使用 API 字段名、逗号分隔的优先顺序和 `+` / `-` 方向前缀
 - **AND** 服务端 SHALL 通过白名单将 API 字段名映射为数据库列或安全表达式
 - **AND** 服务端 SHALL 按客户端提交顺序优先应用用户自定义排序
 - **AND** 服务端 SHALL 在用户自定义排序之后追加 `createdAt DESC` 和 `id DESC` 作为稳定兜底排序

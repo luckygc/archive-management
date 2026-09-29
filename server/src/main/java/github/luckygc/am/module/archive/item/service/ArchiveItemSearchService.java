@@ -301,7 +301,7 @@ public class ArchiveItemSearchService {
             List<String> indexedFieldCodes) {
         String field = order == null ? null : StringUtils.trimToNull(order.field());
         if (field == null) {
-            throw badRequest("排序字段不能为空", "orderBy.field", "排序字段不能为空");
+            throw badRequest("排序字段不能为空", "sort", "排序字段不能为空");
         }
         Direction direction =
                 "ASC".equalsIgnoreCase(order.direction()) ? Direction.ASC : Direction.DESC;
@@ -332,7 +332,7 @@ public class ArchiveItemSearchService {
                         || indexedFieldCodes.contains(dynamicField.fieldCode()))) {
             return "d." + dynamicField.columnName();
         }
-        throw badRequest("不支持的排序字段", "orderBy.field", "不支持的排序字段：" + field);
+        throw badRequest("不支持的排序字段", "sort", "不支持的排序字段：" + field);
     }
 
     private List<String> indexedFieldCodes(Long categoryId, ArchiveLevel archiveLevel) {

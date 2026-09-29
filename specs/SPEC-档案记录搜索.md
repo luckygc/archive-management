@@ -100,9 +100,9 @@
 
 #### 场景： 按固定字段或可搜索动态字段排序
 
-- **WHEN** 客户端提交 `orderBy`
-- **THEN** `orderBy.field` SHALL 支持固定排序字段编码或可搜索动态字段编码
-- **AND** cursor 搜索接口 SHALL 在 JSON 请求体中提交 `orderBy`
+- **WHEN** 客户端通过 URL query 参数提交 `sort`
+- **THEN** `sort` SHALL 支持固定排序字段编码或可搜索动态字段编码，并按 `+field,-field` 表示多列优先顺序
+- **AND** cursor 搜索接口 SHALL 在 JSON 请求体中仅提交业务查询条件
 - **AND** 可搜索动态字段 SHALL 指字段定义中 `exact_searchable=true` 或唯一约束索引覆盖的字段
 - **AND** 系统 SHALL 使用字段元数据将动态字段编码映射为当前分类动态表列名
 - **AND** 系统 SHALL 拒绝不可搜索动态字段排序

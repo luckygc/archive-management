@@ -28,6 +28,7 @@ import github.luckygc.am.module.archive.item.service.ArchiveItemSearchService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemSearchService.SearchArchiveItemsRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemService.ReassignArchiveItemFondsRequest;
+import github.luckygc.am.module.archive.item.web.ArchiveItemController.SearchArchiveItemsBody;
 
 @DisplayName("档案条目 HTTP 入口")
 class ArchiveItemControllerTests {
@@ -91,17 +92,32 @@ class ArchiveItemControllerTests {
     @Test
     @DisplayName("搜索接口从 URL 查询参数接收 cursor 分页控制")
     void searchItemsShouldUseUrlQueryPageControls() {
-        SearchArchiveItemsRequest body =
-                new SearchArchiveItemsRequest(1L, "F001", "合同", null, null, 10, "body", null, 12L);
+        SearchArchiveItemsBody body = new SearchArchiveItemsBody(1L, "F001", "合同", null, null, 12L);
         Authentication authentication = authentication(9L);
         CursorPageTokenContext context = new CursorPageTokenContext("fingerprint");
         String cursor = CursorPageTokenCodec.encode("next", List.of(99L), 50, context);
         PageRequest page = CursorPageTokenCodec.pageRequest(50, cursor, false, context);
 
-        controller.searchItems(body, page, authentication);
+        controller.searchItems(body, "-createdAt,+id", page, authentication);
 
-        verify(archiveItemQueryService).searchItems(body, 9L, page);
-        org.assertj.core.api.Assertions.assertThat(body.volumeId()).isEqualTo(12L);
+        verify(archiveItemQueryService)
+                .searchItems(
+                        new SearchArchiveItemsRequest(
+                                1L,
+                                "F001",
+                                "合同",
+                                null,
+                                null,
+                                null,
+                                null,
+                                List.of(
+                                        new ArchiveItemSearchService.ArchiveItemOrderByRequest(
+                                                "createdAt", "DESC"),
+                                        new ArchiveItemSearchService.ArchiveItemOrderByRequest(
+                                                "id", "ASC")),
+                                12L),
+                        9L,
+                        page);
     }
 
     @Test

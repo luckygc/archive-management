@@ -10,6 +10,7 @@ import type {
     ArchiveRecordDetailDto,
     ArchiveRecordDto,
     ArchiveRecordListDto,
+    ArchiveRecordOrderBy,
     CreateArchiveRecordRequest,
     ListArchiveItemAuditsRequest,
     ListArchiveItemRelationsQuery,
@@ -95,9 +96,9 @@ export function importArchiveRecords(categoryId: number, file: File) {
 export async function exportArchiveRecords(
     query: SearchArchiveRecordsQuery,
 ): Promise<DownloadLink> {
-    const { limit: _limit, cursor: _cursor, ...body } = query;
+    const { limit: _limit, cursor: _cursor, orderBy, ...body } = query;
     const response = await httpClient.post<ArchiveItemDownloadLinkResponse>(
-        "/archive-items:createExportDownloadLink",
+        `/archive-items:createExportDownloadLink${queryString({ sort: sortQuery(orderBy) })}`,
         compactObject(body),
     );
     return httpClient.download(response.url);
@@ -195,11 +196,19 @@ function archiveRecordSearchRequest(
     url: string;
     body: SearchArchiveRecordsRequest;
 } {
-    const { limit, cursor, ...body } = query;
+    const { limit, cursor, orderBy, ...body } = query;
     return {
-        url: pageUrl(path, { limit, cursor }),
+        url: pageUrl(path, { limit, cursor, sort: sortQuery(orderBy) }),
         body: compactObject(body),
     };
+}
+
+function sortQuery(orderBy: ArchiveRecordOrderBy[] | undefined): string | undefined {
+    return orderBy?.length
+        ? orderBy
+              .map(({ field, direction }) => `${direction === "ASC" ? "+" : "-"}${field}`)
+              .join(",")
+        : undefined;
 }
 
 function compactObject<T extends object>(value: T): T {

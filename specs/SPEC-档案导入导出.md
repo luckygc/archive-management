@@ -52,7 +52,7 @@
 - **WHEN** 已认证用户请求导出档案管理查询结果
 - **THEN** 系统 SHALL 校验用户具备导出功能权限
 - **AND** 客户端 SHALL 使用 `POST /archive-items:createExportDownloadLink` 在 JSON 请求体中提交当前查询条件
-- **AND** 请求体 SHALL 仅使用 `categoryId`、`fondsCode`、`volumeId`、`where`、`relatedGroups` 和 `orderBy` 作为业务查询字段
+- **AND** 请求体 SHALL 仅使用 `categoryId`、`fondsCode`、`volumeId`、`where`、`relatedGroups` 作为业务查询字段；排序通过 URL query 参数 `sort` 提交
 - **AND** 非空 `keyword` SHALL NOT 属于管理查询导出业务条件，服务端 SHALL 拒绝包含非空 `keyword` 的导出请求
 - **AND** 请求体 SHALL NOT 接收或提交 `limit`、`cursor` 分页控制字段
 - **AND** 服务端 SHALL 在同一成功事务中生成 Excel、写入导出审计并保存临时 S3 对象，且该对象 SHALL 自创建起 10 分钟过期

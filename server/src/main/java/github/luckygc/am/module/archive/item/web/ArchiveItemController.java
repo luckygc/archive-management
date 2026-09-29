@@ -1,7 +1,10 @@
 package github.luckygc.am.module.archive.item.web;
 
+import java.util.List;
+
 import jakarta.data.page.PageRequest;
 
+import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -28,6 +31,8 @@ import github.luckygc.am.module.archive.item.service.ArchiveItemRelationService.
 import github.luckygc.am.module.archive.item.service.ArchiveItemRelationService.ArchiveItemRelationResponse;
 import github.luckygc.am.module.archive.item.service.ArchiveItemSearchService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemSearchService.ArchiveItemListDto;
+import github.luckygc.am.module.archive.item.service.ArchiveItemSearchService.ArchiveItemRelatedGroupRequest;
+import github.luckygc.am.module.archive.item.service.ArchiveItemSearchService.ArchiveItemWhereRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemSearchService.ArchiveRelatedFilterCategoryDto;
 import github.luckygc.am.module.archive.item.service.ArchiveItemSearchService.SearchArchiveItemsRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemService;
@@ -72,11 +77,12 @@ public class ArchiveItemController {
 
     @PostMapping("/archive-items:search")
     public ArchiveItemListDto searchItems(
-            @RawRequestStrings @RequestBody SearchArchiveItemsRequest request,
+            @RawRequestStrings @RequestBody SearchArchiveItemsBody request,
+            @RequestParam(required = false) @Nullable String sort,
             PageRequest page,
             Authentication authentication) {
         return archiveItemSearchService.searchItems(
-                request,
+                request.toSearchRequest(sort),
                 AuthenticatedUsers.requireUserId(
                         authentication == null ? null : authentication.getPrincipal()),
                 page);
@@ -84,11 +90,12 @@ public class ArchiveItemController {
 
     @PostMapping("/archive-items:discover")
     public ArchiveItemListDto discoverItems(
-            @RawRequestStrings @RequestBody SearchArchiveItemsRequest request,
+            @RawRequestStrings @RequestBody SearchArchiveItemsBody request,
+            @RequestParam(required = false) @Nullable String sort,
             PageRequest page,
             Authentication authentication) {
         return archiveItemSearchService.discoverItems(
-                request,
+                request.toSearchRequest(sort),
                 AuthenticatedUsers.requireUserId(
                         authentication == null ? null : authentication.getPrincipal()),
                 page);
@@ -96,14 +103,36 @@ public class ArchiveItemController {
 
     @PostMapping("/archive-items:searchDeleted")
     public ArchiveItemListDto searchDeletedItems(
-            @RawRequestStrings @RequestBody SearchArchiveItemsRequest request,
+            @RawRequestStrings @RequestBody SearchArchiveItemsBody request,
             PageRequest page,
             Authentication authentication) {
         return archiveItemSearchService.searchDeletedItems(
-                request,
+                request.toSearchRequest(null),
                 AuthenticatedUsers.requireUserId(
                         authentication == null ? null : authentication.getPrincipal()),
                 page);
+    }
+
+    public record SearchArchiveItemsBody(
+            @Nullable Long categoryId,
+            @Nullable String fondsCode,
+            @Nullable String keyword,
+            @Nullable ArchiveItemWhereRequest where,
+            @Nullable List<@Nullable ArchiveItemRelatedGroupRequest> relatedGroups,
+            @Nullable Long volumeId) {
+
+        private SearchArchiveItemsRequest toSearchRequest(@Nullable String sort) {
+            return new SearchArchiveItemsRequest(
+                    categoryId,
+                    fondsCode,
+                    keyword,
+                    where,
+                    relatedGroups,
+                    null,
+                    null,
+                    ArchiveItemSortQuery.parse(sort),
+                    volumeId);
+        }
     }
 
     @GetMapping("/archive-categories/{id}/related-filter-categories")

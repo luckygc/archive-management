@@ -15,6 +15,7 @@ import org.springframework.security.core.Authentication;
 import github.luckygc.am.common.security.AuthenticatedUser;
 import github.luckygc.am.module.archive.item.service.ArchiveItemImportExportService;
 import github.luckygc.am.module.archive.item.service.ArchiveItemImportExportService.DownloadLinkCreated;
+import github.luckygc.am.module.archive.item.service.ArchiveItemSearchService.ArchiveItemOrderByRequest;
 import github.luckygc.am.module.archive.item.service.ArchiveItemSearchService.SearchArchiveItemsRequest;
 import github.luckygc.am.module.archive.item.web.ArchiveItemImportExportController.ExportArchiveRecordsRequest;
 
@@ -47,15 +48,24 @@ class ArchiveItemImportExportControllerTests {
     void createExportDownloadLinkShouldForwardSearchRequest() {
         Authentication authentication = authentication(9L);
         ExportArchiveRecordsRequest request =
-                new ExportArchiveRecordsRequest(1L, "F001", 77L, "合同", null, null, null);
+                new ExportArchiveRecordsRequest(1L, "F001", 77L, "合同", null, null);
         SearchArchiveItemsRequest internalRequest =
-                new SearchArchiveItemsRequest(1L, "F001", "合同", null, null, null, null, null, 77L);
+                new SearchArchiveItemsRequest(
+                        1L,
+                        "F001",
+                        "合同",
+                        null,
+                        null,
+                        null,
+                        null,
+                        List.of(new ArchiveItemOrderByRequest("createdAt", "DESC")),
+                        77L);
         when(importExportService.createExportDownloadLink(internalRequest, 9L))
                 .thenReturn(
                         new DownloadLinkCreated(
                                 "export-code", LocalDateTime.of(2026, 7, 15, 10, 10), List.of()));
 
-        var response = controller.createExportDownloadLink(request, authentication);
+        var response = controller.createExportDownloadLink(request, "-createdAt", authentication);
 
         assertThat(response.url()).isEqualTo("/file-links/export-code:download");
         verify(importExportService).createExportDownloadLink(internalRequest, 9L);

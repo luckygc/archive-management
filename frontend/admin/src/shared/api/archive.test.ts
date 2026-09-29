@@ -10,6 +10,7 @@ import {
     createArchiveItemRelation,
     deleteArchiveRecord,
     deleteArchiveItemRelation,
+    discoverArchiveRecords,
     downloadArchiveImportTemplate,
     exportArchiveRecords,
     listArchiveItemRelations,
@@ -79,16 +80,18 @@ describe("archive API", () => {
             categoryId: 1,
             keyword: "合同",
             limit: 100,
-            cursor: "/archive-items:search?limit=100&cursor=next-token",
-            orderBy: [{ field: "createdAt", direction: "DESC" }],
+            cursor: "/archive-items:search?limit=100&sort=-createdAt%2C%2Bid&cursor=next-token",
+            orderBy: [
+                { field: "createdAt", direction: "DESC" },
+                { field: "id", direction: "ASC" },
+            ],
         });
 
         expect(httpClientMock.post).toHaveBeenCalledWith(
-            "/archive-items:search?limit=100&cursor=next-token",
+            "/archive-items:search?limit=100&sort=-createdAt%2C%2Bid&cursor=next-token",
             {
                 categoryId: 1,
                 keyword: "合同",
-                orderBy: [{ field: "createdAt", direction: "DESC" }],
             },
         );
     });
@@ -99,6 +102,21 @@ describe("archive API", () => {
         expect(httpClientMock.post).toHaveBeenCalledWith("/archive-items:search?limit=100", {
             categoryId: 1,
         });
+    });
+
+    it("档案搜索首页把多列排序放在查询参数", async () => {
+        await discoverArchiveRecords({
+            categoryId: 1,
+            orderBy: [
+                { field: "archiveYear", direction: "ASC" },
+                { field: "createdAt", direction: "DESC" },
+            ],
+        });
+
+        expect(httpClientMock.post).toHaveBeenCalledWith(
+            "/archive-items:discover?sort=%2BarchiveYear%2C-createdAt",
+            { categoryId: 1 },
+        );
     });
 
     it("为导入模板创建短链后返回浏览器可直接打开的地址", async () => {
@@ -133,10 +151,11 @@ describe("archive API", () => {
             keyword: "合同",
             limit: 100,
             cursor: "ignored",
+            orderBy: [{ field: "createdAt", direction: "DESC" }],
         });
 
         expect(httpClientMock.post).toHaveBeenCalledWith(
-            "/archive-items:createExportDownloadLink",
+            "/archive-items:createExportDownloadLink?sort=-createdAt",
             { categoryId: 1, volumeId: 77, keyword: "合同" },
         );
         expect(httpClientMock.download).toHaveBeenCalledWith("/file-links/export-code:download");
