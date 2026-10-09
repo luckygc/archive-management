@@ -66,6 +66,7 @@ class ArchiveImportRuntimePolicyTests {
         ArchiveItemImportExportService service =
                 new ArchiveItemImportExportService(
                         metadataService,
+                        new ArchiveItemFieldValueConverter(),
                         referenceService,
                         categoryService,
                         commandService,

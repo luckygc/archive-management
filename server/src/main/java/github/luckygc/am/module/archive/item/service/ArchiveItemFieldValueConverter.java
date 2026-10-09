@@ -27,17 +27,17 @@ class ArchiveItemFieldValueConverter {
             Map<String, @Nullable Object> fieldValues,
             String fieldPathPrefix) {
         return convertDefinitions(
-                fields.stream()
-                        .map(
-                                field ->
-                                        new FieldDefinition(
-                                                field.fieldCode(),
-                                                field.fieldName(),
-                                                field.fieldType(),
-                                                field.textLength()))
-                        .toList(),
-                fieldValues,
-                fieldPathPrefix);
+                fields.stream().map(this::fieldDefinition).toList(), fieldValues, fieldPathPrefix);
+    }
+
+    @Nullable Object convertField(
+            ArchiveFieldDto field, @Nullable Object value, String fieldPathPrefix) {
+        return convertValue(fieldDefinition(field), value, fieldPathPrefix);
+    }
+
+    private FieldDefinition fieldDefinition(ArchiveFieldDto field) {
+        return new FieldDefinition(
+                field.fieldCode(), field.fieldName(), field.fieldType(), field.textLength());
     }
 
     Map<String, @Nullable Object> convertLineFields(

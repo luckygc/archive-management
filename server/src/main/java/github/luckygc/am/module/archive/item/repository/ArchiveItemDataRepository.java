@@ -1,5 +1,6 @@
 package github.luckygc.am.module.archive.item.repository;
 
+import java.util.List;
 import java.util.Optional;
 
 import jakarta.annotation.Nonnull;
@@ -11,6 +12,7 @@ import jakarta.data.repository.OrderBy;
 import jakarta.data.repository.Repository;
 import jakarta.data.repository.Update;
 
+import org.hibernate.annotations.processing.HQL;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +24,10 @@ public interface ArchiveItemDataRepository {
 
     @Find
     Optional<ArchiveItem> findById(@By(By.ID) @Nonnull Long id);
+
+    @Transactional(readOnly = true)
+    @HQL("from ArchiveItem where id in ?1")
+    List<ArchiveItem> findByIdIn(@Nonnull List<Long> ids);
 
     @Nullable @Transactional(readOnly = true)
     @Find

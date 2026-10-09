@@ -4,14 +4,9 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.math.BigDecimal;
-import java.sql.Date;
-import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Duration;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -69,6 +64,7 @@ public class ArchiveItemImportExportService {
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
     private final ArchiveMetadataService archiveMetadataService;
+    private final ArchiveItemFieldValueConverter fieldValueConverter;
     private final ArchiveMetadataReferenceService archiveMetadataReferenceService;
     private final ArchiveCategoryService archiveCategoryService;
     private final ArchiveItemService archiveItemService;
@@ -85,6 +81,7 @@ public class ArchiveItemImportExportService {
 
     public ArchiveItemImportExportService(
             ArchiveMetadataService archiveMetadataService,
+            ArchiveItemFieldValueConverter fieldValueConverter,
             ArchiveMetadataReferenceService archiveMetadataReferenceService,
             ArchiveCategoryService archiveCategoryService,
             ArchiveItemService archiveItemService,
@@ -99,6 +96,7 @@ public class ArchiveItemImportExportService {
             ArchiveRuntimeExecutionService runtimeExecutionService,
             ArchiveRuntimeTraceService runtimeTraceService) {
         this.archiveMetadataService = archiveMetadataService;
+        this.fieldValueConverter = fieldValueConverter;
         this.archiveMetadataReferenceService = archiveMetadataReferenceService;
         this.archiveCategoryService = archiveCategoryService;
         this.archiveItemService = archiveItemService;
@@ -200,21 +198,7 @@ public class ArchiveItemImportExportService {
 
     private List<ExportPolicyExecution> enforceExportPolicies(
             List<Map<String, @Nullable Object>> exportedRows, Long userId) {
-        Map<ExportScope, ArchiveItem> scopes = new LinkedHashMap<>();
-        for (Map<String, @Nullable Object> row : exportedRows) {
-            Object rawId = row.get("id");
-            if (!(rawId instanceof Number number)) {
-                throw new BadRequestException("导出结果缺少档案条目 ID");
-            }
-            ArchiveItem item =
-                    archiveItemRepository
-                            .findById(number.longValue())
-                            .orElseThrow(
-                                    () ->
-                                            new BadRequestException(
-                                                    "导出档案条目不存在：" + number.longValue()));
-            scopes.putIfAbsent(new ExportScope(item.getFondsCode(), item.getCategoryCode()), item);
-        }
+        Map<ExportScope, ArchiveItem> scopes = loadExportScopes(exportedRows);
         List<ExportPolicyExecution> executions = new ArrayList<>();
         for (Map.Entry<ExportScope, ArchiveItem> entry : scopes.entrySet()) {
             ExportScope scope = entry.getKey();
@@ -238,6 +222,44 @@ public class ArchiveItemImportExportService {
                     new ExportPolicyExecution(request, runtimeExecutionService.enforce(request)));
         }
         return List.copyOf(executions);
+    }
+
+    private Map<ExportScope, ArchiveItem> loadExportScopes(
+            List<Map<String, @Nullable Object>> exportedRows) {
+        Map<ExportScope, ArchiveItem> scopes = new LinkedHashMap<>();
+        for (int start = 0; start < exportedRows.size(); start += EXPORT_BATCH_LIMIT) {
+            int end = Math.min(start + EXPORT_BATCH_LIMIT, exportedRows.size());
+            List<Long> ids = new ArrayList<>();
+            boolean malformedId = false;
+            for (Map<String, @Nullable Object> row : exportedRows.subList(start, end)) {
+                if (row.get("id") instanceof Number number) {
+                    ids.add(number.longValue());
+                } else {
+                    malformedId = true;
+                    break;
+                }
+            }
+            Map<Long, ArchiveItem> itemsById = new LinkedHashMap<>();
+            if (!ids.isEmpty()) {
+                for (ArchiveItem item :
+                        archiveItemRepository.findByIdIn(
+                                new ArrayList<>(new LinkedHashSet<>(ids)))) {
+                    itemsById.put(item.getId(), item);
+                }
+            }
+            for (Long id : ids) {
+                ArchiveItem item = itemsById.get(id);
+                if (item == null) {
+                    throw new BadRequestException("导出档案条目不存在：" + id);
+                }
+                scopes.putIfAbsent(
+                        new ExportScope(item.getFondsCode(), item.getCategoryCode()), item);
+            }
+            if (malformedId) {
+                throw new BadRequestException("导出结果缺少档案条目 ID");
+            }
+        }
+        return scopes;
     }
 
     private DownloadLinkCreated createDownloadLink(ArchiveExcelFile file, Long userId) {
@@ -493,8 +515,10 @@ public class ArchiveItemImportExportService {
         for (ArchiveFieldDto field : fields) {
             try {
                 converted.put(
-                        field.fieldCode(), convertFieldValue(field, source.get(field.fieldCode())));
-            } catch (IllegalArgumentException exception) {
+                        field.fieldCode(),
+                        fieldValueConverter.convertField(
+                                field, source.get(field.fieldCode()), "dynamicFields"));
+            } catch (BadRequestException exception) {
                 errors.add(
                         new ArchiveImportRowError(
                                 rowNumber, field.fieldName(), exception.getMessage()));
@@ -517,10 +541,8 @@ public class ArchiveItemImportExportService {
         if (filter.allData()) {
             return;
         }
-        Map<String, @Nullable Object> dynamicRow = new LinkedHashMap<>();
-        for (ArchiveFieldDto field : check.fields()) {
-            dynamicRow.put(field.columnName(), check.convertedFields().get(field.fieldCode()));
-        }
+        Map<String, @Nullable Object> dynamicRow =
+                ArchiveItemDynamicValues.byColumnName(check.fields(), check.convertedFields());
         if (!dataScopeService.matchesItemFilter(
                 filter,
                 check.request().fondsCode(),
@@ -529,37 +551,6 @@ public class ArchiveItemImportExportService {
                 dynamicRow)) {
             check.errors().add(new ArchiveImportRowError(check.rowNumber(), "*", "数据范围不足"));
         }
-    }
-
-    private @Nullable Object convertFieldValue(ArchiveFieldDto field, @Nullable Object value) {
-        if (value instanceof String text) {
-            value = StringUtils.trimToNull(text);
-        }
-        if (value == null) {
-            return null;
-        }
-        try {
-            return switch (field.fieldType()) {
-                case TEXT -> convertTextValue(field, value);
-                case INTEGER -> Integer.valueOf(value.toString());
-                case DECIMAL -> new BigDecimal(value.toString());
-                case DATE -> Date.valueOf(LocalDate.parse(value.toString()));
-                case DATETIME -> Timestamp.valueOf(LocalDateTime.parse(value.toString()));
-            };
-        } catch (DateTimeParseException | IllegalArgumentException exception) {
-            throw new IllegalArgumentException(field.fieldName() + "格式不合法", exception);
-        }
-    }
-
-    private String convertTextValue(ArchiveFieldDto field, Object value) {
-        String text = StringUtils.trimToNull(value.toString());
-        if (text == null) {
-            return "";
-        }
-        if (field.textLength() != null && text.length() > field.textLength()) {
-            throw new IllegalArgumentException(field.fieldName() + "长度不能超过 " + field.textLength());
-        }
-        return text;
     }
 
     private byte[] writeExcel(

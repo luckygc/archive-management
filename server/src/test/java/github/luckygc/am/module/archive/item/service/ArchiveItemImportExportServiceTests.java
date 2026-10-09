@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -22,11 +23,15 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 import org.apache.fesod.sheet.FesodSheet;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
@@ -96,6 +101,7 @@ class ArchiveItemImportExportServiceTests {
         importExportService =
                 new ArchiveItemImportExportService(
                         archiveMetadataService,
+                        new ArchiveItemFieldValueConverter(),
                         archiveMetadataReferenceService,
                         archiveCategoryService,
                         archiveItemRoutingService,
@@ -113,7 +119,7 @@ class ArchiveItemImportExportServiceTests {
         exportItem.setId(10L);
         exportItem.setFondsCode("F001");
         exportItem.setCategoryCode("contract");
-        when(archiveItemRepository.findById(10L)).thenReturn(java.util.Optional.of(exportItem));
+        when(archiveItemRepository.findByIdIn(List.of(10L))).thenReturn(List.of(exportItem));
     }
 
     @Test
@@ -228,6 +234,54 @@ class ArchiveItemImportExportServiceTests {
         assertThat(result.errors())
                 .extracting(ArchiveItemImportExportService.ArchiveImportRowError::message)
                 .contains("缺少创建权限");
+    }
+
+    @ParameterizedTest
+    @MethodSource("acceptedImportFieldValues")
+    @DisplayName("导入预检接受正常条目保存支持的整数和日期时间文本")
+    void importPrecheckAcceptsNormalWriteFieldValues(ArchiveFieldType type, String value)
+            throws IOException {
+        stubWritableImportCategory(List.of(typedField(type)));
+
+        ArchiveImportResult result =
+                importExportService.importItems(
+                        1L,
+                        new ByteArrayInputStream(
+                                workbookBytes(List.of(List.of("F001", "A-001", 2026, value)))),
+                        9L);
+
+        assertThat(result.errors()).isEmpty();
+        assertThat(result.importedCount()).isEqualTo(1);
+        var request = ArgumentCaptor.forClass(ArchiveItemService.CreateArchiveItemRequest.class);
+        verify(archiveItemRoutingService).createItem(request.capture(), eq(9L));
+        assertThat(request.getValue().dynamicFields()).containsEntry("title", value);
+    }
+
+    @ParameterizedTest
+    @MethodSource("invalidImportFieldValues")
+    @DisplayName("导入字段错误保留行号和字段名且整个批次不写入")
+    void invalidImportFieldsPreserveRowErrorsAndPreventAllWrites(
+            ArchiveFieldType type, String value) throws IOException {
+        stubWritableImportCategory(List.of(typedField(type)));
+
+        ArchiveImportResult result =
+                importExportService.importItems(
+                        1L,
+                        new ByteArrayInputStream(
+                                workbookBytes(
+                                        List.of(
+                                                List.of("F001", "A-001", 2026, value),
+                                                List.of("F001", "A-002", 2026, value)))),
+                        9L);
+
+        assertThat(result.importedCount()).isZero();
+        assertThat(result.errors())
+                .extracting(ArchiveItemImportExportService.ArchiveImportRowError::rowNumber)
+                .containsExactly(2, 3);
+        assertThat(result.errors())
+                .allSatisfy(error -> assertThat(error.fieldName()).isEqualTo("题名"));
+        verify(archiveItemRoutingService, never()).createItem(any(), anyLong());
+        verify(archiveItemRoutingService, never()).updateItem(anyLong(), any(), anyLong());
     }
 
     @Test
@@ -377,6 +431,7 @@ class ArchiveItemImportExportServiceTests {
         importExportService =
                 new ArchiveItemImportExportService(
                         archiveMetadataService,
+                        new ArchiveItemFieldValueConverter(),
                         archiveMetadataReferenceService,
                         archiveCategoryService,
                         archiveItemRoutingService,
@@ -466,6 +521,33 @@ class ArchiveItemImportExportServiceTests {
                                 code, LocalDateTime.of(2026, 7, 15, 10, 10)));
     }
 
+    private void stubWritableImportCategory(List<ArchiveFieldDto> fields) {
+        when(permissionService.hasPermission(9L, "archive:item:create")).thenReturn(true);
+        when(dataScopeService.buildItemFilter(9L, 1L, null))
+                .thenReturn(ArchiveDataScopeFilter.all());
+        when(dataScopeService.buildItemFilter(9L, 1L, "F001"))
+                .thenReturn(ArchiveDataScopeFilter.all());
+        when(archiveCategoryService.getCategory(1L)).thenReturn(category());
+        when(archiveMetadataService.listEnabledFields(1L, ArchiveLevel.ITEM)).thenReturn(fields);
+        when(archiveMetadataReferenceService.getWritableFondsByCode("F001")).thenReturn(fonds());
+    }
+
+    private static Stream<Arguments> acceptedImportFieldValues() {
+        return Stream.of(
+                Arguments.of(ArchiveFieldType.INTEGER, "1.0"),
+                Arguments.of(ArchiveFieldType.INTEGER, "2147483647.0"),
+                Arguments.of(ArchiveFieldType.DATETIME, "2026-07-15 10:00:00"),
+                Arguments.of(ArchiveFieldType.DATETIME, "2026-07-15T10:00:00"));
+    }
+
+    private static Stream<Arguments> invalidImportFieldValues() {
+        return Stream.of(
+                Arguments.of(ArchiveFieldType.INTEGER, "1.5"),
+                Arguments.of(ArchiveFieldType.INTEGER, "2147483648"),
+                Arguments.of(ArchiveFieldType.DATETIME, "2026-99-15 10:00:00"),
+                Arguments.of(ArchiveFieldType.TEXT, "题".repeat(101)));
+    }
+
     private static final class AdvancingClock extends Clock {
         private Instant current;
         private final ZoneId zone;
@@ -526,6 +608,10 @@ class ArchiveItemImportExportServiceTests {
     }
 
     private static ArchiveFieldDto textField() {
+        return typedField(ArchiveFieldType.TEXT);
+    }
+
+    private static ArchiveFieldDto typedField(ArchiveFieldType type) {
         return new ArchiveFieldDto(
                 1L,
                 1L,
@@ -533,12 +619,17 @@ class ArchiveItemImportExportServiceTests {
                 ArchiveFieldScope.METADATA,
                 "title",
                 "题名",
-                ArchiveFieldType.TEXT,
+                type,
                 "title",
                 100,
                 null,
                 null,
-                ArchiveFieldControl.INPUT,
+                switch (type) {
+                    case TEXT -> ArchiveFieldControl.INPUT;
+                    case INTEGER, DECIMAL -> ArchiveFieldControl.NUMBER;
+                    case DATE -> ArchiveFieldControl.DATE;
+                    case DATETIME -> ArchiveFieldControl.DATETIME;
+                },
                 true,
                 null,
                 0,
