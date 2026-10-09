@@ -1,48 +1,22 @@
 <script setup lang="ts">
-import { HttpClientError } from "@archive-management/frontend-core/api";
 import { ElMessage, ElMessageBox } from "element-plus";
-import { computed, onMounted, ref, watch } from "vue";
-
+import { onMounted, ref, watch } from "vue";
 import {
-    createArchiveRuntimeDefinition,
     deleteArchiveRuntimeDefinition,
     disableArchiveRuntimeDefinition,
     enableArchiveRuntimeDefinition,
-    getArchiveRuntimeFields,
     listArchiveRuntimeDefinitions,
     publishArchiveRuntimeDefinition,
-    simulateArchiveRuntimeDefinitions,
-    updateArchiveRuntimeDefinition,
 } from "@/shared/api/archive-rules";
-import { AmDataTable } from "@/shared/components/data-table";
 import { requestErrorMessage } from "@/shared/requestError";
 import type {
-    ArchiveRuntimeActionType,
     ArchiveRuntimeDefinitionDto,
-    ArchiveRuntimeDefinitionKind,
-    ArchiveRuntimeDefinitionRequest,
-    ArchiveRuntimeExecutionResult,
-    ArchiveRuntimeFieldDto,
     ArchiveRuntimeStatus,
     ArchiveRuntimeTriggerPoint,
 } from "@/shared/types/archive-rules";
-
-const triggerPoints: Array<{ value: ArchiveRuntimeTriggerPoint; label: string }> = [
-    { value: "ITEM_BEFORE_CREATE", label: "条目创建前" },
-    { value: "ITEM_BEFORE_UPDATE", label: "条目修改前" },
-    { value: "ITEM_BEFORE_DELETE", label: "条目删除前" },
-    { value: "VOLUME_BEFORE_CREATE", label: "案卷创建前" },
-    { value: "VOLUME_BEFORE_ADD_ITEM", label: "条目入卷前" },
-    { value: "FILE_BEFORE_UPLOAD", label: "电子文件上传前" },
-    { value: "EXPORT_BEFORE_CREATE", label: "导出文件生成前" },
-];
-const triggerLabels = Object.fromEntries(triggerPoints.map((item) => [item.value, item.label]));
-const assignmentTriggers = new Set<ArchiveRuntimeTriggerPoint>([
-    "ITEM_BEFORE_CREATE",
-    "ITEM_BEFORE_UPDATE",
-    "VOLUME_BEFORE_CREATE",
-    "VOLUME_BEFORE_ADD_ITEM",
-]);
+import ArchiveRulesList from "./ArchiveRulesList.vue";
+import ArchiveRuleEditorDialog from "./ArchiveRuleEditorDialog.vue";
+import ArchiveRuleSimulationDialog from "./ArchiveRuleSimulationDialog.vue";
 
 const status = ref<ArchiveRuntimeStatus>();
 const triggerPoint = ref<ArchiveRuntimeTriggerPoint>();
@@ -51,36 +25,10 @@ const loading = ref(false);
 const loadError = ref<string>();
 
 const editorOpen = ref(false);
-const editorSubmitting = ref(false);
-const editingId = ref<number>();
-const editorError = ref<string>();
-const editorViolations = ref<Array<{ field: string; message: string }>>([]);
-const fieldLoading = ref(false);
-const fieldCatalog = ref<ArchiveRuntimeFieldDto[]>([]);
-const editor = ref(defaultEditor());
-
+const editingDefinition = ref<ArchiveRuntimeDefinitionDto>();
 const simulationOpen = ref(false);
-const simulationSubmitting = ref(false);
-const simulationError = ref<string>();
-const simulationResult = ref<ArchiveRuntimeExecutionResult>();
-const simulation = ref(defaultSimulation());
-
-const availableActions = computed<ArchiveRuntimeActionType[]>(() =>
-    assignmentTriggers.has(editor.value.triggerPoint)
-        ? ["REJECT", "WARN", "SET_FIELD"]
-        : ["REJECT", "WARN"],
-);
-const writableFields = computed(() => fieldCatalog.value.filter((field) => field.writable));
-
 watch(status, () => void loadDefinitions());
-watch(
-    () => [editor.value.scopeCategoryCode, editor.value.triggerPoint],
-    () => {
-        if (editorOpen.value) void loadFieldCatalog();
-    },
-);
 onMounted(() => void loadDefinitions());
-
 async function loadDefinitions() {
     loading.value = true;
     try {
@@ -97,123 +45,16 @@ async function loadDefinitions() {
 }
 
 function openCreate() {
-    editingId.value = undefined;
-    editor.value = defaultEditor();
-    editorError.value = undefined;
-    editorViolations.value = [];
+    editingDefinition.value = undefined;
     editorOpen.value = true;
 }
-
-function openEdit(value: unknown) {
-    const row = value as ArchiveRuntimeDefinitionDto;
-    editingId.value = row.id;
-    editor.value = {
-        definitionKind: row.definitionKind,
-        definitionCode: row.definitionCode,
-        definitionName: row.definitionName,
-        triggerPoint: row.triggerPoint,
-        scopeFondsCode: row.scopeFondsCode ?? "",
-        scopeCategoryCode: row.scopeCategoryCode ?? "",
-        priority: row.priority,
-        conditionJson: JSON.stringify(row.conditionJson, null, 2),
-        constraintAction: row.constraintAction ?? "REJECT",
-        constraintMessage: row.constraintMessage ?? "",
-        enabled: row.enabled,
-        actions: row.actions.map((action) => ({
-            actionType: action.actionType,
-            message: String(action.actionParams.message ?? ""),
-            field: String(action.actionParams.field ?? ""),
-            value: JSON.stringify(action.actionParams.value ?? ""),
-        })),
-    };
-    editorError.value = undefined;
-    editorViolations.value = [];
+function openEdit(row: unknown) {
+    editingDefinition.value = row as ArchiveRuntimeDefinitionDto;
     editorOpen.value = true;
 }
-
-async function loadFieldCatalog() {
-    fieldLoading.value = true;
-    try {
-        const response = await getArchiveRuntimeFields({
-            categoryCode: trim(editor.value.scopeCategoryCode),
-            triggerPoint: editor.value.triggerPoint,
-        });
-        fieldCatalog.value = response.fields;
-    } catch (error) {
-        fieldCatalog.value = [];
-        editorError.value = requestErrorMessage(error, "字段目录加载失败");
-    } finally {
-        fieldLoading.value = false;
-    }
+function openSimulation() {
+    simulationOpen.value = true;
 }
-
-function addAction() {
-    editor.value.actions.push({ actionType: "WARN", message: "请复核", field: "", value: "" });
-}
-
-async function submitDefinition() {
-    editorSubmitting.value = true;
-    editorError.value = undefined;
-    editorViolations.value = [];
-    try {
-        const payload = editorPayload();
-        if (editingId.value) await updateArchiveRuntimeDefinition(editingId.value, payload);
-        else await createArchiveRuntimeDefinition(payload);
-        ElMessage.success(editingId.value ? "运行时定义已更新" : "运行时定义已创建");
-        editorOpen.value = false;
-        await loadDefinitions();
-    } catch (error) {
-        editorError.value = requestErrorMessage(error, "运行时定义保存失败");
-        editorViolations.value =
-            error instanceof HttpClientError
-                ? error.fieldViolations.map((item) => ({
-                      field: item.field ?? "definition",
-                      message: item.message ?? "字段不合法",
-                  }))
-                : [];
-    } finally {
-        editorSubmitting.value = false;
-    }
-}
-
-function editorPayload(): ArchiveRuntimeDefinitionRequest {
-    const value = editor.value;
-    if (!value.definitionCode.trim() || !value.definitionName.trim()) {
-        throw new Error("编码和名称不能为空");
-    }
-    const actions =
-        value.definitionKind === "RULE"
-            ? value.actions.map((action, index) => ({
-                  actionType: action.actionType,
-                  actionOrder: index,
-                  actionParams:
-                      action.actionType === "SET_FIELD"
-                          ? { field: action.field, value: parseJsonValue(action.value) }
-                          : { message: action.message.trim() },
-              }))
-            : [];
-    if (value.definitionKind === "RULE" && actions.length === 0) {
-        throw new Error("运行时规则至少需要一个固定动作");
-    }
-    return {
-        definitionKind: value.definitionKind,
-        definitionCode: value.definitionCode.trim(),
-        definitionName: value.definitionName.trim(),
-        triggerPoint: value.triggerPoint,
-        scopeFondsCode: trim(value.scopeFondsCode),
-        scopeCategoryCode: trim(value.scopeCategoryCode),
-        scopeArchiveLevel: value.triggerPoint.startsWith("VOLUME_") ? "VOLUME" : "ITEM",
-        priority: value.priority,
-        conditionJson: parseObject(value.conditionJson, "条件 JSON"),
-        constraintAction:
-            value.definitionKind === "CONSTRAINT" ? value.constraintAction : undefined,
-        constraintMessage:
-            value.definitionKind === "CONSTRAINT" ? trim(value.constraintMessage) : undefined,
-        enabled: value.enabled,
-        actions,
-    };
-}
-
 async function publishDefinition(value: unknown) {
     const row = value as ArchiveRuntimeDefinitionDto;
     try {
@@ -252,101 +93,6 @@ async function removeDefinition(value: unknown) {
         }
     }
 }
-
-function openSimulation() {
-    simulation.value = defaultSimulation();
-    simulationResult.value = undefined;
-    simulationError.value = undefined;
-    simulationOpen.value = true;
-}
-
-async function runSimulation() {
-    simulationSubmitting.value = true;
-    simulationError.value = undefined;
-    try {
-        const value = simulation.value;
-        simulationResult.value = await simulateArchiveRuntimeDefinitions({
-            triggerPoint: value.triggerPoint,
-            fondsCode: trim(value.fondsCode),
-            categoryCode: trim(value.categoryCode),
-            archiveLevel: value.triggerPoint.startsWith("VOLUME_") ? "VOLUME" : "ITEM",
-            objectTypeCode: "SIMULATION",
-            candidateFacts: parseObject(value.candidateFacts, "候选事实 JSON"),
-        });
-    } catch (error) {
-        simulationError.value = requestErrorMessage(error, "试运行失败");
-    } finally {
-        simulationSubmitting.value = false;
-    }
-}
-
-async function copyFieldCode(fieldCode: string) {
-    await window.navigator.clipboard?.writeText(fieldCode);
-    ElMessage.success(`已复制 ${fieldCode}`);
-}
-
-function parseObject(value: string, label: string) {
-    try {
-        const parsed = JSON.parse(value || "{}");
-        if (parsed == null || Array.isArray(parsed) || typeof parsed !== "object") {
-            throw new Error();
-        }
-        return parsed as Record<string, unknown>;
-    } catch {
-        throw new Error(`${label} 必须是合法对象`);
-    }
-}
-
-function parseJsonValue(value: string) {
-    try {
-        return JSON.parse(value);
-    } catch {
-        return value;
-    }
-}
-
-function trim(value?: string) {
-    return value?.trim() || undefined;
-}
-
-function defaultEditor() {
-    return {
-        definitionKind: "CONSTRAINT" as ArchiveRuntimeDefinitionKind,
-        definitionCode: "",
-        definitionName: "",
-        triggerPoint: "ITEM_BEFORE_CREATE" as ArchiveRuntimeTriggerPoint,
-        scopeFondsCode: "",
-        scopeCategoryCode: "",
-        priority: 0,
-        conditionJson: JSON.stringify({ field: "item.archiveNo", operator: "IS_EMPTY" }, null, 2),
-        constraintAction: "REJECT" as "REJECT" | "WARN",
-        constraintMessage: "档号不能为空",
-        enabled: true,
-        actions: [] as Array<{
-            actionType: ArchiveRuntimeActionType;
-            message: string;
-            field: string;
-            value: string;
-        }>,
-    };
-}
-
-function defaultSimulation() {
-    return {
-        triggerPoint: "ITEM_BEFORE_CREATE" as ArchiveRuntimeTriggerPoint,
-        fondsCode: "",
-        categoryCode: "",
-        candidateFacts: JSON.stringify(
-            {
-                "item.archiveNo": "A-001",
-                "item.archiveYear": 2026,
-                "context.userId": 1,
-            },
-            null,
-            2,
-        ),
-    };
-}
 </script>
 
 <template>
@@ -362,403 +108,25 @@ function defaultSimulation() {
                 <el-button type="primary" @click="openCreate">新建定义</el-button>
             </div>
         </div>
-
-        <el-card class="runtime-filter" shadow="never">
-            <div class="runtime-filter__grid">
-                <label>
-                    <span>状态</span>
-                    <el-select v-model="status" clearable placeholder="全部状态">
-                        <el-option label="草稿" value="DRAFT" />
-                        <el-option label="已发布" value="PUBLISHED" />
-                    </el-select>
-                </label>
-                <label>
-                    <span>触发点</span>
-                    <el-select
-                        v-model="triggerPoint"
-                        clearable
-                        placeholder="全部触发点"
-                        @change="loadDefinitions"
-                    >
-                        <el-option
-                            v-for="item in triggerPoints"
-                            :key="item.value"
-                            :label="item.label"
-                            :value="item.value"
-                        />
-                    </el-select>
-                </label>
-                <el-button :loading="loading" @click="loadDefinitions">刷新</el-button>
-            </div>
-        </el-card>
-
-        <el-alert v-if="loadError" :title="loadError" type="error" show-icon :closable="false" />
-        <el-card class="runtime-list" shadow="never">
-            <el-empty v-if="!loading && definitions.length === 0" description="还没有运行时定义">
-                <el-button type="primary" @click="openCreate">创建第一条约束</el-button>
-            </el-empty>
-            <AmDataTable
-                v-else
-                :data="definitions"
-                :loading="loading"
-                row-key="id"
-                size="small"
-                :columns="[
-                    { key: 'priority', label: '#', width: 60, sortable: true },
-                    { key: 'definitionName', label: '定义', minWidth: 220, sortable: true },
-                    { key: 'definitionKind', label: '类别', width: 100, sortable: true },
-                    { key: 'triggerPoint', label: '触发点', minWidth: 170, sortable: true },
-                    {
-                        key: 'scopeCategoryCode',
-                        label: '分类范围',
-                        minWidth: 130,
-                        sortable: true,
-                    },
-                    { key: 'actionsSummary', label: '动作', minWidth: 150 },
-                    { key: 'status', label: '状态', width: 100, sortable: true },
-                    { key: 'enabled', label: '启用', width: 78, sortable: true },
-                    { key: 'actions', label: '操作', width: 190, fixed: 'right' },
-                ]"
-            >
-                <template #cell-definitionName="{ row }">
-                    <div class="definition-cell">
-                        <strong>{{ row.definitionName }}</strong>
-                        <code>{{ row.definitionCode }}</code>
-                    </div>
-                </template>
-                <template #cell-definitionKind="{ row }">
-                    <el-tag effect="plain">
-                        {{ row.definitionKind === "CONSTRAINT" ? "约束" : "规则" }}
-                    </el-tag>
-                </template>
-                <template #cell-triggerPoint="{ row }">{{
-                    triggerLabels[row.triggerPoint]
-                }}</template>
-                <template #cell-scopeCategoryCode="{ row }">{{
-                    row.scopeCategoryCode || "全部分类"
-                }}</template>
-                <template #cell-actionsSummary="{ row }">
-                    <span v-if="row.definitionKind === 'CONSTRAINT'">{{
-                        row.constraintAction
-                    }}</span>
-                    <el-tag
-                        v-for="action in row.actions"
-                        v-else
-                        :key="action.id"
-                        class="action-tag"
-                        size="small"
-                        effect="plain"
-                        >{{ action.actionType }}</el-tag
-                    >
-                </template>
-                <template #cell-status="{ row }">
-                    <el-tag :type="row.status === 'PUBLISHED' ? 'success' : 'info'">
-                        {{ row.status === "PUBLISHED" ? "已发布" : "草稿" }}
-                    </el-tag>
-                </template>
-                <template #cell-enabled="{ row }">
-                    <el-switch
-                        :model-value="row.enabled"
-                        :disabled="row.status !== 'PUBLISHED'"
-                        @change="changeEnabled(row, Boolean($event))"
-                    />
-                </template>
-                <template #cell-actions="{ row }">
-                    <el-button v-if="row.status === 'DRAFT'" link @click="openEdit(row)"
-                        >编辑</el-button
-                    >
-                    <el-button
-                        v-if="row.status === 'DRAFT'"
-                        link
-                        type="primary"
-                        @click="publishDefinition(row)"
-                        >发布</el-button
-                    >
-                    <el-button
-                        v-if="row.status === 'DRAFT'"
-                        link
-                        type="danger"
-                        @click="removeDefinition(row)"
-                        >删除</el-button
-                    >
-                    <span v-else class="immutable-label">语义已锁定</span>
-                </template>
-            </AmDataTable>
-        </el-card>
-
-        <el-dialog
+        <ArchiveRulesList
+            v-model:status="status"
+            v-model:trigger-point="triggerPoint"
+            :definitions="definitions"
+            :loading="loading"
+            :load-error="loadError"
+            @refresh="loadDefinitions"
+            @create="openCreate"
+            @edit="openEdit"
+            @publish="publishDefinition"
+            @enable="changeEnabled"
+            @remove="removeDefinition"
+        />
+        <ArchiveRuleEditorDialog
             v-model="editorOpen"
-            :title="editingId ? '编辑运行时定义' : '新建运行时定义'"
-            width="min(980px, 94vw)"
-            destroy-on-close
-        >
-            <el-alert
-                v-if="editorError"
-                :title="editorError"
-                type="error"
-                :closable="false"
-                show-icon
-            >
-                <ul v-if="editorViolations.length" class="violation-list">
-                    <li v-for="item in editorViolations" :key="`${item.field}-${item.message}`">
-                        <code>{{ item.field }}</code> {{ item.message }}
-                    </li>
-                </ul>
-            </el-alert>
-            <div class="editor-grid">
-                <el-form :model="editor" label-position="top" class="editor-form">
-                    <div class="editor-form__row">
-                        <el-form-item label="定义类型"
-                            ><el-segmented
-                                v-model="editor.definitionKind"
-                                :options="[
-                                    { label: '约束', value: 'CONSTRAINT' },
-                                    { label: '规则', value: 'RULE' },
-                                ]"
-                        /></el-form-item>
-                        <el-form-item label="优先级"
-                            ><el-input-number v-model="editor.priority" controls-position="right"
-                        /></el-form-item>
-                    </div>
-                    <div class="editor-form__row">
-                        <el-form-item label="稳定编码" required
-                            ><el-input
-                                v-model="editor.definitionCode"
-                                placeholder="archive-no-required"
-                        /></el-form-item>
-                        <el-form-item label="名称" required
-                            ><el-input v-model="editor.definitionName" placeholder="档号必填"
-                        /></el-form-item>
-                    </div>
-                    <div class="editor-form__row">
-                        <el-form-item label="固定触发点"
-                            ><el-select v-model="editor.triggerPoint"
-                                ><el-option
-                                    v-for="item in triggerPoints"
-                                    :key="item.value"
-                                    :label="item.label"
-                                    :value="item.value" /></el-select
-                        ></el-form-item>
-                        <el-form-item label="分类编码"
-                            ><el-input
-                                v-model="editor.scopeCategoryCode"
-                                placeholder="为空表示全部分类"
-                        /></el-form-item>
-                        <el-form-item label="全宗编码"
-                            ><el-input v-model="editor.scopeFondsCode" placeholder="可选"
-                        /></el-form-item>
-                    </div>
-                    <el-form-item label="结构化条件 JSON" required>
-                        <el-input
-                            v-model="editor.conditionJson"
-                            type="textarea"
-                            :rows="9"
-                            class="code-input"
-                        />
-                        <div class="field-hint">
-                            只允许 all / any / not / 字段比较节点，不接受 SQL、脚本或表达式语言。
-                        </div>
-                    </el-form-item>
-                    <template v-if="editor.definitionKind === 'CONSTRAINT'">
-                        <div class="editor-form__row">
-                            <el-form-item label="断言失败处理"
-                                ><el-select v-model="editor.constraintAction"
-                                    ><el-option label="阻断 REJECT" value="REJECT" /><el-option
-                                        label="警告 WARN"
-                                        value="WARN" /></el-select
-                            ></el-form-item>
-                            <el-form-item label="用户消息"
-                                ><el-input v-model="editor.constraintMessage"
-                            /></el-form-item>
-                        </div>
-                    </template>
-                    <template v-else>
-                        <div class="action-header">
-                            <strong>固定动作</strong
-                            ><el-button size="small" @click="addAction">添加动作</el-button>
-                        </div>
-                        <div
-                            v-for="(action, index) in editor.actions"
-                            :key="index"
-                            class="action-row"
-                        >
-                            <span class="action-index">{{ index + 1 }}</span>
-                            <el-select v-model="action.actionType" style="width: 150px"
-                                ><el-option
-                                    v-for="value in availableActions"
-                                    :key="value"
-                                    :label="value"
-                                    :value="value"
-                            /></el-select>
-                            <template v-if="action.actionType === 'SET_FIELD'">
-                                <el-select
-                                    v-model="action.field"
-                                    filterable
-                                    placeholder="可写字段"
-                                    class="action-grow"
-                                    ><el-option
-                                        v-for="field in writableFields"
-                                        :key="field.fieldCode"
-                                        :label="`${field.fieldName} · ${field.fieldCode}`"
-                                        :value="field.fieldCode"
-                                /></el-select>
-                                <el-input
-                                    v-model="action.value"
-                                    placeholder='JSON 值，如 2026 或 "DRAFT"'
-                                    class="action-grow"
-                                />
-                            </template>
-                            <el-input
-                                v-else
-                                v-model="action.message"
-                                placeholder="用户可见消息"
-                                class="action-grow"
-                            />
-                            <el-button link type="danger" @click="editor.actions.splice(index, 1)"
-                                >移除</el-button
-                            >
-                        </div>
-                    </template>
-                    <el-form-item label="创建后启用"
-                        ><el-switch v-model="editor.enabled"
-                    /></el-form-item>
-                </el-form>
-                <aside v-loading="fieldLoading" class="field-catalog">
-                    <div class="field-catalog__header">
-                        <strong>真实字段目录</strong><span>{{ fieldCatalog.length }} 个字段</span>
-                    </div>
-                    <el-empty
-                        v-if="!fieldCatalog.length"
-                        description="填写有效分类后加载字段"
-                        :image-size="64"
-                    />
-                    <button
-                        v-for="field in fieldCatalog"
-                        v-else
-                        :key="field.fieldCode"
-                        type="button"
-                        class="field-item"
-                        @click="copyFieldCode(field.fieldCode)"
-                    >
-                        <span
-                            ><strong>{{ field.fieldName }}</strong
-                            ><code>{{ field.fieldCode }}</code></span
-                        >
-                        <span class="field-meta"
-                            >{{ field.dataType }} · {{ field.writable ? "可写" : "只读" }}</span
-                        >
-                    </button>
-                </aside>
-            </div>
-            <template #footer
-                ><el-button @click="editorOpen = false">取消</el-button
-                ><el-button type="primary" :loading="editorSubmitting" @click="submitDefinition"
-                    >保存草稿</el-button
-                ></template
-            >
-        </el-dialog>
-
-        <el-dialog
-            v-model="simulationOpen"
-            title="无副作用试运行"
-            width="min(900px, 94vw)"
-            destroy-on-close
-        >
-            <el-alert
-                title="试运行复用真实执行核心，但不会写主数据、审计或决策追踪。"
-                type="info"
-                :closable="false"
-                show-icon
-            />
-            <el-form :model="simulation" label-position="top" class="simulation-form">
-                <div class="editor-form__row">
-                    <el-form-item label="触发点"
-                        ><el-select v-model="simulation.triggerPoint"
-                            ><el-option
-                                v-for="item in triggerPoints"
-                                :key="item.value"
-                                :label="item.label"
-                                :value="item.value" /></el-select></el-form-item
-                    ><el-form-item label="全宗编码"
-                        ><el-input v-model="simulation.fondsCode" /></el-form-item
-                    ><el-form-item label="分类编码"
-                        ><el-input v-model="simulation.categoryCode"
-                    /></el-form-item>
-                </div>
-                <el-form-item label="候选事实 JSON"
-                    ><el-input
-                        v-model="simulation.candidateFacts"
-                        type="textarea"
-                        :rows="8"
-                        class="code-input"
-                /></el-form-item>
-            </el-form>
-            <el-alert
-                v-if="simulationError"
-                :title="simulationError"
-                type="error"
-                :closable="false"
-            />
-            <template v-if="simulationResult">
-                <div class="simulation-summary">
-                    <el-tag
-                        :type="
-                            simulationResult.blocking
-                                ? 'danger'
-                                : simulationResult.warnings.length
-                                  ? 'warning'
-                                  : 'success'
-                        "
-                        >{{
-                            simulationResult.blocking
-                                ? "将阻断"
-                                : simulationResult.warnings.length
-                                  ? "放行但有警告"
-                                  : "允许执行"
-                        }}</el-tag
-                    ><span
-                        >候选字段变化
-                        {{ Object.keys(simulationResult.assignments).length }} 项</span
-                    >
-                </div>
-                <AmDataTable
-                    :data="simulationResult.decisions"
-                    size="small"
-                    :columns="[
-                        { key: 'definitionCode', label: '定义', sortable: true },
-                        { key: 'definitionKind', label: '类型', width: 100, sortable: true },
-                        { key: 'matched', label: '命中', width: 80, sortable: true },
-                        { key: 'result', label: '结果', width: 100 },
-                        { key: 'message', label: '消息', sortable: true },
-                    ]"
-                >
-                    <template #cell-matched="{ row }">{{ row.matched ? "是" : "否" }}</template>
-                    <template #cell-result="{ row }">
-                        <el-tag
-                            :type="
-                                row.blocking
-                                    ? 'danger'
-                                    : row.severity === 'WARNING'
-                                      ? 'warning'
-                                      : 'info'
-                            "
-                            >{{ row.blocking ? "阻断" : row.severity }}</el-tag
-                        >
-                    </template>
-                </AmDataTable>
-                <el-collapse
-                    ><el-collapse-item title="最终候选事实">
-                        <pre>{{ JSON.stringify(simulationResult.candidateFacts, null, 2) }}</pre>
-                    </el-collapse-item></el-collapse
-                >
-            </template>
-            <template #footer
-                ><el-button @click="simulationOpen = false">关闭</el-button
-                ><el-button type="primary" :loading="simulationSubmitting" @click="runSimulation"
-                    >开始试运行</el-button
-                ></template
-            >
-        </el-dialog>
+            :definition="editingDefinition"
+            @saved="loadDefinitions"
+        />
+        <ArchiveRuleSimulationDialog v-model="simulationOpen" />
     </section>
 </template>
 
@@ -784,170 +152,9 @@ function defaultSimulation() {
     color: var(--runtime-muted);
     font-size: 13px;
 }
-.runtime-filter {
-    margin-bottom: 14px;
-}
-.runtime-filter__grid {
-    display: grid;
-    grid-template-columns: minmax(180px, 240px) minmax(140px, 180px) minmax(220px, 1fr) auto;
-    gap: 14px;
-    align-items: end;
-}
-.runtime-filter__grid label {
-    display: grid;
-    gap: 7px;
-    color: var(--runtime-muted);
-    font-size: 12px;
-}
-.runtime-list :deep(.el-card__body) {
-    padding: 0;
-}
-.definition-cell {
-    display: grid;
-    gap: 3px;
-}
-.definition-cell strong {
-    color: var(--runtime-ink);
-}
-.definition-cell code,
-.field-item code {
-    color: var(--runtime-muted);
-    font-size: 11px;
-}
-.action-tag + .action-tag {
-    margin-left: 4px;
-}
-.immutable-label {
-    color: var(--runtime-muted);
-    font-size: 12px;
-}
-.editor-grid {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 280px;
-    gap: 20px;
-    margin-top: 16px;
-}
-.editor-form__row {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 12px;
-}
-.editor-form__row:has(> :nth-child(2):last-child) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-.code-input :deep(textarea) {
-    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
-    font-size: 12px;
-    line-height: 1.55;
-}
-.field-hint {
-    margin-top: 6px;
-    color: var(--runtime-muted);
-    font-size: 12px;
-}
-.field-catalog {
-    min-height: 360px;
-    overflow: hidden;
-    border: 1px solid var(--runtime-line);
-    border-radius: 8px;
-    background: #f8fafb;
-}
-.field-catalog__header {
-    display: flex;
-    justify-content: space-between;
-    padding: 12px 14px;
-    border-bottom: 1px solid var(--runtime-line);
-}
-.field-catalog__header span {
-    color: var(--runtime-muted);
-    font-size: 12px;
-}
-.field-item {
-    display: flex;
-    width: 100%;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 10px 14px;
-    border: 0;
-    border-bottom: 1px solid var(--runtime-line);
-    background: transparent;
-    color: inherit;
-    text-align: left;
-    cursor: pointer;
-}
-.field-item:hover {
-    background: #fff;
-}
-.field-item > span:first-child {
-    display: grid;
-    gap: 2px;
-}
-.field-meta {
-    flex: none;
-    color: var(--runtime-muted);
-    font-size: 11px;
-}
-.action-header,
-.simulation-summary {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-.action-header {
-    justify-content: space-between;
-    margin-bottom: 10px;
-}
-.action-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 8px;
-}
-.action-index {
-    width: 22px;
-    color: var(--runtime-muted);
-    text-align: center;
-}
-.action-grow {
-    flex: 1;
-}
-.violation-list {
-    margin: 8px 0 0;
-    padding-left: 18px;
-}
-.simulation-form {
-    margin-top: 14px;
-}
-.simulation-summary {
-    margin: 14px 0 10px;
-}
-pre {
-    max-height: 260px;
-    overflow: auto;
-    margin: 0;
-    padding: 12px;
-    background: #f5f7f8;
-    font-size: 12px;
-}
-@media (max-width: 900px) {
-    .runtime-filter__grid,
-    .editor-grid {
-        grid-template-columns: 1fr;
-    }
-    .field-catalog {
-        min-height: 220px;
-    }
-}
 @media (max-width: 640px) {
     .runtime-header {
         align-items: flex-start;
-    }
-    .editor-form__row {
-        grid-template-columns: 1fr;
-    }
-    .action-row {
-        align-items: stretch;
-        flex-direction: column;
     }
 }
 </style>
