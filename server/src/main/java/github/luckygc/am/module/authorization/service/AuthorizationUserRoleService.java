@@ -1,7 +1,10 @@
 package github.luckygc.am.module.authorization.service;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,11 +47,17 @@ public class AuthorizationUserRoleService {
     /** 保留关系顺序，认证授权与数据范围计算共用同一角色有效性来源。 */
     @Transactional(readOnly = true)
     public List<AuthorizationRole> listAssignedRoles(Long userId) {
-        return relationRepository.findByUserId(userId).stream()
-                .map(AuthorizationUserRoleRelation::getRoleId)
-                .map(roleRepository::findById)
-                .flatMap(Optional::stream)
-                .toList();
+        List<Long> roleIds =
+                relationRepository.findByUserId(userId).stream()
+                        .map(AuthorizationUserRoleRelation::getRoleId)
+                        .toList();
+        if (roleIds.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, AuthorizationRole> rolesById =
+                roleRepository.findByIdIn(roleIds.stream().distinct().toList()).stream()
+                        .collect(Collectors.toMap(AuthorizationRole::getId, Function.identity()));
+        return roleIds.stream().map(rolesById::get).filter(java.util.Objects::nonNull).toList();
     }
 
     @Transactional

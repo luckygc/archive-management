@@ -161,7 +161,7 @@ class ArchiveDataScopeServiceTests {
     @DisplayName("用户命中任意范围时计算结果为全部数据")
     void resolveUserScopeShouldReturnAllWhenAnyEnabledScopeIsAll() {
         when(userRoleRelationRepository.findByUserId(7L)).thenReturn(List.of(userRole(7L, 1L)));
-        when(roleRepository.findById(1L)).thenReturn(Optional.of(enabledRole(1L)));
+        when(roleRepository.findByIdIn(List.of(1L))).thenReturn(List.of(enabledRole(1L)));
         when(subjectRelationRepository.findBySubjectTypeAndSubjectId(
                         ArchiveDataScopeSubjectType.USER, 7L))
                 .thenReturn(List.of());
@@ -184,7 +184,7 @@ class ArchiveDataScopeServiceTests {
         AuthorizationRole role = enabledRole(1L);
         role.setRoleName(AuthorizationPermissionService.SUPER_ADMIN_ROLE_NAME);
         when(userRoleRelationRepository.findByUserId(7L)).thenReturn(List.of(userRole(7L, 1L)));
-        when(roleRepository.findById(1L)).thenReturn(Optional.of(role));
+        when(roleRepository.findByIdIn(List.of(1L))).thenReturn(List.of(role));
 
         ArchiveDataScopeResolutionTypes.ResolvedArchiveDataScope resolved =
                 dataScopeService.resolveUserDataScope(7L);
@@ -272,8 +272,8 @@ class ArchiveDataScopeServiceTests {
         when(subjectRelationRepository.findBySubjectTypeAndSubjectId(
                         ArchiveDataScopeSubjectType.USER, 7L))
                 .thenReturn(List.of());
-        when(roleRepository.findById(1L)).thenReturn(Optional.of(disabledRole(1L)));
-        when(roleRepository.findById(2L)).thenReturn(Optional.of(enabledRole(2L)));
+        when(roleRepository.findByIdIn(List.of(1L, 2L)))
+                .thenReturn(List.of(disabledRole(1L), enabledRole(2L)));
         when(subjectRelationRepository.findBySubjectTypeAndSubjectId(
                         ArchiveDataScopeSubjectType.ROLE, 2L))
                 .thenReturn(List.of(subjectScope(ArchiveDataScopeSubjectType.ROLE, 2L, 100L)));
@@ -300,7 +300,7 @@ class ArchiveDataScopeServiceTests {
         when(subjectRelationRepository.findBySubjectTypeAndSubjectId(
                         ArchiveDataScopeSubjectType.USER, 7L))
                 .thenReturn(List.of());
-        when(roleRepository.findById(1L)).thenReturn(Optional.of(enabledRole(1L)));
+        when(roleRepository.findByIdIn(List.of(1L))).thenReturn(List.of(enabledRole(1L)));
         when(subjectRelationRepository.findBySubjectTypeAndSubjectId(
                         ArchiveDataScopeSubjectType.ROLE, 1L))
                 .thenReturn(List.of(subjectScope(ArchiveDataScopeSubjectType.ROLE, 1L, 100L)));
