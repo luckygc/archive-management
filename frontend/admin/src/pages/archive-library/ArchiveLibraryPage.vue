@@ -9,50 +9,40 @@ import {
     listArchiveRelatedFilterCategories,
 } from "@/shared/api/archive-metadata";
 import type { ArchiveCategoryDto, ArchiveFieldDto } from "@/shared/types/archive-metadata";
-import type {
-    ArchiveRecordListDto,
-    ArchiveRecordOrderBy,
-    ArchiveRelatedFilterCategoryDto,
-    SearchArchiveRecordsQuery,
-} from "@/shared/types/archive-records";
+import type { ArchiveRelatedFilterCategoryDto } from "@/shared/types/archive-records";
 import CursorPagination from "@/shared/components/CursorPagination.vue";
 import RequestErrorState from "@/shared/components/RequestErrorState.vue";
-import {
-    isCursorFieldViolation,
-    requestErrorMessage,
-    withRequestTraceId,
-} from "@/shared/requestError";
+import { useArchiveQueryResult } from "@/shared/archive/query/useArchiveQueryResult";
 
 import ArchiveAdvancedQueryPanel from "@/shared/archive/query/ArchiveAdvancedQueryPanel.vue";
 import type { ArchiveQueryFormValues } from "@/shared/archive/query/archiveQueryTypes";
 import ArchiveResultTable from "@/shared/archive/result-table/ArchiveResultTable.vue";
 import { toSearchQuery } from "@/shared/archive/query/archiveQuery";
 
-type DiscoverRequest = Parameters<typeof discoverArchiveRecords>[0];
-
 const form = reactive<ArchiveQueryFormValues>({ conditions: [], relatedGroups: [] });
 const categories = ref<ArchiveCategoryDto[]>([]);
 const fields = ref<ArchiveFieldDto[]>([]);
 const relatedCategories = ref<ArchiveRelatedFilterCategoryDto[]>([]);
 const relatedFieldsByCategory = ref(new Map<number, ArchiveFieldDto[]>());
-const result = ref<ArchiveRecordListDto>();
-const committedQuery = ref<SearchArchiveRecordsQuery>();
-const orderBy = ref<ArchiveRecordOrderBy[]>([]);
-const limit = ref(100);
-const cursor = ref<string>();
-const loading = ref(false);
-const loadError = ref<string>();
+const {
+    result,
+    orderBy,
+    limit,
+    loading,
+    loadError,
+    refresh,
+    page,
+    limitChange,
+    orderResults,
+    submit: submitQuery,
+    reset: resetResults,
+} = useArchiveQueryResult(discoverArchiveRecords);
 let categoryLoadVersion = 0;
-let requestVersion = 0;
 let disposed = false;
-let failedRequest: DiscoverRequest | undefined;
-let retryInFlight: Promise<void> | undefined;
 
 onBeforeUnmount(() => {
     disposed = true;
-    requestVersion += 1;
     categoryLoadVersion += 1;
-    loading.value = false;
 });
 
 onMounted(async () => {
@@ -110,82 +100,11 @@ watch(
         }
     },
 );
-function execute(query: SearchArchiveRecordsQuery, nextCursor?: string) {
-    const request: DiscoverRequest = {
-        ...query,
-        orderBy: orderBy.value.length ? orderBy.value.map((item) => ({ ...item })) : undefined,
-        limit: limit.value,
-        cursor: nextCursor,
-    };
-    return executeRequest(request);
-}
-async function executeRequest(request: DiscoverRequest, preserveError = false) {
-    const version = ++requestVersion;
-    loading.value = true;
-    if (!preserveError) {
-        loadError.value = undefined;
-        failedRequest = undefined;
-        retryInFlight = undefined;
-    }
-    cursor.value = request.cursor;
-    try {
-        const response = await discoverArchiveRecords(request);
-        if (!disposed && version === requestVersion) {
-            result.value = response;
-            loadError.value = undefined;
-            failedRequest = undefined;
-        }
-    } catch (error) {
-        if (!disposed && version === requestVersion) {
-            const cursorInvalid = Boolean(request.cursor) && isCursorFieldViolation(error);
-            failedRequest = cursorInvalid ? { ...request, cursor: undefined } : request;
-            if (cursorInvalid) {
-                clearResultCursors();
-                loadError.value = withRequestTraceId("数据已变化，将从第一页重新加载", error);
-            } else loadError.value = requestErrorMessage(error, "查询失败");
-        }
-    } finally {
-        if (!disposed && version === requestVersion) loading.value = false;
-    }
-}
 function submit(values: ArchiveQueryFormValues) {
-    const query = toSearchQuery(values);
-    committedQuery.value = query;
-    orderBy.value = [];
-    clearResultCursors();
-    void execute(query);
-}
-function orderResults(next: ArchiveRecordOrderBy[]) {
-    if (!committedQuery.value) return;
-    orderBy.value = next;
-    clearResultCursors();
-    void execute(committedQuery.value);
-}
-function refresh(): Promise<void> {
-    if (retryInFlight) return retryInFlight;
-    if (failedRequest) {
-        const promise = executeRequest({ ...failedRequest }, true);
-        retryInFlight = promise;
-        const clearRetry = () => {
-            if (retryInFlight === promise) retryInFlight = undefined;
-        };
-        void promise.then(clearRetry, clearRetry);
-        return promise;
-    }
-    if (committedQuery.value) return execute(committedQuery.value, cursor.value);
-    return Promise.resolve();
-}
-function page(nextCursor: string) {
-    if (committedQuery.value) void execute(committedQuery.value, nextCursor);
-}
-function limitChange(nextLimit: number) {
-    limit.value = nextLimit;
-    clearResultCursors();
-    if (committedQuery.value) void execute(committedQuery.value);
+    submitQuery(toSearchQuery(values));
 }
 function reset() {
-    requestVersion += 1;
-    loading.value = false;
+    resetResults();
     Object.assign(form, {
         categoryId: undefined,
         fondsCode: undefined,
@@ -193,24 +112,6 @@ function reset() {
         conditions: [],
         relatedGroups: [],
     });
-    result.value = undefined;
-    committedQuery.value = undefined;
-    orderBy.value = [];
-    cursor.value = undefined;
-    loadError.value = undefined;
-    failedRequest = undefined;
-    retryInFlight = undefined;
-}
-function clearResultCursors() {
-    cursor.value = undefined;
-    if (!result.value) return;
-    result.value = {
-        ...result.value,
-        self: undefined,
-        prev: undefined,
-        next: undefined,
-        first: undefined,
-    };
 }
 </script>
 
