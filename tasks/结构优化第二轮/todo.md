@@ -20,4 +20,10 @@
 
 - 本轮代码、规格和任务记录已纳入本地提交，尚未推送；GitHub Actions 尚未在远端实际运行，分支保护未配置。
 - 未主动启动开发服务，未做真实浏览器交互验收；前端采用现有组件测试与完整构建验证。
-- 完整后端测试结束时仍有 Surefire 在 System.exit(0) 后 30 秒强制结束测试 JVM 的提示，Maven 与全部断言通过。已核对本轮前的 746 项测试基线日志和本轮两次完整日志，三次均存在此提示。后续按“提交，定位有问题的地方”的要求单独复现并定位到 RequiredTotpLoginIntegrationTests 遗漏类结束时关闭 Spring 上下文的约定：数据库容器先停，依赖数据库的 Bean 留到 JVM 退出时销毁。详见 diagnosis.md；本次完成定位，未实施该独立修复或调整退出超时。
+- 此前完整后端测试结束时有 Surefire 在 System.exit(0) 后 30 秒强制结束测试 JVM 的提示，Maven 与全部断言通过；746 项基线和本轮 778、779 项完整运行均存在此提示。单独复现后定位到 RequiredTotpLoginIntegrationTests 遗漏类结束时关闭 Spring 上下文的约定：数据库容器先停，依赖数据库的 Bean 留到 JVM 退出时销毁。
+
+## 退出超时修复验收（2026-10-09）
+
+按“直接修复问题”要求，仅为 RequiredTotpLoginIntegrationTests 补齐 AFTER_CLASS 上下文清理标记及导入。修复后的单类测试通过，连接池正常关闭，未再强制结束 JVM；当前全部 28 个容器测试类的清理约定已独立复核。
+
+重新执行完整 `mise.exe run verify`，退出码 0，后端 779 项、core 13 项、admin 315 项和所有门禁通过，28 个容器集成测试类零跳过。关闭阶段未出现 Surefire 强制终止、Bean 销毁失败或回滚异常覆盖错误，报告目录未生成 dump 或 dumpstream。定位证据、真实版本关闭顺序与修复前后对照见 diagnosis.md。
