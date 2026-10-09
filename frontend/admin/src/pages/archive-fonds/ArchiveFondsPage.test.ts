@@ -73,6 +73,19 @@ describe("ArchiveFondsPage", () => {
     });
 
     it("通过专用动作封闭全宗并刷新行状态", async () => {
+        archiveApiMocks.listArchiveFonds
+            .mockResolvedValueOnce({
+                items: [
+                    createFonds({ id: 1, fondsCode: "SYS-HD", fondsNo: "HD", status: "ACTIVE" }),
+                    createFonds({ id: 2, fondsCode: "SYS-CW", fondsNo: null, status: "CLOSED" }),
+                ],
+            })
+            .mockResolvedValue({
+                items: [
+                    createFonds({ id: 1, fondsCode: "SYS-HD", fondsNo: "HD", status: "CLOSED" }),
+                    createFonds({ id: 2, fondsCode: "SYS-CW", fondsNo: null, status: "CLOSED" }),
+                ],
+            });
         render(ArchiveFondsPage, { global: { plugins: [ElementPlus] } });
 
         await fireEvent.click(await screen.findByRole("button", { name: "封闭" }));

@@ -1,29 +1,26 @@
 <script setup lang="ts">
 import { ElMessage } from "element-plus";
-import { onMounted, reactive, ref } from "vue";
+import { onBeforeUnmount, onMounted, reactive, ref } from "vue";
 
 import {
     assignArchiveFondsNumber,
     closeArchiveFonds,
     createArchiveFonds,
     listArchiveFonds,
-    listArchiveFondsEvents,
     reopenArchiveFonds,
     updateArchiveFonds,
 } from "@/shared/api/archive-metadata";
-import CursorPagination from "@/shared/components/CursorPagination.vue";
+import RequestErrorState from "@/shared/components/RequestErrorState.vue";
 import { AmDataTable } from "@/shared/components/data-table";
 import { requestErrorMessage } from "@/shared/requestError";
-import type {
-    ArchiveFondsDto,
-    ArchiveFondsEventDto,
-    ArchiveFondsEventType,
-    ArchiveFondsStatus,
-} from "@/shared/types/archive-metadata";
-import type { CursorPageResponse } from "@/shared/types/pagination";
+import type { ArchiveFondsDto, ArchiveFondsStatus } from "@/shared/types/archive-metadata";
+import ArchiveFondsEventsDrawer from "./ArchiveFondsEventsDrawer.vue";
 
 const fonds = ref<ArchiveFondsDto[]>([]);
 const loading = ref(false);
+const loadError = ref<string>();
+let fondsRequestVersion = 0;
+let disposed = false;
 const saving = ref(false);
 const statusFilter = ref<ArchiveFondsStatus>();
 
@@ -48,26 +45,24 @@ const lifecycleAction = ref<"close" | "reopen">("close");
 const lifecycleForm = reactive({ reason: "", effectiveAt: "" });
 
 const eventsOpen = ref(false);
-const eventsLoading = ref(false);
 const eventsTarget = ref<ArchiveFondsDto>();
-const eventsPage = ref<CursorPageResponse<ArchiveFondsEventDto>>();
-const eventsLimit = ref(100);
-let eventsRequest = 0;
 
-const eventTypeLabels: Record<ArchiveFondsEventType, string> = {
-    NUMBER_ASSIGNED: "分配全宗号",
-    CLOSED: "封闭",
-    REOPENED: "重新开放",
-};
-
-async function loadFonds() {
+async function loadFonds(preserveError = false) {
+    const version = ++fondsRequestVersion;
+    const status = statusFilter.value;
+    const isCurrent = () =>
+        !disposed && version === fondsRequestVersion && status === statusFilter.value;
     loading.value = true;
+    if (!preserveError) loadError.value = undefined;
     try {
-        fonds.value = (await listArchiveFonds(statusFilter.value)).items;
+        const response = await listArchiveFonds(status);
+        if (!isCurrent()) return;
+        fonds.value = response.items;
+        loadError.value = undefined;
     } catch (error) {
-        ElMessage.error(requestErrorMessage(error, "全宗加载失败"));
+        if (isCurrent()) loadError.value = requestErrorMessage(error, "全宗加载失败");
     } finally {
-        loading.value = false;
+        if (isCurrent()) loading.value = false;
     }
 }
 
@@ -124,6 +119,7 @@ async function saveFonds() {
         replaceFonds(updated);
         editorOpen.value = false;
         ElMessage.success(editingId.value ? "全宗信息已更新" : "全宗已创建");
+        await loadFonds();
     } catch (error) {
         ElMessage.error(requestErrorMessage(error, "全宗保存失败"));
     } finally {
@@ -152,6 +148,7 @@ async function saveNumber() {
         replaceFonds(updated);
         numberDialogOpen.value = false;
         ElMessage.success("全宗号已分配");
+        await loadFonds();
     } catch (error) {
         ElMessage.error(requestErrorMessage(error, "全宗号分配失败"));
     } finally {
@@ -183,6 +180,7 @@ async function saveLifecycle() {
         replaceFonds(updated);
         lifecycleDialogOpen.value = false;
         ElMessage.success(lifecycleAction.value === "close" ? "全宗已封闭" : "全宗已重新开放");
+        await loadFonds();
     } catch (error) {
         ElMessage.error(requestErrorMessage(error, "全宗状态办理失败"));
     } finally {
@@ -190,47 +188,27 @@ async function saveLifecycle() {
     }
 }
 
-async function openEvents(row: ArchiveFondsDto) {
+function openEvents(row: ArchiveFondsDto) {
     eventsTarget.value = row;
-    eventsPage.value = undefined;
     eventsOpen.value = true;
-    await loadEvents();
-}
-
-async function loadEvents(cursor?: string) {
-    const targetId = eventsTarget.value?.id;
-    if (targetId === undefined) return;
-    const request = ++eventsRequest;
-    eventsLoading.value = true;
-    try {
-        const page = await listArchiveFondsEvents(targetId, eventsLimit.value, cursor);
-        if (request === eventsRequest && eventsOpen.value) eventsPage.value = page;
-    } catch (error) {
-        if (request === eventsRequest && eventsOpen.value)
-            ElMessage.error(requestErrorMessage(error, "全宗事件加载失败"));
-    } finally {
-        if (request === eventsRequest) eventsLoading.value = false;
-    }
-}
-
-function changeEventsLimit(limit: number) {
-    eventsLimit.value = limit;
-    eventsPage.value = undefined;
-    void loadEvents();
 }
 
 function replaceFonds(updated: ArchiveFondsDto) {
+    if (statusFilter.value && updated.status !== statusFilter.value) {
+        fonds.value = fonds.value.filter((item) => item.id !== updated.id);
+        return;
+    }
     const index = fonds.value.findIndex((item) => item.id === updated.id);
     if (index >= 0)
         fonds.value = fonds.value.map((item) => (item.id === updated.id ? updated : item));
     else fonds.value = [...fonds.value, updated];
 }
 
-function formatDateTime(value: string | null) {
-    return value ? new Date(value).toLocaleString("zh-CN", { hour12: false }) : "—";
-}
-
 onMounted(loadFonds);
+onBeforeUnmount(() => {
+    disposed = true;
+    fondsRequestVersion += 1;
+});
 </script>
 
 <template>
@@ -258,7 +236,15 @@ onMounted(loadFonds);
                     <el-option label="已封闭" value="CLOSED" />
                 </el-select>
             </div>
+            <RequestErrorState
+                v-if="loadError"
+                :message="loadError"
+                :retrying="loading"
+                retry-label="重试全宗列表"
+                @retry="void loadFonds(true)"
+            />
             <AmDataTable
+                v-if="fonds.length || !loadError"
                 :data="fonds"
                 :loading="loading"
                 row-key="id"
@@ -436,43 +422,7 @@ onMounted(loadFonds);
             </template>
         </el-dialog>
 
-        <el-drawer
-            v-model="eventsOpen"
-            :title="`${eventsTarget?.fondsName ?? ''} · 全宗事件`"
-            size="680px"
-            destroy-on-close
-        >
-            <AmDataTable
-                :data="eventsPage?.items ?? []"
-                :loading="eventsLoading"
-                row-key="id"
-                empty-text="暂无事件记录"
-                :columns="[
-                    { key: 'eventType', label: '事件', width: 130 },
-                    { key: 'effectiveAt', label: '生效时间', width: 180 },
-                    { key: 'change', label: '变更', minWidth: 170 },
-                    { key: 'reason', label: '原因', minWidth: 180 },
-                ]"
-            >
-                <template #cell-eventType="{ row }">{{ eventTypeLabels[row.eventType] }}</template>
-                <template #cell-effectiveAt="{ row }">{{
-                    formatDateTime(row.effectiveAt)
-                }}</template>
-                <template #cell-change="{ row }">
-                    {{ row.previousValue || "—" }} → {{ row.currentValue || "—" }}
-                </template>
-            </AmDataTable>
-            <div class="am-table-footer">
-                <CursorPagination
-                    :limit="eventsLimit"
-                    :prev="eventsPage?.prev"
-                    :next="eventsPage?.next"
-                    :loading="eventsLoading"
-                    @page="loadEvents"
-                    @limit-change="changeEventsLimit"
-                />
-            </div>
-        </el-drawer>
+        <ArchiveFondsEventsDrawer v-model="eventsOpen" :fonds="eventsTarget" />
     </section>
 </template>
 
