@@ -99,6 +99,7 @@
     },
     "java-coding-standards": {
       "source": "affaan-m/ECC",
+      "ref": "main",
       "sourceType": "github",
       "skillPath": "skills/java-coding-standards/SKILL.md",
       "computedHash": "c45cf8f0b87d44804e582fe0d103e154214961bcae4c5e1cb473d2f20d529096"
@@ -147,27 +148,31 @@
     },
     "springboot-patterns": {
       "source": "affaan-m/ECC",
+      "ref": "main",
       "sourceType": "github",
       "skillPath": "skills/springboot-patterns/SKILL.md",
       "computedHash": "5902ed569b83996c1c3cc48d973f35702fadec46445a2988847d4ed725b488c5"
     },
     "springboot-security": {
       "source": "affaan-m/ECC",
+      "ref": "main",
       "sourceType": "github",
       "skillPath": "skills/springboot-security/SKILL.md",
       "computedHash": "c518a86c3a473e0545c35065d82284d13a5d99d6f7a0e17780594f3a44af38ad"
     },
     "springboot-tdd": {
       "source": "affaan-m/ECC",
+      "ref": "main",
       "sourceType": "github",
       "skillPath": "skills/springboot-tdd/SKILL.md",
       "computedHash": "37566744c3850a2bc683ea1734c4ecf67d84c7604e6b3df57b76e978479edfc8"
     },
     "springboot-verification": {
       "source": "affaan-m/ECC",
+      "ref": "main",
       "sourceType": "github",
       "skillPath": "skills/springboot-verification/SKILL.md",
-      "computedHash": "5a2abe74331daccf722b452d9c85d2ec7dc4777a901f33b91e007b6102b84b05"
+      "computedHash": "8e2a6fa136d7934d9295c18873a69daab7585fe173c7f30bcccb0a3b524ab2b9"
     },
     "supabase-postgres-best-practices": {
       "source": "supabase/agent-skills",
