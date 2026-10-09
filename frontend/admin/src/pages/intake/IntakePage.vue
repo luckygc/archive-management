@@ -1,29 +1,17 @@
 <script setup lang="ts">
 import { UploadFilled } from "@element-plus/icons-vue";
-import { ElMessage, ElMessageBox } from "element-plus";
+import { ElMessage } from "element-plus";
 import { computed, onMounted, ref } from "vue";
-
-import {
-    acceptArchiveIntakePackage,
-    downloadArchiveIntakePackage,
-    getArchiveIntakePackage,
-    listArchiveIntakePackages,
-    receiveArchiveIntakePackage,
-    rejectArchiveIntakePackage,
-} from "@/shared/api/intake";
+import { listArchiveIntakePackages, receiveArchiveIntakePackage } from "@/shared/api/intake";
 import CursorPagination from "@/shared/components/CursorPagination.vue";
 import RequestErrorState from "@/shared/components/RequestErrorState.vue";
 import { AmDataTable } from "@/shared/components/data-table";
 import { requestErrorMessage } from "@/shared/requestError";
-import type {
-    ArchiveIntakePackageDetailResponse,
-    ArchiveIntakePackageListItemResponse,
-    ArchiveIntakePackageStatus,
-    ArchiveIntakeValidationCategory,
-    ArchiveIntakeValidationOutcome,
-} from "@/shared/types/intake";
+import type { ArchiveIntakePackageListItemResponse } from "@/shared/types/intake";
 import type { CursorPageResponse } from "@/shared/types/pagination";
 import { usePermissionStore } from "@/stores/permissionStore";
+import IntakePackageDetailDialog from "./IntakePackageDetailDialog.vue";
+import { formatSize, formatTime, statusLabel, statusType } from "./intakePackagePresentation";
 
 const MAX_PACKAGE_BYTES = 50 * 1024 * 1024;
 const permissionStore = usePermissionStore();
@@ -37,14 +25,7 @@ const uploading = ref(false);
 const limit = ref(100);
 const cursor = ref<string>();
 const detailVisible = ref(false);
-const detailLoading = ref(false);
-const detailError = ref<string>();
-const detail = ref<ArchiveIntakePackageDetailResponse>();
 const detailId = ref<number>();
-const reviewing = ref(false);
-const downloading = ref(false);
-const review = ref(emptyReview());
-
 onMounted(() => void load());
 
 async function load(nextCursor?: string) {
@@ -109,159 +90,9 @@ function limitChange(nextLimit: number) {
     void load();
 }
 
-async function showDetail(id: number) {
+function showDetail(id: number) {
     detailId.value = id;
     detailVisible.value = true;
-    detailLoading.value = true;
-    detailError.value = undefined;
-    detail.value = undefined;
-    try {
-        detail.value = await getArchiveIntakePackage(id);
-        review.value = {
-            sourceFixityConfirmed: detail.value.sourceFixityConfirmed,
-            contentReadabilityConfirmed: detail.value.contentReadabilityConfirmed,
-            antivirusPassed: detail.value.antivirusPassed,
-            carrierSafetyConfirmed: detail.value.carrierSafetyConfirmed,
-            handoverCompleted: detail.value.handoverCompleted,
-            remark: detail.value.reviewRemark ?? "",
-        };
-    } catch (error) {
-        detailError.value = requestErrorMessage(error, "接收结果加载失败");
-    } finally {
-        detailLoading.value = false;
-    }
-}
-
-function statusType(status: ArchiveIntakePackageStatus) {
-    if (status === "ACCEPTED") return "success";
-    if (status === "FAILED" || status === "REJECTED") return "danger";
-    if (status === "CHECKING" || status === "ACCEPTING" || status === "PENDING_REVIEW")
-        return "warning";
-    return "info";
-}
-
-function statusLabel(status: ArchiveIntakePackageStatus) {
-    return {
-        RECEIVED: "已接收",
-        CHECKING: "自动检测中",
-        PENDING_REVIEW: "待人工复核",
-        ACCEPTING: "接收入库中",
-        ACCEPTED: "已接收入馆藏",
-        REJECTED: "已退回",
-        FAILED: "自动检测失败",
-    }[status];
-}
-
-function validationCategoryLabel(category: ArchiveIntakeValidationCategory) {
-    return {
-        AUTHENTICITY: "真实性",
-        INTEGRITY: "完整性",
-        USABILITY: "可用性",
-        SECURITY: "安全性",
-    }[category];
-}
-
-function validationOutcomeLabel(outcome: ArchiveIntakeValidationOutcome) {
-    return {
-        PASSED: "通过",
-        WARNING: "提示",
-        MANUAL_REVIEW: "需人工确认",
-    }[outcome];
-}
-
-function validationOutcomeType(outcome: ArchiveIntakeValidationOutcome) {
-    if (outcome === "PASSED") return "success";
-    return "warning";
-}
-
-const reviewCompleted = computed(
-    () =>
-        review.value.sourceFixityConfirmed &&
-        review.value.contentReadabilityConfirmed &&
-        review.value.antivirusPassed &&
-        review.value.carrierSafetyConfirmed &&
-        review.value.handoverCompleted,
-);
-
-async function acceptPackage() {
-    if (!detail.value || !reviewCompleted.value || reviewing.value) return;
-    reviewing.value = true;
-    try {
-        detail.value = await acceptArchiveIntakePackage(detail.value.id, review.value);
-        ElMessage.success(`已接收 ${detail.value.itemCount} 件档案并写入正式馆藏`);
-        await load(cursor.value);
-    } catch (error) {
-        ElMessage.error(requestErrorMessage(error, "档案信息包验收失败"));
-        if (detailId.value) await showDetail(detailId.value);
-    } finally {
-        reviewing.value = false;
-    }
-}
-
-async function rejectPackage() {
-    if (!detail.value || reviewing.value) return;
-    try {
-        const { value } = await ElMessageBox.prompt(
-            "请输入退回原因，接收记录和原始信息包仍将保留",
-            "退回档案信息包",
-            {
-                confirmButtonText: "确认退回",
-                cancelButtonText: "取消",
-                inputType: "textarea",
-                inputValidator: (reason) => Boolean(reason.trim()) || "请输入退回原因",
-                type: "warning",
-            },
-        );
-        reviewing.value = true;
-        detail.value = await rejectArchiveIntakePackage(detail.value.id, value.trim());
-        ElMessage.success("档案信息包已退回");
-        await load(cursor.value);
-    } catch (error) {
-        if (error !== "cancel" && error !== "close") {
-            ElMessage.error(requestErrorMessage(error, "档案信息包退回失败"));
-        }
-    } finally {
-        reviewing.value = false;
-    }
-}
-
-async function downloadOriginalPackage() {
-    if (!detail.value || downloading.value) return;
-    downloading.value = true;
-    try {
-        await downloadArchiveIntakePackage(detail.value.id);
-    } catch (error) {
-        ElMessage.error(requestErrorMessage(error, "原始信息包下载失败"));
-    } finally {
-        downloading.value = false;
-    }
-}
-
-function formatSize(size: number) {
-    return size < 1024
-        ? `${size} B`
-        : size < 1024 * 1024
-          ? `${(size / 1024).toFixed(1)} KB`
-          : `${(size / 1024 / 1024).toFixed(1)} MB`;
-}
-
-function formatTime(value?: string) {
-    return value ? value.replace("T", " ").slice(0, 19) : "—";
-}
-
-function generatedItemsEmptyDescription(status: ArchiveIntakePackageStatus) {
-    return status === "PENDING_REVIEW" ? "完成验收后生成正式馆藏档案" : "未生成正式馆藏档案";
-}
-
-function emptyReview() {
-    return {
-        sourceFixityConfirmed: false,
-        contentReadabilityConfirmed: false,
-        antivirusPassed: false,
-        carrierSafetyConfirmed: false,
-        handoverCompleted: false,
-        remark: "",
-    };
 }
 </script>
 
@@ -373,166 +204,16 @@ function emptyReview() {
             @limit-change="limitChange"
         />
 
-        <el-dialog v-model="detailVisible" title="档案信息包接收详情" width="860px">
-            <div v-loading="detailLoading" class="detail-body">
-                <RequestErrorState
-                    v-if="detailError"
-                    :message="detailError"
-                    :retrying="detailLoading"
-                    @retry="detailId && showDetail(detailId)"
-                />
-                <template v-else-if="detail">
-                    <el-descriptions :column="2" size="small" border>
-                        <el-descriptions-item label="信息包编码">
-                            {{ detail.packageCode || "未解析" }}
-                        </el-descriptions-item>
-                        <el-descriptions-item label="状态">
-                            <el-tag :type="statusType(detail.status)">
-                                {{ statusLabel(detail.status) }}
-                            </el-tag>
-                        </el-descriptions-item>
-                        <el-descriptions-item label="原文件名">
-                            {{ detail.originalFileName }}
-                        </el-descriptions-item>
-                        <el-descriptions-item label="格式配置">
-                            {{ detail.formatProfile }}
-                        </el-descriptions-item>
-                        <el-descriptions-item label="文件大小">
-                            {{ formatSize(detail.contentLength) }}
-                        </el-descriptions-item>
-                        <el-descriptions-item label="档案与电子文件">
-                            {{ detail.itemCount }} 件档案 /
-                            {{ detail.electronicFileCount }} 个电子文件（{{
-                                formatSize(detail.electronicFileBytes)
-                            }}）
-                        </el-descriptions-item>
-                        <el-descriptions-item label="SHA-256" :span="2">
-                            <code class="digest">{{ detail.sha256 }}</code>
-                        </el-descriptions-item>
-                        <el-descriptions-item
-                            v-if="detail.failureReason"
-                            label="失败原因"
-                            :span="2"
-                        >
-                            <span class="failure-text">{{ detail.failureReason }}</span>
-                        </el-descriptions-item>
-                    </el-descriptions>
-                    <section>
-                        <h2>四性自动检测结果</h2>
-                        <el-alert
-                            title="自动检测不能替代人工验收"
-                            description="来源固化、可信签名、内容逐件可读、病毒检测和离线载体安全需要结合移交现场或外部工具确认。"
-                            type="info"
-                            :closable="false"
-                            show-icon
-                        />
-                        <AmDataTable
-                            :data="detail.validations"
-                            size="small"
-                            :columns="[
-                                { key: 'category', label: '类别', width: 90, sortable: true },
-                                { key: 'outcome', label: '结果', width: 120, sortable: true },
-                                { key: 'message', label: '检测说明', sortable: true },
-                            ]"
-                        >
-                            <template #cell-category="{ row }">
-                                {{ validationCategoryLabel(row.category) }}
-                            </template>
-                            <template #cell-outcome="{ row }">
-                                <el-tag :type="validationOutcomeType(row.outcome)">
-                                    {{ validationOutcomeLabel(row.outcome) }}
-                                </el-tag>
-                            </template>
-                        </AmDataTable>
-                    </section>
-                    <section v-if="detail.status === 'PENDING_REVIEW'" class="review-panel">
-                        <h2>人工复核与交接确认</h2>
-                        <el-checkbox v-model="review.sourceFixityConfirmed">
-                            已核验移交来源及固化信息
-                        </el-checkbox>
-                        <el-checkbox v-model="review.contentReadabilityConfirmed">
-                            已抽查或逐件确认内容可正常打开、读取
-                        </el-checkbox>
-                        <el-checkbox v-model="review.antivirusPassed">
-                            已使用受控环境完成病毒和恶意代码检测
-                        </el-checkbox>
-                        <el-checkbox v-model="review.carrierSafetyConfirmed">
-                            已确认离线载体及读取环境安全
-                        </el-checkbox>
-                        <el-checkbox v-model="review.handoverCompleted">
-                            已核对移交清单并完成移交接收登记手续
-                        </el-checkbox>
-                        <el-input
-                            v-model="review.remark"
-                            type="textarea"
-                            :rows="2"
-                            maxlength="500"
-                            show-word-limit
-                            placeholder="复核说明（可选）"
-                        />
-                        <el-alert
-                            v-if="!reviewCompleted"
-                            title="完成全部人工确认后方可接收入正式馆藏"
-                            type="warning"
-                            :closable="false"
-                            show-icon
-                        />
-                        <div class="review-actions">
-                            <el-button
-                                type="danger"
-                                plain
-                                :disabled="reviewing"
-                                @click="rejectPackage"
-                            >
-                                退回
-                            </el-button>
-                            <el-button
-                                type="primary"
-                                :disabled="!reviewCompleted"
-                                :loading="reviewing"
-                                @click="acceptPackage"
-                            >
-                                确认接收入正式馆藏
-                            </el-button>
-                        </div>
-                    </section>
-                    <AmDataTable
-                        v-if="detail.generatedItems.length"
-                        :data="detail.generatedItems"
-                        class="generated-items"
-                        size="small"
-                        :columns="[
-                            { key: 'archiveItemId', label: '档案 ID', width: 100, sortable: true },
-                            { key: 'fondsCode', label: '全宗', width: 120, sortable: true },
-                            { key: 'categoryCode', label: '分类', width: 120, sortable: true },
-                            { key: 'archiveNo', label: '档号', sortable: true },
-                            {
-                                key: 'electronicFileCount',
-                                label: '电子文件',
-                                width: 100,
-                                sortable: true,
-                            },
-                        ]"
-                    />
-                    <el-empty
-                        v-else
-                        :description="generatedItemsEmptyDescription(detail.status)"
-                        :image-size="72"
-                    />
-                    <div class="dialog-actions">
-                        <el-button :loading="downloading" @click="downloadOriginalPackage">
-                            下载原始信息包
-                        </el-button>
-                    </div>
-                </template>
-            </div>
-        </el-dialog>
+        <IntakePackageDetailDialog
+            v-model="detailVisible"
+            :package-id="detailId"
+            :refresh-history="() => load(cursor)"
+        />
     </main>
 </template>
 
 <style scoped>
-.intake-page,
-.detail-body {
+.intake-page {
     display: flex;
     flex-direction: column;
     gap: 16px;
@@ -556,38 +237,6 @@ function emptyReview() {
 }
 .failure-text {
     color: var(--el-color-danger);
-}
-.digest {
-    overflow-wrap: anywhere;
-}
-.generated-items {
-    width: 100%;
-}
-.detail-body section {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-.detail-body h2 {
-    margin: 0;
-    font-size: 16px;
-}
-.review-panel {
-    padding: 16px;
-    border: 1px solid var(--el-border-color);
-    border-radius: var(--el-border-radius-base);
-    background: var(--el-fill-color-lighter);
-}
-.review-panel :deep(.el-checkbox) {
-    height: auto;
-    margin-right: 0;
-    white-space: normal;
-}
-.review-actions,
-.dialog-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
 }
 .visually-hidden {
     position: absolute;

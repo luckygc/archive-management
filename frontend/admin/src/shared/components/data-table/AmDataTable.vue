@@ -7,11 +7,20 @@ import {
     tableFeatures,
     useTable,
 } from "@tanstack/vue-table";
-import type { ColumnDef, ExpandedState, SortingState, Updater } from "@tanstack/vue-table";
+import type { ColumnDef, ExpandedState, SortingState } from "@tanstack/vue-table";
 import { computed, ref, watch } from "vue";
 import type { CSSProperties } from "vue";
 
 import type { AmDataTableColumn, AmDataTableSortMode } from "./types";
+import {
+    applyUpdater,
+    cloneSorting,
+    compareValues,
+    isMultiSortEvent,
+    lengthValue,
+    fixedOffset,
+    readPath,
+} from "./data-table-utils";
 
 const tableFeatureSet = tableFeatures({
     rowSortingFeature,
@@ -133,21 +142,6 @@ const containerStyle = computed<CSSProperties>(() => ({
     maxHeight: lengthValue(props.maxHeight),
 }));
 
-function applyUpdater<T>(updater: Updater<T>, current: T): T {
-    return typeof updater === "function" ? (updater as (value: T) => T)(current) : updater;
-}
-
-function cloneSorting(sorting: SortingState | undefined): SortingState {
-    return sorting?.map((item) => ({ ...item })) ?? [];
-}
-
-function readPath(row: TData, path: string): unknown {
-    return path.split(".").reduce<unknown>((value, key) => {
-        if (typeof value !== "object" || value === null) return undefined;
-        return Reflect.get(value, key);
-    }, row);
-}
-
 function readChildren(row: TData): TData[] | undefined {
     if (!props.childrenKey) return undefined;
     const children = readPath(row, props.childrenKey);
@@ -163,24 +157,6 @@ function resolveRowKey(row: TData, index: number): string {
     return String(index);
 }
 
-function compareValues(left: unknown, right: unknown): number {
-    if (left === right) return 0;
-    if (left === undefined || left === null) return 1;
-    if (right === undefined || right === null) return -1;
-    if (typeof left === "number" && typeof right === "number") return left - right;
-    if (typeof left === "boolean" && typeof right === "boolean")
-        return Number(left) - Number(right);
-    return String(left).localeCompare(String(right), "zh-CN", {
-        numeric: true,
-        sensitivity: "base",
-    });
-}
-
-function isMultiSortEvent(event: unknown): boolean {
-    if (!(event instanceof MouseEvent) && !(event instanceof KeyboardEvent)) return false;
-    return event.shiftKey || event.ctrlKey || event.metaKey;
-}
-
 function columnStyle(columnId: string): CSSProperties {
     const column = columnLookup.value.get(columnId);
     if (!column) return {};
@@ -190,30 +166,10 @@ function columnStyle(columnId: string): CSSProperties {
         maxWidth: lengthValue(column.maxWidth),
         textAlign: column.align,
     };
-    if (column.fixed === "right") style.right = `${fixedOffset(columnId, "right")}px`;
-    if (column.fixed === "left") style.left = `${fixedOffset(columnId, "left")}px`;
+    if (column.fixed === "right")
+        style.right = `${fixedOffset(props.columns, columnId, "right")}px`;
+    if (column.fixed === "left") style.left = `${fixedOffset(props.columns, columnId, "left")}px`;
     return style;
-}
-
-function fixedOffset(columnId: string, side: "left" | "right"): number {
-    const columns = side === "left" ? props.columns : [...props.columns].reverse();
-    let offset = 0;
-    for (const column of columns) {
-        if (column.key === columnId) return offset;
-        if (column.fixed === side) offset += numericWidth(column.width ?? column.minWidth);
-    }
-    return 0;
-}
-
-function numericWidth(value: number | string | undefined): number {
-    if (typeof value === "number") return value;
-    const parsed = Number.parseFloat(value ?? "");
-    return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function lengthValue(value: number | string | undefined): string | undefined {
-    if (typeof value === "number") return `${value}px`;
-    return value;
 }
 
 function cellClass(columnId: string): Array<string | undefined> {
