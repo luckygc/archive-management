@@ -10,7 +10,7 @@
         "check:fix": "vp lint --fix src vite.config.ts && vue-tsc --noEmit",
         "lint": "vp lint src vite.config.ts",
         "lint:fix": "vp lint --fix src vite.config.ts",
-        "test": "vp test run --passWithNoTests",
+        "test": "vp test run",
         "build": "vue-tsc --noEmit && vp build"
     },
     "dependencies": {

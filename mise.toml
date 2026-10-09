@@ -7,11 +7,13 @@ pnpm = "12.6.0"
 # 保留 Compose 生命周期、组合步骤或较长固定参数的任务；其他简单命令直接调用项目工具。
 
 [tasks.verify]
-description = "验证源码结构、后端格式与测试，以及全部前端包"
+description = "严格验证源码结构、后端格式与全部测试，以及全部前端包（需要 Docker）"
 run = [
-    "node --test scripts/source-lines.test.mjs scripts/frontend-boundaries.test.mjs",
+    "node --test scripts/source-lines.test.mjs scripts/frontend-boundaries.test.mjs scripts/verify-integration.test.mjs",
     "node scripts/source-lines.mjs",
+    "node scripts/verify-integration.mjs docker",
     "mvn -f server/pom.xml clean spotless:check test",
+    "node scripts/verify-integration.mjs reports",
     "pnpm --dir frontend run ready",
 ]
 

@@ -14,7 +14,7 @@
         "check:fix": "vp lint --fix src",
         "lint": "vp lint src",
         "lint:fix": "vp lint --fix src",
-        "test": "vp test run --passWithNoTests",
+        "test": "vp test run",
         "build": "tsc --noEmit"
     },
     "dependencies": {

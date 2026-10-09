@@ -119,7 +119,11 @@ mise exec -- pnpm --dir frontend run dev:web
 mise run verify
 ```
 
-该任务执行根目录结构脚本的回归测试、全部源码行数检查、后端 Spotless 和 Maven 测试，以及前端 `ready`。前端 `ready` 自身包含共享与页面依赖边界检查、前端源码行数检查、类型与 lint、测试和构建。结构脚本使用已配置的 Node.js，无需安装 Perl。
+该任务执行根目录结构与严格验证脚本的回归测试、全部源码行数检查、Docker 可用性检查、后端 Spotless 和 Maven 测试，以及前端 `ready`。后端使用 clean 清除旧报告，随后核对全部 Surefire 报告：没有报告、未执行的容器集成测试类、零用例、失败、错误或跳过均阻断完整验证。前端测试脚本在未发现测试时失败。局部 Maven 测试仍可在没有 Docker 时跳过容器测试，但该结果不能作为完整验收。
+
+前端 `ready` 自身包含共享与页面依赖边界检查、前端源码行数检查、类型与 lint、测试和构建。结构脚本使用已配置的 Node.js，无需安装 Perl。
+
+[GitHub Actions](../.github/workflows/verify.yml) 在拉取请求、main 推送及手动触发时调用同一 `mise run verify`，安装锁定前端依赖并保存后端测试文本摘要。Action 使用固定提交版本、只读仓库权限，不包含部署步骤；报告不上传包含运行日志的 XML。远端执行结果及仓库分支保护需在 GitHub 中独立核实。
 
 | 改动范围 | 真实入口 |
 | --- | --- |
