@@ -1,4 +1,4 @@
-package github.luckygc.am.module.authentication;
+package github.luckygc.am.module.authentication.web.security;
 
 import java.io.IOException;
 import java.util.Objects;
@@ -12,6 +12,8 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 
+import github.luckygc.am.module.authentication.LoginBlockedException;
+import github.luckygc.am.module.authentication.TotpChallengeAuthenticationException;
 import github.luckygc.am.module.authentication.service.TotpLoginChallengeService;
 import github.luckygc.am.module.authentication.service.TotpLoginChallengeService.TotpChallengeConsumptionException;
 import github.luckygc.am.module.authentication.service.TotpLoginChallengeService.VerificationResult;

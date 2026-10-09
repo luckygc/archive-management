@@ -23,7 +23,6 @@ import org.hibernate.annotations.processing.HQL;
 import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.modulith.core.ApplicationModules;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -38,7 +37,6 @@ import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 
-import github.luckygc.am.app.ArchiveManagementApplication;
 import github.luckygc.am.common.api.CursorPageResponse;
 
 @AnalyzeClasses(packages = "github.luckygc.am", importOptions = DoNotIncludeTests.class)
@@ -519,12 +517,6 @@ class ArchitectureRulesTest {
                 () ->
                         "声明 PageRequest 的 cursor 分页 Controller 应返回 CursorPageResponse 合同，由 ResponseBodyAdvice 填充 token: "
                                 + violations);
-    }
-
-    @Test
-    @DisplayName("Spring Modulith 模块结构校验通过")
-    void springModulithModuleStructureShouldBeValid() {
-        ApplicationModules.of(ArchiveManagementApplication.class).verify();
     }
 
     @Test

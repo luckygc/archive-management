@@ -1,4 +1,4 @@
-package github.luckygc.am.module.authentication;
+package github.luckygc.am.module.authentication.web.security;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -13,6 +13,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import github.luckygc.am.module.authentication.LoginBlockedException;
 import github.luckygc.am.module.authentication.service.LoginFailureLimitService;
 
 @Component

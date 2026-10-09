@@ -11,7 +11,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import github.luckygc.am.common.cleanup.ExpiredDataCleaner;
-import github.luckygc.am.common.cleanup.ExpiredDataCleanupService;
 
 @Configuration(proxyBeanMethods = false)
 public class ExpiredDataCleanupQuartzConfiguration {

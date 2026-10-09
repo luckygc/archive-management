@@ -38,13 +38,11 @@ import github.luckygc.am.module.archive.metadata.service.ArchiveCategoryService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveCategoryDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFieldDto;
-import github.luckygc.am.module.authentication.AuthenticationUser;
-import github.luckygc.am.module.authentication.repository.AuthenticationUserDataRepository;
+import github.luckygc.am.module.authentication.service.AuthenticationUserDirectoryService;
+import github.luckygc.am.module.authentication.service.AuthenticationUserDirectoryService.UserSummary;
 import github.luckygc.am.module.authorization.AuthorizationRole;
-import github.luckygc.am.module.authorization.AuthorizationUserRoleRelation;
-import github.luckygc.am.module.authorization.repository.AuthorizationRoleDataRepository;
-import github.luckygc.am.module.authorization.repository.AuthorizationUserRoleRelationDataRepository;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
+import github.luckygc.am.module.authorization.service.AuthorizationUserRoleService;
 import github.luckygc.am.module.organization.service.OrganizationDepartmentService;
 import github.luckygc.am.module.organization.service.OrganizationDepartmentService.OrganizationDepartmentResponse;
 
@@ -54,9 +52,8 @@ public class ArchiveDataScopeResolver {
     private final ArchiveDataScopeDataRepository dataScopeRepository;
     private final ArchiveDataScopeDimensionDataRepository dimensionRepository;
     private final ArchiveDataScopeSubjectRelationDataRepository subjectRelationRepository;
-    private final AuthorizationRoleDataRepository roleRepository;
-    private final AuthorizationUserRoleRelationDataRepository userRoleRelationRepository;
-    private final AuthenticationUserDataRepository authenticationUserRepository;
+    private final AuthorizationUserRoleService userRoleService;
+    private final AuthenticationUserDirectoryService userDirectoryService;
     private final OrganizationDepartmentService departmentService;
     private final ArchiveMetadataService archiveMetadataService;
     private final ArchiveCategoryService archiveCategoryService;
@@ -65,18 +62,16 @@ public class ArchiveDataScopeResolver {
             ArchiveDataScopeDataRepository dataScopeRepository,
             ArchiveDataScopeDimensionDataRepository dimensionRepository,
             ArchiveDataScopeSubjectRelationDataRepository subjectRelationRepository,
-            AuthorizationRoleDataRepository roleRepository,
-            AuthorizationUserRoleRelationDataRepository userRoleRelationRepository,
-            AuthenticationUserDataRepository authenticationUserRepository,
+            AuthorizationUserRoleService userRoleService,
+            AuthenticationUserDirectoryService userDirectoryService,
             OrganizationDepartmentService departmentService,
             ArchiveMetadataService archiveMetadataService,
             ArchiveCategoryService archiveCategoryService) {
         this.dataScopeRepository = dataScopeRepository;
         this.dimensionRepository = dimensionRepository;
         this.subjectRelationRepository = subjectRelationRepository;
-        this.roleRepository = roleRepository;
-        this.userRoleRelationRepository = userRoleRelationRepository;
-        this.authenticationUserRepository = authenticationUserRepository;
+        this.userRoleService = userRoleService;
+        this.userDirectoryService = userDirectoryService;
         this.departmentService = departmentService;
         this.archiveMetadataService = archiveMetadataService;
         this.archiveCategoryService = archiveCategoryService;
@@ -94,10 +89,8 @@ public class ArchiveDataScopeResolver {
         if (appendUserDepartmentScopes(userId, scopes)) {
             return ResolvedArchiveDataScope.all();
         }
-        for (AuthorizationUserRoleRelation userRole :
-                userRoleRelationRepository.findByUserId(userId)) {
-            AuthorizationRole role = roleRepository.findById(userRole.getRoleId()).orElse(null);
-            if (role == null || !role.isEnabled()) {
+        for (AuthorizationRole role : userRoleService.listAssignedRoles(userId)) {
+            if (!role.isEnabled()) {
                 continue;
             }
             if (AuthorizationPermissionService.SUPER_ADMIN_ROLE_NAME.equals(role.getRoleName())) {
@@ -445,12 +438,12 @@ public class ArchiveDataScopeResolver {
     }
 
     private boolean appendUserDepartmentScopes(Long userId, List<ResolvedScope> scopes) {
-        AuthenticationUser user = authenticationUserRepository.findById(userId).orElse(null);
-        if (user == null || !user.isEnabled() || user.getDepartmentId() == null) {
+        UserSummary user = userDirectoryService.findUser(userId).orElse(null);
+        if (user == null || !user.enabled() || user.departmentId() == null) {
             return false;
         }
         OrganizationDepartmentResponse department =
-                departmentService.getDepartment(user.getDepartmentId());
+                departmentService.getDepartment(user.departmentId());
         return department.enabled()
                 && appendSubjectScopes(
                         ArchiveDataScopeSubjectType.DEPARTMENT, department.id(), scopes);

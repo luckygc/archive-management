@@ -22,11 +22,9 @@ import github.luckygc.am.module.authentication.AuthenticationUser;
 import github.luckygc.am.module.authentication._AuthenticationUser;
 import github.luckygc.am.module.authentication.repository.AuthenticationUserDataRepository;
 import github.luckygc.am.module.authorization.AuthorizationRole;
-import github.luckygc.am.module.authorization.AuthorizationUserRoleRelation;
-import github.luckygc.am.module.authorization.repository.AuthorizationRoleDataRepository;
-import github.luckygc.am.module.authorization.repository.AuthorizationUserRoleRelationDataRepository;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionCode;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
+import github.luckygc.am.module.authorization.service.AuthorizationUserRoleService;
 import github.luckygc.am.module.organization.service.OrganizationDepartmentService;
 import github.luckygc.am.module.organization.service.OrganizationDepartmentService.OrganizationDepartmentResponse;
 
@@ -34,8 +32,7 @@ import github.luckygc.am.module.organization.service.OrganizationDepartmentServi
 public class AuthenticationUserManagementService {
 
     private final AuthenticationUserDataRepository userRepository;
-    private final AuthorizationRoleDataRepository roleRepository;
-    private final AuthorizationUserRoleRelationDataRepository userRoleRelationRepository;
+    private final AuthorizationUserRoleService userRoleService;
     private final AuthorizationPermissionService permissionService;
     private final OrganizationDepartmentService departmentService;
     private final PasswordEncoder passwordEncoder;
@@ -43,15 +40,13 @@ public class AuthenticationUserManagementService {
 
     public AuthenticationUserManagementService(
             AuthenticationUserDataRepository userRepository,
-            AuthorizationRoleDataRepository roleRepository,
-            AuthorizationUserRoleRelationDataRepository userRoleRelationRepository,
+            AuthorizationUserRoleService userRoleService,
             AuthorizationPermissionService permissionService,
             OrganizationDepartmentService departmentService,
             PasswordEncoder passwordEncoder,
             TotpCredentialService totpCredentialService) {
         this.userRepository = userRepository;
-        this.roleRepository = roleRepository;
-        this.userRoleRelationRepository = userRoleRelationRepository;
+        this.userRoleService = userRoleService;
         this.permissionService = permissionService;
         this.departmentService = departmentService;
         this.passwordEncoder = passwordEncoder;
@@ -103,13 +98,7 @@ public class AuthenticationUserManagementService {
                 userRepository
                         .findById(id)
                         .orElseThrow(() -> new BadRequestException("用户不存在", "id", "用户不存在"));
-        List<Long> roleIds =
-                userRoleRelationRepository.findByUserId(user.getId()).stream()
-                        .map(AuthorizationUserRoleRelation::getRoleId)
-                        .distinct()
-                        .toList();
-        List<AuthorizationRole> roles =
-                roleIds.isEmpty() ? List.of() : roleRepository.findByIdIn(roleIds);
+        List<AuthorizationRole> roles = userRoleService.listUserRoles(user.getId());
         List<RoleSummary> roleSummaries =
                 roles.stream()
                         .filter(AuthorizationRole::isEnabled)
@@ -221,17 +210,10 @@ public class AuthenticationUserManagementService {
                 userRepository
                         .findById(id)
                         .orElseThrow(() -> new BadRequestException("用户不存在", "id", "用户不存在"));
-        List<Long> roleIds =
-                userRoleRelationRepository.findByUserId(user.getId()).stream()
-                        .map(AuthorizationUserRoleRelation::getRoleId)
-                        .distinct()
-                        .toList();
-        return roleIds.isEmpty()
-                ? List.of()
-                : roleRepository.findByIdIn(roleIds).stream()
-                        .filter(AuthorizationRole::isEnabled)
-                        .map(r -> new RoleSummary(r.getId(), r.getRoleName()))
-                        .toList();
+        return userRoleService.listUserRoles(user.getId()).stream()
+                .filter(AuthorizationRole::isEnabled)
+                .map(role -> new RoleSummary(role.getId(), role.getRoleName()))
+                .toList();
     }
 
     @Transactional
@@ -242,24 +224,7 @@ public class AuthenticationUserManagementService {
                 userRepository
                         .findById(id)
                         .orElseThrow(() -> new BadRequestException("用户不存在", "id", "用户不存在"));
-        userRoleRelationRepository.deleteByUserId(user.getId());
-        for (Long roleId : request.roleIds()) {
-            AuthorizationRole role =
-                    roleRepository
-                            .findById(roleId)
-                            .orElseThrow(
-                                    () ->
-                                            new BadRequestException(
-                                                    "角色不存在", "roleIds", "角色 " + roleId + " 不存在"));
-            if (!role.isEnabled()) {
-                throw new BadRequestException(
-                        "角色已停用", "roleIds", "角色 " + role.getRoleName() + " 已停用");
-            }
-            AuthorizationUserRoleRelation relation = new AuthorizationUserRoleRelation();
-            relation.setUserId(user.getId());
-            relation.setRoleId(role.getId());
-            userRoleRelationRepository.insert(relation);
-        }
+        userRoleService.replaceUserRoles(user.getId(), request.roleIds());
         return listUserRolesInternal(id, operatorUserId);
     }
 

@@ -29,10 +29,10 @@ import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataReferenc
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataService;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveCategoryDto;
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFieldDto;
-import github.luckygc.am.module.authentication.AuthenticationUser;
-import github.luckygc.am.module.authentication.repository.AuthenticationUserDataRepository;
+import github.luckygc.am.module.authentication.service.AuthenticationUserDirectoryService;
+import github.luckygc.am.module.authentication.service.AuthenticationUserDirectoryService.UserSummary;
 import github.luckygc.am.module.authorization.AuthorizationRole;
-import github.luckygc.am.module.authorization.repository.AuthorizationRoleDataRepository;
+import github.luckygc.am.module.authorization.service.AuthorizationUserRoleService;
 import github.luckygc.am.module.organization.service.OrganizationDepartmentService;
 import github.luckygc.am.module.organization.service.OrganizationDepartmentService.OrganizationDepartmentResponse;
 
@@ -42,8 +42,8 @@ public class ArchiveDataScopeService {
     private final ArchiveDataScopeDataRepository dataScopeRepository;
     private final ArchiveDataScopeDimensionDataRepository dimensionRepository;
     private final ArchiveDataScopeSubjectRelationDataRepository subjectRelationRepository;
-    private final AuthorizationRoleDataRepository roleRepository;
-    private final AuthenticationUserDataRepository authenticationUserRepository;
+    private final AuthorizationUserRoleService userRoleService;
+    private final AuthenticationUserDirectoryService userDirectoryService;
     private final OrganizationDepartmentService departmentService;
     private final ArchiveMetadataService archiveMetadataService;
     private final ArchiveMetadataReferenceService archiveMetadataReferenceService;
@@ -54,8 +54,8 @@ public class ArchiveDataScopeService {
             ArchiveDataScopeDataRepository dataScopeRepository,
             ArchiveDataScopeDimensionDataRepository dimensionRepository,
             ArchiveDataScopeSubjectRelationDataRepository subjectRelationRepository,
-            AuthorizationRoleDataRepository roleRepository,
-            AuthenticationUserDataRepository authenticationUserRepository,
+            AuthorizationUserRoleService userRoleService,
+            AuthenticationUserDirectoryService userDirectoryService,
             OrganizationDepartmentService departmentService,
             ArchiveMetadataService archiveMetadataService,
             ArchiveMetadataReferenceService archiveMetadataReferenceService,
@@ -64,8 +64,8 @@ public class ArchiveDataScopeService {
         this.dataScopeRepository = dataScopeRepository;
         this.dimensionRepository = dimensionRepository;
         this.subjectRelationRepository = subjectRelationRepository;
-        this.roleRepository = roleRepository;
-        this.authenticationUserRepository = authenticationUserRepository;
+        this.userRoleService = userRoleService;
+        this.userDirectoryService = userDirectoryService;
         this.departmentService = departmentService;
         this.archiveMetadataService = archiveMetadataService;
         this.archiveMetadataReferenceService = archiveMetadataReferenceService;
@@ -146,8 +146,8 @@ public class ArchiveDataScopeService {
     @Transactional
     public RoleArchiveDataScopesResponse saveRoleDataScopes(Long roleId, List<Long> scopeIds) {
         AuthorizationRole role =
-                roleRepository
-                        .findById(roleId)
+                userRoleService
+                        .findRole(roleId)
                         .orElseThrow(() -> new BadRequestException("角色不存在", "roleId", "角色不存在"));
         if (!role.isEnabled()) {
             throw new BadRequestException("角色已停用", "roleId", "角色已停用");
@@ -164,8 +164,8 @@ public class ArchiveDataScopeService {
 
     private RoleArchiveDataScopesResponse listRoleDataScopesInternal(Long roleId) {
         AuthorizationRole role =
-                roleRepository
-                        .findById(roleId)
+                userRoleService
+                        .findRole(roleId)
                         .orElseThrow(() -> new BadRequestException("角色不存在", "roleId", "角色不存在"));
         if (!role.isEnabled()) {
             return new RoleArchiveDataScopesResponse(roleId, List.of());
@@ -176,11 +176,11 @@ public class ArchiveDataScopeService {
 
     @Transactional
     public UserArchiveDataScopesResponse saveUserDataScopes(Long userId, List<Long> scopeIds) {
-        AuthenticationUser user =
-                authenticationUserRepository
-                        .findById(userId)
+        UserSummary user =
+                userDirectoryService
+                        .findUser(userId)
                         .orElseThrow(() -> new BadRequestException("用户不存在", "userId", "用户不存在"));
-        if (!user.isEnabled()) {
+        if (!user.enabled()) {
             throw new BadRequestException("用户已停用", "userId", "用户已停用");
         }
         List<Long> normalizedScopeIds = normalizeEnabledScopeIds(scopeIds);

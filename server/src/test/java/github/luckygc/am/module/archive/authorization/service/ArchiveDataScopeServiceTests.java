@@ -46,11 +46,13 @@ import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.Ar
 import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataTypes.ArchiveFieldDto;
 import github.luckygc.am.module.authentication.AuthenticationUser;
 import github.luckygc.am.module.authentication.repository.AuthenticationUserDataRepository;
+import github.luckygc.am.module.authentication.service.AuthenticationUserDirectoryService;
 import github.luckygc.am.module.authorization.AuthorizationRole;
 import github.luckygc.am.module.authorization.AuthorizationUserRoleRelation;
 import github.luckygc.am.module.authorization.repository.AuthorizationRoleDataRepository;
 import github.luckygc.am.module.authorization.repository.AuthorizationUserRoleRelationDataRepository;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
+import github.luckygc.am.module.authorization.service.AuthorizationUserRoleService;
 import github.luckygc.am.module.organization.service.OrganizationDepartmentService;
 import github.luckygc.am.module.organization.service.OrganizationDepartmentService.OrganizationDepartmentResponse;
 
@@ -86,9 +88,9 @@ class ArchiveDataScopeServiceTests {
                         dataScopeRepository,
                         dimensionRepository,
                         subjectRelationRepository,
-                        roleRepository,
-                        userRoleRelationRepository,
-                        authenticationUserRepository,
+                        new AuthorizationUserRoleService(
+                                roleRepository, userRoleRelationRepository),
+                        new AuthenticationUserDirectoryService(authenticationUserRepository),
                         departmentService,
                         archiveMetadataService,
                         archiveCategoryService);
@@ -97,8 +99,9 @@ class ArchiveDataScopeServiceTests {
                         dataScopeRepository,
                         dimensionRepository,
                         subjectRelationRepository,
-                        roleRepository,
-                        authenticationUserRepository,
+                        new AuthorizationUserRoleService(
+                                roleRepository, userRoleRelationRepository),
+                        new AuthenticationUserDirectoryService(authenticationUserRepository),
                         departmentService,
                         archiveMetadataService,
                         archiveMetadataReferenceService,

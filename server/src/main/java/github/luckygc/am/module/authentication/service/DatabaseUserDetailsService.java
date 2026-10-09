@@ -1,7 +1,6 @@
 package github.luckygc.am.module.authentication.service;
 
 import java.util.List;
-import java.util.Optional;
 
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -14,24 +13,19 @@ import github.luckygc.am.module.authentication.ArchiveUserDetails;
 import github.luckygc.am.module.authentication.AuthenticationUser;
 import github.luckygc.am.module.authentication.repository.AuthenticationUserDataRepository;
 import github.luckygc.am.module.authorization.AuthorizationRole;
-import github.luckygc.am.module.authorization.AuthorizationUserRoleRelation;
-import github.luckygc.am.module.authorization.repository.AuthorizationRoleDataRepository;
-import github.luckygc.am.module.authorization.repository.AuthorizationUserRoleRelationDataRepository;
+import github.luckygc.am.module.authorization.service.AuthorizationUserRoleService;
 
 @Service
 public class DatabaseUserDetailsService implements UserDetailsService {
 
     private final AuthenticationUserDataRepository userRepository;
-    private final AuthorizationRoleDataRepository roleRepository;
-    private final AuthorizationUserRoleRelationDataRepository userRoleRelationRepository;
+    private final AuthorizationUserRoleService userRoleService;
 
     public DatabaseUserDetailsService(
             AuthenticationUserDataRepository userRepository,
-            AuthorizationRoleDataRepository roleRepository,
-            AuthorizationUserRoleRelationDataRepository userRoleRelationRepository) {
+            AuthorizationUserRoleService userRoleService) {
         this.userRepository = userRepository;
-        this.roleRepository = roleRepository;
-        this.userRoleRelationRepository = userRoleRelationRepository;
+        this.userRoleService = userRoleService;
     }
 
     @Override
@@ -42,10 +36,7 @@ public class DatabaseUserDetailsService implements UserDetailsService {
         }
 
         List<SimpleGrantedAuthority> authorities =
-                userRoleRelationRepository.findByUserId(user.getId()).stream()
-                        .map(AuthorizationUserRoleRelation::getRoleId)
-                        .map(roleRepository::findById)
-                        .flatMap(Optional::stream)
+                userRoleService.listAssignedRoles(user.getId()).stream()
                         .filter(AuthorizationRole::isEnabled)
                         .map(AuthorizationRole::getRoleName)
                         .filter(StringUtils::isNotBlank)

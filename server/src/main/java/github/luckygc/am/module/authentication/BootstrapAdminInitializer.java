@@ -15,10 +15,7 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import github.luckygc.am.module.authentication.repository.AuthenticationUserDataRepository;
-import github.luckygc.am.module.authorization.AuthorizationRole;
-import github.luckygc.am.module.authorization.AuthorizationUserRoleRelation;
-import github.luckygc.am.module.authorization.repository.AuthorizationRoleDataRepository;
-import github.luckygc.am.module.authorization.repository.AuthorizationUserRoleRelationDataRepository;
+import github.luckygc.am.module.authorization.service.AuthorizationUserRoleService;
 
 @Component
 public class BootstrapAdminInitializer implements ApplicationRunner {
@@ -28,20 +25,17 @@ public class BootstrapAdminInitializer implements ApplicationRunner {
 
     private final BootstrapAdminProperties properties;
     private final AuthenticationUserDataRepository userRepository;
-    private final AuthorizationRoleDataRepository roleRepository;
-    private final AuthorizationUserRoleRelationDataRepository userRoleRelationRepository;
+    private final AuthorizationUserRoleService userRoleService;
     private final PasswordEncoder passwordEncoder;
 
     public BootstrapAdminInitializer(
             BootstrapAdminProperties properties,
             AuthenticationUserDataRepository userRepository,
-            AuthorizationRoleDataRepository roleRepository,
-            AuthorizationUserRoleRelationDataRepository userRoleRelationRepository,
+            AuthorizationUserRoleService userRoleService,
             PasswordEncoder passwordEncoder) {
         this.properties = properties;
         this.userRepository = userRepository;
-        this.roleRepository = roleRepository;
-        this.userRoleRelationRepository = userRoleRelationRepository;
+        this.userRoleService = userRoleService;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -82,25 +76,8 @@ public class BootstrapAdminInitializer implements ApplicationRunner {
         }
 
         for (String roleName : properties.getRoleNames()) {
-            grantRole(user.getId(), roleName);
+            userRoleService.grantConfiguredRole(user.getId(), roleName);
         }
-    }
-
-    private void grantRole(Long userId, String roleName) {
-        AuthorizationRole role = roleRepository.findOptionalByRoleName(roleName);
-        if (role == null) {
-            return;
-        }
-        boolean exists =
-                userRoleRelationRepository.findByUserId(userId).stream()
-                        .anyMatch(relation -> role.getId().equals(relation.getRoleId()));
-        if (exists) {
-            return;
-        }
-        AuthorizationUserRoleRelation relation = new AuthorizationUserRoleRelation();
-        relation.setUserId(userId);
-        relation.setRoleId(role.getId());
-        userRoleRelationRepository.insert(relation);
     }
 
     private static String requireText(String value, String propertyName) {

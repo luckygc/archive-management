@@ -5,11 +5,11 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 
-import github.luckygc.am.module.authentication.TotpChallengeAuthenticationFailureHandler;
-import github.luckygc.am.module.authentication.TotpChallengeAuthenticationFilter;
-import github.luckygc.am.module.authentication.TwoStageLoginAuthenticationFilter;
 import github.luckygc.am.module.authentication.service.AuthenticationAuditService;
 import github.luckygc.am.module.authentication.service.TotpLoginChallengeService;
+import github.luckygc.am.module.authentication.web.security.TotpChallengeAuthenticationFailureHandler;
+import github.luckygc.am.module.authentication.web.security.TotpChallengeAuthenticationFilter;
+import github.luckygc.am.module.authentication.web.security.TwoStageLoginAuthenticationFilter;
 
 import tools.jackson.databind.json.JsonMapper;
 

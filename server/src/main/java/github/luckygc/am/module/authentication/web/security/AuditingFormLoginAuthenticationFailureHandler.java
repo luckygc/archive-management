@@ -1,4 +1,4 @@
-package github.luckygc.am.module.authentication;
+package github.luckygc.am.module.authentication.web.security;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;

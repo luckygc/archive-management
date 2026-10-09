@@ -36,6 +36,7 @@ import github.luckygc.am.module.authorization.repository.AuthorizationRoleDataRe
 import github.luckygc.am.module.authorization.repository.AuthorizationUserRoleRelationDataRepository;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionCode;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
+import github.luckygc.am.module.authorization.service.AuthorizationUserRoleService;
 import github.luckygc.am.module.organization.service.OrganizationDepartmentService;
 import github.luckygc.am.module.organization.service.OrganizationDepartmentService.OrganizationDepartmentResponse;
 
@@ -65,8 +66,8 @@ class AuthenticationUserManagementServiceTests {
         userService =
                 new AuthenticationUserManagementService(
                         userRepository,
-                        roleRepository,
-                        userRoleRelationRepository,
+                        new AuthorizationUserRoleService(
+                                roleRepository, userRoleRelationRepository),
                         permissionService,
                         departmentService,
                         passwordEncoder,

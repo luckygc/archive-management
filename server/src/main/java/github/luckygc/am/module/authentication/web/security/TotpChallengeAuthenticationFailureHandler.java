@@ -1,4 +1,4 @@
-package github.luckygc.am.module.authentication;
+package github.luckygc.am.module.authentication.web.security;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -15,6 +15,7 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 
 import github.luckygc.am.common.api.ApiProblemTypes;
+import github.luckygc.am.module.authentication.TotpChallengeAuthenticationException;
 import github.luckygc.am.module.authentication.service.AuthenticationAuditService;
 
 import tools.jackson.databind.json.JsonMapper;

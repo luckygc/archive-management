@@ -20,6 +20,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import github.luckygc.am.module.authentication.repository.AuthenticationUserDataRepository;
 import github.luckygc.am.module.authorization.repository.AuthorizationRoleDataRepository;
 import github.luckygc.am.module.authorization.repository.AuthorizationUserRoleRelationDataRepository;
+import github.luckygc.am.module.authorization.service.AuthorizationUserRoleService;
 
 @DisplayName("内置管理员初始化")
 class BootstrapAdminInitializerTests {
@@ -50,8 +51,7 @@ class BootstrapAdminInitializerTests {
                 new BootstrapAdminInitializer(
                         properties,
                         userRepository,
-                        roleRepository,
-                        relationRepository,
+                        new AuthorizationUserRoleService(roleRepository, relationRepository),
                         passwordEncoder);
 
         initializer.run(new DefaultApplicationArguments());
@@ -77,8 +77,7 @@ class BootstrapAdminInitializerTests {
                 new BootstrapAdminInitializer(
                         properties,
                         userRepository,
-                        roleRepository,
-                        relationRepository,
+                        new AuthorizationUserRoleService(roleRepository, relationRepository),
                         passwordEncoder);
 
         initializer.run(new DefaultApplicationArguments());

@@ -16,6 +16,7 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
 import github.luckygc.am.module.authentication.service.LoginFailureLimitService;
+import github.luckygc.am.module.authentication.web.security.LoginFailureLimitFilter;
 
 @DisplayName("登录失败限制过滤器")
 class LoginFailureLimitFilterTests {
