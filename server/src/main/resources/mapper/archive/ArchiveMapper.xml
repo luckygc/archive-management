@@ -66,6 +66,44 @@
         </if>
     </sql>
 
+    <sql id="cursorPagePredicates">
+        <if test="page.cursorPredicates != null and page.cursorPredicates.size > 0">
+            and (
+            <foreach collection="page.cursorPredicates" item="predicate" separator=" or ">
+                (
+                <foreach collection="predicate.equalsComparisons" item="comparison" separator=" and ">
+                    ${comparison.expression} is not distinct from #{comparison.value}
+                </foreach>
+                <if test="predicate.equalsComparisons != null and predicate.equalsComparisons.size > 0">
+                    and
+                </if>
+                <choose>
+                    <when test="predicate.rangeComparison.operatorName == 'GT'">
+                        <choose>
+                            <when test="predicate.rangeComparison.value == null">false</when>
+                            <otherwise>
+                                (${predicate.rangeComparison.expression} &gt; #{predicate.rangeComparison.value}
+                                or ${predicate.rangeComparison.expression} is null)
+                            </otherwise>
+                        </choose>
+                    </when>
+                    <otherwise>
+                        <choose>
+                            <when test="predicate.rangeComparison.value == null">
+                                ${predicate.rangeComparison.expression} is not null
+                            </when>
+                            <otherwise>
+                                ${predicate.rangeComparison.expression} &lt; #{predicate.rangeComparison.value}
+                            </otherwise>
+                        </choose>
+                    </otherwise>
+                </choose>
+                )
+            </foreach>
+            )
+        </if>
+    </sql>
+
     <select id="listItemOverview" resultType="map">
         select i.id,
                i.volume_id,
@@ -84,36 +122,13 @@
                i.locked_by,
                i.locked_at
         <include refid="itemOverviewFromWhere"/>
-        <if test="page.cursorPredicates != null and page.cursorPredicates.size > 0">
-            and (
-            <foreach collection="page.cursorPredicates" item="predicate" separator=" or ">
-                (
-                <foreach collection="predicate.equalsComparisons" item="comparison" separator=" and ">
-                    ${comparison.expression} = #{comparison.value}
-                </foreach>
-                <if test="predicate.equalsComparisons != null and predicate.equalsComparisons.size > 0">
-                    and
-                </if>
-                ${predicate.rangeComparison.expression}
-                <choose>
-                    <when test="predicate.rangeComparison.operatorName == 'GT'">
-                        &gt;
-                    </when>
-                    <otherwise>
-                        &lt;
-                    </otherwise>
-                </choose>
-                #{predicate.rangeComparison.value}
-                )
-            </foreach>
-            )
-        </if>
+        <include refid="cursorPagePredicates"/>
         order by
         <foreach collection="page.orders" item="order" separator=", ">
             ${order.expression}
             <choose>
-                <when test="order.directionName == 'ASC'">asc</when>
-                <otherwise>desc</otherwise>
+                <when test="order.directionName == 'ASC'">asc nulls last</when>
+                <otherwise>desc nulls first</otherwise>
             </choose>
         </foreach>
         limit #{page.limit}
@@ -371,36 +386,13 @@
                    , d.${field}
                </foreach>
         <include refid="dynamicItemFromWhere"/>
-        <if test="page.cursorPredicates != null and page.cursorPredicates.size > 0">
-            and (
-            <foreach collection="page.cursorPredicates" item="predicate" separator=" or ">
-                (
-                <foreach collection="predicate.equalsComparisons" item="comparison" separator=" and ">
-                    ${comparison.expression} = #{comparison.value}
-                </foreach>
-                <if test="predicate.equalsComparisons != null and predicate.equalsComparisons.size > 0">
-                    and
-                </if>
-                ${predicate.rangeComparison.expression}
-                <choose>
-                    <when test="predicate.rangeComparison.operatorName == 'GT'">
-                        &gt;
-                    </when>
-                    <otherwise>
-                        &lt;
-                    </otherwise>
-                </choose>
-                #{predicate.rangeComparison.value}
-                )
-            </foreach>
-            )
-        </if>
+        <include refid="cursorPagePredicates"/>
         order by
         <foreach collection="page.orders" item="order" separator=", ">
             ${order.expression}
             <choose>
-                <when test="order.directionName == 'ASC'">asc</when>
-                <otherwise>desc</otherwise>
+                <when test="order.directionName == 'ASC'">asc nulls last</when>
+                <otherwise>desc nulls first</otherwise>
             </choose>
         </foreach>
         limit #{page.limit}

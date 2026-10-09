@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -18,6 +19,7 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.jdbc.support.JdbcUtils;
 import org.springframework.stereotype.Service;
 
+import github.luckygc.am.common.api.KeysetCursor;
 import github.luckygc.am.common.api.KeysetCursoredPageRecord;
 import github.luckygc.am.module.archive.mapper.ArchiveDynamicItemCriteria;
 import github.luckygc.am.module.archive.mapper.ArchiveDynamicItemPageWindow;
@@ -82,7 +84,7 @@ class ArchiveItemCursorPageAssembler {
         List<ArchiveSqlOrder> queryOrderBy =
                 isPreviousCursor(pageRequest) ? invert(orderBy) : orderBy;
         ArchiveDynamicItemProjection projection =
-                new ArchiveDynamicItemProjection(projectionFields(visibleFields));
+                new ArchiveDynamicItemProjection(projectionFields(visibleFields, orderBy));
         ArchiveDynamicItemPageWindow pageWindow =
                 new ArchiveDynamicItemPageWindow(
                         queryOrderBy, cursorPredicates(queryOrderBy, cursor), limit + 1);
@@ -94,7 +96,7 @@ class ArchiveItemCursorPageAssembler {
             rawPageItems = rawPageItems.reversed();
         }
         List<Map<String, @Nullable Object>> pageItems =
-                normalizeDynamicFieldValues(rawPageItems, visibleFields);
+                normalizeDynamicFieldValues(rawPageItems, visibleFields, projection.fields());
         List<PageRequest.Cursor> cursors =
                 rawPageItems.stream().map(row -> rowCursor(orderBy, row)).toList();
         Long total =
@@ -160,12 +162,12 @@ class ArchiveItemCursorPageAssembler {
 
     private PageRequest.Cursor rowCursor(
             List<ArchiveSqlOrder> orders, Map<String, @Nullable Object> row) {
-        return PageRequest.Cursor.forKey(cursorRowValues(orders, row).toArray(Object[]::new));
+        return new KeysetCursor(cursorRowValues(orders, row));
     }
 
-    private List<Object> cursorRowValues(
+    private List<@Nullable Object> cursorRowValues(
             List<ArchiveSqlOrder> orders, Map<String, @Nullable Object> row) {
-        List<Object> values = new ArrayList<>();
+        List<@Nullable Object> values = new ArrayList<>();
         for (ArchiveSqlOrder order : orders) {
             values.add(cursorRowValue(row, order.expression()));
         }
@@ -209,19 +211,35 @@ class ArchiveItemCursorPageAssembler {
         return Integer.valueOf(value.toString());
     }
 
-    private List<String> projectionFields(List<ArchiveFieldDto> fields) {
-        return fields.stream().map(ArchiveFieldDto::columnName).toList();
+    private List<String> projectionFields(
+            List<ArchiveFieldDto> fields, List<ArchiveSqlOrder> orders) {
+        var columns =
+                new LinkedHashSet<>(fields.stream().map(ArchiveFieldDto::columnName).toList());
+        orders.stream()
+                .map(ArchiveSqlOrder::expression)
+                .filter(expression -> expression.startsWith("d."))
+                .map(expression -> expression.substring(2))
+                .forEach(columns::add);
+        return List.copyOf(columns);
     }
 
     private List<Map<String, @Nullable Object>> normalizeDynamicFieldValues(
-            List<Map<String, @Nullable Object>> rows, List<ArchiveFieldDto> fields) {
+            List<Map<String, @Nullable Object>> rows,
+            List<ArchiveFieldDto> fields,
+            List<String> projectionFields) {
         if (rows.isEmpty()) {
             return rows;
         }
+        var visibleColumns = fields.stream().map(ArchiveFieldDto::columnName).toList();
+        var hiddenColumns =
+                projectionFields.stream()
+                        .filter(column -> !visibleColumns.contains(column))
+                        .toList();
         return rows.stream()
                 .map(
                         row -> {
                             Map<String, @Nullable Object> normalized = new LinkedHashMap<>(row);
+                            hiddenColumns.forEach(normalized::remove);
                             for (ArchiveFieldDto field : fields) {
                                 normalized.compute(
                                         field.columnName(),

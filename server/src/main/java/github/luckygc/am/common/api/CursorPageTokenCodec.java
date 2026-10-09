@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -51,8 +52,7 @@ public final class CursorPageTokenCodec {
         if (cursor == null) {
             return pageRequest;
         }
-        PageRequest.Cursor pageCursor =
-                PageRequest.Cursor.forKey(cursor.values().toArray(Object[]::new));
+        PageRequest.Cursor pageCursor = new KeysetCursor(cursor.values());
         return switch (cursor.direction()) {
             case "next" -> pageRequest.afterCursor(pageCursor);
             case "prev" -> pageRequest.beforeCursor(pageCursor);
@@ -253,12 +253,12 @@ public final class CursorPageTokenCodec {
 
     public record DecodedCursor(
             String direction,
-            List<Object> values,
+            List<@Nullable Object> values,
             @Nullable Integer limit,
             @Nullable CursorPageTokenContext context) {
 
         public DecodedCursor {
-            values = List.copyOf(values);
+            values = Collections.unmodifiableList(new ArrayList<>(values));
         }
     }
 

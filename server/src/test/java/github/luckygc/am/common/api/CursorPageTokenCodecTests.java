@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 
 import jakarta.data.page.PageRequest;
@@ -16,6 +17,64 @@ import github.luckygc.am.common.exception.BadRequestException;
 
 @DisplayName("游标分页 token 编码")
 class CursorPageTokenCodecTests {
+
+    @Test
+    @DisplayName("可空排序键在两种签名 token 中保留位置和值")
+    void nullableSortKeysRoundTrip() {
+        List<Object> values = Arrays.asList(null, "标题", 99L);
+        var context = new CursorPageTokenContext("nullable-sort");
+        for (String direction : List.of("next", "prev")) {
+            String legacy = CursorPageTokenCodec.encode(direction, values);
+            String scoped = CursorPageTokenCodec.encode(direction, values, 2, context);
+            assertThat(
+                            CursorPageTokenCodec.pageRequest(2, legacy, false)
+                                    .cursor()
+                                    .orElseThrow()
+                                    .elements())
+                    .isEqualTo(values);
+            assertThat(
+                            CursorPageTokenCodec.pageRequest(2, scoped, false, context)
+                                    .cursor()
+                                    .orElseThrow()
+                                    .elements())
+                    .isEqualTo(values);
+        }
+    }
+
+    @Test
+    @DisplayName("HTTP分页响应包装和签名保留空排序键")
+    void nullableKeysSurviveHttpResponseWrapping() {
+        List<Object> values = Arrays.asList(null, "标题", 99L);
+        var context = new CursorPageTokenContext("nullable-http-response");
+        var page =
+                new KeysetCursoredPageRecord<>(
+                        PageRequest.ofSize(2).withoutTotal(),
+                        List.of("档案"),
+                        List.of(new KeysetCursor(values)),
+                        true,
+                        true,
+                        null);
+
+        var response =
+                CursorPageResponse.from(page, page.pageRequest(), item -> item)
+                        .encodeCursorTokens(context);
+
+        assertThat(response.items()).containsExactly("档案");
+        assertThat(CursorPageTokenCodec.validate(response.self(), 2, context).values())
+                .isEqualTo(values);
+        assertThat(
+                        CursorPageTokenCodec.pageRequest(2, response.next(), false, context)
+                                .cursor()
+                                .orElseThrow()
+                                .elements())
+                .isEqualTo(values);
+        assertThat(
+                        CursorPageTokenCodec.pageRequest(2, response.prev(), false, context)
+                                .cursor()
+                                .orElseThrow()
+                                .elements())
+                .isEqualTo(values);
+    }
 
     @Test
     @DisplayName("从 PageRequest 生成 token 后可还原为下一页请求")

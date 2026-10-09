@@ -1,5 +1,7 @@
 package github.luckygc.am.common.api;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 
@@ -220,7 +222,7 @@ public interface CursorPageResponse<T> {
         }
 
         private static @Nullable List<?> copyValues(@Nullable List<?> values) {
-            return values == null ? null : List.copyOf(values);
+            return values == null ? null : Collections.unmodifiableList(new ArrayList<>(values));
         }
     }
 }
