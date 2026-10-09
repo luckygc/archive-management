@@ -19,8 +19,10 @@ import org.junit.jupiter.api.Test;
 
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.archive.item.ArchiveItem;
+import github.luckygc.am.module.archive.item.ArchiveVolume;
 import github.luckygc.am.module.archive.item.repository.ArchiveItemDataRepository;
 import github.luckygc.am.module.archive.item.repository.ArchiveVolumeDataRepository;
+import github.luckygc.am.module.archive.item.service.ArchiveRepositoryOwnershipService;
 import github.luckygc.am.module.archive.library.ArchiveRepository;
 import github.luckygc.am.module.archive.library.ArchiveRepositoryRole;
 import github.luckygc.am.module.archive.library.repository.ArchiveRepositoryChangeHistoryDataRepository;
@@ -50,8 +52,7 @@ class ArchiveRepositoryServiceTests {
                 new ArchiveRepositoryService(
                         repository,
                         historyRepository,
-                        itemRepository,
-                        volumeRepository,
+                        new ArchiveRepositoryOwnershipService(itemRepository, volumeRepository),
                         permissionService);
         when(permissionService.hasPermission(9L, "archive:metadata:manage")).thenReturn(true);
     }
@@ -125,6 +126,20 @@ class ArchiveRepositoryServiceTests {
         when(repository.findById(20L)).thenReturn(Optional.of(entity));
         when(itemRepository.findByRepositoryId(20L, Limit.of(1)))
                 .thenReturn(List.of(new ArchiveItem()));
+
+        assertThatThrownBy(() -> service.delete(20L, 9L))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("仍在使用");
+
+        verify(repository, never()).delete(any());
+    }
+
+    @Test
+    @DisplayName("没有条目但仍有案卷引用的业务库不能删除")
+    void deleteShouldRejectVolumeReference() {
+        when(repository.findById(20L)).thenReturn(Optional.of(repository(20L, false, true)));
+        when(volumeRepository.findByRepositoryId(20L, Limit.of(1)))
+                .thenReturn(List.of(new ArchiveVolume()));
 
         assertThatThrownBy(() -> service.delete(20L, 9L))
                 .isInstanceOf(BadRequestException.class)

@@ -16,7 +16,6 @@ import org.junit.jupiter.api.Test;
 
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.archive.ArchiveLevel;
-import github.luckygc.am.module.archive.mapper.ArchiveRuleMapper;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldDataType;
 import github.luckygc.am.module.archive.rule.ArchiveRuntimeAction;
 import github.luckygc.am.module.archive.rule.ArchiveRuntimeActionType;
@@ -24,6 +23,7 @@ import github.luckygc.am.module.archive.rule.ArchiveRuntimeDefinition;
 import github.luckygc.am.module.archive.rule.ArchiveRuntimeDefinitionKind;
 import github.luckygc.am.module.archive.rule.ArchiveRuntimeFieldSource;
 import github.luckygc.am.module.archive.rule.ArchiveRuntimeTriggerPoint;
+import github.luckygc.am.module.archive.rule.mapper.ArchiveRuleMapper;
 import github.luckygc.am.module.archive.rule.repository.ArchiveRuntimeActionDataRepository;
 import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeExecutionService.ArchiveRuntimeExecutionRequest;
 import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeFieldCatalogService.ArchiveRuntimeField;

@@ -15,7 +15,6 @@ import org.mockito.ArgumentCaptor;
 
 import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.authorization.service.ArchiveDataScopeService;
-import github.luckygc.am.module.archive.mapper.ArchiveRuleMapper;
 import github.luckygc.am.module.archive.metadata.service.ArchiveCategoryService;
 import github.luckygc.am.module.archive.rule.ArchiveRuleDecisionSeverity;
 import github.luckygc.am.module.archive.rule.ArchiveRuntimeActionDecision;
@@ -24,6 +23,7 @@ import github.luckygc.am.module.archive.rule.ArchiveRuntimeDecision;
 import github.luckygc.am.module.archive.rule.ArchiveRuntimeDefinitionKind;
 import github.luckygc.am.module.archive.rule.ArchiveRuntimeTrace;
 import github.luckygc.am.module.archive.rule.ArchiveRuntimeTriggerPoint;
+import github.luckygc.am.module.archive.rule.mapper.ArchiveRuleMapper;
 import github.luckygc.am.module.archive.rule.repository.ArchiveRuntimeTraceDataRepository;
 import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeExecutionService.ArchiveRuntimeExecutionRequest;
 import github.luckygc.am.module.archive.rule.service.ArchiveRuntimeExecutionService.ArchiveRuntimeExecutionResult;

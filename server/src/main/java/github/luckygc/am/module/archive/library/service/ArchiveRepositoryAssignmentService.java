@@ -15,9 +15,8 @@ import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.archive.ArchiveObjectType;
 import github.luckygc.am.module.archive.item.ArchiveItem;
 import github.luckygc.am.module.archive.item.ArchiveVolume;
-import github.luckygc.am.module.archive.item.repository.ArchiveItemDataRepository;
-import github.luckygc.am.module.archive.item.repository.ArchiveVolumeDataRepository;
 import github.luckygc.am.module.archive.item.service.ArchiveItemReadService;
+import github.luckygc.am.module.archive.item.service.ArchiveRepositoryOwnershipService;
 import github.luckygc.am.module.archive.item.service.ArchiveVolumeService;
 import github.luckygc.am.module.archive.library.ArchiveRepository;
 import github.luckygc.am.module.archive.library.ArchiveRepositoryChangeHistory;
@@ -31,8 +30,7 @@ public class ArchiveRepositoryAssignmentService {
 
     private final ArchiveRepositoryService archiveRepositoryService;
     private final ArchiveRepositoryChangeHistoryDataRepository historyRepository;
-    private final ArchiveItemDataRepository itemRepository;
-    private final ArchiveVolumeDataRepository volumeRepository;
+    private final ArchiveRepositoryOwnershipService ownershipService;
     private final ArchiveItemReadService itemReadService;
     private final ArchiveVolumeService volumeService;
     private final AuthorizationPermissionService permissionService;
@@ -41,16 +39,14 @@ public class ArchiveRepositoryAssignmentService {
     public ArchiveRepositoryAssignmentService(
             ArchiveRepositoryService archiveRepositoryService,
             ArchiveRepositoryChangeHistoryDataRepository historyRepository,
-            ArchiveItemDataRepository itemRepository,
-            ArchiveVolumeDataRepository volumeRepository,
+            ArchiveRepositoryOwnershipService ownershipService,
             ArchiveItemReadService itemReadService,
             ArchiveVolumeService volumeService,
             AuthorizationPermissionService permissionService,
             Clock clock) {
         this.archiveRepositoryService = archiveRepositoryService;
         this.historyRepository = historyRepository;
-        this.itemRepository = itemRepository;
-        this.volumeRepository = volumeRepository;
+        this.ownershipService = ownershipService;
         this.itemReadService = itemReadService;
         this.volumeService = volumeService;
         this.permissionService = permissionService;
@@ -62,17 +58,12 @@ public class ArchiveRepositoryAssignmentService {
             Long itemId, ChangeArchiveRepositoryRequest request, Long userId) {
         requireUpdatePermission(userId);
         itemReadService.assertItemInDataScope(itemId, userId);
-        ArchiveItem item =
-                itemRepository
-                        .findById(itemId)
-                        .orElseThrow(
-                                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "档案条目不存在"));
+        ArchiveItem item = ownershipService.getRequiredItem(itemId);
         Long fromRepositoryId = item.getRepositoryId();
         ArchiveRepository target = target(request);
         if (!fromRepositoryId.equals(target.getId())) {
             assertTransition(archiveRepositoryService.getRequired(fromRepositoryId), target);
-            item.setRepositoryId(target.getId());
-            itemRepository.update(item);
+            ownershipService.changeItemRepository(item, target.getId());
             insertHistory(
                     ArchiveObjectType.ITEM,
                     itemId,
@@ -90,17 +81,12 @@ public class ArchiveRepositoryAssignmentService {
             Long volumeId, ChangeArchiveRepositoryRequest request, Long userId) {
         requireUpdatePermission(userId);
         volumeService.assertVolumeInDataScope(volumeId, userId);
-        ArchiveVolume volume =
-                volumeRepository
-                        .findById(volumeId)
-                        .orElseThrow(
-                                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "案卷不存在"));
+        ArchiveVolume volume = ownershipService.getRequiredVolume(volumeId);
         Long fromRepositoryId = volume.getRepositoryId();
         ArchiveRepository target = target(request);
         if (!fromRepositoryId.equals(target.getId())) {
             assertTransition(archiveRepositoryService.getRequired(fromRepositoryId), target);
-            volume.setRepositoryId(target.getId());
-            volumeRepository.update(volume);
+            ownershipService.changeVolumeRepository(volume, target.getId());
             insertHistory(
                     ArchiveObjectType.VOLUME,
                     volumeId,

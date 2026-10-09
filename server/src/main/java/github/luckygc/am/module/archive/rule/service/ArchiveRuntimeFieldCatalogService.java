@@ -17,33 +17,28 @@ import org.springframework.transaction.annotation.Transactional;
 
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.archive.ArchiveLevel;
-import github.luckygc.am.module.archive.metadata.ArchiveCategory;
-import github.luckygc.am.module.archive.metadata.ArchiveField;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldDataType;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldScope;
-import github.luckygc.am.module.archive.metadata.repository.ArchiveCategoryDataRepository;
-import github.luckygc.am.module.archive.metadata.repository.ArchiveFieldDataRepository;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataCatalogService;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataCatalogService.CategoryDefinition;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataCatalogService.FieldDefinition;
 import github.luckygc.am.module.archive.rule.ArchiveRuntimeFieldSource;
 import github.luckygc.am.module.archive.rule.ArchiveRuntimeTriggerPoint;
 
 @Service
 public class ArchiveRuntimeFieldCatalogService {
 
-    private final ArchiveCategoryDataRepository categoryRepository;
-    private final ArchiveFieldDataRepository fieldRepository;
+    private final ArchiveMetadataCatalogService metadataCatalogService;
 
-    public ArchiveRuntimeFieldCatalogService(
-            ArchiveCategoryDataRepository categoryRepository,
-            ArchiveFieldDataRepository fieldRepository) {
-        this.categoryRepository = categoryRepository;
-        this.fieldRepository = fieldRepository;
+    public ArchiveRuntimeFieldCatalogService(ArchiveMetadataCatalogService metadataCatalogService) {
+        this.metadataCatalogService = metadataCatalogService;
     }
 
     @Transactional(readOnly = true)
     public ArchiveRuntimeFieldCatalog catalog(
             @Nullable String categoryCode, ArchiveRuntimeTriggerPoint triggerPoint) {
         String normalizedCategoryCode = StringUtils.trimToNull(categoryCode);
-        ArchiveCategory category = resolveCategory(normalizedCategoryCode);
+        CategoryDefinition category = resolveCategory(normalizedCategoryCode);
         List<ArchiveRuntimeField> fields = new ArrayList<>();
         if (triggerPoint != ArchiveRuntimeTriggerPoint.EXPORT_BEFORE_CREATE) {
             addFixedFields(fields, triggerPoint);
@@ -60,12 +55,12 @@ public class ArchiveRuntimeFieldCatalogService {
                 normalizedCategoryCode, triggerPoint, signature(ordered), ordered);
     }
 
-    private @Nullable ArchiveCategory resolveCategory(@Nullable String categoryCode) {
+    private @Nullable CategoryDefinition resolveCategory(@Nullable String categoryCode) {
         if (categoryCode == null) {
             return null;
         }
-        ArchiveCategory category = categoryRepository.findByCategoryCode(categoryCode);
-        if (category == null || !category.isEnabled()) {
+        CategoryDefinition category = metadataCatalogService.findCategoryByCode(categoryCode);
+        if (category == null || !category.enabled()) {
             throw new BadRequestException("分类不存在或未启用", "categoryCode", "分类不存在或未启用");
         }
         return category;
@@ -110,7 +105,7 @@ public class ArchiveRuntimeFieldCatalogService {
 
     private void addDynamicFields(
             List<ArchiveRuntimeField> fields,
-            ArchiveCategory category,
+            CategoryDefinition category,
             ArchiveRuntimeTriggerPoint triggerPoint) {
         ArchiveLevel level = triggerPoint.archiveLevel();
         addDynamicFields(fields, category, level, ArchiveFieldScope.METADATA, triggerPoint);
@@ -119,7 +114,7 @@ public class ArchiveRuntimeFieldCatalogService {
 
     private void addDynamicFields(
             List<ArchiveRuntimeField> fields,
-            ArchiveCategory category,
+            CategoryDefinition category,
             ArchiveLevel level,
             ArchiveFieldScope fieldScope,
             ArchiveRuntimeTriggerPoint triggerPoint) {
@@ -129,16 +124,17 @@ public class ArchiveRuntimeFieldCatalogService {
                         ? ArchiveRuntimeFieldSource.METADATA
                         : ArchiveRuntimeFieldSource.PHYSICAL;
         String prefix = fieldScope == ArchiveFieldScope.METADATA ? "metadata." : "physical.";
-        for (ArchiveField field : fieldRepository.list(category.getId(), level, fieldScope, true)) {
+        for (FieldDefinition field :
+                metadataCatalogService.listEnabledFields(category.id(), level, fieldScope)) {
             fields.add(
                     new ArchiveRuntimeField(
-                            prefix + field.getFieldCode(),
-                            field.getFieldName(),
-                            ArchiveFieldDataType.valueOf(field.getFieldType().name()),
+                            prefix + field.fieldCode(),
+                            field.fieldName(),
+                            ArchiveFieldDataType.valueOf(field.fieldType().name()),
                             source,
                             true,
-                            writable && field.isEditVisible(),
-                            category.getCategoryCode()));
+                            writable && field.editVisible(),
+                            category.categoryCode()));
         }
     }
 

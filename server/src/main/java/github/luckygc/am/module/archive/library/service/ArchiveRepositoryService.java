@@ -15,8 +15,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.common.security.AuthenticatedUsers;
-import github.luckygc.am.module.archive.item.repository.ArchiveItemDataRepository;
-import github.luckygc.am.module.archive.item.repository.ArchiveVolumeDataRepository;
+import github.luckygc.am.module.archive.item.service.ArchiveRepositoryOwnershipService;
 import github.luckygc.am.module.archive.library.ArchiveRepository;
 import github.luckygc.am.module.archive.library.ArchiveRepositoryRole;
 import github.luckygc.am.module.archive.library.repository.ArchiveRepositoryChangeHistoryDataRepository;
@@ -29,20 +28,17 @@ public class ArchiveRepositoryService {
 
     private final ArchiveRepositoryDataRepository repository;
     private final ArchiveRepositoryChangeHistoryDataRepository historyRepository;
-    private final ArchiveItemDataRepository itemRepository;
-    private final ArchiveVolumeDataRepository volumeRepository;
+    private final ArchiveRepositoryOwnershipService ownershipService;
     private final AuthorizationPermissionService permissionService;
 
     public ArchiveRepositoryService(
             ArchiveRepositoryDataRepository repository,
             ArchiveRepositoryChangeHistoryDataRepository historyRepository,
-            ArchiveItemDataRepository itemRepository,
-            ArchiveVolumeDataRepository volumeRepository,
+            ArchiveRepositoryOwnershipService ownershipService,
             AuthorizationPermissionService permissionService) {
         this.repository = repository;
         this.historyRepository = historyRepository;
-        this.itemRepository = itemRepository;
-        this.volumeRepository = volumeRepository;
+        this.ownershipService = ownershipService;
         this.permissionService = permissionService;
     }
 
@@ -165,8 +161,7 @@ public class ArchiveRepositoryService {
 
     private boolean isReferenced(Long id) {
         Limit one = Limit.of(1);
-        return !itemRepository.findByRepositoryId(id, one).isEmpty()
-                || !volumeRepository.findByRepositoryId(id, one).isEmpty()
+        return ownershipService.isRepositoryReferenced(id)
                 || !historyRepository.findByFromRepositoryId(id, one).isEmpty()
                 || !historyRepository.findByToRepositoryId(id, one).isEmpty();
     }

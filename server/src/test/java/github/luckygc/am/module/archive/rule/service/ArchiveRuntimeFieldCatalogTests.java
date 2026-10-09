@@ -1,6 +1,7 @@
 package github.luckygc.am.module.archive.rule.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -10,6 +11,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import github.luckygc.am.common.api.ApiFieldViolation;
+import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.archive.ArchiveLevel;
 import github.luckygc.am.module.archive.metadata.ArchiveCategory;
 import github.luckygc.am.module.archive.metadata.ArchiveField;
@@ -17,6 +20,7 @@ import github.luckygc.am.module.archive.metadata.ArchiveFieldScope;
 import github.luckygc.am.module.archive.metadata.ArchiveFieldType;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveCategoryDataRepository;
 import github.luckygc.am.module.archive.metadata.repository.ArchiveFieldDataRepository;
+import github.luckygc.am.module.archive.metadata.service.ArchiveMetadataCatalogService;
 import github.luckygc.am.module.archive.rule.ArchiveRuntimeTriggerPoint;
 
 @DisplayName("运行时真实字段目录")
@@ -30,7 +34,9 @@ class ArchiveRuntimeFieldCatalogTests {
     void setUp() {
         categoryRepository = mock(ArchiveCategoryDataRepository.class);
         fieldRepository = mock(ArchiveFieldDataRepository.class);
-        service = new ArchiveRuntimeFieldCatalogService(categoryRepository, fieldRepository);
+        service =
+                new ArchiveRuntimeFieldCatalogService(
+                        new ArchiveMetadataCatalogService(categoryRepository, fieldRepository));
     }
 
     @Test
@@ -119,6 +125,50 @@ class ArchiveRuntimeFieldCatalogTests {
                         "context.operation")
                 .doesNotContainKeys("item.archiveNo", "metadata.title", "physical.boxNo");
         assertThat(catalog.fields()).noneMatch(field -> field.writable());
+    }
+
+    @Test
+    @DisplayName("不存在和已禁用的分类均保留400字段错误")
+    void unavailableCategoryPreservesBadRequest() {
+        ArchiveCategory disabled = category(21L, "DISABLED");
+        disabled.setEnabled(false);
+        when(categoryRepository.findByCategoryCode("DISABLED")).thenReturn(disabled);
+
+        for (String categoryCode : List.of("MISSING", " DISABLED ")) {
+            assertThatThrownBy(
+                            () ->
+                                    service.catalog(
+                                            categoryCode,
+                                            ArchiveRuntimeTriggerPoint.ITEM_BEFORE_CREATE))
+                    .isInstanceOf(BadRequestException.class)
+                    .hasMessage("分类不存在或未启用")
+                    .satisfies(
+                            exception ->
+                                    assertThat(((BadRequestException) exception).fieldViolations())
+                                            .containsExactly(
+                                                    new ApiFieldViolation(
+                                                            "categoryCode", "分类不存在或未启用")));
+        }
+        org.mockito.Mockito.verifyNoInteractions(fieldRepository);
+    }
+
+    @Test
+    @DisplayName("案卷目录沿用真实层级与字段域查询")
+    void volumeCatalogUsesVolumeFieldDefinitions() {
+        when(categoryRepository.findByCategoryCode("DOC")).thenReturn(category(21L, "DOC"));
+        when(fieldRepository.list(21L, ArchiveLevel.VOLUME, ArchiveFieldScope.METADATA, true))
+                .thenReturn(List.of(field(31L, "title", "卷题名", ArchiveFieldType.TEXT, true)));
+        when(fieldRepository.list(21L, ArchiveLevel.VOLUME, ArchiveFieldScope.PHYSICAL, true))
+                .thenReturn(List.of(field(32L, "boxNo", "卷盒号", ArchiveFieldType.INTEGER, false)));
+
+        var catalog = service.catalog(" DOC ", ArchiveRuntimeTriggerPoint.VOLUME_BEFORE_CREATE);
+
+        assertThat(catalog.categoryCode()).isEqualTo("DOC");
+        assertThat(catalog.fieldsByCode())
+                .containsKeys("volume.archiveNo", "metadata.title", "physical.boxNo")
+                .doesNotContainKey("item.archiveNo");
+        assertThat(catalog.fieldsByCode().get("metadata.title").writable()).isTrue();
+        assertThat(catalog.fieldsByCode().get("physical.boxNo").writable()).isFalse();
     }
 
     private ArchiveCategory category(Long id, String code) {

@@ -1,9 +1,11 @@
-package github.luckygc.am.module.archive.mapper;
+package github.luckygc.am.module.archive.rule.mapper;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
 import org.jspecify.annotations.Nullable;
+
+import github.luckygc.am.module.archive.mapper.ArchiveDataScopeSqlGroup;
 
 public record ArchiveRuntimeTraceSearchCriteria(
         @Nullable String triggerPoint,

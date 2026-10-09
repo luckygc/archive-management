@@ -34,6 +34,10 @@ Controller 不直接依赖 Repository 或 Mapper。跨模块协作优先调用�
 
 跨模块用户目录查询通过认证模块 Service 返回不含凭证的用户摘要；用户角色关系由授权模块 Service 维护。认证专属 HTTP 过滤器和结果处理器归入 `module.authentication.web.security`，通用 Spring Security 配置仍属于 `infrastructure.security`。
 
+`archive` 内部同样按子域保持持久化所有权：业务库用例通过条目子域的具体归属 Service 查询引用和修改条目、案卷归属，库状态转换、权限和历史仍由业务库用例编排。规则字段目录通过元数据只读目录 Service 获取真实定义，元数据写入仍调用规则引用保护；只读目录 Service 不反向依赖规则，避免将查询与破坏性变更校验绑定到同一 Bean。
+
+`archive.mapper` 承担共享动态表 SQL，其持久化接口只允许条目、元数据的 Service/Manager 及 Mapper 内部协作调用，查询参数类型可以跨子域使用。ArchUnit 同时检查内部子域跨 Repository/Mapper 访问、共享 Mapper 调用范围和元数据只读 Service 的反向依赖，并保留顶层模块循环检查。
+
 Service、Manager 和领域协作只有一个实现时直接使用具体 Spring Bean；Jakarta Data Repository、MyBatis Mapper、稳定基础设施端口和已有多实现策略保留接口合同。同一 Bean 的 public 方法不得调用本类另一 public 方法：共享实现提取为 private 方法，独立事务、权限或业务边界拆到另一具体 Bean 并通过构造器注入，不使用 self 注入或代理绕过。
 
 ## Java 工程约定
@@ -119,4 +123,4 @@ Controller 方法显式声明完整 URL，不通过类级 `@RequestMapping` 与�
 
 Java 格式由 Spotless + AOSP `google-java-format` 统一，模块边界由 ArchUnit 固化，PostgreSQL 相关集成测试可使用 Testcontainers。真实开发和验证入口以 [`mise.toml`](../mise.toml) 与 [`development.md`](development.md) 为准。
 
-跨项目结构检查位于根目录 `scripts/`，使用项目已有 Node.js 运行时。源码有效行数沿用前端 300 行提示、500 行失败，后端 500 行提示、700 行失败的阈值；提示用于检查职责，不能通过放宽阈值或添加排除项绕过失败。前端依赖边界检查纳入 `ready`，后端架构测试纳入 Maven 测试，`mise run verify` 顺序执行项目完整验证。
+跨项目结构检查位于根目录 `scripts/`，使用项目已有 Node.js 运行时。源码有效行数沿用前端 300 行提示、500 行失败，后端 500 行提示、700 行失败的阈值；提示用于检查职责，不能通过放宽阈值或添加排除项绕过失败。前端依赖边界检查纳入 `ready`，后端架构测试纳入 Maven 测试，`mise run verify` 顺序执行项目完整验证并拒绝容器集成测试缺失或跳过；GitHub Actions 调用同一入口。

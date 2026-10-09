@@ -1,4 +1,4 @@
-package github.luckygc.am.module.archive.mapper;
+package github.luckygc.am.module.archive.rule.mapper;
 
 import java.util.List;
 import java.util.Map;

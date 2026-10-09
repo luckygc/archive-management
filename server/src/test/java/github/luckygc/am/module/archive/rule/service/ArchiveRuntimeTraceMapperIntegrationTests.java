@@ -18,10 +18,10 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import github.luckygc.am.app.ArchiveManagementApplication;
 import github.luckygc.am.module.archive.mapper.ArchiveDataScopeSqlGroup;
-import github.luckygc.am.module.archive.mapper.ArchiveRuleMapper;
-import github.luckygc.am.module.archive.mapper.ArchiveRuntimeTraceSearchCriteria;
-import github.luckygc.am.module.archive.mapper.ArchiveRuntimeTraceSearchCriteria.ArchiveRuntimeTracePageWindow;
-import github.luckygc.am.module.archive.mapper.ArchiveRuntimeTraceSearchCriteria.ArchiveRuntimeTraceTargetScope;
+import github.luckygc.am.module.archive.rule.mapper.ArchiveRuleMapper;
+import github.luckygc.am.module.archive.rule.mapper.ArchiveRuntimeTraceSearchCriteria;
+import github.luckygc.am.module.archive.rule.mapper.ArchiveRuntimeTraceSearchCriteria.ArchiveRuntimeTracePageWindow;
+import github.luckygc.am.module.archive.rule.mapper.ArchiveRuntimeTraceSearchCriteria.ArchiveRuntimeTraceTargetScope;
 import github.luckygc.am.test.PostgreSqlContainerTest;
 
 @Testcontainers(disabledWithoutDocker = true)
