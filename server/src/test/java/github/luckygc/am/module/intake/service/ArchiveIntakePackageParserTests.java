@@ -16,6 +16,7 @@ import java.util.zip.ZipOutputStream;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Isolated;
 
 import github.luckygc.am.common.exception.BadRequestException;
 import github.luckygc.am.module.intake.ArchiveIntakeValidationOutcome;
@@ -23,6 +24,7 @@ import github.luckygc.am.module.intake.ArchiveIntakeValidationOutcome;
 import tools.jackson.databind.json.JsonMapper;
 
 @DisplayName("档案信息包解析")
+@Isolated("核验解析临时目录的创建与清理")
 class ArchiveIntakePackageParserTests {
 
     private final ArchiveIntakePackageParser parser =
@@ -83,9 +85,31 @@ class ArchiveIntakePackageParserTests {
                             });
 
             var temporaryPath = item.contentFiles().getFirst().temporaryPath();
+            var temporaryDirectory = temporaryPath.getParent();
             parsed.close();
             assertThat(temporaryPath).doesNotExist();
+            assertThat(temporaryDirectory).doesNotExist();
         }
+    }
+
+    @Test
+    @DisplayName("解包和 XML 校验失败均回收全部解析临时文件")
+    void cleanupTemporaryFilesAfterExtractionOrDocumentFailure() throws IOException {
+        List<Path> existingTemporaryPaths = parserTemporaryPaths();
+        byte[] unsafePathPackage =
+                zip(entry("说明文件.TXT", explanation()), entry("../目录文件.XML", catalogXml()));
+        assertThatThrownBy(() -> parser.parse(unsafePathPackage))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("不安全路径");
+        assertNoNewParserTemporaryPaths(existingTemporaryPaths);
+
+        List<Entry> invalidXml = validEntries("");
+        replace(invalidXml, "目录文件.XML", entry("目录文件.XML", "<文件目录>"));
+        byte[] invalidXmlPackage = zip(invalidXml.toArray(Entry[]::new));
+        assertThatThrownBy(() -> parser.parse(invalidXmlPackage))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("不是合法安全 XML");
+        assertNoNewParserTemporaryPaths(existingTemporaryPaths);
     }
 
     @Test
@@ -435,6 +459,18 @@ class ArchiveIntakePackageParserTests {
 
     private byte[] validPackage(String prefix) throws IOException {
         return zip(validEntries(prefix).toArray(Entry[]::new));
+    }
+
+    private void assertNoNewParserTemporaryPaths(List<Path> existingPaths) throws IOException {
+        assertThat(parserTemporaryPaths().stream().filter(path -> !existingPaths.contains(path)))
+                .isEmpty();
+    }
+
+    private List<Path> parserTemporaryPaths() throws IOException {
+        try (var paths = Files.list(Path.of(System.getProperty("java.io.tmpdir")))) {
+            return paths.filter(path -> path.getFileName().toString().startsWith("archive-intake-"))
+                    .toList();
+        }
     }
 
     private List<Entry> validEntries(String prefix) {
