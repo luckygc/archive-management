@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ElMessage, ElMessageBox } from "element-plus";
-import { onBeforeUnmount, ref, watch } from "vue";
+import { computed, onBeforeUnmount, ref, watch } from "vue";
 
 import { errorMessage } from "@archive-management/frontend-core/api";
 
@@ -44,8 +44,10 @@ const candidateCursor = ref<string>();
 const candidateLoading = ref(false);
 const candidateError = ref<string>();
 const selectedTargetId = ref<number>();
+// 在途命令由自身 finally 释放；切换页签或档案只使结果上下文失效。
 const creating = ref(false);
 const deletingRelationId = ref<number>();
+const commandBusy = computed(() => creating.value || deletingRelationId.value !== undefined);
 let relationRequestVersion = 0;
 let categoryRequestVersion = 0;
 let candidateRequestVersion = 0;
@@ -175,7 +177,7 @@ function searchCandidates() {
 }
 
 async function createRelation() {
-    if (!props.canUpdate || !selectedTargetId.value || creating.value) return;
+    if (!props.active || !props.canUpdate || !selectedTargetId.value || commandBusy.value) return;
     const archiveItemId = props.archiveItemId;
     const targetItemId = selectedTargetId.value;
     const version = ++commandRequestVersion;
@@ -191,14 +193,15 @@ async function createRelation() {
         if (version === commandRequestVersion && isCurrentItem(archiveItemId))
             ElMessage.error(errorMessage(error, "创建档案关系失败"));
     } finally {
-        if (version === commandRequestVersion) creating.value = false;
+        creating.value = false;
     }
 }
 
 async function removeRelation(value: unknown) {
     const relation = value as ArchiveItemRelationResponse;
-    if (!props.canUpdate || deletingRelationId.value) return;
+    if (!props.active || !props.canUpdate || commandBusy.value) return;
     const archiveItemId = props.archiveItemId;
+    const context = commandRequestVersion;
     try {
         await ElMessageBox.confirm(
             `确认删除与 ${archiveNo(relation.relatedItem)} 的关系吗？`,
@@ -208,7 +211,13 @@ async function removeRelation(value: unknown) {
     } catch {
         return;
     }
-    if (!isCurrentItem(archiveItemId)) return;
+    if (
+        !props.canUpdate ||
+        commandBusy.value ||
+        context !== commandRequestVersion ||
+        !isCurrentItem(archiveItemId)
+    )
+        return;
     const version = ++commandRequestVersion;
     deletingRelationId.value = relation.id;
     try {
@@ -220,7 +229,7 @@ async function removeRelation(value: unknown) {
         if (version === commandRequestVersion && isCurrentItem(archiveItemId))
             ElMessage.error(errorMessage(error, "删除档案关系失败"));
     } finally {
-        if (version === commandRequestVersion) deletingRelationId.value = undefined;
+        deletingRelationId.value = undefined;
     }
 }
 
@@ -245,8 +254,6 @@ function invalidateRequests() {
     relationLoading.value = false;
     categoryLoading.value = false;
     candidateLoading.value = false;
-    creating.value = false;
-    deletingRelationId.value = undefined;
 }
 
 function isCurrentItem(archiveItemId: number) {
@@ -303,7 +310,7 @@ function archiveNo(value: unknown) {
                     link
                     type="danger"
                     :loading="deletingRelationId === row.id"
-                    :disabled="Boolean(deletingRelationId)"
+                    :disabled="commandBusy"
                     @click="removeRelation(row)"
                 >
                     删除
@@ -350,7 +357,7 @@ function archiveNo(value: unknown) {
                 <el-button
                     type="primary"
                     :loading="creating"
-                    :disabled="!selectedTargetId || creating"
+                    :disabled="!selectedTargetId || commandBusy"
                     @click="createRelation"
                 >
                     确认关联

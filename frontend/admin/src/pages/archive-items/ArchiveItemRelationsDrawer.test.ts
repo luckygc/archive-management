@@ -23,6 +23,7 @@ vi.mock("@/shared/api/archive-records", () => ({
 }));
 
 beforeEach(() => {
+    vi.resetAllMocks();
     mocks.listArchiveCategories.mockResolvedValue({
         items: [
             {
@@ -62,6 +63,157 @@ afterEach(() => {
 });
 
 describe("ArchiveItemRelationsDrawer", () => {
+    it("创建请求进行中切出再切回仍阻止删除，旧请求完成后释放锁", async () => {
+        const request = deferred<ReturnType<typeof relation>>();
+        const success = vi.spyOn(ElMessage, "success");
+        mocks.createArchiveItemRelation.mockReturnValueOnce(request.promise);
+        const view = renderDrawer();
+        await searchCategory("合同档案");
+        await fireEvent.click(await screen.findByRole("radio", { name: /A-2026-002/ }));
+        await fireEvent.click(screen.getByRole("button", { name: "确认关联" }));
+        await waitFor(() => expect(mocks.createArchiveItemRelation).toHaveBeenCalledOnce());
+
+        await view.rerender({ archiveItemId: 1, active: false, canUpdate: true });
+        await view.rerender({ archiveItemId: 1, active: true, canUpdate: true });
+        const remove = await screen.findByRole("button", { name: "删除" });
+        expect(remove).toBeDisabled();
+        await fireEvent.click(remove);
+        expect(mocks.deleteArchiveItemRelation).not.toHaveBeenCalled();
+
+        request.resolve(relation(9, 2, "A-2026-002"));
+        await waitFor(() => expect(remove).toBeEnabled());
+        expect(success).not.toHaveBeenCalled();
+        expect(mocks.listArchiveItemRelations).toHaveBeenCalledTimes(2);
+    });
+
+    it("删除请求进行中切出再切回仍阻止创建，旧请求失败后释放锁", async () => {
+        const request = deferred<void>();
+        const error = vi.spyOn(ElMessage, "error");
+        mocks.deleteArchiveItemRelation.mockReturnValueOnce(request.promise);
+        vi.spyOn(ElMessageBox, "confirm").mockResolvedValue(
+            "confirm" as Awaited<ReturnType<typeof ElMessageBox.confirm>>,
+        );
+        const view = renderDrawer();
+        await fireEvent.click(await screen.findByRole("button", { name: "删除" }));
+        await waitFor(() => expect(mocks.deleteArchiveItemRelation).toHaveBeenCalledOnce());
+
+        await view.rerender({ archiveItemId: 1, active: false, canUpdate: true });
+        await view.rerender({ archiveItemId: 1, active: true, canUpdate: true });
+        await searchCategory("合同档案");
+        await fireEvent.click(await screen.findByRole("radio", { name: /A-2026-002/ }));
+        const create = screen.getByRole("button", { name: "确认关联" });
+        expect(create).toBeDisabled();
+        await fireEvent.click(create);
+        expect(mocks.createArchiveItemRelation).not.toHaveBeenCalled();
+
+        request.reject(new Error("旧删除失败"));
+        await waitFor(() => expect(create).toBeEnabled());
+        expect(error).not.toHaveBeenCalled();
+        expect(mocks.listArchiveItemRelations).toHaveBeenCalledTimes(2);
+    });
+
+    it("切换档案仍等待旧命令完成，新档案命令锁由自己的请求释放", async () => {
+        const oldRequest = deferred<ReturnType<typeof relation>>();
+        const currentRequest = deferred<ReturnType<typeof relation>>();
+        const success = vi.spyOn(ElMessage, "success");
+        mocks.createArchiveItemRelation
+            .mockReturnValueOnce(oldRequest.promise)
+            .mockReturnValueOnce(currentRequest.promise);
+        const view = renderDrawer();
+        await searchCategory("合同档案");
+        await fireEvent.click(await screen.findByRole("radio", { name: /A-2026-002/ }));
+        await fireEvent.click(screen.getByRole("button", { name: "确认关联" }));
+
+        await view.rerender({ archiveItemId: 3, active: true, canUpdate: true });
+        const remove = await screen.findByRole("button", { name: "删除" });
+        expect(remove).toBeDisabled();
+        oldRequest.resolve(relation(9, 2, "OLD-002"));
+        await waitFor(() => expect(remove).toBeEnabled());
+        expect(success).not.toHaveBeenCalled();
+        expect(mocks.listArchiveItemRelations).toHaveBeenCalledTimes(2);
+
+        await fireEvent.click(screen.getByRole("button", { name: "搜索目标档案" }));
+        await fireEvent.click(await screen.findByRole("radio", { name: /A-2026-002/ }));
+        await fireEvent.click(screen.getByRole("button", { name: "确认关联" }));
+        await waitFor(() => expect(mocks.createArchiveItemRelation).toHaveBeenLastCalledWith(3, 2));
+        await flushAsync();
+        expect(remove).toBeDisabled();
+        currentRequest.resolve(relation(10, 2, "CURRENT-002"));
+        await waitFor(() => expect(screen.getByRole("button", { name: "删除" })).toBeEnabled());
+        expect(success).toHaveBeenCalledOnce();
+        expect(mocks.listArchiveItemRelations).toHaveBeenLastCalledWith(3, {
+            depth: 1,
+            limit: 100,
+            cursor: undefined,
+        });
+    });
+
+    it("创建进行中禁用删除，完成后两类命令均可继续办理", async () => {
+        const request = deferred<ReturnType<typeof relation>>();
+        mocks.createArchiveItemRelation.mockReturnValueOnce(request.promise);
+        renderDrawer();
+        await searchCategory("合同档案");
+        await fireEvent.click(await screen.findByRole("radio", { name: /A-2026-002/ }));
+        await fireEvent.click(screen.getByRole("button", { name: "确认关联" }));
+
+        expect(screen.getByRole("button", { name: "删除" })).toBeDisabled();
+        request.resolve(relation(9, 2, "A-2026-002"));
+        await waitFor(() => expect(screen.getByRole("button", { name: "删除" })).toBeEnabled());
+        await fireEvent.click(screen.getByRole("radio", { name: /A-2026-002/ }));
+        expect(screen.getByRole("button", { name: "确认关联" })).toBeEnabled();
+    });
+
+    it("删除进行中禁用创建，完成后恢复办理", async () => {
+        const request = deferred<void>();
+        mocks.deleteArchiveItemRelation.mockReturnValueOnce(request.promise);
+        vi.spyOn(ElMessageBox, "confirm").mockResolvedValue(
+            "confirm" as Awaited<ReturnType<typeof ElMessageBox.confirm>>,
+        );
+        renderDrawer();
+        await searchCategory("合同档案");
+        await fireEvent.click(await screen.findByRole("radio", { name: /A-2026-002/ }));
+        await fireEvent.click(screen.getByRole("button", { name: "删除" }));
+        await waitFor(() => expect(mocks.deleteArchiveItemRelation).toHaveBeenCalledOnce());
+
+        expect(screen.getByRole("button", { name: "确认关联" })).toBeDisabled();
+        request.resolve();
+        await waitFor(() => expect(screen.getByRole("button", { name: "确认关联" })).toBeEnabled());
+    });
+
+    it("删除确认期间失去修改权限后不发送删除请求", async () => {
+        const confirmation = deferred<string>();
+        vi.spyOn(ElMessageBox, "confirm").mockReturnValue(
+            confirmation.promise as ReturnType<typeof ElMessageBox.confirm>,
+        );
+        const view = renderDrawer();
+        await fireEvent.click(await screen.findByRole("button", { name: "删除" }));
+        await view.rerender({ archiveItemId: 1, active: true, canUpdate: false });
+        confirmation.resolve("confirm");
+        await flushAsync();
+
+        expect(mocks.deleteArchiveItemRelation).not.toHaveBeenCalled();
+    });
+
+    it("删除确认期间已有创建命令执行时不交叠发送删除", async () => {
+        const confirmation = deferred<string>();
+        const request = deferred<ReturnType<typeof relation>>();
+        vi.spyOn(ElMessageBox, "confirm").mockReturnValue(
+            confirmation.promise as ReturnType<typeof ElMessageBox.confirm>,
+        );
+        mocks.createArchiveItemRelation.mockReturnValueOnce(request.promise);
+        renderDrawer();
+        await searchCategory("合同档案");
+        await fireEvent.click(await screen.findByRole("radio", { name: /A-2026-002/ }));
+        await fireEvent.click(screen.getByRole("button", { name: "删除" }));
+        await fireEvent.click(screen.getByRole("button", { name: "确认关联" }));
+        confirmation.resolve("confirm");
+        await flushAsync();
+
+        expect(mocks.deleteArchiveItemRelation).not.toHaveBeenCalled();
+        request.resolve(relation(9, 2, "A-2026-002"));
+        await waitFor(() => expect(screen.getByRole("button", { name: "删除" })).toBeEnabled());
+    });
+
     it("使用 cursor 读取关系并保持 depth", async () => {
         renderDrawer();
 
@@ -313,10 +465,12 @@ function relation(id: number, relatedItemId: number, archiveNo: string) {
 
 function deferred<T>() {
     let resolve!: (value: T) => void;
-    const promise = new Promise<T>((resolvePromise) => {
+    let reject!: (reason: unknown) => void;
+    const promise = new Promise<T>((resolvePromise, rejectPromise) => {
         resolve = resolvePromise;
+        reject = rejectPromise;
     });
-    return { promise, resolve };
+    return { promise, resolve, reject };
 }
 
 async function flushAsync() {

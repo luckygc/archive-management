@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { HttpClientError } from "@archive-management/frontend-core/api";
 import { ElMessage } from "element-plus";
-import { computed, ref, watch } from "vue";
+import { computed, onBeforeUnmount, ref, watch } from "vue";
 import {
     createArchiveRuntimeDefinition,
     getArchiveRuntimeFields,
     updateArchiveRuntimeDefinition,
 } from "@/shared/api/archive-rules";
 import { requestErrorMessage } from "@/shared/requestError";
+import RequestErrorState from "@/shared/components/RequestErrorState.vue";
 import type {
     ArchiveRuntimeActionType,
     ArchiveRuntimeDefinitionDto,
@@ -31,8 +32,11 @@ const editorSubmitting = ref(false);
 const editorError = ref<string>();
 const editorViolations = ref<Array<{ field: string; message: string }>>([]);
 const fieldLoading = ref(false);
+const fieldCatalogError = ref<string>();
 const fieldCatalog = ref<ArchiveRuntimeFieldDto[]>([]);
 const editor = ref(defaultEditor());
+let fieldRequestVersion = 0;
+let disposed = false;
 
 const availableActions = computed<ArchiveRuntimeActionType[]>(() =>
     assignmentTriggers.has(editor.value.triggerPoint)
@@ -42,6 +46,9 @@ const availableActions = computed<ArchiveRuntimeActionType[]>(() =>
 const writableFields = computed(() => fieldCatalog.value.filter((field) => field.writable));
 
 watch(editorOpen, (open) => {
+    invalidateFieldRequest();
+    fieldCatalog.value = [];
+    fieldCatalogError.value = undefined;
     if (!open) return;
     if (props.definition) openEdit(props.definition);
     else openCreate();
@@ -52,6 +59,14 @@ watch(
         if (editorOpen.value) void loadFieldCatalog();
     },
 );
+onBeforeUnmount(() => {
+    disposed = true;
+    invalidateFieldRequest();
+});
+function invalidateFieldRequest() {
+    fieldRequestVersion += 1;
+    fieldLoading.value = false;
+}
 function openCreate() {
     editor.value = defaultEditor();
     editorError.value = undefined;
@@ -83,19 +98,32 @@ function openEdit(value: unknown) {
     editorViolations.value = [];
 }
 
-async function loadFieldCatalog() {
+async function loadFieldCatalog(preserveError = false) {
+    if (!editorOpen.value || disposed) return;
+    const version = ++fieldRequestVersion;
+    const categoryCode = trim(editor.value.scopeCategoryCode);
+    const triggerPoint = editor.value.triggerPoint;
+    const isCurrent = () =>
+        !disposed &&
+        editorOpen.value &&
+        version === fieldRequestVersion &&
+        categoryCode === trim(editor.value.scopeCategoryCode) &&
+        triggerPoint === editor.value.triggerPoint;
     fieldLoading.value = true;
+    fieldCatalog.value = [];
+    if (!preserveError) fieldCatalogError.value = undefined;
     try {
         const response = await getArchiveRuntimeFields({
-            categoryCode: trim(editor.value.scopeCategoryCode),
-            triggerPoint: editor.value.triggerPoint,
+            categoryCode,
+            triggerPoint,
         });
+        if (!isCurrent()) return;
         fieldCatalog.value = response.fields;
+        fieldCatalogError.value = undefined;
     } catch (error) {
-        fieldCatalog.value = [];
-        editorError.value = requestErrorMessage(error, "字段目录加载失败");
+        if (isCurrent()) fieldCatalogError.value = requestErrorMessage(error, "字段目录加载失败");
     } finally {
-        fieldLoading.value = false;
+        if (isCurrent()) fieldLoading.value = false;
     }
 }
 
@@ -178,6 +206,7 @@ async function copyFieldCode(fieldCode: string) {
         :title="editingId ? '编辑运行时定义' : '新建运行时定义'"
         width="min(980px, 94vw)"
         destroy-on-close
+        @close="invalidateFieldRequest"
     >
         <el-alert v-if="editorError" :title="editorError" type="error" :closable="false" show-icon>
             <ul v-if="editorViolations.length" class="violation-list">
@@ -304,8 +333,15 @@ async function copyFieldCode(fieldCode: string) {
                 <div class="field-catalog__header">
                     <strong>真实字段目录</strong><span>{{ fieldCatalog.length }} 个字段</span>
                 </div>
+                <RequestErrorState
+                    v-if="fieldCatalogError"
+                    :message="fieldCatalogError"
+                    :retrying="fieldLoading"
+                    retry-label="重试字段目录"
+                    @retry="void loadFieldCatalog(true)"
+                />
                 <el-empty
-                    v-if="!fieldCatalog.length"
+                    v-else-if="!fieldLoading && !fieldCatalog.length"
                     description="填写有效分类后加载字段"
                     :image-size="64"
                 />
