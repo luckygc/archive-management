@@ -4,10 +4,11 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "ready": "pnpm run check && pnpm run test && pnpm run build",
+        "ready": "pnpm run check:structure && pnpm run check && pnpm run test && pnpm run build",
         "dev:web": "pnpm --filter @archive-management/web run dev",
         "check": "pnpm --filter @archive-management/frontend-core run check && pnpm --filter @archive-management/web run check",
-        "check:source-lines": "cd .. && prove frontend/scripts/source-lines.t && perl frontend/scripts/source-lines.pl",
+        "check:source-lines": "node ../scripts/source-lines.mjs frontend/admin/src frontend/packages/core/src",
+        "check:structure": "node --test ../scripts/source-lines.test.mjs ../scripts/frontend-boundaries.test.mjs && node ../scripts/frontend-boundaries.mjs && pnpm run check:source-lines",
         "check:fix": "pnpm --filter @archive-management/frontend-core run check:fix && pnpm --filter @archive-management/web run check:fix",
         "lint": "pnpm run check",
         "lint:fix": "pnpm run check:fix",

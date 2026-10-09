@@ -26,6 +26,7 @@
 | `frontend/admin/` | PC 管理界面 |
 | `frontend/packages/core/` | 框架无关的前端共享基础能力 |
 | `deploy/` | 本地 Compose、反向代理和部署配置 |
+| `scripts/` | 跨项目源码规模、依赖边界检查及其回归测试 |
 | `specs/` | 当前稳定的业务与 API 验收规格 |
 | `tasks/` | 进行中变更的规格、计划与任务 |
 | `docs/` | 开发、架构、部署、运维和使用说明 |
@@ -35,6 +36,7 @@
 ```bash
 mise tasks ls
 mise run install
+mise run verify
 ```
 
 本地准备、运行和按范围验证详见 [`docs/development.md`](docs/development.md)。`mise exec -- pnpm --dir frontend run dev:web` 会长期占用端口，仅由开发者在需要预览时本地启动。

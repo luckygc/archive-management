@@ -113,12 +113,22 @@ mise exec -- pnpm --dir frontend run dev:web
 
 ## 按范围验证
 
+结构优化或跨前后端改动使用统一验证入口：
+
+```bash
+mise run verify
+```
+
+该任务执行根目录结构脚本的回归测试、全部源码行数检查、后端 Spotless 和 Maven 测试，以及前端 `ready`。前端 `ready` 自身包含共享与页面依赖边界检查、前端源码行数检查、类型与 lint、测试和构建。结构脚本使用已配置的 Node.js，无需安装 Perl。
+
 | 改动范围 | 真实入口 |
 | --- | --- |
 | 全部前端包 | `mise exec -- pnpm --dir frontend run check`、`mise exec -- pnpm --dir frontend run test`；影响构建时运行 `mise exec -- pnpm --dir frontend run build` |
 | 单个前端包 | `mise exec -- pnpm --dir frontend --filter @archive-management/web run check`、`mise exec -- pnpm --dir frontend --filter @archive-management/web run test` ；共享包将 `--filter` 的值替换为 `@archive-management/frontend-core` |
 | 后端 Java | `mise exec -- mvn -f server/pom.xml spotless:check`、`mise exec -- mvn -f server/pom.xml compile`、相关 `mise exec -- mvn -f server/pom.xml test` |
 | 后端发布包 | `mise exec -- mvn -f server/pom.xml package` |
+| 源码职责规模 | `mise exec -- node scripts/source-lines.mjs`；只查看提示时追加 `--report` |
+| 前端依赖边界 | `mise exec -- pnpm --dir frontend run check:structure` |
 
 后端需要直接运行 Maven 时，先 `cd server` 再执行 Maven 命令。前端需要直接运行 pnpm 或 Vite+ 时先 `cd frontend`，再使用项目依赖提供的 `pnpm ...` 或 `pnpm exec vp ...`；可用子命令以 `pnpm exec vp help` 为准。
 
@@ -127,6 +137,7 @@ mise exec -- pnpm --dir frontend run dev:web
 | 任务 | 用途 |
 | --- | --- |
 | `mise run install` | 并行安装前端依赖和下载后端 Maven 依赖 |
+| `mise run verify` | 顺序检查项目结构、后端格式与测试、全部前端包 |
 | `mise run dev` | 并行启动后端和 PC 前端开发服务 |
 | `mise run infra:up` | 使用固定 Compose 文件启动或恢复容器，等待健康且不重建 |
 | `mise run infra:stop` | 停止容器，保留容器及数据 |

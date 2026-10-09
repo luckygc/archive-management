@@ -22,6 +22,7 @@ Archive Management 是面向机构内部使用的档案管理系统。PC 工作�
 
 | 操作 | 命令 |
 | --- | --- |
+| 项目完整验证 | `mise run verify` |
 | 服务端编译 | `mise exec -- mvn -f server/pom.xml compile` |
 | 服务端格式检查 | `mise exec -- mvn -f server/pom.xml spotless:check` |
 | 服务端测试 | `mise exec -- mvn -f server/pom.xml test` |

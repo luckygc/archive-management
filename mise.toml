@@ -6,6 +6,15 @@ pnpm = "12.6.0"
 
 # 保留 Compose 生命周期、组合步骤或较长固定参数的任务；其他简单命令直接调用项目工具。
 
+[tasks.verify]
+description = "验证源码结构、后端格式与测试，以及全部前端包"
+run = [
+    "node --test scripts/source-lines.test.mjs scripts/frontend-boundaries.test.mjs",
+    "node scripts/source-lines.mjs",
+    "mvn -f server/pom.xml clean spotless:check test",
+    "pnpm --dir frontend run ready",
+]
+
 [tasks.install]
 description = "安装前端依赖并下载后端 Maven 依赖"
 depends = ["install:server", "install:frontend"]

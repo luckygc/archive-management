@@ -32,6 +32,8 @@ web -> service -> manager -> repository/mapper
 
 Controller 不直接依赖 Repository 或 Mapper。跨模块协作优先调用目标模块已有 Service，不绕过其业务边界操作 Repository、Mapper 或底层表。模块包依赖由 ArchUnit 测试固化。
 
+跨模块用户目录查询通过认证模块 Service 返回不含凭证的用户摘要；用户角色关系由授权模块 Service 维护。认证专属 HTTP 过滤器和结果处理器归入 `module.authentication.web.security`，通用 Spring Security 配置仍属于 `infrastructure.security`。
+
 Service、Manager 和领域协作只有一个实现时直接使用具体 Spring Bean；Jakarta Data Repository、MyBatis Mapper、稳定基础设施端口和已有多实现策略保留接口合同。同一 Bean 的 public 方法不得调用本类另一 public 方法：共享实现提取为 private 方法，独立事务、权限或业务边界拆到另一具体 Bean 并通过构造器注入，不使用 self 注入或代理绕过。
 
 ## Java 工程约定
@@ -92,6 +94,8 @@ Controller 方法显式声明完整 URL，不通过类级 `@RequestMapping` 与�
 
 `frontend/packages/core/` 只提供框架无关的共享能力，不承载业务页面或 UI 壳层。具体路由、页面组织和请求流程属于源码实现，不写入稳定架构文档。
 
+通用分页合同、查询参数编码、HTTP 错误和会话能力在 `core` 保持唯一实现；管理端业务 API 与请求响应类型由管理端拥有。页面只依赖自己的内部实现和共享能力，多个页面使用的档案查询、字段与结果表格能力归入管理端 `shared/archive`。共享能力不得反向依赖页面或应用壳层，`core` 不依赖管理端或 Vue、Pinia、Element Plus 等 UI 框架。
+
 ## 文件存储
 
 文件内容只使用 S3 兼容对象存储，业务模块统一通过 `FileStorageService` 使用存储能力。endpoint、bucket、凭证和 path-style 等参数以 [`application.yaml`](../server/src/main/resources/application.yaml) 及部署环境外部配置为准。
@@ -101,6 +105,7 @@ Controller 方法显式声明完整 URL，不通过类级 `@RequestMapping` 与�
 - Spring Session JDBC 管理 HTTP 会话。
 - Spring Cache 是缓存抽象；当前默认 `spring.cache.type=caffeine`，配置真相源为 [`application.yaml`](../server/src/main/resources/application.yaml)，本文不复制 provider 矩阵。
 - Spring Quartz 管理调度和 JDBC JobStore。
+- 过期数据清理合同保留在 `common.cleanup`，执行编排、日志和 Quartz 装配属于 `infrastructure.runtime`。
 - Flowable process engine 承担流程能力。
 - 审批运行态任务、候选关系、历史和意见以 Flowable 为唯一真相源；项目只保存定义草稿、发布版本和业务实例绑定。`am_unified_todo` 是跨业务、可重建的查询投影，不能替代来源业务的状态与权限校验。
 - Spring Modulith 与 JDBC Event Publication Registry 承担可靠模块事件发布。
@@ -113,3 +118,5 @@ Controller 方法显式声明完整 URL，不通过类级 `@RequestMapping` 与�
 ## 工程约束
 
 Java 格式由 Spotless + AOSP `google-java-format` 统一，模块边界由 ArchUnit 固化，PostgreSQL 相关集成测试可使用 Testcontainers。真实开发和验证入口以 [`mise.toml`](../mise.toml) 与 [`development.md`](development.md) 为准。
+
+跨项目结构检查位于根目录 `scripts/`，使用项目已有 Node.js 运行时。源码有效行数沿用前端 300 行提示、500 行失败，后端 500 行提示、700 行失败的阈值；提示用于检查职责，不能通过放宽阈值或添加排除项绕过失败。前端依赖边界检查纳入 `ready`，后端架构测试纳入 Maven 测试，`mise run verify` 顺序执行项目完整验证。
