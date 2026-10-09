@@ -28,7 +28,8 @@ const httpClientMock = vi.hoisted(() => ({
     request: vi.fn(),
 }));
 
-vi.mock("@archive-management/frontend-core/api", () => ({
+vi.mock("@archive-management/frontend-core/api", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@archive-management/frontend-core/api")>()),
     httpClient: httpClientMock,
 }));
 

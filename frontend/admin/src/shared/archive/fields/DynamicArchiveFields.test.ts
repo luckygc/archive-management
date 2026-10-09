@@ -3,7 +3,8 @@ import ElementPlus from "element-plus";
 import { defineComponent, ref } from "vue";
 import { afterEach, describe, expect, it } from "vitest";
 import type { ArchiveFieldDto } from "@/shared/types/archive-metadata";
-import DynamicArchiveFields, { normalizeArchiveRecordFormValues } from "./DynamicArchiveFields.vue";
+import DynamicArchiveFields from "./DynamicArchiveFields.vue";
+import { normalizeArchiveRecordFormValues } from "./archiveRecordForm";
 afterEach(cleanup);
 const fields = [
     createField({ id: 1, fieldCode: "title", fieldName: "题名", editControl: "INPUT" }),

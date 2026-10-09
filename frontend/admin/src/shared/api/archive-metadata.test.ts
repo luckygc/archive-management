@@ -9,7 +9,10 @@ import {
 
 const httpClientMock = vi.hoisted(() => ({ patch: vi.fn(), put: vi.fn() }));
 
-vi.mock("@archive-management/frontend-core/api", () => ({ httpClient: httpClientMock }));
+vi.mock("@archive-management/frontend-core/api", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@archive-management/frontend-core/api")>()),
+    httpClient: httpClientMock,
+}));
 
 it("分类更新以 Merge Patch 删除空父级", async () => {
     await updateArchiveCategory(12, {

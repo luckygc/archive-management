@@ -23,10 +23,10 @@ import {
     withRequestTraceId,
 } from "@/shared/requestError";
 
-import ArchiveAdvancedQueryPanel from "./ArchiveAdvancedQueryPanel.vue";
-import type { ArchiveQueryFormValues } from "./archiveQueryTypes";
-import ArchiveResultTable from "./ArchiveResultTable.vue";
-import { toSearchQuery } from "./archiveQuery";
+import ArchiveAdvancedQueryPanel from "@/shared/archive/query/ArchiveAdvancedQueryPanel.vue";
+import type { ArchiveQueryFormValues } from "@/shared/archive/query/archiveQueryTypes";
+import ArchiveResultTable from "@/shared/archive/result-table/ArchiveResultTable.vue";
+import { toSearchQuery } from "@/shared/archive/query/archiveQuery";
 
 type DiscoverRequest = Parameters<typeof discoverArchiveRecords>[0];
 

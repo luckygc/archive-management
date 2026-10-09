@@ -49,19 +49,19 @@ vi.mock("./useArchiveItemLifecycle", () => ({
         unlock: mocks.lifecycleUnlock,
     }),
 }));
-vi.mock("@/pages/archive-library/ArchiveAdvancedQueryPanel.vue", () => ({
+vi.mock("@/shared/archive/query/ArchiveAdvancedQueryPanel.vue", () => ({
     default: defineComponent({
         emits: ["submit", "update:modelValue"],
         template: `<button type="button" @click="$emit('update:modelValue', { categoryId: 1, conditions: [], relatedGroups: [] }); $emit('submit', { categoryId: 1, conditions: [], relatedGroups: [] })">提交查询</button>`,
     }),
 }));
-vi.mock("@/pages/archive-library/ArchiveResultTable.vue", () => ({
+vi.mock("@/shared/archive/result-table/ArchiveResultTable.vue", () => ({
     default: defineComponent({
         props: ["result"],
         template: `<div><div v-for="row in result.items" :key="row.id"><slot name="actions" :row="row" /></div></div>`,
     }),
 }));
-vi.mock("@/pages/archive-library/DynamicArchiveFields.vue", () => ({
+vi.mock("@/shared/archive/fields/DynamicArchiveFields.vue", () => ({
     default: defineComponent({
         props: ["modelValue", "fields", "disabled", "fieldErrors"],
         emits: ["update:modelValue"],
@@ -102,7 +102,6 @@ vi.mock("@/pages/archive-library/DynamicArchiveFields.vue", () => ({
                 );
         },
     }),
-    normalizeArchiveRecordFormValues: (value: unknown) => value,
 }));
 
 beforeEach(() => {

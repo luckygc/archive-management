@@ -66,15 +66,6 @@ export interface RequestContextDto {
     xRealIp: string;
 }
 
-export interface CursorPageDto<T> {
-    items: T[];
-    self?: string | null;
-    prev?: string | null;
-    next?: string | null;
-    first?: string | null;
-    total?: number | null;
-}
-
 export interface LoginSessionDto {
     sessionId: string;
     userId?: number | null;

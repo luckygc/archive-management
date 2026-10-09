@@ -2,7 +2,7 @@
 import type { FormInstance } from "element-plus";
 import { computed, ref } from "vue";
 
-import DynamicArchiveFields from "@/pages/archive-library/DynamicArchiveFields.vue";
+import DynamicArchiveFields from "@/shared/archive/fields/DynamicArchiveFields.vue";
 import ArchiveItemLineRows from "./ArchiveItemLineRows.vue";
 import type {
     ArchiveCategoryDto,

@@ -25,10 +25,10 @@ import CursorPagination from "@/shared/components/CursorPagination.vue";
 import RequestErrorState from "@/shared/components/RequestErrorState.vue";
 import { usePermissionStore } from "@/stores/permissionStore";
 
-import ArchiveAdvancedQueryPanel from "@/pages/archive-library/ArchiveAdvancedQueryPanel.vue";
-import { toSearchQuery } from "@/pages/archive-library/archiveQuery";
-import ArchiveResultTable from "@/pages/archive-library/ArchiveResultTable.vue";
-import { normalizeArchiveRecordFormValues } from "@/pages/archive-library/DynamicArchiveFields.vue";
+import ArchiveAdvancedQueryPanel from "@/shared/archive/query/ArchiveAdvancedQueryPanel.vue";
+import { toSearchQuery } from "@/shared/archive/query/archiveQuery";
+import ArchiveResultTable from "@/shared/archive/result-table/ArchiveResultTable.vue";
+import { normalizeArchiveRecordFormValues } from "@/shared/archive/fields/archiveRecordForm";
 import { useArchiveItemResources } from "./useArchiveItemResources";
 import ArchiveItemActions from "./ArchiveItemActions.vue";
 import ArchiveItemEditorDrawer from "./ArchiveItemEditorDrawer.vue";

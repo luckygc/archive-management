@@ -15,8 +15,8 @@ import type {
     ArchiveRelatedFilterCategoryDto,
     SearchArchiveRecordsQuery,
 } from "@/shared/types/archive-records";
-import type { ArchiveQueryFormValues } from "@/pages/archive-library/archiveQueryTypes";
-import { toSearchQuery } from "@/pages/archive-library/archiveQuery";
+import type { ArchiveQueryFormValues } from "@/shared/archive/query/archiveQueryTypes";
+import { toSearchQuery } from "@/shared/archive/query/archiveQuery";
 import {
     isCursorFieldViolation,
     requestErrorMessage,

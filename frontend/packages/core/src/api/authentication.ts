@@ -2,7 +2,7 @@ import type {
     AuthenticationEventDto,
     CurrentUserDto,
     CreateTotpCredentialRequest,
-    CursorPageDto,
+    CursorPageResponse,
     DisableTotpCredentialRequest,
     ListAuthenticationEventsParams,
     ListLoginSessionsParams,
@@ -16,16 +16,7 @@ import type {
 } from "../types";
 import { HttpClientError, httpClient } from "./client";
 
-function queryString(params: object) {
-    const search = new URLSearchParams();
-    for (const [key, value] of Object.entries(params)) {
-        if (value !== undefined && value !== null && value !== "") {
-            search.set(key, String(value));
-        }
-    }
-    const text = search.toString();
-    return text ? `?${text}` : "";
-}
+import { queryString } from "./query-string";
 
 function pageUrl(path: string, params: { cursor?: string | null } & object) {
     const { cursor, ...query } = params;
@@ -94,7 +85,7 @@ export function logout(sessionId: string) {
 }
 
 export function listLoginSessions(params: ListLoginSessionsParams = {}) {
-    return httpClient.get<CursorPageDto<LoginSessionDto>>(pageUrl("/login-sessions", params));
+    return httpClient.get<CursorPageResponse<LoginSessionDto>>(pageUrl("/login-sessions", params));
 }
 
 export function deleteLoginSession(sessionId: string) {
@@ -106,7 +97,7 @@ export function resetLoginFailureLimit(username: string) {
 }
 
 export function listAuthenticationEvents(params: ListAuthenticationEventsParams = {}) {
-    return httpClient.get<CursorPageDto<AuthenticationEventDto>>(
+    return httpClient.get<CursorPageResponse<AuthenticationEventDto>>(
         pageUrl("/authentication-events", params),
     );
 }

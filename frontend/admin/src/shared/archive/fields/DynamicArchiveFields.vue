@@ -1,15 +1,3 @@
-<script lang="ts">
-import { z } from "zod";
-
-const archiveRecordFormValuesSchema = z.object({
-    dynamicFields: z.record(z.string(), z.unknown()).default({}),
-});
-
-export function normalizeArchiveRecordFormValues(values: unknown) {
-    return archiveRecordFormValuesSchema.parse(values);
-}
-</script>
-
 <script setup lang="ts">
 import { computed } from "vue";
 

@@ -25,8 +25,8 @@ async function loadDefinitions(cursor?: string) {
     try {
         const response = await listApprovalWorkflowDefinitions({ limit: limit.value, cursor });
         definitions.value = response.items;
-        prev.value = response.prev;
-        next.value = response.next;
+        prev.value = response.prev ?? undefined;
+        next.value = response.next ?? undefined;
         if (!cursor) total.value = response.total;
     } catch (error) {
         ElMessage.error((error as Error).message);

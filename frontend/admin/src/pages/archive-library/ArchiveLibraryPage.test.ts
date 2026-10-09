@@ -17,7 +17,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/shared/api/archive-metadata", () => mocks);
 vi.mock("@/shared/api/archive-records", () => mocks);
-vi.mock("./ArchiveAdvancedQueryPanel.vue", () => ({
+vi.mock("@/shared/archive/query/ArchiveAdvancedQueryPanel.vue", () => ({
     default: defineComponent({
         emits: ["submit", "update:model-value"],
         template: `<div>
