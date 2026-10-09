@@ -37,6 +37,14 @@
 - **THEN** 系统 SHALL 支持 `ITEM_BEFORE_CREATE`、`ITEM_BEFORE_UPDATE`、`ITEM_BEFORE_DELETE`、`VOLUME_BEFORE_CREATE`、`VOLUME_BEFORE_ADD_ITEM`、`FILE_BEFORE_UPLOAD` 和 `EXPORT_BEFORE_CREATE`
 - **AND** 系统 SHALL 拒绝未知触发点
 
+#### 场景： 案卷触发点使用真实事实
+
+- **WHEN** 系统执行 `VOLUME_BEFORE_CREATE`
+- **THEN** 系统 SHALL 使用当前创建候选事实；请求没有密级或保管期限时相应事实为空
+- **WHEN** 系统对已有案卷执行 `VOLUME_BEFORE_ADD_ITEM`
+- **THEN** `volume.securityLevelId` 和 `volume.retentionPeriodId` SHALL 使用已加载案卷的实际值
+- **AND** 系统 SHALL NOT 将已有案卷的实际字段替换为空候选值
+
 #### 场景： 导入复用写入触发点
 
 - **WHEN** 导入逐行创建或修改条目

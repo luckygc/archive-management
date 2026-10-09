@@ -273,15 +273,19 @@ public class ArchiveVolumeService {
         String archiveNo = StringUtils.trimToNull(request.archiveNo());
         VolumePolicyExecution policyExecution =
                 enforceVolumePolicy(
-                        ArchiveRuntimeTriggerPoint.VOLUME_BEFORE_CREATE,
-                        null,
-                        fonds.fondsCode(),
-                        fonds.fondsName(),
-                        category,
-                        archiveNo,
-                        archiveYear,
-                        null,
-                        userId);
+                        new VolumePolicyCommand(
+                                ArchiveRuntimeTriggerPoint.VOLUME_BEFORE_CREATE,
+                                new VolumePolicyCandidate(
+                                        null,
+                                        fonds.fondsCode(),
+                                        fonds.fondsName(),
+                                        category,
+                                        archiveNo,
+                                        archiveYear,
+                                        null,
+                                        null),
+                                null,
+                                userId));
         ArchiveRuntimeExecutionResult runtimeResult = policyExecution.result();
         archiveNo = stringFact(runtimeResult.candidateFacts(), "volume.archiveNo");
         archiveYear = intFact(runtimeResult.candidateFacts(), "volume.archiveYear");
@@ -347,15 +351,19 @@ public class ArchiveVolumeService {
         ArchiveCategoryDto category = getCategoryByCode(volume.categoryCode());
         VolumePolicyExecution policyExecution =
                 enforceVolumePolicy(
-                        ArchiveRuntimeTriggerPoint.VOLUME_BEFORE_ADD_ITEM,
-                        volume.id(),
-                        volume.fondsCode(),
-                        volume.fondsName(),
-                        category,
-                        volume.archiveNo(),
-                        volume.archiveYear(),
-                        item,
-                        userId);
+                        new VolumePolicyCommand(
+                                ArchiveRuntimeTriggerPoint.VOLUME_BEFORE_ADD_ITEM,
+                                new VolumePolicyCandidate(
+                                        volume.id(),
+                                        volume.fondsCode(),
+                                        volume.fondsName(),
+                                        category,
+                                        volume.archiveNo(),
+                                        volume.archiveYear(),
+                                        loadedVolume.securityLevelId(),
+                                        loadedVolume.retentionPeriodId()),
+                                item,
+                                userId));
         int updated =
                 archiveMapper.moveItemToVolume(
                         volumeId, archiveItemId, displayOrder == null ? 0 : displayOrder);
@@ -366,44 +374,37 @@ public class ArchiveVolumeService {
                 policyExecution.request(), policyExecution.result(), volumeId);
     }
 
-    private VolumePolicyExecution enforceVolumePolicy(
-            ArchiveRuntimeTriggerPoint triggerPoint,
-            @Nullable Long volumeId,
-            String fondsCode,
-            String fondsName,
-            ArchiveCategoryDto category,
-            @Nullable String archiveNo,
-            int archiveYear,
-            @Nullable ArchiveItemDto item,
-            Long userId) {
+    private VolumePolicyExecution enforceVolumePolicy(VolumePolicyCommand command) {
+        VolumePolicyCandidate volume = command.volume();
+        @Nullable ArchiveItemDto item = command.item();
         Map<String, @Nullable Object> facts = new LinkedHashMap<>();
-        facts.put("volume.id", volumeId);
-        facts.put("volume.fondsCode", fondsCode);
-        facts.put("volume.fondsName", fondsName);
-        facts.put("volume.categoryCode", category.categoryCode());
-        facts.put("volume.categoryName", category.categoryName());
-        facts.put("volume.archiveNo", archiveNo);
-        facts.put("volume.archiveYear", archiveYear);
-        facts.put("volume.securityLevelId", null);
-        facts.put("volume.retentionPeriodId", null);
+        facts.put("volume.id", volume.id());
+        facts.put("volume.fondsCode", volume.fondsCode());
+        facts.put("volume.fondsName", volume.fondsName());
+        facts.put("volume.categoryCode", volume.category().categoryCode());
+        facts.put("volume.categoryName", volume.category().categoryName());
+        facts.put("volume.archiveNo", volume.archiveNo());
+        facts.put("volume.archiveYear", volume.archiveYear());
+        facts.put("volume.securityLevelId", volume.securityLevelId());
+        facts.put("volume.retentionPeriodId", volume.retentionPeriodId());
         if (item != null) {
             facts.put("item.id", item.id());
             facts.put("item.archiveNo", item.archiveNo());
             facts.put("item.archiveYear", item.archiveYear());
         }
-        facts.put("context.userId", userId);
+        facts.put("context.userId", command.userId());
         facts.put("context.now", LocalDateTime.now());
-        facts.put("context.operation", triggerPoint.name());
+        facts.put("context.operation", command.triggerPoint().name());
         ArchiveRuntimeExecutionRequest runtimeRequest =
                 new ArchiveRuntimeExecutionRequest(
-                        triggerPoint,
-                        fondsCode,
-                        category.categoryCode(),
+                        command.triggerPoint(),
+                        volume.fondsCode(),
+                        volume.category().categoryCode(),
                         github.luckygc.am.module.archive.ArchiveLevel.VOLUME,
                         "ARCHIVE_VOLUME",
-                        volumeId,
+                        volume.id(),
                         facts,
-                        userId);
+                        command.userId());
         return new VolumePolicyExecution(
                 runtimeRequest, runtimeExecutionService.enforce(runtimeRequest));
     }
@@ -627,6 +628,22 @@ public class ArchiveVolumeService {
             ArchiveVolumeDto response,
             @Nullable Long securityLevelId,
             @Nullable Long retentionPeriodId) {}
+
+    private record VolumePolicyCandidate(
+            @Nullable Long id,
+            String fondsCode,
+            String fondsName,
+            ArchiveCategoryDto category,
+            @Nullable String archiveNo,
+            int archiveYear,
+            @Nullable Long securityLevelId,
+            @Nullable Long retentionPeriodId) {}
+
+    private record VolumePolicyCommand(
+            ArchiveRuntimeTriggerPoint triggerPoint,
+            VolumePolicyCandidate volume,
+            @Nullable ArchiveItemDto item,
+            Long userId) {}
 
     private record VolumePolicyExecution(
             ArchiveRuntimeExecutionRequest request, ArchiveRuntimeExecutionResult result) {}

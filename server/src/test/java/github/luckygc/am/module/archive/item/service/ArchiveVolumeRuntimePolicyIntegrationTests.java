@@ -123,6 +123,77 @@ class ArchiveVolumeRuntimePolicyIntegrationTests extends PostgreSqlContainerTest
         assertThat(count("am_archive_runtime_trace")).isZero();
     }
 
+    @Test
+    @DisplayName("条目入卷规则读取已保存案卷的真实密级和保管期限")
+    void addItemPolicyUsesStoredVolumeReferences() {
+        seedVolumeAndItem();
+        Long securityLevelId =
+                jdbcTemplate.queryForObject(
+                        "select id from am_archive_security_level order by id limit 1", Long.class);
+        Long retentionPeriodId =
+                jdbcTemplate.queryForObject(
+                        "select id from am_archive_retention_period order by id limit 1",
+                        Long.class);
+        jdbcTemplate.update(
+                "update am_archive_volume set security_level_id = ?, retention_period_id = ? "
+                        + "where id = ?",
+                securityLevelId,
+                retentionPeriodId,
+                VOLUME_ID);
+        insertConstraint(
+                ArchiveRuntimeTriggerPoint.VOLUME_BEFORE_ADD_ITEM,
+                "volume-security-reference",
+                "volume.securityLevelId",
+                securityLevelId);
+        insertConstraint(
+                ArchiveRuntimeTriggerPoint.VOLUME_BEFORE_ADD_ITEM,
+                "volume-retention-reference",
+                "volume.retentionPeriodId",
+                retentionPeriodId);
+
+        volumeService.addItemToVolume(VOLUME_ID, ITEM_ID, 88, 9L);
+
+        var row =
+                jdbcTemplate.queryForMap(
+                        "select volume_id, display_order from am_archive_item where id = ?",
+                        ITEM_ID);
+        assertThat(((Number) row.get("volume_id")).longValue()).isEqualTo(VOLUME_ID);
+        assertThat(((Number) row.get("display_order")).intValue()).isEqualTo(88);
+        assertThat(count("am_archive_runtime_trace")).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("创建案卷候选的密级和保管期限继续为空")
+    void createVolumePolicyKeepsEmptyReferenceCandidate() {
+        String signature =
+                fieldCatalogService
+                        .catalog("VOLUME_DOC", ArchiveRuntimeTriggerPoint.VOLUME_BEFORE_CREATE)
+                        .signature();
+        jdbcTemplate.update(
+                "insert into am_archive_runtime_definition "
+                        + "(definition_kind, definition_code, definition_name, trigger_point, "
+                        + "scope_category_code, scope_archive_level, condition_json, constraint_action, "
+                        + "constraint_message, status, field_catalog_signature, published_by, published_at) "
+                        + "values ('CONSTRAINT', 'volume-empty-references', '创建空引用', "
+                        + "'VOLUME_BEFORE_CREATE', 'VOLUME_DOC', 'VOLUME', "
+                        + "'{\"all\":[{\"field\":\"volume.securityLevelId\",\"operator\":\"IS_EMPTY\"},"
+                        + "{\"field\":\"volume.retentionPeriodId\",\"operator\":\"IS_EMPTY\"}]}'::jsonb, "
+                        + "'REJECT', '创建候选引用应为空', 'PUBLISHED', ?, 9, localtimestamp)",
+                signature);
+
+        var volume =
+                volumeService.createVolume(
+                        new CreateArchiveVolumeRequest(CATEGORY_ID, "F001", "V-NEW", 2026), 9L);
+
+        var row =
+                jdbcTemplate.queryForMap(
+                        "select security_level_id, retention_period_id from am_archive_volume where id = ?",
+                        volume.id());
+        assertThat(row.get("security_level_id")).isNull();
+        assertThat(row.get("retention_period_id")).isNull();
+        assertThat(count("am_archive_runtime_trace")).isEqualTo(1);
+    }
+
     private void seedConfiguration() {
         jdbcTemplate.update(
                 "insert into am_archive_category "
