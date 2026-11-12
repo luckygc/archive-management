@@ -77,7 +77,10 @@ public class AuthenticationUserManagementService {
                         AuthorizationPermissionCode.ARCHIVE_DATA_SCOPE_MANAGE.code())
                 && !permissionService.hasPermission(
                         operatorUserId,
-                        AuthorizationPermissionCode.APPROVAL_DEFINITION_MANAGE.code())) {
+                        AuthorizationPermissionCode.APPROVAL_DEFINITION_MANAGE.code())
+                && !permissionService.hasPermission(
+                        operatorUserId,
+                        AuthorizationPermissionCode.AUTHENTICATION_SERVICE_ACCOUNT_MANAGE.code())) {
             permissionService.requirePermission(
                     operatorUserId, AuthorizationPermissionCode.ARCHIVE_DATA_SCOPE_MANAGE);
         }

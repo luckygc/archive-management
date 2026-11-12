@@ -5,8 +5,13 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 
+import github.luckygc.am.module.authentication.AccessTokenRateLimiter;
+import github.luckygc.am.module.authentication.service.AccessTokenAuthenticator;
+import github.luckygc.am.module.authentication.service.AccessTokenCallService;
+import github.luckygc.am.module.authentication.service.AccessTokenUsageService;
 import github.luckygc.am.module.authentication.service.AuthenticationAuditService;
 import github.luckygc.am.module.authentication.service.TotpLoginChallengeService;
+import github.luckygc.am.module.authentication.web.security.BearerAccessAuthenticationFilter;
 import github.luckygc.am.module.authentication.web.security.TotpChallengeAuthenticationFailureHandler;
 import github.luckygc.am.module.authentication.web.security.TotpChallengeAuthenticationFilter;
 import github.luckygc.am.module.authentication.web.security.TwoStageLoginAuthenticationFilter;
@@ -38,6 +43,27 @@ class AuthenticationFilterConfiguration {
             JsonMapper jsonMapper) {
         return new TotpChallengeAuthenticationFilter(
                 authenticationManager, challengeService, jsonMapper);
+    }
+
+    @Bean("bearerAccessAuthenticationFilter")
+    BearerAccessAuthenticationFilter bearerAccessAuthenticationFilter(
+            AccessTokenAuthenticator authenticator,
+            AccessTokenCallService callService,
+            AccessTokenUsageService usageService,
+            AccessTokenRateLimiter rateLimiter,
+            JsonMapper jsonMapper) {
+        return new BearerAccessAuthenticationFilter(
+                authenticator, callService, usageService, rateLimiter, jsonMapper);
+    }
+
+    @Bean
+    FilterRegistrationBean<BearerAccessAuthenticationFilter>
+            disableBearerAccessAuthenticationFilterRegistration(
+                    BearerAccessAuthenticationFilter filter) {
+        FilterRegistrationBean<BearerAccessAuthenticationFilter> registration =
+                new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
     }
 
     @Bean

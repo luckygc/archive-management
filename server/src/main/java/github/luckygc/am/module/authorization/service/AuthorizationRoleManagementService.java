@@ -167,7 +167,10 @@ public class AuthorizationRoleManagementService {
                         AuthorizationPermissionCode.AUTHORIZATION_PERMISSION_MANAGE.code())
                 || permissionService.hasPermission(
                         operatorUserId,
-                        AuthorizationPermissionCode.ARCHIVE_DATA_SCOPE_MANAGE.code())) {
+                        AuthorizationPermissionCode.ARCHIVE_DATA_SCOPE_MANAGE.code())
+                || permissionService.hasPermission(
+                        operatorUserId,
+                        AuthorizationPermissionCode.AUTHENTICATION_SERVICE_ACCOUNT_MANAGE.code())) {
             return;
         }
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, "权限不足");

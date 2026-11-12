@@ -8,12 +8,16 @@ import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import github.luckygc.am.common.exception.BadRequestException;
+import github.luckygc.am.common.security.AccessTokenGrant;
+import github.luckygc.am.common.security.AccessTokenGrantHolder;
+import github.luckygc.am.common.security.AccessTokenSubjectType;
 import github.luckygc.am.module.authorization.AuthorizationPermission;
 import github.luckygc.am.module.authorization.AuthorizationRole;
 import github.luckygc.am.module.authorization.AuthorizationRolePermissionRelation;
@@ -30,6 +34,7 @@ class AuthorizationPermissionServiceTests {
     private AuthorizationRoleDataRepository roleRepository;
     private AuthorizationRolePermissionRelationDataRepository rolePermissionRepository;
     private AuthorizationUserRoleRelationDataRepository userRoleRelationRepository;
+    private AuthorizationServiceAccountRoleService serviceAccountRoleService;
     private AuthorizationPermissionService permissionService;
 
     @BeforeEach
@@ -38,12 +43,14 @@ class AuthorizationPermissionServiceTests {
         roleRepository = mock(AuthorizationRoleDataRepository.class);
         rolePermissionRepository = mock(AuthorizationRolePermissionRelationDataRepository.class);
         userRoleRelationRepository = mock(AuthorizationUserRoleRelationDataRepository.class);
+        serviceAccountRoleService = mock(AuthorizationServiceAccountRoleService.class);
         permissionService =
                 new AuthorizationPermissionService(
                         permissionRepository,
                         roleRepository,
                         rolePermissionRepository,
-                        userRoleRelationRepository);
+                        userRoleRelationRepository,
+                        serviceAccountRoleService);
     }
 
     @Test
@@ -60,7 +67,10 @@ class AuthorizationPermissionServiceTests {
                         "archive:item:update",
                         "archive:item:download-electronic-file",
                         "archive:export",
-                        "archive:metadata:manage");
+                        "archive:metadata:manage",
+                        "authentication:service-account:manage",
+                        "authentication:access-token:manage",
+                        "authentication:api-call:read");
     }
 
     @Test
@@ -125,6 +135,34 @@ class AuthorizationPermissionServiceTests {
                         "archive:item:create",
                         "archive:metadata:manage",
                         "archive:data-scope:manage");
+    }
+
+    @Test
+    @DisplayName("服务账号令牌 scope 只保留角色权限的子集")
+    void serviceAccountTokenScopeIntersectsRolePermissions() {
+        when(serviceAccountRoleService.listAssignedRoles(9L)).thenReturn(List.of(enabledRole(2L)));
+        when(rolePermissionRepository.findByRoleId(2L))
+                .thenReturn(List.of(relation(2L, 3L), relation(2L, 4L)));
+        when(permissionRepository.findById(3L))
+                .thenReturn(Optional.of(permission(3L, "archive:item:read")));
+        when(permissionRepository.findById(4L))
+                .thenReturn(Optional.of(permission(4L, "archive:item:create")));
+        AccessTokenGrantHolder.set(
+                new AccessTokenGrant(
+                        1L,
+                        AccessTokenSubjectType.SERVICE_ACCOUNT,
+                        9L,
+                        null,
+                        Set.of("archive:item:read")));
+        try {
+            assertThat(permissionService.hasPermission(-1L, "archive:item:read")).isTrue();
+            assertThat(permissionService.hasPermission(-1L, "archive:item:create")).isFalse();
+            assertThat(permissionService.listUserPermissionCodes(-1L))
+                    .containsExactly("archive:item:read");
+            assertThat(permissionService.isSuperAdmin(-1L)).isFalse();
+        } finally {
+            AccessTokenGrantHolder.clear();
+        }
     }
 
     private static AuthorizationPermission permissionEntity(Long id, String permissionCode) {

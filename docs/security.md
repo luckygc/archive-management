@@ -7,6 +7,7 @@
 - 当前默认值和可覆盖配置：[`application.yaml`](../server/src/main/resources/application.yaml)
 - 通用 HTTP、错误和 ID 合同：[`api-contract`](../specs/SPEC-项目API合同.md)
 - 登录、会话和认证验收：[`login-authentication`](../specs/SPEC-登录与认证.md)
+- 服务账号、访问令牌和调用审计：[`machine-identity`](../specs/SPEC-机器身份.md)
 - 功能权限：[`authorization-permissions`](../specs/SPEC-功能权限.md)
 - 档案数据范围：[`archive-data-scope`](../specs/SPEC-档案数据范围.md)
 - 文件与短链：[`file-storage`](../specs/SPEC-文件存储.md)
@@ -31,6 +32,8 @@
 TOTP secret 使用 AES-256-GCM 加密。`ARCHIVE_TOTP_ENCRYPTION_KEY`（对应 `archive.authentication.totp.encryption-key`）必须由外部 Secret 提供 Base64 编码的 32 字节随机值。源码和生产配置不设置固定值，也不得把 secret、密文、验证码、challenge/enrollment token 或 `otpauth` URI 写入日志。密钥缺失、错误或密文损坏时相关登录失败关闭；持有用户管理权限的管理员仍可调用 `POST /authentication-users/{id}:resetTotp` 清除凭据，供设备遗失恢复。
 
 会话超时、cookie 名称和 JDBC 表配置以 `application.yaml` 为准。Spring Session 表由 Flyway 管理，不由运行期自动建表。退出、踢下线、失败限制和认证审计属于认证业务合同，不在本文复制接口表。
+
+服务账号是非人类主体，通过绑定角色获得功能权限和档案数据范围，不继承负责人的权限或数据范围。访问令牌明文只在签发时返回一次，库中保存前缀和 SHA-256。`Authorization: Bearer` 请求只按令牌认证：不创建会话、不校验 CSRF、不校验可选请求签名。无效 Bearer 不会回退到同请求里的会话 cookie。不带 Bearer 的浏览器请求仍走会话、CSRF 和签名。令牌可限制为所属主体已有权限的子集；未指定时默认尝试只读权限 `archive:item:read`。调用审计记录调用方、方法、路径、状态码、耗时、来源 IP 和 traceId，不记录请求体、令牌明文或文件正文。按令牌的进程内限流由 `archive.security.access-token.rate-limit` 控制，多实例各自计数，可关闭。
 
 部署时确认：
 

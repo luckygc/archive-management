@@ -1,0 +1,59 @@
+package github.luckygc.am.module.authentication.repository;
+
+import java.util.List;
+import java.util.Optional;
+
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
+import jakarta.data.page.CursoredPage;
+import jakarta.data.page.PageRequest;
+import jakarta.data.repository.By;
+import jakarta.data.repository.Delete;
+import jakarta.data.repository.Find;
+import jakarta.data.repository.Insert;
+import jakarta.data.repository.OrderBy;
+import jakarta.data.repository.Repository;
+import jakarta.data.repository.Update;
+
+import org.hibernate.annotations.processing.HQL;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
+
+import github.luckygc.am.module.authentication.ServiceAccount;
+import github.luckygc.am.module.authentication.ServiceAccountStatus;
+
+@Transactional(rollbackFor = Throwable.class, isolation = Isolation.READ_COMMITTED)
+@Repository
+public interface ServiceAccountDataRepository {
+
+    @Find
+    Optional<ServiceAccount> findById(@By(By.ID) @Nonnull Long id);
+
+    @Insert
+    ServiceAccount insert(@Nonnull ServiceAccount entity);
+
+    @Update
+    ServiceAccount update(@Nonnull ServiceAccount entity);
+
+    @Delete
+    void delete(@Nonnull ServiceAccount entity);
+
+    @Nullable @Transactional(readOnly = true)
+    @Find
+    ServiceAccount findByName(@Nonnull String name);
+
+    @Transactional(readOnly = true)
+    @Find
+    @OrderBy(value = "id", descending = true)
+    CursoredPage<ServiceAccount> list(PageRequest pageRequest);
+
+    @Transactional(readOnly = true)
+    @Find
+    @OrderBy(value = "id", descending = true)
+    CursoredPage<ServiceAccount> findByStatus(
+            @Nonnull ServiceAccountStatus status, PageRequest pageRequest);
+
+    @Transactional(readOnly = true)
+    @HQL("from ServiceAccount where id in ?1")
+    List<ServiceAccount> findByIdIn(@Nonnull List<Long> ids);
+}
