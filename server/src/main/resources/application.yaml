@@ -212,6 +212,12 @@ archive:
             secret:
             # 允许客户端签名时间戳与服务端时间的最大偏移。
             clock-skew: 5m
+        access-token:
+            rate-limit:
+                # 是否按令牌做进程内固定窗口限流。多实例部署时各进程独立计数。
+                enabled: true
+                # 每个令牌每分钟允许的已认证请求数。
+                requests-per-minute: 300
         cors:
             # 允许本地 Vite 前端跨域携带凭证访问后端；部署时改为实际可信前端 Origin。
             allowed-origins:

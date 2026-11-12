@@ -1,5 +1,6 @@
 package github.luckygc.am.module.authentication.repository;
 
+import java.util.List;
 import java.util.Optional;
 
 import jakarta.annotation.Nonnull;
@@ -14,6 +15,7 @@ import jakarta.data.repository.Repository;
 import jakarta.data.repository.Update;
 import jakarta.data.restrict.Restriction;
 
+import org.hibernate.annotations.processing.HQL;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,4 +43,8 @@ public interface AuthenticationUserDataRepository {
     @OrderBy(value = "id", descending = true)
     CursoredPage<AuthenticationUser> filterBy(
             Restriction<AuthenticationUser> restriction, PageRequest pageRequest);
+
+    @Transactional(readOnly = true)
+    @HQL("from AuthenticationUser where id in ?1")
+    List<AuthenticationUser> findByIdIn(@Nonnull List<Long> ids);
 }

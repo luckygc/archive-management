@@ -71,6 +71,7 @@ public class ApiRequestSignatureFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         return !properties.isEnabled()
+                || BearerRequests.hasBearer(request)
                 || !ApiRequestPaths.isApiRequest(request.getRequestURI())
                 || HttpMethod.OPTIONS.matches(request.getMethod())
                 || isLoginBootstrapRequest(request)

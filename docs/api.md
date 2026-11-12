@@ -12,7 +12,7 @@
 | 当前默认端口、Session cookie、CORS 和请求签名配置 | [`application.yaml`](../server/src/main/resources/application.yaml) |
 | 认证、授权、数据范围和公开入口的安全指引 | [`security.md`](security.md) |
 
-项目自有 API 直接以资源路径开始，例如 `/archive-items`，默认由 Spring Boot 主应用提供；新接口按 `api-contract` 中选定的外部规范设计，存量接口在迁移前使用其中单列的兼容合同。登录态保存在服务端 HTTP Session，浏览器使用配置的 session cookie 关联会话。除业务明确声明的公开入口和预检请求外，客户端应按服务端认证、授权、CSRF、CORS 和可选请求签名要求访问。
+项目自有 API 直接以资源路径开始，例如 `/archive-items`，默认由 Spring Boot 主应用提供；新接口按 `api-contract` 中选定的外部规范设计，存量接口在迁移前使用其中单列的兼容合同。浏览器登录态保存在服务端 HTTP Session，浏览器使用配置的 session cookie 关联会话。服务账号和个人访问令牌使用 `Authorization: Bearer`，合同见[机器身份](../specs/SPEC-机器身份.md)。除业务明确声明的公开入口、预检请求和 Bearer 令牌请求外，客户端应按服务端认证、授权、CSRF、CORS 和可选请求签名要求访问。
 
 后端运行时在 `/v3/api-docs` 提供 OpenAPI JSON，需使用已认证的会话访问。分页接口在文档中使用 `limit`、`cursor` 查询参数；具体业务字段、可排序字段和权限仍以对应业务规格为准。
 
@@ -25,6 +25,7 @@
 ### 身份、权限和组织
 
 - [登录与认证](../specs/SPEC-登录与认证.md)
+- [机器身份](../specs/SPEC-机器身份.md)
 - [功能权限](../specs/SPEC-功能权限.md)
 - [组织部门](../specs/SPEC-组织部门.md)
 - [档案数据范围](../specs/SPEC-档案数据范围.md)

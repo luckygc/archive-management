@@ -32,6 +32,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import github.luckygc.am.infrastructure.security.ApiAuthenticationEntryPoint;
 import github.luckygc.am.infrastructure.security.ApiRequestPaths;
 import github.luckygc.am.infrastructure.security.ApiRequestSignatureFilter;
+import github.luckygc.am.infrastructure.security.BearerRequests;
 
 @Configuration
 @EnableWebSecurity
@@ -45,6 +46,7 @@ public class SecurityConfig {
     private final AuthenticationFailureHandler totpChallengeAuthenticationFailureHandler;
     private final SecurityCorsProperties corsProperties;
     private final SecurityAuthorizationProperties authorizationProperties;
+    private final OncePerRequestFilter bearerAccessAuthenticationFilter;
     private final ApiAuthenticationEntryPoint apiAuthenticationEntryPoint;
 
     public SecurityConfig(
@@ -56,7 +58,8 @@ public class SecurityConfig {
             @Qualifier("totpChallengeAuthenticationFailureHandler") AuthenticationFailureHandler totpChallengeAuthenticationFailureHandler,
             SecurityCorsProperties corsProperties,
             SecurityAuthorizationProperties authorizationProperties,
-            ApiAuthenticationEntryPoint apiAuthenticationEntryPoint) {
+            ApiAuthenticationEntryPoint apiAuthenticationEntryPoint,
+            @Qualifier("bearerAccessAuthenticationFilter") OncePerRequestFilter bearerAccessAuthenticationFilter) {
         this.securityContextRepository = securityContextRepository;
         this.apiRequestSignatureFilter = apiRequestSignatureFilter;
         this.loginFailureLimitFilter = loginFailureLimitFilter;
@@ -66,6 +69,7 @@ public class SecurityConfig {
         this.corsProperties = corsProperties;
         this.authorizationProperties = authorizationProperties;
         this.apiAuthenticationEntryPoint = apiAuthenticationEntryPoint;
+        this.bearerAccessAuthenticationFilter = bearerAccessAuthenticationFilter;
     }
 
     @Bean
@@ -78,9 +82,12 @@ public class SecurityConfig {
         configureAuthenticationFilter(
                 totpChallengeAuthenticationFilter, totpChallengeAuthenticationFailureHandler);
         return http.cors(this::configureCors)
-                .csrf(csrf -> csrf.spa())
+                .csrf(csrf -> csrf.ignoringRequestMatchers(BearerRequests::hasBearer).spa())
                 .securityContext(this::configureSecurityContext)
                 .authorizeHttpRequests(this::configureAuthorization)
+                .addFilterBefore(
+                        bearerAccessAuthenticationFilter,
+                        UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(
                         apiRequestSignatureFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(

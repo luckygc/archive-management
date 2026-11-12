@@ -52,6 +52,7 @@ import github.luckygc.am.module.authorization.AuthorizationUserRoleRelation;
 import github.luckygc.am.module.authorization.repository.AuthorizationRoleDataRepository;
 import github.luckygc.am.module.authorization.repository.AuthorizationUserRoleRelationDataRepository;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
+import github.luckygc.am.module.authorization.service.AuthorizationServiceAccountRoleService;
 import github.luckygc.am.module.authorization.service.AuthorizationUserRoleService;
 import github.luckygc.am.module.organization.service.OrganizationDepartmentService;
 import github.luckygc.am.module.organization.service.OrganizationDepartmentService.OrganizationDepartmentResponse;
@@ -90,6 +91,7 @@ class ArchiveDataScopeServiceTests {
                         subjectRelationRepository,
                         new AuthorizationUserRoleService(
                                 roleRepository, userRoleRelationRepository),
+                        mock(AuthorizationServiceAccountRoleService.class),
                         new AuthenticationUserDirectoryService(authenticationUserRepository),
                         departmentService,
                         archiveMetadataService,

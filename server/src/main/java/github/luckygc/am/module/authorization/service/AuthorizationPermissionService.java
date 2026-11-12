@@ -7,12 +7,16 @@ import java.util.Optional;
 import java.util.SequencedMap;
 import java.util.TreeMap;
 
+import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import github.luckygc.am.common.exception.BadRequestException;
+import github.luckygc.am.common.security.AccessTokenGrant;
+import github.luckygc.am.common.security.AccessTokenGrantHolder;
+import github.luckygc.am.common.security.AccessTokenSubjectType;
 import github.luckygc.am.common.security.AuthenticatedUsers;
 import github.luckygc.am.module.authorization.AuthorizationPermission;
 import github.luckygc.am.module.authorization.AuthorizationRole;
@@ -70,6 +74,21 @@ public class AuthorizationPermissionService {
                     new PermissionDefinition(
                             "authentication:user:manage", "管理用户", "authentication", "创建、编辑用户和分配角色"),
                     new PermissionDefinition(
+                            "authentication:service-account:manage",
+                            "管理服务账号",
+                            "authentication",
+                            "创建、停用和删除服务账号并绑定角色"),
+                    new PermissionDefinition(
+                            "authentication:access-token:manage",
+                            "管理访问令牌",
+                            "authentication",
+                            "为服务账号签发和吊销访问令牌"),
+                    new PermissionDefinition(
+                            "authentication:api-call:read",
+                            "查询调用审计",
+                            "authentication",
+                            "查询访问令牌调用审计"),
+                    new PermissionDefinition(
                             "authorization:role:manage", "管理角色", "authorization", "创建、编辑和删除角色"),
                     new PermissionDefinition(
                             "organization:department:manage",
@@ -90,16 +109,19 @@ public class AuthorizationPermissionService {
     private final AuthorizationRoleDataRepository roleRepository;
     private final AuthorizationRolePermissionRelationDataRepository rolePermissionRepository;
     private final AuthorizationUserRoleRelationDataRepository userRoleRelationRepository;
+    private final AuthorizationServiceAccountRoleService serviceAccountRoleService;
 
     public AuthorizationPermissionService(
             AuthorizationPermissionDataRepository permissionRepository,
             AuthorizationRoleDataRepository roleRepository,
             AuthorizationRolePermissionRelationDataRepository rolePermissionRepository,
-            AuthorizationUserRoleRelationDataRepository userRoleRelationRepository) {
+            AuthorizationUserRoleRelationDataRepository userRoleRelationRepository,
+            AuthorizationServiceAccountRoleService serviceAccountRoleService) {
         this.permissionRepository = permissionRepository;
         this.roleRepository = roleRepository;
         this.rolePermissionRepository = rolePermissionRepository;
         this.userRoleRelationRepository = userRoleRelationRepository;
+        this.serviceAccountRoleService = serviceAccountRoleService;
     }
 
     public List<PermissionDefinition> listPermissionCatalog() {
@@ -160,7 +182,17 @@ public class AuthorizationPermissionService {
 
     @Transactional(readOnly = true)
     public List<String> listUserPermissionCodes(Long userId) {
-        return listUserPermissionCodesInternal(userId);
+        AccessTokenGrant grant = AccessTokenGrantHolder.current();
+        if (grant != null && grant.subjectType() == AccessTokenSubjectType.SERVICE_ACCOUNT) {
+            return applyGrantScopes(
+                    listServiceAccountPermissionCodesInternal(grant.subjectId()), grant);
+        }
+        return applyGrantScopes(listUserPermissionCodesInternal(userId), grant);
+    }
+
+    @Transactional(readOnly = true)
+    public List<String> listServiceAccountPermissionCodes(Long serviceAccountId) {
+        return listServiceAccountPermissionCodesInternal(serviceAccountId);
     }
 
     private List<String> listUserPermissionCodesInternal(Long userId) {
@@ -194,7 +226,15 @@ public class AuthorizationPermissionService {
 
     @Transactional(readOnly = true)
     public boolean isSuperAdmin(Long userId) {
-        return isSuperAdminInternal(userId);
+        AccessTokenGrant grant = AccessTokenGrantHolder.current();
+        boolean superAdmin =
+                grant != null && grant.subjectType() == AccessTokenSubjectType.SERVICE_ACCOUNT
+                        ? isServiceAccountSuperAdmin(grant.subjectId())
+                        : isSuperAdminInternal(userId);
+        if (grant == null) {
+            return superAdmin;
+        }
+        return superAdmin && grant.scopes().containsAll(catalogCodes());
     }
 
     private boolean isSuperAdminInternal(Long userId) {
@@ -215,8 +255,79 @@ public class AuthorizationPermissionService {
     }
 
     private boolean hasPermissionInternal(Long userId, String permissionCode) {
-        return isSuperAdminInternal(userId)
-                || listUserPermissionCodesInternal(userId).contains(permissionCode);
+        AccessTokenGrant grant = AccessTokenGrantHolder.current();
+        if (grant != null && grant.subjectType() == AccessTokenSubjectType.SERVICE_ACCOUNT) {
+            return hasServiceAccountPermission(grant.subjectId(), permissionCode)
+                    && grant.scopes().contains(permissionCode);
+        }
+        boolean allowed =
+                isSuperAdminInternal(userId)
+                        || listUserPermissionCodesInternal(userId).contains(permissionCode);
+        return grant == null || (allowed && grant.scopes().contains(permissionCode));
+    }
+
+    private boolean hasServiceAccountPermission(Long serviceAccountId, String permissionCode) {
+        return isServiceAccountSuperAdmin(serviceAccountId)
+                || listServiceAccountPermissionCodesInternal(serviceAccountId)
+                        .contains(permissionCode);
+    }
+
+    private boolean isServiceAccountSuperAdmin(Long serviceAccountId) {
+        for (AuthorizationRole role :
+                serviceAccountRoleService.listAssignedRoles(serviceAccountId)) {
+            if (isEnabledSuperAdmin(role)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private List<String> listServiceAccountPermissionCodesInternal(Long serviceAccountId) {
+        if (isServiceAccountSuperAdmin(serviceAccountId)) {
+            return catalogCodes();
+        }
+        Map<String, String> permissionCodes = new TreeMap<>();
+        for (AuthorizationRole role :
+                serviceAccountRoleService.listAssignedRoles(serviceAccountId)) {
+            collectRolePermissions(role, permissionCodes);
+        }
+        return List.copyOf(permissionCodes.values());
+    }
+
+    private void collectRolePermissions(
+            @Nullable AuthorizationRole role, Map<String, String> permissionCodes) {
+        if (role == null || !role.isEnabled()) {
+            return;
+        }
+        for (AuthorizationRolePermissionRelation relation :
+                rolePermissionRepository.findByRoleId(role.getId())) {
+            permissionRepository
+                    .findById(relation.getPermissionId())
+                    .filter(AuthorizationPermission::isEnabled)
+                    .ifPresent(
+                            permission ->
+                                    permissionCodes.put(
+                                            permission.getPermissionCode(),
+                                            permission.getPermissionCode()));
+        }
+    }
+
+    private boolean isEnabledSuperAdmin(@Nullable AuthorizationRole role) {
+        return role != null && role.isEnabled() && SUPER_ADMIN_ROLE_NAME.equals(role.getRoleName());
+    }
+
+    private List<String> catalogCodes() {
+        return PERMISSION_CATALOG.stream()
+                .map(PermissionDefinition::permissionCode)
+                .sorted(Comparator.naturalOrder())
+                .toList();
+    }
+
+    private List<String> applyGrantScopes(List<String> codes, @Nullable AccessTokenGrant grant) {
+        if (grant == null) {
+            return codes;
+        }
+        return codes.stream().filter(grant.scopes()::contains).sorted().toList();
     }
 
     public void requirePermission(Long userId, AuthorizationPermissionCode permissionCode) {

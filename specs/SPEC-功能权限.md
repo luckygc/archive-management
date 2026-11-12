@@ -14,7 +14,7 @@
 
 - **WHEN** 已认证管理员请求功能权限点列表
 - **THEN** 系统 SHALL 返回权限编码、权限名称、所属模块和说明
-- **AND** 权限编码 SHALL 使用稳定字符串，例如 `archive:item:read`、`archive:item:create`、`archive:item:update`、`archive:item:download-electronic-file`、`archive:export`、`archive:metadata:manage`、`authorization:role:manage`、`authentication:user:manage`
+- **AND** 权限编码 SHALL 使用稳定字符串，例如 `archive:item:read`、`archive:item:create`、`archive:item:update`、`archive:item:download-electronic-file`、`archive:export`、`archive:metadata:manage`、`authorization:role:manage`、`authentication:user:manage`、`authentication:service-account:manage`、`authentication:access-token:manage`、`authentication:api-call:read`
 - **AND** 响应 SHALL NOT 包含数据范围条件
 
 #### 场景： 当前用户查询自身权限
@@ -22,6 +22,13 @@
 - **WHEN** 已认证用户请求当前主体权限
 - **THEN** 系统 SHALL 返回该用户通过启用角色获得的功能权限编码集合和是否为超级管理员
 - **AND** 系统 SHALL NOT 因用户绑定了数据范围而额外授予功能权限
+
+#### 场景：服务账号通过角色获得功能权限
+
+- **WHEN** 请求由服务账号访问令牌认证
+- **THEN** 系统 SHALL 将该服务账号的功能权限计算为其启用角色权限点的并集
+- **AND** 令牌 scope SHALL 只能进一步收窄该集合
+- **AND** scope 未覆盖全部稳定权限点时，系统 SHALL NOT 把该调用方视为超级管理员
 
 #### 场景： 超级管理员拥有任意权限
 

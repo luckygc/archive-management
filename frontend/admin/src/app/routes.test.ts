@@ -95,6 +95,12 @@ describe("workspaceRoutes", () => {
         expect(router.resolve("/system/authentication-events").meta.permission).toBe(
             "authentication:audit:read",
         );
+        expect(router.resolve("/system/service-accounts").meta.permission).toBe(
+            "authentication:service-account:manage",
+        );
+        expect(router.resolve("/system/access-token-calls").meta.permission).toBe(
+            "authentication:api-call:read",
+        );
         expect(router.resolve("/account/security").meta).toMatchObject({
             title: "账号安全",
             menu: false,

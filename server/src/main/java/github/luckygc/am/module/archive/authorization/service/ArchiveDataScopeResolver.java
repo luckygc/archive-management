@@ -19,6 +19,9 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 
 import github.luckygc.am.common.exception.BadRequestException;
+import github.luckygc.am.common.security.AccessTokenGrant;
+import github.luckygc.am.common.security.AccessTokenGrantHolder;
+import github.luckygc.am.common.security.AccessTokenSubjectType;
 import github.luckygc.am.module.archive.authorization.ArchiveDataScope;
 import github.luckygc.am.module.archive.authorization.ArchiveDataScopeDimension;
 import github.luckygc.am.module.archive.authorization.ArchiveDataScopeDynamicCondition;
@@ -42,6 +45,7 @@ import github.luckygc.am.module.authentication.service.AuthenticationUserDirecto
 import github.luckygc.am.module.authentication.service.AuthenticationUserDirectoryService.UserSummary;
 import github.luckygc.am.module.authorization.AuthorizationRole;
 import github.luckygc.am.module.authorization.service.AuthorizationPermissionService;
+import github.luckygc.am.module.authorization.service.AuthorizationServiceAccountRoleService;
 import github.luckygc.am.module.authorization.service.AuthorizationUserRoleService;
 import github.luckygc.am.module.organization.service.OrganizationDepartmentService;
 import github.luckygc.am.module.organization.service.OrganizationDepartmentService.OrganizationDepartmentResponse;
@@ -53,6 +57,7 @@ public class ArchiveDataScopeResolver {
     private final ArchiveDataScopeDimensionDataRepository dimensionRepository;
     private final ArchiveDataScopeSubjectRelationDataRepository subjectRelationRepository;
     private final AuthorizationUserRoleService userRoleService;
+    private final AuthorizationServiceAccountRoleService serviceAccountRoleService;
     private final AuthenticationUserDirectoryService userDirectoryService;
     private final OrganizationDepartmentService departmentService;
     private final ArchiveMetadataService archiveMetadataService;
@@ -63,6 +68,7 @@ public class ArchiveDataScopeResolver {
             ArchiveDataScopeDimensionDataRepository dimensionRepository,
             ArchiveDataScopeSubjectRelationDataRepository subjectRelationRepository,
             AuthorizationUserRoleService userRoleService,
+            AuthorizationServiceAccountRoleService serviceAccountRoleService,
             AuthenticationUserDirectoryService userDirectoryService,
             OrganizationDepartmentService departmentService,
             ArchiveMetadataService archiveMetadataService,
@@ -71,6 +77,7 @@ public class ArchiveDataScopeResolver {
         this.dimensionRepository = dimensionRepository;
         this.subjectRelationRepository = subjectRelationRepository;
         this.userRoleService = userRoleService;
+        this.serviceAccountRoleService = serviceAccountRoleService;
         this.userDirectoryService = userDirectoryService;
         this.departmentService = departmentService;
         this.archiveMetadataService = archiveMetadataService;
@@ -82,6 +89,10 @@ public class ArchiveDataScopeResolver {
     }
 
     private ResolvedArchiveDataScope resolveUserDataScopeInternal(Long userId) {
+        AccessTokenGrant grant = AccessTokenGrantHolder.current();
+        if (grant != null && grant.subjectType() == AccessTokenSubjectType.SERVICE_ACCOUNT) {
+            return resolveServiceAccountDataScope(grant.subjectId());
+        }
         List<ResolvedScope> scopes = new ArrayList<>();
         if (appendSubjectScopes(ArchiveDataScopeSubjectType.USER, userId, scopes)) {
             return ResolvedArchiveDataScope.all();
@@ -90,6 +101,25 @@ public class ArchiveDataScopeResolver {
             return ResolvedArchiveDataScope.all();
         }
         for (AuthorizationRole role : userRoleService.listAssignedRoles(userId)) {
+            if (!role.isEnabled()) {
+                continue;
+            }
+            if (AuthorizationPermissionService.SUPER_ADMIN_ROLE_NAME.equals(role.getRoleName())) {
+                return ResolvedArchiveDataScope.all();
+            }
+            if (appendSubjectScopes(ArchiveDataScopeSubjectType.ROLE, role.getId(), scopes)) {
+                return ResolvedArchiveDataScope.all();
+            }
+        }
+        return scopes.isEmpty()
+                ? ResolvedArchiveDataScope.none()
+                : ResolvedArchiveDataScope.conditional(scopes);
+    }
+
+    private ResolvedArchiveDataScope resolveServiceAccountDataScope(Long serviceAccountId) {
+        List<ResolvedScope> scopes = new ArrayList<>();
+        for (AuthorizationRole role :
+                serviceAccountRoleService.listAssignedRoles(serviceAccountId)) {
             if (!role.isEnabled()) {
                 continue;
             }

@@ -14,6 +14,9 @@ public final class AuthenticatedUsers {
     }
 
     public static Long requireUserId(@Nullable Object principal) {
+        if (principal instanceof MachineAccessPrincipal) {
+            return MachineAccessPrincipal.ACTOR_ID;
+        }
         return requireResolvedUserId(currentUserId(principal));
     }
 

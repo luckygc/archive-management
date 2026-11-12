@@ -216,6 +216,22 @@ export const workspaceRoutes: RouteRecordRaw[] = [
             () => import("@/pages/authentication-events/AuthenticationEventsPage.vue"),
             { permission: "authentication:audit:read" },
         ),
+        route(
+            "service-accounts",
+            "service-accounts",
+            "服务账号",
+            Collection,
+            () => import("@/pages/service-accounts/ServiceAccountsPage.vue"),
+            { permission: "authentication:service-account:manage" },
+        ),
+        route(
+            "access-token-calls",
+            "access-token-calls",
+            "调用审计",
+            DocumentChecked,
+            () => import("@/pages/access-token-calls/AccessTokenCallsPage.vue"),
+            { permission: "authentication:api-call:read" },
+        ),
     ]),
 ];
 
