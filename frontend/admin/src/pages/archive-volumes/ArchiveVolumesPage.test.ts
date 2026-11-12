@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/vue";
 import ElementPlus, { ElMessage } from "element-plus";
 import { createPinia, setActivePinia } from "pinia";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import { HttpClientError } from "@archive-management/frontend-core/api";
 import { usePermissionStore } from "@/stores/permissionStore";

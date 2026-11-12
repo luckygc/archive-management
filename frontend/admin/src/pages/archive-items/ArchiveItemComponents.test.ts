@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/vue";
 import ElementPlus from "element-plus";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 import DynamicArchiveFields from "@/shared/archive/fields/DynamicArchiveFields.vue";
 import type { ArchiveFieldDto } from "@/shared/types/archive-metadata";

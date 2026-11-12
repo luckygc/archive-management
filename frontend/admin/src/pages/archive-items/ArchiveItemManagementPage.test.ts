@@ -1,5 +1,5 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/vue";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { HttpClientError } from "@archive-management/frontend-core/api";
 import {

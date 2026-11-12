@@ -1,7 +1,7 @@
 import { cleanup, render } from "@testing-library/vue";
 import { createPinia, setActivePinia } from "pinia";
 import { defineComponent, h } from "vue";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import { useArchiveItemResources } from "./useArchiveItemResources";
 

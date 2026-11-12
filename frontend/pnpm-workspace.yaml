@@ -9,8 +9,8 @@ overrides:
     brace-expansion: 2.1.7
     postcss: 8.5.28
     undici: 7.30.0
-    vite: "catalog:"
-    vitest: "catalog:"
+    vite@*: "catalog:"
+    vitest@*: "catalog:"
 
 peerDependencyRules:
     allowAny:
@@ -39,9 +39,9 @@ catalog:
     pinia: ^4.0.3
     unplugin-vue-components: ^32.1.0
     uqr: 0.1.3
-    vite: "npm:@voidzero-dev/vite-plus-core@1.0.0"
-    vite-plus: 1.0.0
-    vitest: 5.0.1
+    vite: "npm:@voidzero-dev/vite-plus-core@1.3.0"
+    vite-plus: 1.3.0
+    vitest: 5.0.5
     vue: ^3.5.43
     vue-router: ^5.3.1
     vue-tsc: ^3.3.11

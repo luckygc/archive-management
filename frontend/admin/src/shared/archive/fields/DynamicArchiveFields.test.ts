@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/vue";
 import ElementPlus from "element-plus";
 import { defineComponent, ref } from "vue";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vite-plus/test";
 import type { ArchiveFieldDto } from "@/shared/types/archive-metadata";
 import DynamicArchiveFields from "./DynamicArchiveFields.vue";
 import { normalizeArchiveRecordFormValues } from "./archiveRecordForm";
