@@ -2,7 +2,7 @@ import { cleanup, render } from "@testing-library/vue";
 import ElementPlus from "element-plus";
 import { createPinia, setActivePinia } from "pinia";
 import { defineComponent, h } from "vue";
-import { afterEach, beforeEach, vi } from "vitest";
+import { afterEach, beforeEach, vi } from "vite-plus/test";
 
 import { usePermissionStore } from "@/stores/permissionStore";
 import ArchiveItemManagementPage from "./ArchiveItemManagementPage.vue";

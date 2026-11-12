@@ -1,7 +1,7 @@
 import { listLoginSessions } from "@archive-management/frontend-core/api";
 import { cleanup, render, screen, waitFor } from "@testing-library/vue";
 import ElementPlus from "element-plus";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 import LoginSessionsPage from "./LoginSessionsPage.vue";
 

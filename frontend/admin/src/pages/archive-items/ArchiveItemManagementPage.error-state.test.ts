@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/vu
 import ElementPlus from "element-plus";
 import { createPinia, setActivePinia } from "pinia";
 import { defineComponent } from "vue";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import { HttpClientError } from "@archive-management/frontend-core/api";
 import { usePermissionStore } from "@/stores/permissionStore";

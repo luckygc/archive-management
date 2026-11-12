@@ -1,6 +1,6 @@
 import { cleanup, render, waitFor } from "@testing-library/vue";
 import { defineComponent, h } from "vue";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import { HttpClientError } from "@archive-management/frontend-core/api";
 import type { ArchiveRecordListDto } from "@/shared/types/archive-records";
